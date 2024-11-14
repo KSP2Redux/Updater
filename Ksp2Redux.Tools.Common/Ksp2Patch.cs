@@ -6,33 +6,37 @@ namespace Ksp2Redux.Tools.Common;
 
 public class Ksp2Patch(ZipArchive archive) : IDisposable
 {
-    public static Ksp2Patch Empty(Stream? saveStream=null)
+    public static Ksp2Patch Empty(Stream? saveStream=null, bool leaveOpen=false)
     {
         saveStream ??= new MemoryStream();
-        return new Ksp2Patch(new ZipArchive(saveStream, ZipArchiveMode.Create, false));
+        return new Ksp2Patch(new ZipArchive(saveStream, ZipArchiveMode.Create, leaveOpen));
     }
 
-    public static Ksp2Patch FromDiff(string saveFile, string ksp2Directory, string targetDirectory)
+    public static FileStream FromDiff(string saveFile, string ksp2Directory, string targetDirectory)
     {
         if (!Directory.Exists(ksp2Directory)) throw new DirectoryNotFoundException(ksp2Directory);
         if (!Directory.Exists(targetDirectory)) throw new DirectoryNotFoundException(targetDirectory);
+        var writeFile = File.OpenWrite(saveFile);
+        using (var patch = Empty(writeFile,true))
+        {
+            var size = RecursiveDiff(patch, ksp2Directory, targetDirectory);
 
-        var patch = Empty(File.OpenWrite(saveFile));
-        
-        RecursiveDiff(patch, ksp2Directory, targetDirectory);
-        
-        return patch;
+            Console.WriteLine($"Expected result size: {size}");
+        }
+        Console.WriteLine($"Stream size: {writeFile.Length}");
+        return writeFile;
     }
 
-    private static void RecursiveDiff(Ksp2Patch patch, string originalDirectory, string patchDirectory, string prefix = "")
+    private static ulong RecursiveDiff(Ksp2Patch patch, string originalDirectory, string patchDirectory, string prefix = "")
     {
+        var sum = 0UL;
         var patchDir = new DirectoryInfo(patchDirectory);
         foreach (var file in patchDir.GetFiles())
         {
             if (FileInformation.IgnoreFiles.Contains(Path.Combine(prefix,file.Name))) continue;
             if (File.Exists(Path.Combine(originalDirectory, file.Name)))
             {
-                Console.WriteLine($"Checking {file.Name}");
+                Console.WriteLine($"Checking {prefix}/{file.Name}");
                 var oldBytes = File.ReadAllBytes(Path.Combine(originalDirectory, file.Name));
                 var newBytes = File.ReadAllBytes(file.FullName);
                 if (oldBytes.SequenceEqual(newBytes)) continue;
@@ -40,15 +44,18 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
                 using var diff = patch.CreateDiff(Path.Combine(prefix, file.Name));
                 using var diffMem = new MemoryStream();
                 BinaryPatch.Create(oldBytes, newBytes, diffMem);
+                sum += (ulong)diffMem.Length;
                 diffMem.Seek(0, SeekOrigin.Begin);
                 diffMem.CopyTo(diff);
             }
             else
             {
-                Console.WriteLine($"Copying {file.Name}");
+                Console.WriteLine($"Copying {prefix}/{file.Name}");
                 using var copy = patch.CreateCopy(Path.Combine(prefix, file.Name));
                 using var input = file.OpenRead();
+                sum += (ulong)input.Length;
                 input.CopyTo(copy);
+                
             }
         }
 
@@ -56,8 +63,10 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         {
             var newDir = Path.Combine(originalDirectory, dir.Name);
             if (FileInformation.IgnoreDirectories.Contains(Path.Combine(prefix, dir.Name))) continue;
-            RecursiveDiff(patch, newDir, dir.FullName, Path.Combine(prefix, dir.Name));
+            sum += RecursiveDiff(patch, newDir, dir.FullName, Path.Combine(prefix, dir.Name));
         }
+
+        return sum;
     }
     
     public static Ksp2Patch FromFile(string path)

@@ -13,7 +13,7 @@ Dump();
 
 void Patch()
 {
-    using var patch = Ksp2Patch.FromDiff(result, ksp2Directory, buildDirectory);
+   using var _ = Ksp2Patch.FromDiff(result, ksp2Directory, buildDirectory);
 }
 
 void Dump()
