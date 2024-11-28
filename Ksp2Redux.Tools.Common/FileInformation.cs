@@ -6,16 +6,14 @@ public static class FileInformation
     public const string CrashHandler = "UnityCrashHandler64.exe";
     public const string UnityPlayer = "UnityPlayer.dll";
     public const string WinPixEventRuntime = "WinPixEventRuntime.dll";
-    
+
     public const string MonoBleedingEdge = "MonoBleedingEdge";
     public const string Ksp2X64Data = "KSP2_x64_Data";
 
     public const string Managed = $"{Ksp2X64Data}\\Managed";
 
-
     public static List<string> CopyFolders = [Ksp2X64Data, MonoBleedingEdge];
     public static List<string> CopyFiles = [Executable, CrashHandler, UnityPlayer, WinPixEventRuntime];
-
 
     public static HashSet<string> IgnoreDirectories = [$"{Ksp2X64Data}\\Resources", "PDLauncher", "BepInEx", $@"{Ksp2X64Data}\StreamingAssets\aa"];
 
@@ -29,7 +27,9 @@ public static class FileInformation
         $"{Ksp2X64Data}\\sharedassets0.assets",
         $"{Ksp2X64Data}\\globalgamemanagers",
         $"{Ksp2X64Data}\\globalgamemanagers.assets",
-        $"{Ksp2X64Data}\\globalgamemanagers.assets.resS"
+        $"{Ksp2X64Data}\\globalgamemanagers.assets.resS",
+        "Ksp2.log",
+        "redux.log",
+        "redux.log.old",
     ];
-    
 }
