@@ -16,7 +16,7 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
     {
         if (!Directory.Exists(ksp2Directory)) throw new DirectoryNotFoundException(ksp2Directory);
         if (!Directory.Exists(targetDirectory)) throw new DirectoryNotFoundException(targetDirectory);
-        var writeFile = File.OpenWrite(saveFile);
+        var writeFile = File.Open(saveFile, FileMode.Create, FileAccess.Write);
         using (var patch = Empty(writeFile,true))
         {
             var size = RecursiveDiff(patch, ksp2Directory, targetDirectory);
@@ -82,7 +82,7 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         ksp2Directory = ksp2Directory.TrimEnd('\\', '/') + '\\';
         foreach (var file in FileInformation.CopyFiles.Where(file => File.Exists($"{ksp2Directory}{file}")))
         {
-            File.Copy($"{ksp2Directory}{file}", $"{targetDirectory}{file}");
+            File.Copy($"{ksp2Directory}{file}", $"{targetDirectory}{file}", true);
         }
 
         foreach (var directory in FileInformation.CopyFolders)
@@ -117,7 +117,7 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         foreach (var file in dir.GetFiles())
         {
             var targetFilePath = Path.Combine(destinationDir, file.Name);
-            file.CopyTo(targetFilePath);
+            file.CopyTo(targetFilePath, true);
         }
 
         // If recursive and copying subdirectories, recursively call this method
@@ -167,11 +167,11 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
                     if (!File.Exists($"{sourceDirectory}{trueName}"))
                         throw new Exception(
                             $"Failed to apply patch because {trueName} does not exist in target installation directory");
-                    File.Copy($"{sourceDirectory}{trueName}", $"{targetDirectory}{trueName}.unpatched");
+                    File.Copy($"{sourceDirectory}{trueName}", $"{targetDirectory}{trueName}.unpatched", true);
                 }
 
                 using var originalFile = File.OpenRead($"{targetDirectory}{trueName}.unpatched");
-                using var targetFile = File.OpenWrite($"{targetDirectory}{trueName}");
+                using var targetFile = File.Open($"{targetDirectory}{trueName}", FileMode.Create, FileAccess.Write);
                 BinaryPatch.Apply(originalFile, () =>
                 {
                     using var nonMemory = entry.Open();
@@ -189,7 +189,7 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
             {
                 var parent = new FileInfo($"{targetDirectory}{entry.FullName}").Directory;
                 Directory.CreateDirectory(parent!.FullName);
-                using var targetFile = File.OpenWrite($"{targetDirectory}{entry.FullName}");
+                using var targetFile = File.Open($"{targetDirectory}{entry.FullName}", FileMode.Create, FileAccess.Write);
                 using var entryStream = entry.Open();
                 entryStream.CopyTo(targetFile);
             }
