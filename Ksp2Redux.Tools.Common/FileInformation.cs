@@ -22,6 +22,7 @@ public static class FileInformation
         $"{Ksp2X64Data}\\level0",
         $"{Ksp2X64Data}\\level0.resS",
         $"{Ksp2X64Data}\\resources.assets",
+        $"{Ksp2X64Data}\\resources.assets.resS",
         /* $"{Ksp2X64Data}\\RuntimeInitializeOnLoads.json", */
         /* $"{Ksp2X64Data}\\ScriptingAssemblies.json", */
         $"{Ksp2X64Data}\\sharedassets0.assets",
