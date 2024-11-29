@@ -17,11 +17,10 @@ public class Ksp2Patch : IDisposable
     public Ksp2Patch(ZipArchive archive)
     {
         this.archive = archive;
-        ZipArchiveEntry? manifestEntry = archive.GetEntry(manifestJsonFileName);
-        if (manifestEntry is not null)
+        if (archive.Mode == ZipArchiveMode.Read)
         {
+            ZipArchiveEntry manifestEntry = archive.GetEntry(manifestJsonFileName)!;
             using var stream = manifestEntry.Open();
-
             manifest = JsonSerializer.Deserialize<PatchManifest>(stream, serializerOptions)!;
         }
     }
@@ -280,26 +279,11 @@ public class Ksp2Patch : IDisposable
     {
         archive.CreateEntry(removePath + ".remove");
     }
-
     public string GetDiffInfo()
     {
-        var sb = new StringBuilder();
-        foreach (var entry in archive.Entries)
-        {
-            if (entry.Name.EndsWith(".bsdiff"))
-            {
-                sb.AppendLine($"MOD {entry.FullName[0..^7]}");
-            }
-            else if (entry.Name.EndsWith(".remove"))
-            {
-                sb.AppendLine($"DEL {entry.FullName[0..^7]}");
-            }
-            else
-            {
-                sb.AppendLine($"COP {entry.FullName}");
-            }
-        }
-        return sb.ToString();
+        using var reader = new StreamReader(archive.GetEntry(manifestJsonFileName)!.Open());
+
+        return reader.ReadToEnd();
     }
 
     private static bool ValidateFileHash(Stream stream, byte[] hash)
