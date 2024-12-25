@@ -1,12 +1,31 @@
-﻿using System.IO.Compression;
+﻿using BsDiff;
+using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
-using BsDiff;
+using System.Text.Json;
 
 namespace Ksp2Redux.Tools.Common;
 
-public class Ksp2Patch(ZipArchive archive) : IDisposable
+public class Ksp2Patch : IDisposable
 {
-    public static Ksp2Patch Empty(Stream? saveStream=null, bool leaveOpen=false)
+    private readonly PatchManifest manifest = new();
+    private readonly ZipArchive archive;
+    private const string manifestJsonFileName = "manifest.json";
+
+    private static readonly JsonSerializerOptions serializerOptions = new() { WriteIndented = true, IncludeFields = true };
+
+    public Ksp2Patch(ZipArchive archive)
+    {
+        this.archive = archive;
+        if (archive.Mode == ZipArchiveMode.Read)
+        {
+            ZipArchiveEntry manifestEntry = archive.GetEntry(manifestJsonFileName)!;
+            using var stream = manifestEntry.Open();
+            manifest = JsonSerializer.Deserialize<PatchManifest>(stream, serializerOptions)!;
+        }
+    }
+
+    public static Ksp2Patch Empty(Stream? saveStream = null, bool leaveOpen = false)
     {
         saveStream ??= new MemoryStream();
         return new Ksp2Patch(new ZipArchive(saveStream, ZipArchiveMode.Create, leaveOpen));
@@ -17,29 +36,37 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         if (!Directory.Exists(ksp2Directory)) throw new DirectoryNotFoundException(ksp2Directory);
         if (!Directory.Exists(targetDirectory)) throw new DirectoryNotFoundException(targetDirectory);
         var writeFile = File.Open(saveFile, FileMode.Create, FileAccess.Write);
-        using (var patch = Empty(writeFile,true))
+
+        using (var patch = Empty(writeFile, true))
         {
-            var size = RecursiveDiff(patch, ksp2Directory, targetDirectory);
+            var size = patch.RecursiveDiff(patch, ksp2Directory, targetDirectory);
 
             Console.WriteLine($"Expected result size: {size}");
+
+            ZipArchiveEntry manifestEntry = patch.archive.CreateEntry(manifestJsonFileName);
+            using var entryStream = manifestEntry.Open();
+
+            JsonSerializer.Serialize(entryStream, patch.manifest, serializerOptions);
         }
         Console.WriteLine($"Stream size: {writeFile.Length}");
+
         return writeFile;
     }
 
-    private static ulong RecursiveDiff(Ksp2Patch patch, string originalDirectory, string patchDirectory, string prefix = "")
+    private ulong RecursiveDiff(Ksp2Patch patch, string originalDirectory, string patchDirectory, string prefix = "")
     {
         var sum = 0UL;
         var patchDir = new DirectoryInfo(patchDirectory);
         foreach (var file in patchDir.GetFiles())
         {
-            if (FileInformation.IgnoreFiles.Contains(Path.Combine(prefix,file.Name))) continue;
+            if (FileInformation.IgnoreFiles.Contains(Path.Combine(prefix, file.Name))) continue;
             if (File.Exists(Path.Combine(originalDirectory, file.Name)))
             {
                 Console.WriteLine($"Checking {prefix}/{file.Name}");
                 var oldBytes = File.ReadAllBytes(Path.Combine(originalDirectory, file.Name));
                 var newBytes = File.ReadAllBytes(file.FullName);
                 if (oldBytes.SequenceEqual(newBytes)) continue;
+
                 Console.WriteLine("Different, patching");
                 using var diff = patch.CreateDiff(Path.Combine(prefix, file.Name));
                 using var diffMem = new MemoryStream();
@@ -47,6 +74,22 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
                 sum += (ulong)diffMem.Length;
                 diffMem.Seek(0, SeekOrigin.Begin);
                 diffMem.CopyTo(diff);
+
+                using SHA256 oldSHA = SHA256.Create();
+                using SHA256 newSHA = SHA256.Create();
+
+                oldSHA.ComputeHash(oldBytes);
+                newSHA.ComputeHash(newBytes);
+                Console.WriteLine($"Original SHA256: {FormatHash(oldSHA.Hash!)}");
+                Console.WriteLine($"New SHA256: {FormatHash(newSHA.Hash!)}");
+
+                manifest.operations.Add(new()
+                {
+                    action = PatchOperation.PatchAction.Patch,
+                    fileName = Path.Combine(prefix, file.Name),
+                    originalHash = oldSHA.Hash!,
+                    finalHash = newSHA.Hash!,
+                });
             }
             else
             {
@@ -55,7 +98,16 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
                 using var input = file.OpenRead();
                 sum += (ulong)input.Length;
                 input.CopyTo(copy);
-                
+
+                input.Position = 0;
+                using SHA256 newSHA = SHA256.Create();
+                newSHA.ComputeHash(input);
+                manifest.operations.Add(new()
+                {
+                    action = PatchOperation.PatchAction.Add,
+                    fileName = Path.Combine(prefix, file.Name),
+                    finalHash = newSHA.Hash!,
+                });
             }
         }
 
@@ -68,7 +120,7 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
 
         return sum;
     }
-    
+
     public static Ksp2Patch FromFile(string path)
     {
         return new Ksp2Patch(ZipFile.OpenRead(path));
@@ -89,11 +141,10 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         {
             Console.WriteLine($"{ksp2Directory}{directory} - {Directory.Exists($"{ksp2Directory}{directory}")}");
         }
-        
+
         foreach (var directory in FileInformation.CopyFolders.Where(directory =>
                      Directory.Exists($"{ksp2Directory}{directory}")))
         {
-            
             CopyDirectory($"{ksp2Directory}{directory}", $"{targetDirectory}{directory}", true);
         }
     }
@@ -134,8 +185,8 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         CopyKsp2Directory(ksp2Directory, targetDirectory);
         Apply(targetDirectory, ksp2Directory);
     }
-    
-    public void Apply(string targetDirectory, string? sourceDirectory=null)
+
+    public void Apply(string targetDirectory, string? sourceDirectory = null)
     {
         sourceDirectory ??= targetDirectory;
         if (!Directory.Exists(targetDirectory)) throw new DirectoryNotFoundException(targetDirectory);
@@ -143,11 +194,12 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         targetDirectory = targetDirectory.TrimEnd('\\', '/') + '\\';
         sourceDirectory = sourceDirectory.TrimEnd('\\', '/') + '\\';
         bool checkForOld = sourceDirectory == targetDirectory;
-        foreach (var entry in archive.Entries)
+
+        foreach (var operation in manifest.operations)
         {
-            if (entry.FullName.EndsWith(".bsdiff"))
+            var trueName = operation.fileName;
+            if (operation.action == PatchOperation.PatchAction.Patch)
             {
-                var trueName = entry.FullName[..^7];
                 var parent = new FileInfo($"{targetDirectory}{trueName}").Directory;
                 Directory.CreateDirectory(parent!.FullName);
                 if (checkForOld)
@@ -159,11 +211,9 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
                                 $"Failed to apply patch because {trueName} does not exist in target installation directory");
                         File.Copy($"{targetDirectory}{trueName}", $"{targetDirectory}{trueName}.unpatched");
                     }
-                    
                 }
                 else
                 {
-                    
                     if (!File.Exists($"{sourceDirectory}{trueName}"))
                         throw new Exception(
                             $"Failed to apply patch because {trueName} does not exist in target installation directory");
@@ -171,34 +221,51 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
                 }
 
                 using var originalFile = File.OpenRead($"{targetDirectory}{trueName}.unpatched");
-                using var targetFile = File.Open($"{targetDirectory}{trueName}", FileMode.Create, FileAccess.Write);
+                using var targetFile = File.Open($"{targetDirectory}{trueName}", FileMode.Create, FileAccess.ReadWrite);
+
+                if (!ValidateFileHash(originalFile, operation.originalHash!))
+                {
+                    throw new InvalidDataException($"File {originalFile.Name} does not match expected hash {FormatHash(operation.originalHash!)}. "
+                        + "Cannot apply patch! Check that the Redux patch you are applying is for the version of the game (Steam, portable zip, or Epic) you are patching.");
+                }
+
                 BinaryPatch.Apply(originalFile, () =>
                 {
-                    using var nonMemory = entry.Open();
+                    using var nonMemory = archive.GetEntry(trueName + ".bsdiff")!.Open();
                     var memory = new MemoryStream();
                     nonMemory.CopyTo(memory);
                     memory.Seek(0, SeekOrigin.Begin);
                     return memory;
                 }, targetFile);
-            } else if (entry.FullName.EndsWith(".remove"))
+
+                if (!ValidateFileHash(targetFile, operation.finalHash!))
+                {
+                    throw new InvalidDataException($"File {targetFile.Name} does not match expected hash {FormatHash(operation.finalHash!)}.");
+                }
+            }
+            else if (operation.action == PatchOperation.PatchAction.Remove)
             {
-                var trueName = entry.FullName[..^7];
                 if (File.Exists($"{targetDirectory}{trueName}")) File.Delete($"{targetDirectory}{trueName}");
             }
             else
             {
-                var parent = new FileInfo($"{targetDirectory}{entry.FullName}").Directory;
+                var parent = new FileInfo($"{targetDirectory}{trueName}").Directory;
                 Directory.CreateDirectory(parent!.FullName);
-                using var targetFile = File.Open($"{targetDirectory}{entry.FullName}", FileMode.Create, FileAccess.Write);
-                using var entryStream = entry.Open();
+                using var targetFile = File.Open($"{targetDirectory}{trueName}", FileMode.Create, FileAccess.ReadWrite);
+                using var entryStream = archive.GetEntry(trueName)!.Open();
                 entryStream.CopyTo(targetFile);
+
+                if (!ValidateFileHash(targetFile, operation.finalHash!))
+                {
+                    throw new InvalidDataException($"File {targetFile.Name} does not match expected hash {FormatHash(operation.finalHash!)}.");
+                }
             }
         }
     }
 
     public Stream CreateDiff(string diffPath)
     {
-        var path = archive.CreateEntry(diffPath+".bsdiff");
+        var path = archive.CreateEntry(diffPath + ".bsdiff");
         return path.Open();
     }
 
@@ -207,32 +274,38 @@ public class Ksp2Patch(ZipArchive archive) : IDisposable
         var path = archive.CreateEntry(copyPath);
         return path.Open();
     }
-    
+
     public void CreateRemove(string removePath)
     {
         archive.CreateEntry(removePath + ".remove");
     }
-
     public string GetDiffInfo()
     {
-        var sb = new StringBuilder();
-        foreach (var entry in archive.Entries)
-        {
-            if (entry.Name.EndsWith(".bsdiff"))
-            {
-                sb.AppendLine($"MOD {entry.FullName[0..^7]}");
-            } else if (entry.Name.EndsWith(".remove"))
-            {
-                sb.AppendLine($"DEL {entry.FullName[0..^7]}");
-            }
-            else
-            {
-                sb.AppendLine($"COP {entry.FullName}");
-            }
-        }
-        return sb.ToString();
+        using var reader = new StreamReader(archive.GetEntry(manifestJsonFileName)!.Open());
+
+        return reader.ReadToEnd();
     }
-    
+
+    private static bool ValidateFileHash(Stream stream, byte[] hash)
+    {
+        var wasPosition = stream.Position;
+        stream.Position = 0;
+        using SHA256 sha = SHA256.Create();
+        sha.ComputeHash(stream);
+        stream.Position = wasPosition;
+        return sha.Hash!.SequenceEqual(hash);
+    }
+
+    private static string FormatHash(byte[] hashBytes)
+    {
+        StringBuilder hashString = new(64);
+        foreach (byte x in hashBytes)
+        {
+            hashString.AppendFormat("{0:x2}", x);
+        }
+        return hashString.ToString();
+    }
+
     public void Dispose()
     {
         archive.Dispose();
