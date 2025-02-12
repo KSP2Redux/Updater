@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System.Collections;
+using System.Collections.Concurrent;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Windows;
@@ -12,6 +14,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Ksp2Redux.Tools.Common;
 using Microsoft.Win32;
+using Exception = System.Exception;
 
 namespace Ksp2Redux.Tools;
 
@@ -36,7 +39,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        
     }
 
     private void BrowseKsp2InstallFolder_OnClick(object sender, RoutedEventArgs e)
@@ -127,25 +129,46 @@ public partial class MainWindow : Window
         return true;
     }
 
-    private void UpdateInstall_OnClick(object sender, RoutedEventArgs e)
+    private bool _isCurrentlyRunningPatch = false;
+    
+    
+    private async void UpdateInstall_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!ValidateDirectories()) return;
         try
         {
+            if (!ValidateDirectories()) return;
+            if (_isCurrentlyRunningPatch)
+            {
+                MessageBox.Show("Already applying patch, please wait!");
+                return;
+            }
+            _isCurrentlyRunningPatch = true;
+            PatchLog.Text = "Beginning Patch!\n";
             var patchFile = Ksp2Patch.FromFile(PatchFile.Text);
+            bool errored = false;
             if (CopyFiles.IsChecked == true)
             {
-                patchFile.CopyAndApply(StockFolderTrimmed, TargetFolderTrimmed);
+                await patchFile.AsyncCopyAndApply(StockFolderTrimmed, TargetFolderTrimmed, x => PatchLog.Text += $"{x}\n");
             }
             else
             {
-                patchFile.Apply(StockFolderTrimmed, StockFolderTrimmed);
+                await patchFile.AsyncApply(StockFolderTrimmed, StockFolderTrimmed, x => PatchLog.Text += $"{x}\n");
+            }
+            _isCurrentlyRunningPatch = false;
+            if (!errored)
+            {
+                MessageBox.Show("Patch complete!");
             }
         }
-        catch (Exception err)
+        catch (Exception error)
         {
-            MessageBox.Show(err.ToString(), "Error applying patch!");
+            _isCurrentlyRunningPatch = false;
+            MessageBox.Show(error.Message, "Error applying patch!");
         }
     }
 
+    private void PatchLog_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        ScrollLog.ScrollToEnd();
+    }
 }
