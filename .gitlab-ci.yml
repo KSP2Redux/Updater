@@ -1,0 +1,11 @@
+stages:
+  - build-tools
+build-tools:
+  stage: build-tools
+  script:
+    - dotnet publish Ksp2Redux.Tools.Installer/Ksp2Redux.Tools.Installer.csproj -r win-x64 -o .
+  after_script:
+  artifacts:
+    when: always
+    paths:
+      - Ksp2Redux.Tools.Installer.exe
