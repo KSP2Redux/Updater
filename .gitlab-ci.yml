@@ -1,5 +1,6 @@
 stages:
   - build-tools
+  - release
 
 build-tools:
   stage: build-tools
@@ -11,7 +12,7 @@ build-tools:
       - artifacts/
 
 create-release:
-  stage: build-tools
+  stage: release
   script: |
     $ZIP_NAME = "Ksp2Redux.Tools.Installer-${env:CI_COMMIT_SHORT_SHA}-net8.0.zip"
     Write-Host "Zipping artifacts into $ZIP_NAME..."
@@ -47,3 +48,4 @@ create-release:
       --description "Automated release from commit $($env:CI_COMMIT_SHA)." `
       --assets-link "{\"name\":\"$uploadAlt\", \"url\":\"$($env:CI_SERVER_URL)$uploadUrl\", \"filepath\":\"$ZIP_NAME\"}"
   when: manual
+  needs: ["build-tools"]
