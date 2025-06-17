@@ -1,6 +1,5 @@
 stages:
   - build-tools
-  - release
 
 build-tools:
   stage: build-tools
@@ -12,12 +11,7 @@ build-tools:
       - artifacts/
 
 create-release:
-  stage: release
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: manual
-    - if: $CI_COMMIT_TAG
-      when: manual
+  stage: build-tools
   script:
     - $ZIP_NAME = "Ksp2Redux.Tools.Installer-${env:CI_COMMIT_SHORT_SHA}-net8.0.zip"
     - Write-Host "Zipping artifacts into $ZIP_NAME..."
@@ -28,14 +22,19 @@ create-release:
     - Invoke-WebRequest -Uri $releaseCliUrl -OutFile release-cli.exe
     - Write-Host "release-cli downloaded."
 
+    - $api_url = "$($env:CI_API_V4_URL)/projects/$($env:CI_PROJECT_ID)/uploads?filename=$ZIP_NAME"
+    - Write-Host "API URL: $api_url"
+
     - Write-Host "Uploading $ZIP_NAME..."
-    - $uploadResponse = Invoke-WebRequest -Uri "$($env:CI_API_V4_URL)/projects/$($env:CI_PROJECT_ID)/uploads?filename=$ZIP_NAME" `
+    - $uploadResponse = Invoke-WebRequest -Uri $api_url `
       -Headers @{"JOB-TOKEN" = $env:CI_JOB_TOKEN} `
       -Method POST `
       -InFile $ZIP_NAME `
       -ContentType "application/octet-stream"
+    - if ($uploadResponse.StatusCode -ge 400) { Write-Error "Upload failed with status code $($uploadResponse.StatusCode): $($uploadResponse.Content)"; exit 1 }
     - $uploadUrl = ($uploadResponse.Content | ConvertFrom-Json).url
     - $uploadAlt = ($uploadResponse.Content | ConvertFrom-Json).alt
+    - Write-Host "Upload complete. URL: $uploadUrl"
 
     - Write-Host "Creating release..."
     - ./release-cli.exe create `
@@ -43,5 +42,4 @@ create-release:
       --tag-name "v$(Get-Date -Format "yyyyMMddHHmm")-$($env:CI_COMMIT_SHORT_SHA)" `
       --description "Automated release from commit $($env:CI_COMMIT_SHA)." `
       --assets-link "{\"name\":\"$uploadAlt\", \"url\":\"$($env:CI_SERVER_URL)$uploadUrl\", \"filepath\":\"$ZIP_NAME\"}"
-  needs:
-    - build-tools
+  when: manual
