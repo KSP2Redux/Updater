@@ -14,38 +14,52 @@ build-tools:
 create-release:
   stage: release
   script: |
-    $ZIP_NAME = "Ksp2Redux.Tools.Installer-${env:CI_COMMIT_SHORT_SHA}-net8.0.zip"
-    Write-Host "Zipping artifacts into $ZIP_NAME..."
-    Compress-Archive -Path artifacts\* -DestinationPath $ZIP_NAME
+    $PACKAGE_NAME = "Ksp2Redux.Tools.Installer"
+    $PACKAGE_VERSION = "$(Get-Date -Format "yyyyMMddHHmm")-${env:CI_COMMIT_SHORT_SHA}"
+    $BUILT_FILE_NAME = "Ksp2Redux.Tools.Installer.exe"
+    $ZIP_FILE_NAME = "${PACKAGE_NAME}-${PACKAGE_VERSION}.zip"
+
+    Write-Host "Zipping artifacts into $ZIP_FILE_NAME..."
+    Compress-Archive -Path artifacts\* -DestinationPath $ZIP_FILE_NAME
+
+    $PACKAGE_UPLOAD_URL = "$($env:CI_API_V4_URL)/projects/$($env:CI_PROJECT_ID)/packages/generic/$PACKAGE_NAME/$PACKAGE_VERSION"
+    Write-Host "Package Upload URL: $PACKAGE_UPLOAD_URL"
+
+    Write-Host "Uploading $ZIP_FILE_NAME to Package Registry..."
+    try {
+        Invoke-WebRequest -Uri "$PACKAGE_UPLOAD_URL/$ZIP_FILE_NAME" `
+                          -Headers @{"JOB-TOKEN" = $env:CI_JOB_TOKEN} `
+                          -Method PUT `
+                          -InFile $ZIP_FILE_NAME `
+                          -ContentType "application/zip"
+        Write-Host "Upload to Package Registry complete."
+    } catch {
+        Write-Error "Failed to upload to Package Registry: $($_.Exception.Message)"
+        if ($_.Exception.Response) {
+            Write-Error "Response content: $($_.Exception.Response.GetResponseStream() | ForEach-Object { new-object System.IO.StreamReader($_).ReadToEnd() })"
+        }
+        exit 1
+    }
 
     Write-Host "Downloading release-cli..."
     $releaseCliUrl = "https://gitlab.com/gitlab-org/release-cli/-/releases/v0.24.0/downloads/bin/release-cli-windows-amd64.exe"
     Invoke-WebRequest -Uri $releaseCliUrl -OutFile release-cli.exe
     Write-Host "release-cli downloaded."
 
-    $api_url = "$($env:CI_API_V4_URL)/projects/$($env:CI_PROJECT_ID)/uploads?filename=$ZIP_NAME"
-    Write-Host "API URL: $api_url"
-
-    Write-Host "Uploading $ZIP_NAME..."
-    $uploadResponse = Invoke-WebRequest -Uri $api_url `
-      -Headers @{"JOB-TOKEN" = $env:CI_JOB_TOKEN} `
-      -Method POST `
-      -InFile $ZIP_NAME `
-      -ContentType "application/octet-stream"
-
-    if ($uploadResponse.StatusCode -ge 400) {
-      Write-Error "Upload failed with status code $($uploadResponse.StatusCode): $($uploadResponse.Content)"
-      exit 1
-    }
-    $uploadUrl = ($uploadResponse.Content | ConvertFrom-Json).url
-    $uploadAlt = ($uploadResponse.Content | ConvertFrom-Json).alt
-    Write-Host "Upload complete. URL: $uploadUrl"
+    $PACKAGE_DOWNLOAD_URL = "$PACKAGE_UPLOAD_URL/$ZIP_FILE_NAME"
 
     Write-Host "Creating release..."
+    $ASSET_JSON = @{
+        name = "${ZIP_FILE_NAME}"
+        url = "${PACKAGE_DOWNLOAD_URL}"
+    } | ConvertTo-Json -Compress
+
     ./release-cli.exe create `
       --name "Ksp2Redux.Tools.Installer Release ($($env:CI_COMMIT_SHORT_SHA))" `
       --tag-name "v$(Get-Date -Format "yyyyMMddHHmm")-$($env:CI_COMMIT_SHORT_SHA)" `
-      --description "Automated release from commit $($env:CI_COMMIT_SHA)." `
-      --assets-link "{\"name\":\"$uploadAlt\", \"url\":\"$($env:CI_SERVER_URL)$uploadUrl\", \"filepath\":\"$ZIP_NAME\"}"
+      --description "Automated release from commit $($env:CI_COMMIT_SHA). Download the installer zip from the assets." `
+      --assets-link "${ASSET_JSON}"
+
+    Write-Host "Release created successfully!"
   when: manual
   needs: ["build-tools"]
