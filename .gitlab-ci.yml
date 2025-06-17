@@ -12,32 +12,36 @@ build-tools:
 
 create-release:
   stage: build-tools
-  script:
-    - $ZIP_NAME = "Ksp2Redux.Tools.Installer-${env:CI_COMMIT_SHORT_SHA}-net8.0.zip"
-    - Write-Host "Zipping artifacts into $ZIP_NAME..."
-    - Compress-Archive -Path artifacts\* -DestinationPath $ZIP_NAME
+  script: |
+    $ZIP_NAME = "Ksp2Redux.Tools.Installer-${env:CI_COMMIT_SHORT_SHA}-net8.0.zip"
+    Write-Host "Zipping artifacts into $ZIP_NAME..."
+    Compress-Archive -Path artifacts\* -DestinationPath $ZIP_NAME
 
-    - Write-Host "Downloading release-cli..."
-    - $releaseCliUrl = "https://gitlab.com/gitlab-org/release-cli/-/releases/v0.24.0/downloads/bin/release-cli-windows-amd64.exe"
-    - Invoke-WebRequest -Uri $releaseCliUrl -OutFile release-cli.exe
-    - Write-Host "release-cli downloaded."
+    Write-Host "Downloading release-cli..."
+    $releaseCliUrl = "https://gitlab.com/gitlab-org/release-cli/-/releases/v0.24.0/downloads/bin/release-cli-windows-amd64.exe"
+    Invoke-WebRequest -Uri $releaseCliUrl -OutFile release-cli.exe
+    Write-Host "release-cli downloaded."
 
-    - $api_url = "$($env:CI_API_V4_URL)/projects/$($env:CI_PROJECT_ID)/uploads?filename=$ZIP_NAME"
-    - Write-Host "API URL: $api_url"
+    $api_url = "$($env:CI_API_V4_URL)/projects/$($env:CI_PROJECT_ID)/uploads?filename=$ZIP_NAME"
+    Write-Host "API URL: $api_url"
 
-    - Write-Host "Uploading $ZIP_NAME..."
-    - $uploadResponse = Invoke-WebRequest -Uri $api_url `
+    Write-Host "Uploading $ZIP_NAME..."
+    $uploadResponse = Invoke-WebRequest -Uri $api_url `
       -Headers @{"JOB-TOKEN" = $env:CI_JOB_TOKEN} `
       -Method POST `
       -InFile $ZIP_NAME `
       -ContentType "application/octet-stream"
-    - if ($uploadResponse.StatusCode -ge 400) { Write-Error "Upload failed with status code $($uploadResponse.StatusCode): $($uploadResponse.Content)"; exit 1 }
-    - $uploadUrl = ($uploadResponse.Content | ConvertFrom-Json).url
-    - $uploadAlt = ($uploadResponse.Content | ConvertFrom-Json).alt
-    - Write-Host "Upload complete. URL: $uploadUrl"
 
-    - Write-Host "Creating release..."
-    - ./release-cli.exe create `
+    if ($uploadResponse.StatusCode -ge 400) {
+      Write-Error "Upload failed with status code $($uploadResponse.StatusCode): $($uploadResponse.Content)"
+      exit 1
+    }
+    $uploadUrl = ($uploadResponse.Content | ConvertFrom-Json).url
+    $uploadAlt = ($uploadResponse.Content | ConvertFrom-Json).alt
+    Write-Host "Upload complete. URL: $uploadUrl"
+
+    Write-Host "Creating release..."
+    ./release-cli.exe create `
       --name "Ksp2Redux.Tools.Installer Release ($($env:CI_COMMIT_SHORT_SHA))" `
       --tag-name "v$(Get-Date -Format "yyyyMMddHHmm")-$($env:CI_COMMIT_SHORT_SHA)" `
       --description "Automated release from commit $($env:CI_COMMIT_SHA)." `
