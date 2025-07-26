@@ -1,0 +1,42 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Ksp2Redux.Tools.Launcher.App"
+             xmlns:local="using:Ksp2Redux.Tools.Launcher"
+             xmlns:converters="clr-namespace:Ksp2Redux.Tools.Launcher.Converters"
+             RequestedThemeVariant="Dark">
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <FontFamily x:Key="LedCounter7">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#LED Counter 7</FontFamily>
+            <FontFamily x:Key="JetBrainsMonoLight">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Light</FontFamily>
+            <FontFamily x:Key="JetBrainsMonoRegular">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Regular</FontFamily>
+            <FontFamily x:Key="JetBrainsMonoBold">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Bold</FontFamily>
+
+            <ResourceDictionary.MergedDictionaries>
+                <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabControl.axaml" />
+                <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabItem.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:CaseConverter x:Key="CaseConverter" />
+            <converters:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
+            <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+            <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"
+                                             HeaderBrush="Gray"
+                                             ItemBrush="Black" />
+            <converters:SelectableConverter x:Key="SelectableConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <Style Selector="ComboBoxItem.group-header">
+            <Setter Property="IsEnabled" Value="False"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+    </Application.Styles>
+</Application>

@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ksp2Redux.Tools.PatchGenera
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ksp2Redux.Tools.Common", "Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj", "{C1ED2E37-9415-4162-8EE7-1047D95AB878}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ksp2Redux.Tools.Launcher", "Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj", "{1A875294-FB85-469F-9995-81883876FEB2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{C1ED2E37-9415-4162-8EE7-1047D95AB878}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1ED2E37-9415-4162-8EE7-1047D95AB878}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1ED2E37-9415-4162-8EE7-1047D95AB878}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A875294-FB85-469F-9995-81883876FEB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A875294-FB85-469F-9995-81883876FEB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A875294-FB85-469F-9995-81883876FEB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A875294-FB85-469F-9995-81883876FEB2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

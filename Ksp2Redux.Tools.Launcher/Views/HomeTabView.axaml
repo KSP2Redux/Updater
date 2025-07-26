@@ -1,0 +1,166 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
+             xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Ksp2Redux.Tools.Launcher.Views.HomeTabView"
+             x:DataType="home:HomeTabViewModel">
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="home:GameVersionViewModel">
+            <TextBlock Text="{Binding VersionString}"
+                       Margin="16,0,0,0"/>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <UserControl.Styles>
+        <Style Selector="ProgressBar">
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="ShowProgressText" Value="True"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="#dc1501"/>
+                        <GradientStop Offset="100" Color="#fc7600"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Background" Value="#80000000"/>
+            <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="TextBlock.progress-label">
+            <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+
+        <Style Selector="ComboBoxItem">
+            <Style Selector="^:selected /template/ ContentPresenter">
+                <Setter Property="Background" Value="#dc1501"/>
+            </Style>
+            <Style Selector="^:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="#a0dc1501"/>
+            </Style>
+            <Style Selector="^:pressed /template/ ContentPresenter">
+                <Setter Property="Background" Value="#c0dc1501"/>
+            </Style>
+        </Style>
+
+        <Style Selector="Button.main-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="32" />
+            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+
+            <Style Selector="^ Border.main-button-tint">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="^ TextBlock">
+                <Setter Property="Margin" Value="24,16,0,0" />
+                <Setter Property="Foreground" Value="#3b3b3b" />
+            </Style>
+            <Style Selector="^:pointerover">
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^ Border.main-button-tint">
+                    <Setter Property="Background" Value="#20000000" />
+                </Style>
+            </Style>
+            <Style Selector="^:pressed">
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^ Border.main-button-tint">
+                    <Setter Property="Background" Value="#40000000" />
+                </Style>
+            </Style>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="{StaticResource JetBrainsMonoLight}"
+                   FontSize="24" TextAlignment="Center" Margin="0,16,0,8">
+            LATEST NEWS
+        </TextBlock>
+        <Border Grid.Row="1" Grid.Column="0" Background="#802D2D2D" CornerRadius="12"
+                Margin="0,0,0,0"
+                VerticalAlignment="Stretch">
+            <ScrollViewer Width="240" Height="340" VerticalScrollBarVisibility="Auto">
+                <ItemsControl Margin="24,16, 24,16" ItemsSource="{Binding NewsCollection}"
+                              Background="Transparent">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <controls:GroupedComboBox
+            Name="VersionSelector" Width="250" Grid.Row="2" Grid.Column="0"
+            FontFamily="{StaticResource JetBrainsMonoRegular}"
+            HorizontalAlignment="Stretch" Margin="8,20, 8,10"
+            Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
+            ItemsSource="{Binding Versions}"
+            GroupKeySelector="{Binding GameVersionGroupKeySelector}"
+            SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
+            <controls:GroupedComboBox.Styles>
+                <Style Selector="ComboBoxItem">
+                    <Setter Property="IsEnabled"
+                            Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+                    <Setter Property="IsHitTestVisible"
+                            Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+                </Style>
+            </controls:GroupedComboBox.Styles>
+        </controls:GroupedComboBox>
+        <Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="True" Name="InstallButton" Click="InstallButton_Click">
+            <Canvas Width="240" Height="70">
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
+                <Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+                <TextBlock>INSTALL</TextBlock>
+            </Canvas>
+        </Button>
+        <Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="UpdateButton" Click="UpdateButton_Click">
+            <Canvas Width="240" Height="70">
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
+                <Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+                <TextBlock>UPDATE</TextBlock>
+            </Canvas>
+        </Button>
+        <Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" Click="CancelButton_Click">
+            <Canvas Width="240" Height="70">
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
+                <Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+                <TextBlock>CANCEL</TextBlock>
+            </Canvas>
+        </Button>
+        <Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="LaunchButton" Click="LaunchButton_Click">
+            <Canvas Width="240" Height="70">
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
+                <Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+                <TextBlock>LAUNCH</TextBlock>
+            </Canvas>
+        </Button>
+        <Grid Margin="48,0,0,0" Grid.Row="2" Grid.Column="1" Grid.RowSpan="2"
+              VerticalAlignment="Center"
+              ColumnDefinitions="Auto,*" RowDefinitions="*,*">
+            <TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0">
+                Downloaded:
+            </TextBlock>
+            <ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="450" Value="250"
+                         ProgressTextFormat="{}{0}/{3} MB ({1:0}%)" />
+            <TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0">
+                Installed:
+            </TextBlock>
+            <ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="3" Value="1"
+                         ProgressTextFormat="{}{0}/{3} patches ({1:0}%)" />
+
+        </Grid>
+    </Grid>
+</UserControl>

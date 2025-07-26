@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="Ksp2Redux.Tools.Launcher/App.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Controls/GroupedComboBox.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Controls/TabControl.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Controls/TabItem.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Controls/TabStripItem.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Styles/Icons.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/CommunityTabView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/HomeTabView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/MainWindow.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/ModsTabView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/ModsView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/NewsItem.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/NewsItemView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/SettingsTabView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+      </map>
+    </option>
+  </component>
+</project>

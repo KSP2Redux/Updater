@@ -1,0 +1,32 @@
+﻿<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
+    xmlns:converters="clr-namespace:Ksp2Redux.Tools.Launcher.Converters"
+    x:Class="Ksp2Redux.Tools.Launcher.Controls.GroupedComboBox"
+    x:CompileBindings="False"
+    x:Name="Root">
+    <UserControl.Resources>
+        <converters:SelectableConverter x:Key="SelectableConverter"/>
+    </UserControl.Resources>
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="controls:GroupHeader">
+            <TextBlock Text="{Binding Key}" FontWeight="Bold" Margin="0,4,0,2"/>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <ComboBox
+        Width="250"
+        ItemsSource="{Binding GroupedItems, ElementName=Root}"
+        SelectedItem="{Binding SelectedItem, ElementName=Root, Mode=TwoWay}">
+        <ComboBox.Styles>
+            <Style Selector="ComboBoxItem">
+                <Setter Property="IsEnabled"
+                        Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+                <Setter Property="IsHitTestVisible"
+                        Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+            </Style>
+        </ComboBox.Styles>
+    </ComboBox>
+</UserControl>

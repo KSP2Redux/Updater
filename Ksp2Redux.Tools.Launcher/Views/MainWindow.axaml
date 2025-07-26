@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ksp2Redux.Tools.Launcher.ViewModels"
+        xmlns:views="using:Ksp2Redux.Tools.Launcher.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+        Width="1000" Height="700" CanResize="False"
+        x:Class="Ksp2Redux.Tools.Launcher.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="32"
+        SystemDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/favicon.ico"
+        Title="KSP2 Redux">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <!-- ReSharper disable Xaml.RedundantResource -->
+    <Window.Resources>
+        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#df1501" />
+    </Window.Resources>
+    <!-- ReSharper restore Xaml.RedundantResource -->
+
+    <Window.Styles>
+        <Style Selector="Window">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png"></ImageBrush>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border#TitleBar">
+            <Setter Property="CornerRadius" Value="8,8,0,0" />
+            <Setter Property="ClipToBounds" Value="True" />
+
+            <Style Selector="^ Button">
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Background" Value="Transparent" />
+
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Foreground" Value="White" />
+                </Style>
+                <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="#80ffffff" />
+                </Style>
+                <Style Selector="^#CloseButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="#dc1501" />
+                </Style>
+            </Style>
+        </Style>
+
+        <Style Selector="TabItem">
+            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="FontSize" Value="32" />
+            <Setter Property="Margin" Value="20,0" />
+
+            <Style Selector="^ Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselected}" />
+            </Style>
+            <Style Selector="^:pointerover Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselectedPointerOver}" />
+            </Style>
+            <Style Selector="^:pressed Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselectedPressed}" />
+            </Style>
+            <Style Selector="^:selected Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelected}" />
+            </Style>
+            <Style Selector="^:selected:pointerover Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelectedPointerOver}" />
+            </Style>
+            <Style Selector="^:selected:pressed Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelectedPressed}" />
+            </Style>
+        </Style>
+    </Window.Styles>
+
+    <Border BorderBrush="#dc1501" BorderThickness="2" CornerRadius="8">
+        <Grid RowDefinitions="Auto,*">
+            <Border Name="TitleBar">
+                <Grid Height="32" Background="#ff000000" PointerPressed="TitleBar_PointerPressed"
+                      ColumnDefinitions="*,Auto,Auto">
+                    <Button Grid.Column="1" Content="—" Click="Minimize_Click" />
+                    <Button Name="CloseButton" Grid.Column="2" Content="✕" Click="Close_Click" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Padding="24,0,24,24">
+                <TabControl Name="MainTabControl">
+                    <TabItem Name="HomeTab" Header="Home">
+                        <views:HomeTabView DataContext="{Binding HomeTab}"/>
+                    </TabItem>
+                    <TabItem Name="CommunityTab" Header="Community">
+                        <views:CommunityTabView DataContext="{Binding CommunityTab}"/>
+                    </TabItem>
+                    <TabItem Name="ModsTab" Header="Mods">
+                        <views:ModsTabView DataContext="{Binding ModsTab}"/>
+                    </TabItem>
+                    <TabItem Name="SettingsTab">
+                        <TabItem.Header>
+                            <Grid Margin="2,6,2,8">
+                                <Canvas Width="16" Height="16">
+                                    <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+                                        <Rectangle.OpacityMask>
+                                            <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/settings-icon.png"></ImageBrush>
+                                        </Rectangle.OpacityMask>
+                                    </Rectangle>
+                                </Canvas>
+                            </Grid>
+                        </TabItem.Header>
+                        <views:SettingsTabView DataContext="{Binding SettingsTab}"/>
+                    </TabItem>
+                </TabControl>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
