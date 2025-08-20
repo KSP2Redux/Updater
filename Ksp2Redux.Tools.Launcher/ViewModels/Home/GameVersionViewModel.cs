@@ -3,11 +3,13 @@ using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
-public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, ISelectableItem
+public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGroupedComboBoxItem
 {
     public string Channel => gameVersion.Channel.ToString();
     public string VersionString => $"v{gameVersion.VersionNumber}.{gameVersion.BuildNumber}" +
-                                   $"{(gameVersion.Channel == ReleaseChannel.Beta ? "-beta" : "")}";
+                                   $"{(gameVersion.Channel == ReleaseChannel.Stable
+                                       ? ""
+                                       : $"-{gameVersion.Channel.ToString().ToLower()}")}";
 
     public bool IsSelectable => true;
 }

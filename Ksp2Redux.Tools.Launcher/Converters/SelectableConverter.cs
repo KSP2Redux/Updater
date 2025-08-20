@@ -9,7 +9,7 @@ public class SelectableConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is ISelectableItem si)
+        if (value is IGroupedComboBoxItem si)
         {
             return si.IsSelectable;
         }

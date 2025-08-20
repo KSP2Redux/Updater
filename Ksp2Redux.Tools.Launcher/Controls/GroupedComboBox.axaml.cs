@@ -96,7 +96,7 @@ namespace Ksp2Redux.Tools.Launcher.Controls
     /// Represents a non-selectable group header
     /// </summary>
     /// <param name="key">The key for the group</param>
-    public class GroupHeader(string key) : ISelectableItem
+    public class GroupHeader(string key) : IGroupedComboBoxItem
     {
         public string Key { get; } = key;
         public bool IsSelectable => false;
@@ -105,7 +105,7 @@ namespace Ksp2Redux.Tools.Launcher.Controls
     /// <summary>
     /// Interface for items that can be enabled/disabled
     /// </summary>
-    public interface ISelectableItem
+    public interface IGroupedComboBoxItem
     {
         bool IsSelectable { get; }
     }

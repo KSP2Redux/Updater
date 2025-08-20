@@ -6,5 +6,85 @@
              x:DataType="community:CommunityTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.CommunityTabView">
-    Welcome to Avalonia!
+    <UserControl.Styles>
+        <Style Selector="Button.link-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="ToolTip.ShowDelay" Value="0" />
+            <Setter Property="ToolTip.Placement" Value="AnchorAndGravity" />
+            <Setter Property="ToolTip.VerticalOffset" Value="30" />
+
+            <Style Selector="^ > Canvas">
+                <Setter Property="Width" Value="30" />
+                <Setter Property="Height" Value="30" />
+            </Style>
+
+            <Style Selector="^ Image">
+                <Setter Property="Width" Value="30" />
+                <Setter Property="Height" Value="30" />
+                <Setter Property="Canvas.Left" Value="0" />
+                <Setter Property="Canvas.Top" Value="0" />
+            </Style>
+
+            <Style Selector="^ Border.button-tint">
+                <Setter Property="Width" Value="30" />
+                <Setter Property="Height" Value="30" />
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+
+            <Style Selector="^:pointerover">
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^ Border.button-tint">
+                    <Setter Property="Background" Value="#20000000" />
+                </Style>
+            </Style>
+            <Style Selector="^:pressed">
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^ Border.button-tint">
+                    <Setter Property="Background" Value="#40000000" />
+                </Style>
+            </Style>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Orientation="Horizontal">
+        <Button Classes="link-button" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
+            <Canvas>
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0"
+                       Canvas.Top="0" />
+                <Border Classes="button-tint" />
+            </Canvas>
+        </Button>
+        <Button Classes="link-button" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
+            <Canvas>
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0"
+                       Canvas.Top="0" />
+                <Border Classes="button-tint" />
+            </Canvas>
+        </Button>
+        <Button Classes="link-button" ToolTip.Tip="KSP2 Wiki" Click="WikiLink_OnClick">
+            <Canvas>
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-wiki.png" Canvas.Left="0"
+                       Canvas.Top="0" />
+                <Border Classes="button-tint" />
+            </Canvas>
+        </Button>
+        <Button Classes="link-button" ToolTip.Tip="YouTube" Click="YoutubeLink_OnClick">
+            <Canvas>
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0"
+                       Canvas.Top="0" />
+                <Border Classes="button-tint" />
+            </Canvas>
+        </Button>
+        <Button Classes="link-button" ToolTip.Tip="GitHub" Click="GithubLink_OnClick">
+            <Canvas>
+                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0"
+                       Canvas.Top="0" />
+                <Border Classes="button-tint" />
+            </Canvas>
+        </Button>
+    </StackPanel>
 </UserControl>

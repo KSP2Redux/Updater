@@ -10,7 +10,7 @@
     <UserControl.DataTemplates>
         <DataTemplate DataType="home:GameVersionViewModel">
             <TextBlock Text="{Binding VersionString}"
-                       Margin="16,0,0,0"/>
+                       Margin="4,2,0,0"/>
         </DataTemplate>
     </UserControl.DataTemplates>
 
@@ -148,7 +148,7 @@
             </Canvas>
         </Button>
         <Grid Margin="48,0,0,0" Grid.Row="2" Grid.Column="1" Grid.RowSpan="2"
-              VerticalAlignment="Center"
+              VerticalAlignment="Bottom"
               ColumnDefinitions="Auto,*" RowDefinitions="*,*">
             <TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0">
                 Downloaded:
