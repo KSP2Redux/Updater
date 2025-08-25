@@ -20,12 +20,16 @@ public partial class MainWindowViewModel : ViewModelBase
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
 
+    public LauncherConfig Config { get; }
+
     public MainWindowViewModel()
     {
+        Config = LauncherConfig.GetOrCreateCurrentConfig();
+
         HomeTab = new HomeTabViewModel(NewsCollection);
         CommunityTab = new CommunityTabViewModel(NewsCollection);
         ModsTab = new ModsTabViewModel();
-        SettingsTab = new SettingsTabViewModel();
+        SettingsTab = new SettingsTabViewModel(Config);
 
         LoadNews();
     }

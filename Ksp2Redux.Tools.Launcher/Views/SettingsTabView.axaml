@@ -6,5 +6,15 @@
              x:DataType="settings:SettingsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.SettingsTabView">
-    Welcome to Avalonia!
+	<StackPanel Margin="20">
+		<TextBlock Margin="0 5" >KSP2 installation directory:</TextBlock>
+		<TextBox Name="InstallPath" Watermark="C:\Steam\SteamGames\KSP2\KSP2_x64.exe" Text="{Binding DisplayedInstallPath}"/>
+		<Button Name="selectInstallDirButton" Click="InstallDir_Click">Select</Button>
+
+		<TextBlock Margin="0 5" >Release channel:</TextBlock>
+		<ComboBox Name="ReleaseChannel" MaxDropDownHeight="100" SelectedIndex="{Binding ReleaseChannel}">
+			<ComboBoxItem>Release</ComboBoxItem>
+			<ComboBoxItem>Development</ComboBoxItem>
+		</ComboBox>
+	</StackPanel>
 </UserControl>
