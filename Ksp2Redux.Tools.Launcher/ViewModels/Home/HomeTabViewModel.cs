@@ -26,9 +26,9 @@ public partial class HomeTabViewModel : ViewModelBase
         Versions = new ObservableCollection<GameVersionViewModel>(
             new List<GameVersion>
             {
-                new() { VersionNumber = "0.2.2.0", BuildNumber = "32914", Channel = ReleaseChannel.Stable },
-                new() { VersionNumber = "0.2.3.0", BuildNumber = "101291", Channel = ReleaseChannel.Stable },
-                new() { VersionNumber = "0.2.4.0", BuildNumber = "103456", Channel = ReleaseChannel.Beta },
+                new() { VersionNumber = new("0.2.2.0"), BuildNumber = "32914", Channel = ReleaseChannel.Stable },
+                new() { VersionNumber = new("0.2.3.0"), BuildNumber = "101291", Channel = ReleaseChannel.Stable },
+                new() { VersionNumber = new("0.2.4.0"), BuildNumber = "103456", Channel = ReleaseChannel.Beta },
             }.Select(gv => new GameVersionViewModel(gv))
         );
     }

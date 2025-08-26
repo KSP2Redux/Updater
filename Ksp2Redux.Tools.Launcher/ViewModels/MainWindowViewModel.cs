@@ -21,6 +21,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public SettingsTabViewModel SettingsTab { get; }
 
     public LauncherConfig Config { get; }
+    public Ksp2Install? Ksp2 { get; private set; }
 
     public MainWindowViewModel()
     {
@@ -32,6 +33,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsTab = new SettingsTabViewModel(Config);
 
         LoadNews();
+        TryLoadKsp2Install();
     }
 
     private async void LoadNews()
@@ -40,6 +42,14 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (News news in newsList)
         {
             NewsCollection.Add(new Shared.NewsItemViewModel(news));
+        }
+    }
+
+    private void TryLoadKsp2Install()
+    {
+        if (!string.IsNullOrWhiteSpace(Config.Ksp2InstallPath))
+        {
+            Ksp2 = new(Config.Ksp2InstallPath);
         }
     }
 }
