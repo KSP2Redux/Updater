@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -22,18 +23,21 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public LauncherConfig Config { get; }
     public Ksp2Install? Ksp2 { get; private set; }
+    public GitHubReleasesFeed ReleasesFeed { get; private set; }
 
     public MainWindowViewModel()
     {
         Config = LauncherConfig.GetOrCreateCurrentConfig();
 
-        HomeTab = new HomeTabViewModel(NewsCollection);
+        LoadNews();
+        TryLoadKsp2Install();
+        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "foonix/Ksp2TurboMode");
+        ReleasesFeed.Initialize();
+
+        HomeTab = new HomeTabViewModel(NewsCollection, ReleasesFeed);
         CommunityTab = new CommunityTabViewModel(NewsCollection);
         ModsTab = new ModsTabViewModel();
         SettingsTab = new SettingsTabViewModel(Config);
-
-        LoadNews();
-        TryLoadKsp2Install();
     }
 
     private async void LoadNews()

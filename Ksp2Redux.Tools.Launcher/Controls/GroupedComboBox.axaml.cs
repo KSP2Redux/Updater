@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -56,7 +57,7 @@ namespace Ksp2Redux.Tools.Launcher.Controls
 
         static GroupedComboBox()
         {
-            ItemsSourceProperty.Changed.AddClassHandler<GroupedComboBox>((x, _) => x.Rebuild());
+            ItemsSourceProperty.Changed.AddClassHandler<GroupedComboBox>(OnItemsSourcePropertyChanged);
             GroupKeySelectorProperty.Changed.AddClassHandler<GroupedComboBox>((x, _) => x.Rebuild());
         }
 
@@ -65,6 +66,23 @@ namespace Ksp2Redux.Tools.Launcher.Controls
             InitializeComponent();
 
             GroupKeySelector ??= _ => string.Empty;
+        }
+
+        private static void OnItemsSourcePropertyChanged(GroupedComboBox x, AvaloniaPropertyChangedEventArgs e)
+        {
+            if (e.OldValue is INotifyCollectionChanged oldCollection)
+            {
+                oldCollection.CollectionChanged -= x.OnItemsSourceCollectionChanged;
+            }
+            if (e.NewValue is INotifyCollectionChanged newCollection)
+            {
+                newCollection.CollectionChanged += x.OnItemsSourceCollectionChanged;
+            }
+        }
+
+        private void OnItemsSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            Rebuild();
         }
 
         private void InitializeComponent() => AvaloniaXamlLoader.Load(this);

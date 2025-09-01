@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
@@ -12,24 +14,38 @@ public partial class HomeTabViewModel : ViewModelBase
 {
     public ObservableCollection<NewsItemViewModel> NewsCollection { get; set; }
 
-    public ObservableCollection<GameVersionViewModel> Versions { get; }
+    public ObservableCollection<GameVersionViewModel> Versions { get; } = new();
 
     [ObservableProperty] public partial GameVersionViewModel? SelectedVersion { get; set; }
+
+    private readonly GitHubReleasesFeed releasesFeed;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
-    public HomeTabViewModel(ObservableCollection<NewsItemViewModel> newsCollection)
+    public HomeTabViewModel(ObservableCollection<NewsItemViewModel> newsCollection, GitHubReleasesFeed releasesFeed)
     {
         NewsCollection = newsCollection;
 
-        Versions = new ObservableCollection<GameVersionViewModel>(
-            new List<GameVersion>
-            {
-                new() { VersionNumber = new("0.2.2.0"), BuildNumber = "32914", Channel = ReleaseChannel.Stable },
-                new() { VersionNumber = new("0.2.3.0"), BuildNumber = "101291", Channel = ReleaseChannel.Stable },
-                new() { VersionNumber = new("0.2.4.0"), BuildNumber = "103456", Channel = ReleaseChannel.Beta },
-            }.Select(gv => new GameVersionViewModel(gv))
-        );
+        this.releasesFeed = releasesFeed;
+        RebuildVersionsCollection();
+    }
+
+
+    [RelayCommand]
+    public async Task UpdateVersionsList()
+    {
+        await releasesFeed.UpdateFromApi();
+        RebuildVersionsCollection();
+    }
+
+    private void RebuildVersionsCollection()
+    {
+        Versions.Clear();
+
+        foreach (var releaseView in releasesFeed.GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
+        {
+            Versions.Add(releaseView);
+        }
     }
 }
