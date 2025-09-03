@@ -12,4 +12,9 @@ public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGro
                                        : $"-{gameVersion.Channel.ToString().ToLower()}")}";
 
     public bool IsSelectable => true;
+
+    public bool Equals(GameVersion? other)
+    {
+        return gameVersion.Equals(other);
+    }
 }

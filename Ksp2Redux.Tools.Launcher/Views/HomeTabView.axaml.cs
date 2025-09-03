@@ -23,6 +23,30 @@ public partial class HomeTabView : UserControl
         }
     }
 
+    private void ShowButton(HomeTabViewModel.MainButtonState which)
+    {
+
+        LaunchButton.IsVisible = false;
+        UpdateButton.IsVisible = false;
+        CancelButton.IsVisible = false;
+        InstallButton.IsVisible = false;
+        switch (which)
+        {
+            case HomeTabViewModel.MainButtonState.Launch:
+                LaunchButton.IsVisible = true;
+                break;
+            case HomeTabViewModel.MainButtonState.Install:
+                InstallButton.IsVisible = true;
+                break;
+            case HomeTabViewModel.MainButtonState.Update:
+                UpdateButton.IsVisible = true;
+                break;
+            case HomeTabViewModel.MainButtonState.Cancel:
+                CancelButton.IsVisible = true;
+                break;
+        }
+    }
+
     private void InstallButton_Click(object? sender, RoutedEventArgs e)
     {
         InstallButton.IsVisible = false;

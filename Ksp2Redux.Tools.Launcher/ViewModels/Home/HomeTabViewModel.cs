@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,17 +19,31 @@ public partial class HomeTabViewModel : ViewModelBase
 
     [ObservableProperty] public partial GameVersionViewModel? SelectedVersion { get; set; }
 
+
+    public enum MainButtonState
+    {
+        Launch,
+        Install,
+        Update,
+        Cancel,
+    }
+    [ObservableProperty] public partial MainButtonState MainButtonShown { get; private set; }
+    [ObservableProperty] public partial bool MainButtonEnabled { get; private set; }
+    [ObservableProperty] public partial string MainButtonTooltip { get; private set; } = "Loading...";
+
     private readonly GitHubReleasesFeed releasesFeed;
+    private readonly MainWindowViewModel parentWindow;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
-    public HomeTabViewModel(ObservableCollection<NewsItemViewModel> newsCollection, GitHubReleasesFeed releasesFeed)
+    public HomeTabViewModel(MainWindowViewModel parentWindow)
     {
-        NewsCollection = newsCollection;
-
-        this.releasesFeed = releasesFeed;
+        NewsCollection = parentWindow.NewsCollection;
+        releasesFeed = parentWindow.ReleasesFeed;
+        this.parentWindow = parentWindow;
         RebuildVersionsCollection();
+        PropertyChanged += ReactToPropertyChanges;
     }
 
 
@@ -37,6 +52,57 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         await releasesFeed.UpdateFromApi();
         RebuildVersionsCollection();
+        UpdateMainButtonState();
+    }
+
+    private void ReactToPropertyChanges(object? sender, PropertyChangedEventArgs? e)
+    {
+        if (e.PropertyName == "SelectedVersion")
+        {
+            UpdateMainButtonState();
+        }
+    }
+
+    private void UpdateMainButtonState()
+    {
+        var ksp2 = parentWindow.Ksp2;
+        if (ksp2 is null || !ksp2.IsValid)
+        {
+            MainButtonEnabled = false;
+            MainButtonShown = MainButtonState.Launch;
+            MainButtonTooltip = "KSP2 installation not detected.  Please select a directory containing KSP2 on the settings tab.";
+            return;
+        }
+
+        if (!ksp2.IsRedux)
+        {
+            MainButtonEnabled = true;
+            MainButtonShown = MainButtonState.Install;
+            MainButtonTooltip = "Install Ksp2Redux";
+            return;
+        }
+
+        var selectedVersion = SelectedVersion;
+        if (selectedVersion is null)
+        {
+            MainButtonEnabled = false;
+            MainButtonShown = MainButtonState.Update;
+            MainButtonTooltip = "Please select a version to install.";
+            return;
+        }
+
+        if (selectedVersion.Equals(ksp2.GameVersion))
+        {
+            MainButtonEnabled = true;
+            MainButtonShown = MainButtonState.Launch;
+            MainButtonTooltip = "Launch Ksp2Redux";
+        }
+        else
+        {
+            MainButtonEnabled = true;
+            MainButtonShown = MainButtonState.Update;
+            MainButtonTooltip = "Update Ksp2Redux";
+        }
     }
 
     private void RebuildVersionsCollection()

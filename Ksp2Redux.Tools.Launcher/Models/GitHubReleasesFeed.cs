@@ -17,7 +17,6 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 public class GitHubReleasesFeed
 {
     private readonly string backingFilePath;
-    private readonly string githubRelativeRepoUri;
     private readonly HttpClient apiClient;
 
     private ReleaseInfo[] allReleases;
@@ -25,14 +24,13 @@ public class GitHubReleasesFeed
     public GitHubReleasesFeed(string backingFilePath, string githubRelativeRepoUri, string personalAccessToken)
     {
         this.backingFilePath = backingFilePath;
-        this.githubRelativeRepoUri = githubRelativeRepoUri;
         apiClient = new()
         {
             BaseAddress = new Uri("https://api.github.com/repos/" + githubRelativeRepoUri + "/"),
         };
         // Need a UserAgent header, or API will reject the request with a 403.
-        ProductHeaderValue header = new ProductHeaderValue("Ksp2ReduxLauncher", Assembly.GetExecutingAssembly().GetName().Version?.ToString());
-        ProductInfoHeaderValue userAgent = new ProductInfoHeaderValue(header);
+        ProductHeaderValue header = new("Ksp2ReduxLauncher", Assembly.GetExecutingAssembly().GetName().Version?.ToString());
+        ProductInfoHeaderValue userAgent = new(header);
         apiClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
         apiClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
         if (!string.IsNullOrWhiteSpace(personalAccessToken))
@@ -40,7 +38,7 @@ public class GitHubReleasesFeed
             apiClient.DefaultRequestHeaders.Authorization = new("Bearer", personalAccessToken);
         }
 
-        allReleases = Array.Empty<ReleaseInfo>();
+        allReleases = [];
     }
 
     public class ReleaseInfo

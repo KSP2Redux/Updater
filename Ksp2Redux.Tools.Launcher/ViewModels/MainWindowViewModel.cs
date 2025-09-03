@@ -34,7 +34,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "foonix/TestPrivateReleaseFeed", Config.Pat);
         ReleasesFeed.Initialize();
 
-        HomeTab = new HomeTabViewModel(NewsCollection, ReleasesFeed);
+        HomeTab = new HomeTabViewModel(this);
         CommunityTab = new CommunityTabViewModel(NewsCollection);
         ModsTab = new ModsTabViewModel();
         SettingsTab = new SettingsTabViewModel(Config);

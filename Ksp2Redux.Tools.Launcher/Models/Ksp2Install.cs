@@ -11,6 +11,19 @@ public class Ksp2Install
     /// </summary>
     public bool IsValid { get; }
 
+    /// <summary>
+    /// True if the installation must be patched with a steam patch. False otherwise.
+    /// </summary>
+    public bool IsSteam { get; }
+
+    /// <summary>
+    /// True if a redux patch (of any version) has been installed.
+    /// </summary>
+    public bool IsRedux { get; }
+
+    /// <summary>
+    /// Game version deteced from reflection.
+    /// </summary>
     public GameVersion? GameVersion { get; private set; }
 
     private readonly string exePath;
@@ -18,6 +31,8 @@ public class Ksp2Install
 
     private const string KSP2_EXE_NAME = "KSP2_x64.exe";
     private static readonly string assemblyCSharpRelativePath = Path.Combine("KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
+    // Exists in Steam based installations, but doesn't exist in portable version.
+    private static readonly string steamworksText = Path.Combine("KSP2_x64_Data", "Plugins", "Steamworks.NET.txt");
 
     public Ksp2Install(string exePath)
     {
@@ -27,6 +42,8 @@ public class Ksp2Install
         {
             installDir = Path.GetDirectoryName(exePath)!;
             GameVersion = TryGetGameVersionFromMainAssembly(installDir);
+            IsSteam = Path.Exists(Path.Combine(installDir, steamworksText));
+            IsRedux = Path.Exists(Path.Combine(installDir, "Redux"));
         }
         else
         {
