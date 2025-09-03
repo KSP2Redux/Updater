@@ -22,7 +22,7 @@ public class GitHubReleasesFeed
 
     private ReleaseInfo[] allReleases;
 
-    public GitHubReleasesFeed(string backingFilePath, string githubRelativeRepoUri)
+    public GitHubReleasesFeed(string backingFilePath, string githubRelativeRepoUri, string personalAccessToken)
     {
         this.backingFilePath = backingFilePath;
         this.githubRelativeRepoUri = githubRelativeRepoUri;
@@ -34,6 +34,12 @@ public class GitHubReleasesFeed
         ProductHeaderValue header = new ProductHeaderValue("Ksp2ReduxLauncher", Assembly.GetExecutingAssembly().GetName().Version?.ToString());
         ProductInfoHeaderValue userAgent = new ProductInfoHeaderValue(header);
         apiClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
+        apiClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github+json"));
+        if (!string.IsNullOrWhiteSpace(personalAccessToken))
+        {
+            apiClient.DefaultRequestHeaders.Authorization = new("Bearer", personalAccessToken);
+        }
+
         allReleases = Array.Empty<ReleaseInfo>();
     }
 
@@ -112,7 +118,7 @@ public class GitHubReleasesFeed
         string buildNumber;
         if (tokens.Length > 4)
         {
-            version = new Version(string.Join('.', tokens[^4]));
+            version = new Version(string.Join('.', tokens[0..4]));
             buildNumber = tokens[4];
         }
         else

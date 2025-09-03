@@ -31,7 +31,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         LoadNews();
         TryLoadKsp2Install();
-        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "foonix/Ksp2TurboMode");
+        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "foonix/TestPrivateReleaseFeed", Config.Pat);
         ReleasesFeed.Initialize();
 
         HomeTab = new HomeTabViewModel(NewsCollection, ReleasesFeed);
