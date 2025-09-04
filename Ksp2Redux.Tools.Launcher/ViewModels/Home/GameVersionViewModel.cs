@@ -13,6 +13,8 @@ public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGro
 
     public bool IsSelectable => true;
 
+    public GameVersion Version => gameVersion;
+
     public bool Equals(GameVersion? other)
     {
         return gameVersion.Equals(other);

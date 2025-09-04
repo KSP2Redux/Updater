@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
@@ -17,13 +14,15 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 public class GitHubReleasesFeed
 {
     private readonly string backingFilePath;
+    private readonly string downloadStorageDir;
     private readonly HttpClient apiClient;
 
     private ReleaseInfo[] allReleases;
 
-    public GitHubReleasesFeed(string backingFilePath, string githubRelativeRepoUri, string personalAccessToken)
+    public GitHubReleasesFeed(string backingFilePath, string githubRelativeRepoUri, string personalAccessToken, string downloadStorageDir)
     {
         this.backingFilePath = backingFilePath;
+        this.downloadStorageDir = downloadStorageDir;
         apiClient = new()
         {
             BaseAddress = new Uri("https://api.github.com/repos/" + githubRelativeRepoUri + "/"),
@@ -54,12 +53,45 @@ public class GitHubReleasesFeed
         {
             return $"tag:{TagName} id:{Id} prerelease:{IsPrerelease}";
         }
+
+
+        public GameVersion ParseVersion()
+        {
+            var tokens = TagName.Split('.');
+            // remove optional leading 'v' from version
+            if (tokens[0][0] == 'v')
+            {
+                tokens[0] = tokens[0][1..];
+            }
+            Version version;
+            string buildNumber;
+            if (tokens.Length > 4)
+            {
+                version = new Version(string.Join('.', tokens[0..4]));
+                buildNumber = tokens[4];
+            }
+            else
+            {
+                version = new Version(string.Join('.', tokens));
+                buildNumber = "0";
+            }
+
+            return new GameVersion()
+            {
+                VersionNumber = version,
+                BuildNumber = buildNumber,
+                Channel = IsPrerelease ? ReleaseChannel.Beta : ReleaseChannel.Stable,
+            };
+        }
     }
 
     public class ReleaseAssetsInfo
     {
         [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("url")] public string? Url { get; set; }
         [JsonPropertyName("browser_download_url")] public string? BrowserDownloadUrl { get; set; }
+        [JsonPropertyName("size")] public int Size { get; set; }
 
         public override string? ToString()
         {
@@ -81,13 +113,7 @@ public class GitHubReleasesFeed
     {
         foreach (var release in allReleases!)
         {
-            var (version, buildNumber) = ParseVersionFromTag(release.TagName);
-            yield return new GameVersion()
-            {
-                VersionNumber = version,
-                BuildNumber = buildNumber,
-                Channel = release.IsPrerelease ? ReleaseChannel.Beta : ReleaseChannel.Stable,
-            };
+            yield return release.ParseVersion();
         }
     }
 
@@ -104,27 +130,67 @@ public class GitHubReleasesFeed
         File.WriteAllText(backingFilePath, jsonResponse);
     }
 
-    private static (Version, string) ParseVersionFromTag(string tag)
+    /// <summary>
+    /// Download the .patch file from github.
+    /// </summary>
+    public async Task<string> DownloadPatch(GameVersion requestedVersion, bool forSteam, CancellationToken ct)
     {
-        var tokens = tag.Split('.');
-        // remove optional leading 'v' from version
-        if (tokens[0][0] == 'v')
+        ct.ThrowIfCancellationRequested();
+
+        // Find the download URL and file name for the requested version.
+        ReleaseAssetsInfo? assetInfo = GetDownloadInfoForVersion(requestedVersion, forSteam);
+        if (assetInfo is null || string.IsNullOrWhiteSpace(assetInfo.Name))
         {
-            tokens[0] = tokens[0][1..];
+            throw new FileNotFoundException($"Can't find patch for version {requestedVersion}");
         }
-        Version version;
-        string buildNumber;
-        if (tokens.Length > 4)
+        string patchDownloadTo = Path.Combine(downloadStorageDir, assetInfo.Name);
+
+        // check if already downloaded
+        if (!File.Exists(patchDownloadTo) || new FileInfo(patchDownloadTo).Length != assetInfo.Size)
         {
-            version = new Version(string.Join('.', tokens[0..4]));
-            buildNumber = tokens[4];
-        }
-        else
-        {
-            version = new Version(string.Join('.', tokens));
-            buildNumber = "0";
+            // Download streaming directly to file
+            using HttpRequestMessage request = new(HttpMethod.Get, $"releases/assets/{assetInfo.Id}");
+            request.Headers.Accept.Add(new("application/octet-stream"));
+
+            using var response = await apiClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+
+            // need a way to monitor and report bytes transferred.
+            using var stream = await response.Content.ReadAsStreamAsync(ct);
+            using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None);
+            await stream.CopyToAsync(fileStream, ct);
         }
 
-        return (version, buildNumber);
+        // return the path it was saved to.
+        return patchDownloadTo;
+    }
+
+    private ReleaseAssetsInfo? GetDownloadInfoForVersion(GameVersion requestedVersion, bool forSteam)
+    {
+        foreach (var release in allReleases!)
+        {
+            if ((requestedVersion.Channel == ReleaseChannel.Stable && release.IsPrerelease) || (requestedVersion.Channel == ReleaseChannel.Beta && !release.IsPrerelease))
+            {
+                continue;
+            }
+
+            var releaseVersion = release.ParseVersion();
+
+            if (releaseVersion.Equals(requestedVersion))
+            {
+                // We found the release.  Find the right asset file.
+                foreach (var asset in release.Assets!)
+                {
+                    var name = asset.Name;
+                    if (string.IsNullOrEmpty(name) || !name.EndsWith(".patch")) continue;
+
+                    if ((forSteam && name.Contains("steam")) || (!forSteam && name.Contains("portable")))
+                    {
+                        return asset;
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

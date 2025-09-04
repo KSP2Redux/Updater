@@ -134,7 +134,7 @@
 				</Style>
 			</controls:GroupedComboBox.Styles>
 		</controls:GroupedComboBox>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="True" Name="InstallButton" Click="InstallButton_Click"
+		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
 			<Canvas Width="240" Height="70">
@@ -143,7 +143,7 @@
 				<TextBlock>INSTALL</TextBlock>
 			</Canvas>
 		</Button>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="UpdateButton" Click="UpdateButton_Click"
+		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="UpdateButton" Command="{Binding UpdateRedux}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
 			<Canvas Width="240" Height="70">
@@ -152,7 +152,7 @@
 				<TextBlock>UPDATE</TextBlock>
 			</Canvas>
 		</Button>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" Click="CancelButton_Click"
+		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" Command="{Binding CancelCurrentMainButtonAction}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
 			<Canvas Width="240" Height="70">
@@ -161,7 +161,7 @@
 				<TextBlock>CANCEL</TextBlock>
 			</Canvas>
 		</Button>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="LaunchButton" Click="LaunchButton_Click"
+		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="LaunchButton" Command="{Binding LaunchGame}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
 			<Canvas Width="240" Height="70">

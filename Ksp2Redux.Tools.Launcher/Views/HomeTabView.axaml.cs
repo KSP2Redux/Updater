@@ -28,7 +28,10 @@ public partial class HomeTabView : UserControl
 
     private void ReactToHomeTabPropertyChanged(object? sender, PropertyChangedEventArgs? e)
     {
-        ShowButton(Model!.MainButtonShown);
+        if (Model is not null)
+        {
+            ShowButton(Model.MainButtonShown);
+        }
     }
 
     private void ShowButton(HomeTabViewModel.MainButtonState which)
@@ -52,29 +55,5 @@ public partial class HomeTabView : UserControl
                 CancelButton.IsVisible = true;
                 break;
         }
-    }
-
-    private void InstallButton_Click(object? sender, RoutedEventArgs e)
-    {
-        InstallButton.IsVisible = false;
-        UpdateButton.IsVisible = true;
-    }
-
-    private void UpdateButton_Click(object? sender, RoutedEventArgs e)
-    {
-        UpdateButton.IsVisible = false;
-        CancelButton.IsVisible = true;
-    }
-
-    private void CancelButton_Click(object? sender, RoutedEventArgs e)
-    {
-        CancelButton.IsVisible = false;
-        LaunchButton.IsVisible = true;
-    }
-
-    private void LaunchButton_Click(object? sender, RoutedEventArgs e)
-    {
-        LaunchButton.IsVisible = false;
-        InstallButton.IsVisible = true;
     }
 }

@@ -31,7 +31,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         LoadNews();
         TryLoadKsp2Install();
-        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "foonix/TestPrivateReleaseFeed", Config.Pat);
+        var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
+        Directory.CreateDirectory(releaseDownloadCacheDir);
+        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "foonix/TestPrivateReleaseFeed", Config.Pat, releaseDownloadCacheDir);
         ReleasesFeed.Initialize();
 
         HomeTab = new HomeTabViewModel(this);
