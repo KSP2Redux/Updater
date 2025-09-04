@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -31,6 +32,13 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial MainButtonState MainButtonShown { get; private set; }
     [ObservableProperty] public partial bool MainButtonEnabled { get; private set; }
     [ObservableProperty] public partial string MainButtonTooltip { get; private set; } = "Loading...";
+    [ObservableProperty] public partial bool IsProgressVisible { get; private set; } = true;
+    [ObservableProperty] public partial float DownloadProgressMb { get; private set; } = 250;
+    [ObservableProperty] public partial float DownloadProgressTotalMb { get; private set; } = 450;
+    [ObservableProperty] public partial float InstallProgressPatches { get; private set; } = 1;
+    [ObservableProperty] public partial float InstallProgressTotalPatches { get; private set; } = 3;
+    [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
+    [ObservableProperty] public partial string InstallLog { get; private set; } = "";
 
     private readonly GitHubReleasesFeed releasesFeed;
     private readonly MainWindowViewModel parentWindow;
@@ -146,6 +154,14 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         // lock main window tabs?
 
+        InstallLog = string.Empty;
+        IsInstallLogVisible = true;
+        IsProgressVisible = true;
+        DownloadProgressMb = 0;
+        DownloadProgressTotalMb = 450;
+        InstallProgressPatches = 0;
+        InstallProgressTotalPatches = 0;
+
         // gather process dependencies.
         var ksp2 = parentWindow.Ksp2;
         if (ksp2 is null || SelectedVersion is null)
@@ -156,16 +172,30 @@ public partial class HomeTabViewModel : ViewModelBase
         // Set up process cancellation trigger.
         MainButtonShown = MainButtonState.Cancel;
         cancelCurrentOperation = new CancellationTokenSource();
+        var sb = new StringBuilder();
+        Action<string> log = (message) =>
+        {
+            sb.Append(message);
+            sb.Append('\n');
+            InstallLog = sb.ToString();
+        };
 
         try
         {
             // Download the patch file.
             // TODO: Download progress bar updates.
-            string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(SelectedVersion.Version, ksp2.IsSteam, cancelCurrentOperation.Token);
+            string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(SelectedVersion.Version, ksp2.IsSteam, cancelCurrentOperation.Token, log);
+
+            DownloadProgressMb = DownloadProgressTotalMb;
 
             // TODO: Run the patch installer.
 
             // TODO: update install model state if patch ran successfully.
+        }
+        catch (Exception e)
+        {
+            log($"Error updating Redux: {e.Message}");
+            InstallLog = sb.ToString();
         }
         finally
         {

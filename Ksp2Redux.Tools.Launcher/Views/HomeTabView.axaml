@@ -170,20 +170,25 @@
 				<TextBlock>LAUNCH</TextBlock>
 			</Canvas>
 		</Button>
+		<ScrollViewer IsVisible="{Binding IsInstallLogVisible}" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2">
+			<TextBox xml:space="preserve" Text="{Binding InstallLog}"></TextBox>
+		</ScrollViewer>
 		<Grid Margin="48,0,0,0" Grid.Row="2" Grid.Column="1" Grid.RowSpan="2"
               VerticalAlignment="Bottom"
-              ColumnDefinitions="Auto,*" RowDefinitions="*,*">
+              ColumnDefinitions="Auto,*" RowDefinitions="*,*"
+			  IsVisible="{Binding IsProgressVisible}">
 			<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0">
 				Downloaded:
 			</TextBlock>
-			<ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="450" Value="250"
+			<ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0"
+						 Value="{Binding DownloadProgressMb}" Maximum="{Binding DownloadProgressTotalMb}"
                          ProgressTextFormat="{}{0}/{3} MB ({1:0}%)" />
 			<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0">
 				Installed:
 			</TextBlock>
-			<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="3" Value="1"
+			<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0"
+						 Value="{Binding InstallProgressPatches}" Maximum="{Binding InstallProgressTotalPatches}"
                          ProgressTextFormat="{}{0}/{3} patches ({1:0}%)" />
-
 		</Grid>
 	</Grid>
 </UserControl>

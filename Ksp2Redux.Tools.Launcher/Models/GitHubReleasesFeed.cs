@@ -133,7 +133,7 @@ public class GitHubReleasesFeed
     /// <summary>
     /// Download the .patch file from github.
     /// </summary>
-    public async Task<string> DownloadPatch(GameVersion requestedVersion, bool forSteam, CancellationToken ct)
+    public async Task<string> DownloadPatch(GameVersion requestedVersion, bool forSteam, CancellationToken ct, Action<string> log)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -144,6 +144,8 @@ public class GitHubReleasesFeed
             throw new FileNotFoundException($"Can't find patch for version {requestedVersion}");
         }
         string patchDownloadTo = Path.Combine(downloadStorageDir, assetInfo.Name);
+
+        log($"Downloading {assetInfo.Name}");
 
         // check if already downloaded
         if (!File.Exists(patchDownloadTo) || new FileInfo(patchDownloadTo).Length != assetInfo.Size)
@@ -160,6 +162,8 @@ public class GitHubReleasesFeed
             using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None);
             await stream.CopyToAsync(fileStream, ct);
         }
+
+        log("Download complete.");
 
         // return the path it was saved to.
         return patchDownloadTo;
