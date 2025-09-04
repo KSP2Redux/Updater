@@ -1,6 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
@@ -20,12 +21,18 @@ public partial class HomeTabView : UserControl
         if (Model is not null)
         {
             await Model.UpdateVersionsList();
+            ShowButton(Model.MainButtonShown);
+            Model.PropertyChanged += ReactToHomeTabPropertyChanged;
         }
+    }
+
+    private void ReactToHomeTabPropertyChanged(object? sender, PropertyChangedEventArgs? e)
+    {
+        ShowButton(Model!.MainButtonShown);
     }
 
     private void ShowButton(HomeTabViewModel.MainButtonState which)
     {
-
         LaunchButton.IsVisible = false;
         UpdateButton.IsVisible = false;
         CancelButton.IsVisible = false;

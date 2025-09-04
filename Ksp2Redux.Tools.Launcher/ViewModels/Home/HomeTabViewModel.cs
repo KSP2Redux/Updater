@@ -86,7 +86,7 @@ public partial class HomeTabViewModel : ViewModelBase
         if (selectedVersion is null)
         {
             MainButtonEnabled = false;
-            MainButtonShown = MainButtonState.Update;
+            MainButtonShown = MainButtonState.Install;
             MainButtonTooltip = "Please select a version to install.";
             return;
         }
