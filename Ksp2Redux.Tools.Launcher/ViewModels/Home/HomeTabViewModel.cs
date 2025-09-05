@@ -32,7 +32,7 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial MainButtonState MainButtonShown { get; private set; }
     [ObservableProperty] public partial bool MainButtonEnabled { get; private set; }
     [ObservableProperty] public partial string MainButtonTooltip { get; private set; } = "Loading...";
-    [ObservableProperty] public partial bool IsProgressVisible { get; private set; } = true;
+    [ObservableProperty] public partial bool IsProgressVisible { get; private set; } = false;
     [ObservableProperty] public partial float DownloadProgressMb { get; private set; } = 250;
     [ObservableProperty] public partial float DownloadProgressTotalMb { get; private set; } = 450;
     [ObservableProperty] public partial float InstallProgressPatches { get; private set; } = 1;
@@ -173,18 +173,22 @@ public partial class HomeTabViewModel : ViewModelBase
         MainButtonShown = MainButtonState.Cancel;
         cancelCurrentOperation = new CancellationTokenSource();
         var sb = new StringBuilder();
-        Action<string> log = (message) =>
+        void log(string message)
         {
             sb.Append(message);
             sb.Append('\n');
             InstallLog = sb.ToString();
-        };
+        }
+        void updateDownloadProgress(long value, long max)
+        {
+            DownloadProgressMb = value / 1024f / 1024f;
+            DownloadProgressTotalMb = max / 1024f / 1024f;
+        }
 
         try
         {
             // Download the patch file.
-            // TODO: Download progress bar updates.
-            string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(SelectedVersion.Version, ksp2.IsSteam, cancelCurrentOperation.Token, log);
+            string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(SelectedVersion.Version, ksp2.IsSteam, log, updateDownloadProgress, cancelCurrentOperation.Token);
 
             DownloadProgressMb = DownloadProgressTotalMb;
 

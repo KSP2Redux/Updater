@@ -133,7 +133,7 @@ public class GitHubReleasesFeed
     /// <summary>
     /// Download the .patch file from github.
     /// </summary>
-    public async Task<string> DownloadPatch(GameVersion requestedVersion, bool forSteam, CancellationToken ct, Action<string> log)
+    public async Task<string> DownloadPatch(GameVersion requestedVersion, bool forSteam, Action<string> log, Action<long, long> reportDownloadProgress, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -146,6 +146,7 @@ public class GitHubReleasesFeed
         string patchDownloadTo = Path.Combine(downloadStorageDir, assetInfo.Name);
 
         log($"Downloading {assetInfo.Name}");
+        reportDownloadProgress(0, assetInfo.Size);
 
         // check if already downloaded
         if (!File.Exists(patchDownloadTo) || new FileInfo(patchDownloadTo).Length != assetInfo.Size)
@@ -158,9 +159,22 @@ public class GitHubReleasesFeed
             response.EnsureSuccessStatusCode();
 
             // need a way to monitor and report bytes transferred.
-            using var stream = await response.Content.ReadAsStreamAsync(ct);
-            using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None);
-            await stream.CopyToAsync(fileStream, ct);
+            using var downloadStream = await response.Content.ReadAsStreamAsync(ct);
+            using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, useAsync: true);
+
+            //await downloadStream.CopyToAsync(fileStream, ct);
+            long totalBytesRead = 0;
+            int bytesRead = 0;
+            long contentLength = response.Content.Headers.ContentLength!.Value;
+            var buffer = new byte[64 * 1024];
+            while ((bytesRead = await downloadStream.ReadAsync(buffer, ct)) > 0)
+            {
+                await fileStream.WriteAsync(buffer, ct);
+                totalBytesRead += bytesRead;
+
+                // Report progress
+                reportDownloadProgress(totalBytesRead, contentLength);
+            }
         }
 
         log("Download complete.");
