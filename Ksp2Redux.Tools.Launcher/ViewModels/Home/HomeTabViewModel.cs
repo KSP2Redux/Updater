@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -81,8 +82,16 @@ public partial class HomeTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task LaunchGame()
     {
-        //Process.Start
         // Disable the main button while the game process is still running
+        if (parentWindow.Ksp2 is not null)
+        {
+            MainButtonEnabled = false;
+            using Process process = new();
+            process.StartInfo.FileName = parentWindow.Ksp2.ExePath;
+            process.Start();
+            await process.WaitForExitAsync();
+            MainButtonEnabled = true;
+        }
     }
 
     [RelayCommand]

@@ -30,7 +30,7 @@ public class Ksp2Install
 
     public string InstallDir { get; }
 
-    private readonly string exePath;
+    public string ExePath { get; }
 
     private const string KSP2_EXE_NAME = "KSP2_x64.exe";
     private static readonly string assemblyCSharpRelativePath = Path.Combine("KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
@@ -39,7 +39,7 @@ public class Ksp2Install
 
     public Ksp2Install(string exePath)
     {
-        this.exePath = exePath;
+        ExePath = exePath;
         IsValid = File.Exists(exePath) && Path.GetFileName(exePath) == KSP2_EXE_NAME;
         if (IsValid)
         {
