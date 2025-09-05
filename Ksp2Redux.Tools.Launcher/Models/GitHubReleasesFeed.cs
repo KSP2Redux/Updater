@@ -182,6 +182,10 @@ public class GitHubReleasesFeed
                 }
             }
         }
+        else
+        {
+            reportDownloadProgress(assetInfo.Size, assetInfo.Size);
+        }
 
         log("Download complete.");
 

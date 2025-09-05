@@ -26,8 +26,9 @@ public class Ksp2Install
     /// </summary>
     public GameVersion? GameVersion { get; private set; }
 
+    public string InstallDir { get; }
+
     private readonly string exePath;
-    private readonly string installDir;
 
     private const string KSP2_EXE_NAME = "KSP2_x64.exe";
     private static readonly string assemblyCSharpRelativePath = Path.Combine("KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
@@ -40,14 +41,14 @@ public class Ksp2Install
         IsValid = File.Exists(exePath) && Path.GetFileName(exePath) == KSP2_EXE_NAME;
         if (IsValid)
         {
-            installDir = Path.GetDirectoryName(exePath)!;
-            GameVersion = TryGetGameVersionFromMainAssembly(installDir);
-            IsSteam = Path.Exists(Path.Combine(installDir, steamworksText));
-            IsRedux = Path.Exists(Path.Combine(installDir, "Redux"));
+            InstallDir = Path.GetDirectoryName(exePath)!;
+            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir);
+            IsSteam = Path.Exists(Path.Combine(InstallDir, steamworksText));
+            IsRedux = Path.Exists(Path.Combine(InstallDir, "Redux"));
         }
         else
         {
-            installDir = "";
+            InstallDir = "";
         }
     }
 
@@ -61,5 +62,10 @@ public class Ksp2Install
             return GameVersion.FromVersionIDType(versionType);
         }
         return null;
+    }
+
+    public override string ToString()
+    {
+        return $"Ksp2Install: IsValid:{IsValid} IsSteam:{IsSteam} IsRedux:{IsRedux} GameVersion:{GameVersion} Dir:\"{InstallDir}\"";
     }
 }

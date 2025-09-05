@@ -170,9 +170,13 @@
 				<TextBlock>LAUNCH</TextBlock>
 			</Canvas>
 		</Button>
-		<ScrollViewer IsVisible="{Binding IsInstallLogVisible}" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2">
-			<TextBox xml:space="preserve" Text="{Binding InstallLog}"></TextBox>
+
+		<ScrollViewer IsVisible="{Binding IsInstallLogVisible}" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Margin="0 5">
+			<Border BorderThickness="1" CornerRadius="8" BorderBrush="WhiteSmoke" Background="#7A000000">
+				<TextBlock Text="{Binding InstallLog}" TextWrapping="Wrap" Margin="0 5" />
+			</Border>
 		</ScrollViewer>
+
 		<Grid Margin="48,0,0,0" Grid.Row="2" Grid.Column="1" Grid.RowSpan="2"
               VerticalAlignment="Bottom"
               ColumnDefinitions="Auto,*" RowDefinitions="*,*"

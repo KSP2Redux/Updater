@@ -80,4 +80,7 @@ public class GameVersion : IEquatable<GameVersion>
     {
         return BuildNumber.GetHashCode();
     }
+
+    public override string ToString()
+        => $"{VersionNumber}.{BuildNumber} ({Channel})";
 }

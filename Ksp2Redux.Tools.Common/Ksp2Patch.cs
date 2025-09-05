@@ -542,4 +542,7 @@ public class Ksp2Patch : IDisposable
     {
         _archive.Dispose();
     }
+
+    public override string ToString()
+        => $"Ksp2Patch: Operations:{_manifest.operations.Count}";
 }

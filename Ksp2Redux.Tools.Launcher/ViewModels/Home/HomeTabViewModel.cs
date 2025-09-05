@@ -6,8 +6,10 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
@@ -160,7 +162,7 @@ public partial class HomeTabViewModel : ViewModelBase
         DownloadProgressMb = 0;
         DownloadProgressTotalMb = 450;
         InstallProgressPatches = 0;
-        InstallProgressTotalPatches = 0;
+        InstallProgressTotalPatches = 1;
 
         // gather process dependencies.
         var ksp2 = parentWindow.Ksp2;
@@ -179,7 +181,8 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             sb.Append(message);
             sb.Append('\n');
-            InstallLog = sb.ToString();
+            Dispatcher.UIThread.Post(() => InstallLog = sb.ToString());
+
         }
         void updateDownloadProgress(long value, long max)
         {
@@ -192,9 +195,14 @@ public partial class HomeTabViewModel : ViewModelBase
             // Download the patch file.
             string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(SelectedVersion.Version, ksp2.IsSteam, log, updateDownloadProgress, cancelCurrentOperation.Token);
 
-            DownloadProgressMb = DownloadProgressTotalMb;
-
             // TODO: Run the patch installer.
+            var patcher = Ksp2Patch.FromFile(downloadedFile);
+            log($"Starting patch for {ksp2}\npatcher: {patcher}");
+            await patcher.AsyncApply(
+                ksp2.InstallDir,
+                ksp2.InstallDir,
+                log, log
+            );
 
             // TODO: update install model state if patch ran successfully.
         }
