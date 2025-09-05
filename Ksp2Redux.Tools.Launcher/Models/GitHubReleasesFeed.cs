@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -160,20 +161,25 @@ public class GitHubReleasesFeed
 
             // need a way to monitor and report bytes transferred.
             using var downloadStream = await response.Content.ReadAsStreamAsync(ct);
-            using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, useAsync: true);
+            using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 64 * 1024, useAsync: true);
 
-            //await downloadStream.CopyToAsync(fileStream, ct);
             long totalBytesRead = 0;
             int bytesRead = 0;
             long contentLength = response.Content.Headers.ContentLength!.Value;
             var buffer = new byte[64 * 1024];
+            var updateTimer = new Stopwatch();
+            updateTimer.Start();
             while ((bytesRead = await downloadStream.ReadAsync(buffer, ct)) > 0)
             {
-                await fileStream.WriteAsync(buffer, ct);
+                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
                 totalBytesRead += bytesRead;
 
                 // Report progress
-                reportDownloadProgress(totalBytesRead, contentLength);
+                if (updateTimer.ElapsedMilliseconds > 100)
+                {
+                    reportDownloadProgress(totalBytesRead, contentLength);
+                    updateTimer.Restart();
+                }
             }
         }
 

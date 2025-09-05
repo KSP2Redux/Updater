@@ -152,7 +152,7 @@
 				<TextBlock>UPDATE</TextBlock>
 			</Canvas>
 		</Button>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" Command="{Binding CancelCurrentMainButtonAction}"
+		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" ClickMode="Press" Command="{Binding CancelCurrentMainButtonAction}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
 			<Canvas Width="240" Height="70">

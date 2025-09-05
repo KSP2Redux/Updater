@@ -171,6 +171,8 @@ public partial class HomeTabViewModel : ViewModelBase
 
         // Set up process cancellation trigger.
         MainButtonShown = MainButtonState.Cancel;
+        MainButtonEnabled = true;
+        MainButtonTooltip = "Cancel installation";
         cancelCurrentOperation = new CancellationTokenSource();
         var sb = new StringBuilder();
         void log(string message)
