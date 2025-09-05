@@ -23,7 +23,6 @@ public partial class HomeTabViewModel : ViewModelBase
 
     [ObservableProperty] public partial GameVersionViewModel? SelectedVersion { get; set; }
 
-
     public enum MainButtonState
     {
         Launch,
@@ -195,7 +194,7 @@ public partial class HomeTabViewModel : ViewModelBase
             // Download the patch file.
             string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(SelectedVersion.Version, ksp2.IsSteam, log, updateDownloadProgress, cancelCurrentOperation.Token);
 
-            // TODO: Run the patch installer.
+            // Run the patch installer.
             var patcher = Ksp2Patch.FromFile(downloadedFile);
             log($"Starting patch for {ksp2}\npatcher: {patcher}");
             await patcher.AsyncApply(
@@ -204,7 +203,8 @@ public partial class HomeTabViewModel : ViewModelBase
                 log, log
             );
 
-            // TODO: update install model state if patch ran successfully.
+            // update install model state if patch ran successfully.
+            parentWindow.TryLoadKsp2Install();
         }
         catch (Exception e)
         {

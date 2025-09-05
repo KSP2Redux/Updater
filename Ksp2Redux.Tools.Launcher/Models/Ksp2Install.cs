@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Mono.Cecil;
+using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
@@ -55,8 +57,8 @@ public class Ksp2Install
     private static GameVersion? TryGetGameVersionFromMainAssembly(string installDir)
     {
         var mainAssembly = Path.Combine(installDir, assemblyCSharpRelativePath);
-        var asm = Assembly.LoadFile(mainAssembly);
-        Type? versionType = asm.GetType("VersionID");
+        var module = ModuleDefinition.ReadModule(mainAssembly);
+        var versionType = module.Types.Where(t => t.Name == "VersionID").First();
         if (versionType is not null)
         {
             return GameVersion.FromVersionIDType(versionType);

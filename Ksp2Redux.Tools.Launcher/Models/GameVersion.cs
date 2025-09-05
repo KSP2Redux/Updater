@@ -1,5 +1,6 @@
-﻿using System;
-using System.Reflection;
+﻿using Mono.Cecil;
+using System;
+using System.Linq;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
@@ -13,16 +14,22 @@ public class GameVersion : IEquatable<GameVersion>
     /// <summary>
     /// Read version data VersionID class constants in Assembly-CSharp.dll
     /// </summary>
-    public static GameVersion FromVersionIDType(Type versionType)
+    public static GameVersion FromVersionIDType(TypeDefinition versionType)
     {
         ReleaseChannel channel = ReleaseChannel.Stable;
         Version version;
         string buildNumber;
         string commitHash;
 
+        string GetFieldValueAsString(string fieldName)
+        {
+            var buffer = versionType.Fields.Where(f => f.Name == fieldName).First().Constant;
+            return buffer.ToString()!;
+        }
+
         // VERSION_TEXT is common between redux and stock.
         // Stock: "0.2.2.0.32914"
-        var versionText = versionType.GetField("VERSION_TEXT")!.GetValue(null) as string;
+        var versionText = GetFieldValueAsString("VERSION_TEXT");
         if (!string.IsNullOrWhiteSpace(versionText))
         {
             var tokens = versionText.Split('.');
@@ -36,7 +43,7 @@ public class GameVersion : IEquatable<GameVersion>
         }
 
         // try get redux commit hash
-        if (versionType.GetField("DEBUG_INFO")?.GetValue(null) is string possibleHash && possibleHash != "BUILD_INFO")
+        if (GetFieldValueAsString("VERSION_TEXT") is string possibleHash && possibleHash != "BUILD_INFO")
         {
             commitHash = possibleHash;
         }
@@ -45,13 +52,9 @@ public class GameVersion : IEquatable<GameVersion>
             commitHash = string.Empty;
         }
 
-        if (versionType.GetField("CHANNEL_NAME") is FieldInfo channelNameField)
+        if (GetFieldValueAsString("VERSION_TEXT") is string channelName && channelName == "beta")
         {
-            var channelName = channelNameField.GetValue(null) as string;
-            if (channelName == "beta")
-            {
-                channel = ReleaseChannel.Beta;
-            }
+            channel = ReleaseChannel.Beta;
         }
 
         return new GameVersion()
@@ -61,7 +64,6 @@ public class GameVersion : IEquatable<GameVersion>
             BuildNumber = buildNumber,
             CommitHash = commitHash,
         };
-
     }
 
     public bool Equals(GameVersion? other)

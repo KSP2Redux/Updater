@@ -51,7 +51,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void TryLoadKsp2Install()
+    public void TryLoadKsp2Install()
     {
         if (!string.IsNullOrWhiteSpace(Config.Ksp2InstallPath))
         {
