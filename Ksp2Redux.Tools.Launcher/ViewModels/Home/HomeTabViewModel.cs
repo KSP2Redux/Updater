@@ -88,6 +88,7 @@ public partial class HomeTabViewModel : ViewModelBase
             MainButtonEnabled = false;
             using Process process = new();
             process.StartInfo.FileName = parentWindow.Ksp2.ExePath;
+            process.StartInfo.WorkingDirectory = parentWindow.Ksp2.InstallDir;
             process.Start();
             await process.WaitForExitAsync();
             MainButtonEnabled = true;
