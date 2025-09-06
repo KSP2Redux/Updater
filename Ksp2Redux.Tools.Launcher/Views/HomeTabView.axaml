@@ -171,11 +171,20 @@
 			</Canvas>
 		</Button>
 
-		<ScrollViewer IsVisible="{Binding IsInstallLogVisible}" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Margin="0 5">
-			<Border BorderThickness="1" CornerRadius="8" BorderBrush="WhiteSmoke" Background="#7A000000">
-				<TextBlock Text="{Binding InstallLog}" TextWrapping="Wrap" Margin="0 5" />
-			</Border>
-		</ScrollViewer>
+		<Border BorderThickness="1" CornerRadius="8" BorderBrush="WhiteSmoke" Background="#7A000000"
+				Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Margin="0 5" Height="340"
+				IsVisible="{Binding IsInstallLogVisible}">
+			<ScrollViewer VerticalScrollBarVisibility="Auto">
+				<ItemsControl Margin="24,16, 24,16" ItemsSource="{Binding InstallLogLines}"
+                              Background="Transparent">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<TextBlock Text="{Binding LogItemText}"/>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</ScrollViewer>
+		</Border>
 
 		<Grid Margin="48,0,0,0" Grid.Row="2" Grid.Column="1" Grid.RowSpan="2"
               VerticalAlignment="Bottom"

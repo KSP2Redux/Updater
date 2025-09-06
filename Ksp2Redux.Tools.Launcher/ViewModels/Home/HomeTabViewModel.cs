@@ -40,7 +40,7 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial float InstallProgressPatches { get; private set; } = 1;
     [ObservableProperty] public partial float InstallProgressTotalPatches { get; private set; } = 3;
     [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
-    [ObservableProperty] public partial string InstallLog { get; private set; } = "";
+    public ObservableCollection<LogItemViewModel> InstallLogLines { get; set; } = [];
 
     private readonly GitHubReleasesFeed releasesFeed;
     private readonly MainWindowViewModel parentWindow;
@@ -165,7 +165,7 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         // lock main window tabs?
 
-        InstallLog = string.Empty;
+        InstallLogLines.Clear();
         IsInstallLogVisible = true;
         IsProgressVisible = true;
         DownloadProgressMb = 0;
@@ -188,10 +188,10 @@ public partial class HomeTabViewModel : ViewModelBase
         var sb = new StringBuilder();
         void log(string message)
         {
-            sb.Append(message);
-            sb.Append('\n');
-            Dispatcher.UIThread.Post(() => InstallLog = sb.ToString());
-
+            Dispatcher.UIThread.Post(() =>
+            {
+                InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
+            });
         }
         void updateDownloadProgress(long value, long max)
         {
@@ -219,7 +219,6 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception e)
         {
             log($"Error updating Redux: {e.Message}");
-            InstallLog = sb.ToString();
         }
         finally
         {
