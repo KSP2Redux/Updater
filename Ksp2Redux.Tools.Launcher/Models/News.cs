@@ -77,7 +77,9 @@ public class News
 
     public static async Task<List<News>> FindAllNews() => _newsList.OrderByDescending(n => n.Date).ToList();
 
-    public static async Task<News> GetNews(int id) => _newsList[id];
+    public static News GetNews(int id) => id == -1 ? new News() : _newsList[id];
+    
+    public static int GetNewsId(News? news) => news == null ? -1 : _newsList.IndexOf(news);
 
     public async Task<Stream> LoadImageStreamAsync()
     {
