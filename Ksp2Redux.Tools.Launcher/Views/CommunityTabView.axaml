@@ -97,12 +97,23 @@
         <Border Grid.Column="1" Margin="12, 8, 12, 0" BorderThickness="2" BorderBrush="#803E3E3E" Background="#802D2D2D" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
             <ScrollViewer Padding="8" Height="500" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch">
                 <Grid Margin="0" RowDefinitions="Auto,Auto,Auto" DataContext="{Binding SelectedNews}" VerticalAlignment="Top" HorizontalAlignment="Left">
-                    <TextBlock Grid.Row="0" Margin="0, 0, 20, 4" FontSize="32" FontFamily="{StaticResource JetBrainsMonoBold}"
-                               Text="{Binding Title}" TextWrapping="WrapWithOverflow" />
-                    <TextBlock Grid.Row="1" Margin="0, 0, 20, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
-                               Text="{Binding Date}" TextWrapping="WrapWithOverflow" />
-                    <TextBlock Grid.Row="2" Margin="0, 0, 20, 20" FontSize="14" FontFamily="{StaticResource JetBrainsMonoRegular}"
-                               Text="{Binding Content}" TextWrapping="WrapWithOverflow" />
+                    <TextBlock Grid.Row="0" Margin="0, 0, 20, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
+                               TextWrapping="WrapWithOverflow" >
+                        <TextBlock.Inlines>
+                            <Run FontSize="32" FontFamily="{StaticResource JetBrainsMonoBold}" Text="{Binding Title}"/>
+                            <LineBreak/>
+                            <Run Text="{Binding Date.Date}"/>
+                            <Run Text="-"/>
+                            <Run Text="{Binding Author}"/>
+                        </TextBlock.Inlines>
+                    </TextBlock>
+                    <Image Grid.Row="1" Source="{Binding Image}" Stretch="Uniform"/>
+                    <TextBlock Grid.Row="2" FontSize="14" FontFamily="{StaticResource JetBrainsMonoRegular}" Margin="0, 0, 20, 20"
+                               TextWrapping="WrapWithOverflow" >
+                        <TextBlock.Inlines>
+                            <Run Text="{Binding Content}"/>
+                        </TextBlock.Inlines>
+                    </TextBlock>
                 </Grid>
             </ScrollViewer>
         </Border>

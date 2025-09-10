@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
@@ -9,7 +10,7 @@ public partial class CommunityTabViewModel(ObservableCollection<NewsItemViewMode
 {
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; } = new(newsCollection);
 
-    public int SelectedNewsId
+    private int SelectedNewsId
     {
         get;
         set
@@ -22,6 +23,12 @@ public partial class CommunityTabViewModel(ObservableCollection<NewsItemViewMode
             }
         }
     } = -1;
+    
+    public async Task SetSelectedNewsId(int newsId)
+    {
+        SelectedNewsId = newsId;
+        await SelectedNews.LoadImageAsync();
+    }
 
-    public News SelectedNews => News.GetNews(SelectedNewsId);
+    public NewsItemViewModel SelectedNews => new (News.GetNews(SelectedNewsId));
 }

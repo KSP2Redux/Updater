@@ -28,12 +28,14 @@ public partial class NewsItemViewModel : ViewModelBase
     public async Task LoadImageAsync()
     {
         if (string.IsNullOrEmpty(News.ImageUrl))
-        {
             return;
-        }
 
-        await using Stream stream = await News.LoadImageStreamAsync();
+        await using var stream = await News.LoadImageStreamAsync();
+        if (stream == null)
+            return;
+        
         Image = await Task.Run(() => Bitmap.DecodeToWidth(stream, 800));
+        OnPropertyChanged(nameof(Image));
     }
 
     public NewsItemViewModel(News news)

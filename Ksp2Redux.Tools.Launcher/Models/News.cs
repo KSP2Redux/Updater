@@ -81,9 +81,18 @@ public class News
     
     public static int GetNewsId(News? news) => news == null ? -1 : _newsList.IndexOf(news);
 
-    public async Task<Stream> LoadImageStreamAsync()
+    public async Task<Stream?> LoadImageStreamAsync()
     {
-        byte[] data = await _httpClient.GetByteArrayAsync(ImageUrl);
-        return new MemoryStream(data);
+        byte[] data = new byte[1];
+        try
+        {
+            data = await _httpClient.GetByteArrayAsync(ImageUrl);
+            return new MemoryStream(data);
+        }
+        catch (HttpRequestException e)
+        {
+            Console.WriteLine($"Couldn't load image: {e}");
+        }
+        return null;
     }
 }
