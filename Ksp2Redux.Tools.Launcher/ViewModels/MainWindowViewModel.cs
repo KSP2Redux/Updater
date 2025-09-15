@@ -44,6 +44,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async void LoadNews()
     {
+        string tomlNewsContent = await News.GetTomlContent();
+        News.LoadNewsFromToml(tomlNewsContent);
         List<News> newsList = await News.FindAllNews();
         foreach (News news in newsList)
         {
