@@ -15,14 +15,14 @@ public partial class NewsItemView : UserControl
         InitializeComponent();
     }
 
-    private async void NewsPanel_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void NewsPanel_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (VisualRoot is MainWindow { DataContext: MainWindowViewModel mainWindowViewModel } mainWindow)
-        {
-            // set selected news to this
-            await mainWindowViewModel.CommunityTab.SetSelectedNewsId(News.GetNewsId(ViewModel?.News));
-            // change to community tab if not already there
-            mainWindow.MainTabControl.SelectedItem = mainWindow.CommunityTab;
-        }
+        if (VisualRoot is not MainWindow { DataContext: MainWindowViewModel mainWindowViewModel } mainWindow)
+            return;
+        
+        // set selected news to this
+        mainWindowViewModel.CommunityTab.SetSelectedNewsId(News.GetNewsId(ViewModel?.News));
+        // change to community tab if not already there
+        mainWindow.MainTabControl.SelectedItem = mainWindow.CommunityTab;
     }
 }

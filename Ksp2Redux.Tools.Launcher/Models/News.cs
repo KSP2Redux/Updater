@@ -81,7 +81,7 @@ public class News
     
     public static int GetNewsId(News? news) => news == null ? -1 : _newsList.IndexOf(news);
 
-    public async Task<Stream?> LoadImageStreamAsync()
+    public async Task<MemoryStream?> LoadImageStreamAsync()
     {
         byte[] data = new byte[1];
         try

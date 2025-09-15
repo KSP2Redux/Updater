@@ -95,9 +95,9 @@
             </StackPanel>
         </StackPanel>
         <Border Grid.Column="1" Margin="12, 8, 12, 0" BorderThickness="2" BorderBrush="#803E3E3E" Background="#802D2D2D" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-            <ScrollViewer Padding="8" Height="500" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch">
-                <Grid Margin="0" RowDefinitions="Auto,Auto,Auto" DataContext="{Binding SelectedNews}" VerticalAlignment="Top" HorizontalAlignment="Left">
-                    <TextBlock Grid.Row="0" Margin="0, 0, 20, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
+            <ScrollViewer Padding="8" Height="500" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
+                <Grid Margin="0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*, Auto" DataContext="{Binding SelectedNews}" VerticalAlignment="Top" HorizontalAlignment="Left">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
                                TextWrapping="WrapWithOverflow" >
                         <TextBlock.Inlines>
                             <Run FontSize="32" FontFamily="{StaticResource JetBrainsMonoBold}" Text="{Binding Title}"/>
@@ -107,8 +107,15 @@
                             <Run Text="{Binding Author}"/>
                         </TextBlock.Inlines>
                     </TextBlock>
-                    <Image Grid.Row="1" Source="{Binding Image}" Stretch="Uniform"/>
-                    <TextBlock Grid.Row="2" FontSize="14" FontFamily="{StaticResource JetBrainsMonoRegular}" Margin="0, 0, 20, 20"
+                    <Button Grid.Row="0" Grid.Column="1" Classes="link-button" ToolTip.Tip="View in Discord" Margin="0, 0, 20, 0" VerticalAlignment="Top" Click="NewsLink_OnClick">
+                        <Canvas>
+                            <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-general.png" Canvas.Left="0"
+                                   Canvas.Top="0" />
+                            <Border Classes="button-tint" />
+                        </Canvas>
+                    </Button>
+                    <Image IsVisible="{Binding ImageVisible}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Source="{Binding Image^}" MaxHeight="300" MaxWidth="600" HorizontalAlignment="Left" Margin="5"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" FontSize="14" FontFamily="{StaticResource JetBrainsMonoRegular}" Margin="0, 0, 20, 20"
                                TextWrapping="WrapWithOverflow" >
                         <TextBlock.Inlines>
                             <Run Text="{Binding Content}"/>

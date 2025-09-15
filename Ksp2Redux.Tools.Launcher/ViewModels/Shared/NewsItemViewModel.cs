@@ -7,10 +7,10 @@ using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
-public partial class NewsItemViewModel : ViewModelBase
+public class NewsItemViewModel(News news) : ViewModelBase
 {
-    public News News { get; set; }
-    
+    public News News { get; set; } = news;
+
     public string Title => News.Title;
 
     public string Content => News.Content;
@@ -19,27 +19,33 @@ public partial class NewsItemViewModel : ViewModelBase
 
     public string Author => News.Author;
 
-    [ObservableProperty] public partial Bitmap? Image { get; private set; }
+    public Task<Bitmap?> Image => LoadImageAsync();
 
     public string? Link => News.Link;
 
     public string Subtitle => $"{News.Date:d} by {News.Author}";
+    
+    public bool ImageVisible { get; private set; }
 
-    public async Task LoadImageAsync()
+    private async Task<Bitmap?> LoadImageAsync()
     {
         if (string.IsNullOrEmpty(News.ImageUrl))
-            return;
+        {
+            ImageVisible = false;
+            OnPropertyChanged(nameof(ImageVisible));
+            return null;
+        }
 
         await using var stream = await News.LoadImageStreamAsync();
         if (stream == null)
-            return;
-        
-        Image = await Task.Run(() => Bitmap.DecodeToWidth(stream, 800));
-        OnPropertyChanged(nameof(Image));
-    }
+        {
+            ImageVisible = false;
+            OnPropertyChanged(nameof(ImageVisible));
+            return null;
+        }
 
-    public NewsItemViewModel(News news)
-    {
-        News = news;
+        ImageVisible = true;
+        OnPropertyChanged(nameof(ImageVisible));
+        return await Task.Run(() => new Bitmap(stream));
     }
 }

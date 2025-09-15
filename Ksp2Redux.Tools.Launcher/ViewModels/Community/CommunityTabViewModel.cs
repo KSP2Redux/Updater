@@ -20,15 +20,17 @@ public partial class CommunityTabViewModel(ObservableCollection<NewsItemViewMode
                 field = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedNews));
+                OnPropertyChanged(nameof(NewsVisible));
             }
         }
     } = -1;
-    
-    public async Task SetSelectedNewsId(int newsId)
-    {
-        SelectedNewsId = newsId;
-        await SelectedNews.LoadImageAsync();
-    }
 
     public NewsItemViewModel SelectedNews => new (News.GetNews(SelectedNewsId));
+    
+    public bool NewsVisible => SelectedNewsId != -1;
+    
+    public void SetSelectedNewsId(int newsId)
+    {
+        SelectedNewsId = newsId;
+    }
 }

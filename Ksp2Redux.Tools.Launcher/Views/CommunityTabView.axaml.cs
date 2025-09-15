@@ -46,4 +46,12 @@ public partial class CommunityTabView : UserControl
     {
         LaunchUri(new Uri("https://github.com/KSP2Redux"));
     }
+    
+    private void NewsLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedNews.Link is null)
+            return;
+        
+        LaunchUri(new Uri(ViewModel.SelectedNews.Link));
+    }
 }
