@@ -11,10 +11,13 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class News
 {
+    private static readonly string _rawRepoTargetUrl = "https://raw.githubusercontent.com/SamBret/LauncherNews/refs/heads/main/";
+    private static readonly string _tomlTargetFile = "news.toml";
+    private static string _tomlTargetUrl => _rawRepoTargetUrl + _tomlTargetFile;
+    private static string _imageTargetUrl => _rawRepoTargetUrl + "images/";
+
     private static readonly HttpClient _httpClient = new();
-
-    private static readonly string _tomlTargetUrl = "https://raw.githubusercontent.com/SamBret/LauncherNews/refs/heads/main/news.toml";
-
+    
     private static List<News> _newsList = new();
 
     public string Title { get; set; } = "";
@@ -35,7 +38,7 @@ public class News
         byte[] data = new byte[1];
         try
         {
-            data = await _httpClient.GetByteArrayAsync(ImageUrl);
+            data = await _httpClient.GetByteArrayAsync(_imageTargetUrl + ImageUrl);
             return new MemoryStream(data);
         }
         catch (HttpRequestException e)
