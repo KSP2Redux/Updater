@@ -96,7 +96,7 @@
         </StackPanel>
         <Border Grid.Column="1" Margin="12, 8, 12, 0" BorderThickness="2" BorderBrush="#803E3E3E" Background="#802D2D2D" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
             <ScrollViewer Padding="8" Height="500" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
-                <Grid Margin="0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*, Auto" DataContext="{Binding SelectedNews}" VerticalAlignment="Top" HorizontalAlignment="Left">
+                <Grid Margin="0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*, Auto" DataContext="{Binding SelectedNews}" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                     <TextBlock Grid.Row="0" Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
                                TextWrapping="WrapWithOverflow" >
                         <TextBlock.Inlines>
