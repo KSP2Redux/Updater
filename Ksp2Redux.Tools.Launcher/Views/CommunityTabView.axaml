@@ -102,9 +102,7 @@
                         <TextBlock.Inlines>
                             <Run FontSize="32" FontFamily="{StaticResource JetBrainsMonoBold}" Text="{Binding Title}"/>
                             <LineBreak/>
-                            <Run Text="{Binding Date.Date}"/>
-                            <Run Text="-"/>
-                            <Run Text="{Binding Author}"/>
+                            <Run Text="{Binding Subtitle}"/>
                         </TextBlock.Inlines>
                     </TextBlock>
                     <Button Grid.Row="0" Grid.Column="1" Classes="link-button" ToolTip.Tip="View in Discord" Margin="0, 0, 20, 0" VerticalAlignment="Top" Click="NewsLink_OnClick">
