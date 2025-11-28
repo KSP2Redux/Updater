@@ -12,7 +12,6 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
@@ -25,19 +24,16 @@
             <TextBox Grid.Column="1" Grid.Row="0" Name="Ksp2InstallFolder"/>
             <Button Grid.Column="2" Grid.Row="0" Name="BrowseKsp2InstallFolder" Click="BrowseKsp2InstallFolder_OnClick">Browse</Button>
             
-            <TextBlock Grid.Row="1" Grid.Column="0">Copy KSP2 Files?</TextBlock>
-            <CheckBox Grid.Row="1" Grid.Column="1" Name="CopyFiles" Checked="CopyFiles_OnChecked" Unchecked="CopyFiles_OnUnchecked" IsThreeState="False"></CheckBox>
+            <TextBlock Grid.Row="1" Grid.Column="0">Target Folder</TextBlock>
+            <TextBox Grid.Column="1" Grid.Row="1" Name="TargetFolder"></TextBox>
+            <Button Grid.Column="2" Grid.Row="1" Name="BrowseTargetFolder" Click="BrowseTargetFolder_OnClick">Browse</Button>
             
-            <TextBlock Grid.Row="2" Grid.Column="0">Target Folder</TextBlock>
-            <TextBox Grid.Column="1" Grid.Row="2" Name="TargetFolder" IsEnabled="False"></TextBox>
-            <Button Grid.Column="2" Grid.Row="2" Name="BrowseTargetFolder" Click="BrowseTargetFolder_OnClick" IsEnabled="False">Browse</Button>
+            <TextBlock Grid.Row="2" Grid.Column="0">Patch File</TextBlock>
+            <TextBox Grid.Column="1" Grid.Row="2" Name="PatchFile"></TextBox>
+            <Button Grid.Column="2" Grid.Row="2" Name="BrowsePatchFile" Click="BrowsePatchFile_OnClick">Browse</Button>
             
-            <TextBlock Grid.Row="3" Grid.Column="0">Patch File</TextBlock>
-            <TextBox Grid.Column="1" Grid.Row="3" Name="PatchFile"></TextBox>
-            <Button Grid.Column="2" Grid.Row="3" Name="BrowsePatchFile" Click="BrowsePatchFile_OnClick">Browse</Button>
-            
-            <Button Grid.Row="4" Grid.Column="1" Name="UpdateInstall" Click="UpdateInstall_OnClick">Update/Install</Button>
-            <ScrollViewer Grid.Row="5" Grid.Column="1" Name = "ScrollLog">
+            <Button Grid.Row="3" Grid.Column="1" Name="UpdateInstall" Click="UpdateInstall_OnClick">Update/Install</Button>
+            <ScrollViewer Grid.Row="4" Grid.Column="1" Name = "ScrollLog">
                 <TextBox Name="PatchLog" TextChanged="PatchLog_OnTextChanged"/>
             </ScrollViewer>
         </Grid>

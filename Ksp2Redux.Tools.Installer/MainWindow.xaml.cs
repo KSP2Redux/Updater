@@ -54,18 +54,6 @@ public partial class MainWindow
         }
     }
 
-    private void CopyFiles_OnChecked(object sender, RoutedEventArgs e)
-    {
-        TargetFolder.IsEnabled = true;
-        BrowseTargetFolder.IsEnabled = true;
-    }
-
-    private void CopyFiles_OnUnchecked(object sender, RoutedEventArgs e)
-    {
-        TargetFolder.IsEnabled = false;
-        BrowseTargetFolder.IsEnabled = false;
-    }
-
     private void BrowsePatchFile_OnClick(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -113,7 +101,7 @@ public partial class MainWindow
             return false;
         }
 
-        if (CopyFiles.IsChecked == true && !Directory.Exists(TargetFolderTrimmed))
+        if (!Directory.Exists(TargetFolderTrimmed))
         {
             MessageBox.Show(
                 $"Target folder does not exist! ({TargetFolderTrimmed})",
@@ -147,24 +135,14 @@ public partial class MainWindow
             PatchLog.Text = "Beginning Patch!\n";
             Ksp2Patch patchFile = Ksp2Patch.FromFile(PatchFile.Text);
             bool errored = false;
-            if (CopyFiles.IsChecked == true)
-            {
-                await patchFile.AsyncCopyAndApply(
-                    StockFolderTrimmed,
-                    TargetFolderTrimmed,
-                    LogToUI,
-                    _ => errored = true
-                );
-            }
-            else
-            {
-                await patchFile.AsyncApply(
-                    StockFolderTrimmed,
-                    StockFolderTrimmed,
-                    LogToUI,
-                    _ => errored = true
-                );
-            }
+
+            await patchFile.AsyncCopyAndApply(
+                StockFolderTrimmed,
+                TargetFolderTrimmed,
+                LogToUI,
+                _ => errored = true
+            );
+
             _isCurrentlyRunningPatch = false;
             if (!errored)
             {
