@@ -3,9 +3,10 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:community="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Community"
-             x:DataType="community:CommunityTabViewModel"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Ksp2Redux.Tools.Launcher.Views.CommunityTabView">
+             xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.Views.Shared"
+             mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="530"
+             x:Class="Ksp2Redux.Tools.Launcher.Views.CommunityTabView"
+             x:DataType="community:CommunityTabViewModel">
     <UserControl.Styles>
         <Style Selector="Button.link-button">
             <Setter Property="Background" Value="Transparent" />
@@ -50,41 +51,76 @@
         </Style>
     </UserControl.Styles>
 
-    <StackPanel Orientation="Horizontal">
-        <Button Classes="link-button" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
-            <Canvas>
-                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0"
-                       Canvas.Top="0" />
-                <Border Classes="button-tint" />
-            </Canvas>
-        </Button>
-        <Button Classes="link-button" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
-            <Canvas>
-                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0"
-                       Canvas.Top="0" />
-                <Border Classes="button-tint" />
-            </Canvas>
-        </Button>
-        <Button Classes="link-button" ToolTip.Tip="KSP2 Wiki" Click="WikiLink_OnClick">
-            <Canvas>
-                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-wiki.png" Canvas.Left="0"
-                       Canvas.Top="0" />
-                <Border Classes="button-tint" />
-            </Canvas>
-        </Button>
-        <Button Classes="link-button" ToolTip.Tip="YouTube" Click="YoutubeLink_OnClick">
-            <Canvas>
-                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0"
-                       Canvas.Top="0" />
-                <Border Classes="button-tint" />
-            </Canvas>
-        </Button>
-        <Button Classes="link-button" ToolTip.Tip="GitHub" Click="GithubLink_OnClick">
-            <Canvas>
-                <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0"
-                       Canvas.Top="0" />
-                <Border Classes="button-tint" />
-            </Canvas>
-        </Button>
-    </StackPanel>
+    <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <StackPanel Spacing="8">
+            <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto">
+                <shared:NewsCollectionView Grid.RowSpan="2" DataContext="{Binding NewsCollectionViewModel}"/>
+            </Grid>
+            <StackPanel Orientation="Horizontal">
+                <Button Classes="link-button" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
+                    <Canvas>
+                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0"
+                               Canvas.Top="0" />
+                        <Border Classes="button-tint" />
+                    </Canvas>
+                </Button>
+                <Button Classes="link-button" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
+                    <Canvas>
+                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0"
+                               Canvas.Top="0" />
+                        <Border Classes="button-tint" />
+                    </Canvas>
+                </Button>
+                <Button Classes="link-button" ToolTip.Tip="KSP2 Wiki" Click="WikiLink_OnClick">
+                    <Canvas>
+                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-wiki.png" Canvas.Left="0"
+                               Canvas.Top="0" />
+                        <Border Classes="button-tint" />
+                    </Canvas>
+                </Button>
+                <Button Classes="link-button" ToolTip.Tip="YouTube" Click="YoutubeLink_OnClick">
+                    <Canvas>
+                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0"
+                               Canvas.Top="0" />
+                        <Border Classes="button-tint" />
+                    </Canvas>
+                </Button>
+                <Button Classes="link-button" ToolTip.Tip="GitHub" Click="GithubLink_OnClick">
+                    <Canvas>
+                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0"
+                               Canvas.Top="0" />
+                        <Border Classes="button-tint" />
+                    </Canvas>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+        <Border Grid.Column="1" Margin="12, 8, 12, 0" BorderThickness="2" BorderBrush="#803E3E3E" Background="#802D2D2D" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+            <ScrollViewer Padding="8" Height="500" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
+                <Grid Margin="0" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*, Auto" DataContext="{Binding SelectedNews}" VerticalAlignment="Top" HorizontalAlignment="Stretch">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
+                               TextWrapping="WrapWithOverflow" >
+                        <TextBlock.Inlines>
+                            <Run FontSize="32" FontFamily="{StaticResource JetBrainsMonoBold}" Text="{Binding Title}"/>
+                            <LineBreak/>
+                            <Run Text="{Binding Subtitle}"/>
+                        </TextBlock.Inlines>
+                    </TextBlock>
+                    <Button Grid.Row="0" Grid.Column="1" Classes="link-button" ToolTip.Tip="View in Discord" Margin="0, 0, 20, 0" VerticalAlignment="Top" Click="NewsLink_OnClick">
+                        <Canvas>
+                            <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-general.png" Canvas.Left="0"
+                                   Canvas.Top="0" />
+                            <Border Classes="button-tint" />
+                        </Canvas>
+                    </Button>
+                    <Image IsVisible="{Binding ImageVisible}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Source="{Binding Image^}" MaxHeight="300" MaxWidth="600" HorizontalAlignment="Left" Margin="5"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" FontSize="14" FontFamily="{StaticResource JetBrainsMonoRegular}" Margin="0, 0, 20, 20"
+                               TextWrapping="WrapWithOverflow" >
+                        <TextBlock.Inlines>
+                            <Run Text="{Binding Content}"/>
+                        </TextBlock.Inlines>
+                    </TextBlock>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+    </Grid>
 </UserControl>

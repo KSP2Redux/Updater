@@ -19,6 +19,8 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 public partial class HomeTabViewModel : ViewModelBase
 {
     public ObservableCollection<NewsItemViewModel> NewsCollection { get; set; }
+    
+    public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
 
@@ -52,6 +54,7 @@ public partial class HomeTabViewModel : ViewModelBase
     public HomeTabViewModel(MainWindowViewModel parentWindow)
     {
         NewsCollection = parentWindow.NewsCollection;
+        NewsCollectionViewModel = new NewsCollectionViewModel(NewsCollection);
         releasesFeed = parentWindow.ReleasesFeed;
         this.parentWindow = parentWindow;
         RebuildVersionsCollection();

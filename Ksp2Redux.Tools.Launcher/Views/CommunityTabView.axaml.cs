@@ -1,12 +1,17 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
 public partial class CommunityTabView : UserControl
 {
+    public CommunityTabViewModel ViewModel => (CommunityTabViewModel)DataContext!;
+
     public CommunityTabView()
     {
         InitializeComponent();
@@ -40,5 +45,13 @@ public partial class CommunityTabView : UserControl
     private void GithubLink_OnClick(object? sender, RoutedEventArgs e)
     {
         LaunchUri(new Uri("https://github.com/KSP2Redux"));
+    }
+    
+    private void NewsLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedNews.Link is null)
+            return;
+        
+        LaunchUri(new Uri(ViewModel.SelectedNews.Link));
     }
 }

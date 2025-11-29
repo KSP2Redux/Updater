@@ -6,10 +6,22 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Shared.NewsItemView"
              x:DataType="shared:NewsItemViewModel">
-    <StackPanel Margin="0,0,0,12" Spacing="2">
-        <TextBlock FontSize="14" FontFamily="{StaticResource JetBrainsMonoBold}"
-                   Text="{Binding Title}" TextWrapping="WrapWithOverflow" />
-        <TextBlock FontSize="11" FontFamily="{StaticResource JetBrainsMonoRegular}"
-                   Text="{Binding Subtitle}" TextWrapping="WrapWithOverflow" />
-    </StackPanel>
+    <UserControl.Styles>
+        <Style Selector="Border">
+            <Setter Property="Background" Value="#00ffffff" />
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="#800066bb" />
+            </Style>
+        </Style>
+    </UserControl.Styles>
+    
+    <Border Padding="4" Margin="0,0,0,8" PointerPressed="NewsPanel_OnPointerPressed">
+        <StackPanel Spacing="2">
+            <TextBlock FontSize="14" FontFamily="{StaticResource JetBrainsMonoBold}"
+                       Text="{Binding Title}" TextWrapping="WrapWithOverflow" />
+            <TextBlock FontSize="11" FontFamily="{StaticResource JetBrainsMonoRegular}"
+                       Text="{Binding Subtitle}" TextWrapping="WrapWithOverflow" />
+        </StackPanel>
+    </Border>
 </UserControl>

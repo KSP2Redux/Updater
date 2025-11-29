@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
              xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
+             xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.Views.Shared"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.HomeTabView"
              x:DataType="home:HomeTabViewModel">
@@ -97,25 +98,8 @@
 
 	</UserControl.Styles>
 
-	<Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="Auto,*">
-		<TextBlock Grid.Row="0" Grid.Column="0" FontFamily="{StaticResource JetBrainsMonoLight}"
-                   FontSize="24" TextAlignment="Center" Margin="0,16,0,8">
-			LATEST NEWS
-		</TextBlock>
-		<Border Grid.Row="1" Grid.Column="0" Background="#802D2D2D" CornerRadius="12"
-                Margin="0,0,0,0"
-                VerticalAlignment="Stretch">
-			<ScrollViewer Width="240" Height="340" VerticalScrollBarVisibility="Auto">
-				<ItemsControl Margin="24,16, 24,16" ItemsSource="{Binding NewsCollection}"
-                              Background="Transparent">
-					<ItemsControl.ItemsPanel>
-						<ItemsPanelTemplate>
-							<StackPanel />
-						</ItemsPanelTemplate>
-					</ItemsControl.ItemsPanel>
-				</ItemsControl>
-			</ScrollViewer>
-		</Border>
+    <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="Auto,*">
+        <shared:NewsCollectionView Grid.RowSpan="2" DataContext="{Binding NewsCollectionViewModel}"/>
 
 		<controls:GroupedComboBox
             Name="VersionSelector" Width="250" Grid.Row="2" Grid.Column="0"
