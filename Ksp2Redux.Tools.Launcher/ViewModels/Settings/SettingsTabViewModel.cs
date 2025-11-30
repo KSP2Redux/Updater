@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
-public partial class SettingsTabViewModel(LauncherConfig config) : ViewModelBase
+public partial class SettingsTabViewModel() : ViewModelBase
 {
+    private readonly MainWindowViewModel parentWindow;
+    private readonly LauncherConfig config;
     public string DisplayedInstallPath => config.Ksp2InstallPath;
     public ReleaseChannel ReleaseChannel
     {
@@ -21,7 +23,11 @@ public partial class SettingsTabViewModel(LauncherConfig config) : ViewModelBase
         }
     }
 
-    readonly LauncherConfig config = config;
+    public SettingsTabViewModel(LauncherConfig config,MainWindowViewModel parentWindow) : this()
+    {
+        this.parentWindow = parentWindow;
+        this.config = config;
+    }
 
     private const string STEAM_INSTALL_DIR = "C:/Program Files (x86)/Steam/steamapps/common/Kerbal Space Program 2/KSP2_x64.exe";
 
@@ -40,6 +46,7 @@ public partial class SettingsTabViewModel(LauncherConfig config) : ViewModelBase
             config.Save();
             // TODO: trigger update patch status
         }
+        parentWindow.TryLoadKsp2Install();
         //return config.Ksp2InstallPath;
     }
 

@@ -33,13 +33,13 @@ public partial class MainWindowViewModel : ViewModelBase
         TryLoadKsp2Install();
         var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
         Directory.CreateDirectory(releaseDownloadCacheDir);
-        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "foonix/TestPrivateReleaseFeed", Config.Pat, releaseDownloadCacheDir);
+        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "KSP2Redux/Redux", Config.Pat, releaseDownloadCacheDir);
         ReleasesFeed.Initialize();
 
         HomeTab = new HomeTabViewModel(this);
         CommunityTab = new CommunityTabViewModel(NewsCollection);
         ModsTab = new ModsTabViewModel();
-        SettingsTab = new SettingsTabViewModel(Config);
+        SettingsTab = new SettingsTabViewModel(Config,this);
     }
 
     private async void LoadNews()
