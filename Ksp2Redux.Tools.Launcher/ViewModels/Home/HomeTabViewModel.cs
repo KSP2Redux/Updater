@@ -44,7 +44,7 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
     public ObservableCollection<LogItemViewModel> InstallLogLines { get; set; } = [];
 
-    private readonly GitHubReleasesFeed releasesFeed;
+    private readonly ManifestReleasesFeed releasesFeed;
     private readonly MainWindowViewModel parentWindow;
     private CancellationTokenSource? cancelCurrentOperation;
 
@@ -65,9 +65,13 @@ public partial class HomeTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task UpdateVersionsList()
     {
-        await releasesFeed.UpdateFromApi();
+        UpdateAsync();
         RebuildVersionsCollection();
         UpdateMainButtonState();
+    }
+    private async void UpdateAsync()
+    {
+        await releasesFeed.UpdateManifest(releasesFeed.CurrentChannel);
     }
 
     [RelayCommand]
@@ -140,7 +144,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        if (selectedVersion.Equals(ksp2.GameVersion))
+        if (selectedVersion.Version.Equals(ksp2.GameVersion))
         {
             MainButtonEnabled = true;
             MainButtonShown = MainButtonState.Launch;
@@ -204,20 +208,44 @@ public partial class HomeTabViewModel : ViewModelBase
 
         try
         {
-            // Download the patch file.
-            string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(SelectedVersion.Version, ksp2.IsSteam, log, updateDownloadProgress, cancelCurrentOperation.Token);
+            //Get list of patches that need to be installed.
+            List<ManifestReleasesFeed.Patch> patches;
+            if (parentWindow.Ksp2.IsRedux)
+            {
+                patches = parentWindow.ReleasesFeed.GetPatchListToVersion(parentWindow.Ksp2.GameVersion,
+                    SelectedVersion.Version);
+            }
+            else
+            {
+                string distribution = "";
+                if (parentWindow.Ksp2.IsSteam)
+                {
+                    distribution = "steam";
+                }
+                else
+                {
+                    distribution = "portable";
+                }
 
-            // Run the patch installer.
-            var patcher = Ksp2Patch.FromFile(downloadedFile);
-            log($"Starting patch for {ksp2}\npatcher: {patcher}");
-            await patcher.AsyncApply(
-                ksp2.InstallDir,
-                ksp2.InstallDir,
-                log, log
-            );
-
-            // update install model state if patch ran successfully.
-            parentWindow.TryLoadKsp2Install();
+                patches = parentWindow.ReleasesFeed.GetPatchListToVersion(distribution, SelectedVersion.Version);
+            }
+            
+            foreach (var patch in patches)
+            {
+                // Download the patch file.
+                string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(patch, log, updateDownloadProgress, cancelCurrentOperation.Token);
+                
+                // Run the patch installer.
+                var patcher = Ksp2Patch.FromFile(downloadedFile);
+                log($"Starting patch for {ksp2}\npatcher: {patcher}");
+                await patcher.AsyncApply(
+                    ksp2.InstallDir,
+                    ksp2.InstallDir,
+                    log, log
+                );
+                // update install model state if patch ran successfully.
+                parentWindow.TryLoadKsp2Install();
+            }
         }
         catch (Exception e)
         {

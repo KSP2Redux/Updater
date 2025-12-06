@@ -23,7 +23,7 @@ public class GameVersion : IEquatable<GameVersion>
 
         string GetFieldValueAsString(string fieldName)
         {
-            var buffer = versionType.Fields.Where(f => f.Name == fieldName).First().Constant;
+            var buffer = versionType.Fields.First(f => f.Name == fieldName).Constant;
             return buffer.ToString()!;
         }
 

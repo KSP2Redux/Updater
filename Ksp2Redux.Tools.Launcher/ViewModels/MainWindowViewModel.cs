@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -23,7 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public LauncherConfig Config { get; }
     public Ksp2Install? Ksp2 { get; private set; }
-    public GitHubReleasesFeed ReleasesFeed { get; private set; }
+    public ManifestReleasesFeed ReleasesFeed { get; private set; }
 
     public MainWindowViewModel()
     {
@@ -33,15 +35,18 @@ public partial class MainWindowViewModel : ViewModelBase
         TryLoadKsp2Install();
         var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
         Directory.CreateDirectory(releaseDownloadCacheDir);
-        ReleasesFeed = new(Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "github-releases-cache.json"), "KSP2Redux/Redux", Config.Pat, releaseDownloadCacheDir);
-        ReleasesFeed.Initialize();
+        ReleasesFeed = new(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir);
+        InitializeAsync();
 
         HomeTab = new HomeTabViewModel(this);
         CommunityTab = new CommunityTabViewModel(NewsCollection);
         ModsTab = new ModsTabViewModel();
         SettingsTab = new SettingsTabViewModel(Config,this);
     }
-
+    private async void InitializeAsync()
+    {
+        await ReleasesFeed.UpdateManifest(Config.ReleaseChannel);
+    }
     private async void LoadNews()
     {
         string tomlNewsContent = await News.GetTomlContent();
