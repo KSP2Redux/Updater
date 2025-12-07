@@ -45,7 +45,7 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
     public ObservableCollection<LogItemViewModel> InstallLogLines { get; set; } = [];
 
-    private readonly ManifestReleasesFeed releasesFeed;
+    private readonly ManifestReleasesFeed[] releasesFeed;
     private readonly MainWindowViewModel parentWindow;
     private CancellationTokenSource? cancelCurrentOperation;
 
@@ -64,15 +64,17 @@ public partial class HomeTabViewModel : ViewModelBase
 
 
     [RelayCommand]
-    public async Task UpdateVersionsList()
+    public async Task UpdateVersionsList(bool updateChannels = true)
     {
-        UpdateAsync();
+        if(updateChannels)
+            UpdateAsync();
         RebuildVersionsCollection();
         UpdateMainButtonState();
     }
     private async void UpdateAsync()
     {
-        await releasesFeed.UpdateManifest(releasesFeed.CurrentChannel);
+        await releasesFeed[0].UpdateManifest(releasesFeed[0].CurrentChannel);
+        await releasesFeed[1].UpdateManifest(releasesFeed[1].CurrentChannel);
     }
 
     [RelayCommand]
@@ -163,7 +165,10 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         Versions.Clear();
 
-        foreach (var releaseView in releasesFeed.GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
+        List<GameVersionViewModel> feedVersions = new List<GameVersionViewModel>();
+        feedVersions.AddRange(releasesFeed[0].GetAllVersions().Select(gv => new GameVersionViewModel(gv)));
+        feedVersions.AddRange(releasesFeed[1].GetAllVersions().Select(gv => new GameVersionViewModel(gv)));
+        foreach (var releaseView in feedVersions)
         {
             Versions.Add(releaseView);
         }
@@ -211,9 +216,22 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             //Get list of patches that need to be installed.
             List<ManifestReleasesFeed.Patch> patches;
+            int Channel = 0;
+            switch (SelectedVersion.Channel)
+            {
+                case "Stable":
+                    Channel = 0;
+                    break;
+                case "Beta":
+                    Channel = 1;
+                    break;
+                default:
+                    Channel = 0;
+                    break;
+            }
             if (parentWindow.Ksp2.IsRedux)
             {
-                patches = parentWindow.ReleasesFeed.GetPatchListToVersion(parentWindow.Ksp2.GameVersion,
+                patches = parentWindow.ReleasesFeed[Channel].GetPatchListToVersion(parentWindow.Ksp2.GameVersion,
                     SelectedVersion.Version);
             }
             else
@@ -228,26 +246,27 @@ public partial class HomeTabViewModel : ViewModelBase
                     distribution = "portable";
                 }
 
-                patches = parentWindow.ReleasesFeed.GetPatchListToVersion(distribution, SelectedVersion.Version);
+                patches = parentWindow.ReleasesFeed[Channel].GetPatchListToVersion(distribution, SelectedVersion.Version);
             }
             
             foreach (var patch in patches)
             {
                 // Download the patch file.
-                string downloadedFile = await parentWindow.ReleasesFeed.DownloadPatch(patch, log, updateDownloadProgress, cancelCurrentOperation.Token);
+                string downloadedFile = await parentWindow.ReleasesFeed[Channel].DownloadPatch(patch, log, updateDownloadProgress, cancelCurrentOperation.Token);
                 
                 // Run the patch installer.
                 var patcher = Ksp2Patch.FromFile(downloadedFile);
                 log($"Starting patch for {ksp2}\npatcher: {patcher}");
                 string PatchFromDir = ksp2.InstallDir;
-                string PatchToDir = parentWindow.Config.ReduxInstallPath;
+                string PatchToDir = Directory.GetCurrentDirectory() + "/install";
+                if(!Directory.Exists(PatchToDir))
+                    Directory.CreateDirectory(PatchToDir);
                 if (ksp2.IsRedux)
                 {
-                    if(Directory.Exists(parentWindow.Config.ReduxInstallPath + "old"))
-                        Directory.Delete(parentWindow.Config.ReduxInstallPath + "old", true);
-                    Directory.Move(parentWindow.Config.ReduxInstallPath,parentWindow.Config.ReduxInstallPath + "old");
-                    Directory.CreateDirectory(PatchToDir);
-                    PatchFromDir = parentWindow.Config.ReduxInstallPath + "old";
+                    if(Directory.Exists(PatchToDir + "tmp"))
+                        Directory.Delete(PatchToDir + "tmp", true);
+                    Directory.Move(PatchToDir,PatchToDir + "tmp");
+                    PatchFromDir = PatchToDir + "tmp";
                 }
                 await patcher.AsyncApply(
                     PatchToDir,
@@ -257,6 +276,8 @@ public partial class HomeTabViewModel : ViewModelBase
                 parentWindow.Config.Ksp2InstallPath = PatchToDir + "/KSP2_x64.exe";
                 parentWindow.Config.Save();
                 // update install model state if patch ran successfully.
+                if(Directory.Exists(PatchToDir + "tmp"))
+                    Directory.Delete(PatchToDir + "tmp", true);
                 parentWindow.TryLoadKsp2Install();
             }
         }

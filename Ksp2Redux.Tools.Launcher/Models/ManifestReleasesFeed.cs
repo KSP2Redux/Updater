@@ -114,7 +114,9 @@ public class ManifestReleasesFeed
         if (manifest?.patches != null)
             foreach (var release in manifest.patches)
             {
-                yield return release.ParseVersion();
+                var pversion = release.ParseVersion();
+                pversion.Channel = CurrentChannel;
+                yield return pversion;
             }
     }
 
