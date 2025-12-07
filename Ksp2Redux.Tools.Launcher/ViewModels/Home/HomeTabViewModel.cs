@@ -165,10 +165,7 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         Versions.Clear();
 
-        List<GameVersionViewModel> feedVersions = new List<GameVersionViewModel>();
-        feedVersions.AddRange(releasesFeed[0].GetAllVersions().Select(gv => new GameVersionViewModel(gv)));
-        feedVersions.AddRange(releasesFeed[1].GetAllVersions().Select(gv => new GameVersionViewModel(gv)));
-        foreach (var releaseView in feedVersions)
+        foreach (var releaseView in releasesFeed[(int)parentWindow.Config.ReleaseChannel].GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
         {
             Versions.Add(releaseView);
         }
