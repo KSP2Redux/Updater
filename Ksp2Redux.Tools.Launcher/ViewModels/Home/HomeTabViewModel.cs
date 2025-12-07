@@ -198,6 +198,7 @@ public partial class HomeTabViewModel : ViewModelBase
         var sb = new StringBuilder();
         void log(string message)
         {
+            Console.WriteLine(message);
             Dispatcher.UIThread.Post(() =>
             {
                 InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
@@ -265,9 +266,9 @@ public partial class HomeTabViewModel : ViewModelBase
                     Directory.Move(PatchToDir,PatchToDir + "tmp");
                     PatchFromDir = PatchToDir + "tmp";
                 }
-                await patcher.AsyncApply(
-                    PatchToDir,
+                await patcher.AsyncCopyAndApply(
                     PatchFromDir,
+                    PatchToDir,
                     log, log
                 );
                 parentWindow.Config.Ksp2InstallPath = PatchToDir + "/KSP2_x64.exe";
@@ -276,6 +277,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 if(Directory.Exists(PatchToDir + "tmp"))
                     Directory.Delete(PatchToDir + "tmp", true);
                 parentWindow.TryLoadKsp2Install();
+                await Task.Delay(250);
             }
         }
         catch (Exception e)

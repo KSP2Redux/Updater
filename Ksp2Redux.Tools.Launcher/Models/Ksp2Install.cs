@@ -44,9 +44,9 @@ public class Ksp2Install
         if (IsValid)
         {
             InstallDir = Path.GetDirectoryName(exePath)!;
-            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir);
             IsSteam = Path.Exists(Path.Combine(InstallDir, steamworksText));
             IsRedux = Path.Exists(Path.Combine(InstallDir, "Redux"));
+            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir,IsRedux);
         }
         else
         {
@@ -54,15 +54,18 @@ public class Ksp2Install
         }
     }
 
-    private static GameVersion? TryGetGameVersionFromMainAssembly(string installDir)
+    private static GameVersion? TryGetGameVersionFromMainAssembly(string installDir,bool IsRedux)
     {
         var mainAssembly = Path.Combine(installDir, assemblyCSharpRelativePath);
         var module = ModuleDefinition.ReadModule(mainAssembly);
         var versionType = module.Types.Where(t => t.Name == "VersionID").First();
         if (versionType is not null)
         {
-            return GameVersion.FromVersionIDType(versionType);
+            var gameVersionFound = GameVersion.FromVersionIDType(versionType,IsRedux);
+            module.Dispose();
+            return gameVersionFound;
         }
+        module.Dispose();
         return null;
     }
 

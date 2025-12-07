@@ -143,23 +143,18 @@ public class Ksp2Patch : IDisposable
 
     public static async Task CopyFileAsync(string sourceFile, string destinationFile)
     {
-        await using var sourceStream = new FileStream(
-            sourceFile,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            4096,
-            FileOptions.Asynchronous | FileOptions.SequentialScan
-        );
-        await using var destinationStream = new FileStream(
-            destinationFile,
-            FileMode.OpenOrCreate,
-            FileAccess.Write,
-            FileShare.None,
-            4096,
-            FileOptions.Asynchronous | FileOptions.SequentialScan
-        );
-        await sourceStream.CopyToAsync(destinationStream);
+        const int bufferSize = 1024 * 1024; // 1 MiB
+        await using var source = new FileStream(
+            sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        await using var dest = new FileStream(
+            destinationFile, FileMode.Create, FileAccess.Write, FileShare.None,
+            bufferSize, FileOptions.Asynchronous);
+
+        try { dest.SetLength(source.Length); } catch { /* not critical */ }
+
+        await source.CopyToAsync(dest, bufferSize);
     }
 
     public static async Task AsyncCopyKsp2Directory(
@@ -175,7 +170,6 @@ public class Ksp2Patch : IDisposable
 
         foreach (string file in FileInformation.CopyFiles.Where(file => File.Exists($"{ksp2Directory}{file}")))
         {
-            log?.Invoke($"Copying {ksp2Directory}{file} to {targetDirectory}{file}");
             await CopyFileAsync($"{ksp2Directory}{file}", $"{targetDirectory}{file}");
         }
 
@@ -200,65 +194,39 @@ public class Ksp2Patch : IDisposable
         Action<string>? log = null
     )
     {
-        // Get information about the source directory
-        var dir = new DirectoryInfo(sourceDir);
+        var src = new DirectoryInfo(sourceDir);
+        if (!src.Exists) throw new DirectoryNotFoundException(sourceDir);
 
-        // Check if the source directory exists
-        if (!dir.Exists)
+        Directory.CreateDirectory(destinationDir);
+        
+        foreach (var d in src.EnumerateDirectories("*", SearchOption.AllDirectories))
         {
-            throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
+            Directory.CreateDirectory(Path.Join(destinationDir, Path.GetRelativePath(sourceDir, d.FullName)));
         }
 
-        // Cache directories before we start copying
-        DirectoryInfo[] dirs = dir.GetDirectories();
+        var semaphore = new SemaphoreSlim(8);
+        var tasks = new List<Task>();
 
-        // Create the destination directory
-        if (!Directory.Exists(destinationDir))
-            Directory.CreateDirectory(destinationDir);
-
-        FileInfo[] files = dir.GetFiles();
-        bool logFiles = true;
-        int countForProgress = 0;
-        int maxCountForProgress = 0;
-        int progress = 0;
-        if (files.Length > 255)
+        foreach (var file in src.EnumerateFiles("*", SearchOption.AllDirectories))
         {
-            log?.Invoke($"Copying {files.Length} files from {sourceDir} to {destinationDir}");
-            logFiles = false;
-            countForProgress = files.Length / 10;
-            maxCountForProgress = files.Length / 10;
-        }
+            var rel = Path.GetRelativePath(sourceDir, file.FullName);
+            var dst = Path.Join(destinationDir, rel);
 
-        foreach (FileInfo file in files)
-        {
-            string targetFilePath = Path.Combine(destinationDir, file.Name);
-            if (logFiles)
+            await semaphore.WaitAsync().ConfigureAwait(false);
+            tasks.Add(Task.Run(async () =>
             {
-                log?.Invoke($"Copying file {Path.Combine(sourceDir, file.Name)} to {targetFilePath}");
-            }
-            else
-            {
-                countForProgress--;
-                if (countForProgress == 0)
+                try
                 {
-                    progress += 10;
-                    log?.Invoke($"{progress}% complete");
-                    countForProgress = maxCountForProgress;
+                    await CopyFileAsync(file.FullName, dst).ConfigureAwait(false);
                 }
-            }
-
-            await CopyFileAsync(file.FullName, targetFilePath);
+                finally
+                {
+                    semaphore.Release();
+                }
+            }));
         }
 
-        if (recursive)
-        {
-            foreach (DirectoryInfo subDir in dirs)
-            {
-                string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
-                log?.Invoke($"Copying directory {Path.Combine(sourceDir, subDir.Name)} to {newDestinationDir}");
-                await AsyncCopyDirectory(subDir.FullName, newDestinationDir, true, log);
-            }
-        }
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     public async Task AsyncCopyAndApply(

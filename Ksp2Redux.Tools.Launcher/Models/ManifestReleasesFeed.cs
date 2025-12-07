@@ -64,22 +64,23 @@ public class ManifestReleasesFeed
             }
 
             Version versionNumber;
-            string buildNumber;
+            string CommitHash;
             if (tokens.Length > 4)
             {
                 versionNumber = new Version(string.Join('.', tokens[0..4]));
-                buildNumber = tokens[4];
+                CommitHash = tokens[4];
             }
             else
             {
                 versionNumber = new Version(string.Join('.', tokens));
-                buildNumber = "0";
+                CommitHash = "0";
             }
 
             return new GameVersion()
             {
                 VersionNumber = versionNumber,
-                BuildNumber = buildNumber
+                BuildNumber = CommitHash,
+                CommitHash = CommitHash
             };
         }
     }
@@ -142,16 +143,20 @@ public class ManifestReleasesFeed
 
         var prepatchVersion = matchingPrepatch.ParseVersion();
 
-        bool numericBuild = !string.IsNullOrEmpty(toGameVersion.BuildNumber) &&
-                            toGameVersion.BuildNumber.All(char.IsDigit);
+        bool numericBuild = !string.IsNullOrEmpty(toGameVersion.CommitHash) &&
+                            toGameVersion.CommitHash.All(char.IsDigit);
         string sep = numericBuild ? "." : "-";
-        string targetVersion = $"{toGameVersion.VersionNumber}{sep}{toGameVersion.BuildNumber}";
+        string targetVersion = $"{toGameVersion.VersionNumber}{sep}{toGameVersion.CommitHash}";
         if (string.Equals(matchingPrepatch.version, targetVersion, StringComparison.OrdinalIgnoreCase))
         {
             return new List<Patch> { matchingPrepatch };
         }
 
-        return GetPatchListToVersion(prepatchVersion, toGameVersion);
+        var patchList = GetPatchListToVersion(prepatchVersion, toGameVersion);
+        patchList.Reverse();
+        patchList.Add(matchingPrepatch);
+        patchList.Reverse();
+        return patchList;
     }
     //find the best path to use to get user to the correct game version from their game version
     public List<Patch> GetPatchListToVersion(GameVersion fromGameVersion, GameVersion toGameVersion)
@@ -160,9 +165,9 @@ public class ManifestReleasesFeed
 
         static string ToVersionString(GameVersion gv)
         {
-            bool numericBuild = !string.IsNullOrEmpty(gv.BuildNumber) && gv.BuildNumber.All(char.IsDigit);
+            bool numericBuild = !string.IsNullOrEmpty(gv.CommitHash) && gv.CommitHash.All(char.IsDigit);
             string sep = numericBuild ? "." : "-";
-            return $"{gv.VersionNumber}{sep}{gv.BuildNumber}";
+            return $"{gv.VersionNumber}{sep}{gv.CommitHash}";
         }
 
         string startVersion = ToVersionString(fromGameVersion);
@@ -195,10 +200,9 @@ public class ManifestReleasesFeed
 
             if (patchesByOutput.TryGetValue(currentVer, out var producers))
             {
-                foreach (var patch in producers.OrderByDescending(p =>
-                             string.Equals(p.type, "delta", StringComparison.OrdinalIgnoreCase)))
+                foreach (var patch in producers)
                 {
-                    var requiredVer = patch.requires?.version;
+                    var requiredVer = patch.requires?.version ?? patch.requires?.distribution;
 
                     if (string.IsNullOrWhiteSpace(requiredVer) || visited.Contains(requiredVer))
                         continue;

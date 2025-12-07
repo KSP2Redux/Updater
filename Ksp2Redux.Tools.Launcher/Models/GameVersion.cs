@@ -14,7 +14,7 @@ public class GameVersion : IEquatable<GameVersion>
     /// <summary>
     /// Read version data VersionID class constants in Assembly-CSharp.dll
     /// </summary>
-    public static GameVersion FromVersionIDType(TypeDefinition versionType)
+    public static GameVersion FromVersionIDType(TypeDefinition versionType, bool IsRedux)
     {
         ReleaseChannel channel = ReleaseChannel.Stable;
         Version version;
@@ -41,20 +41,18 @@ public class GameVersion : IEquatable<GameVersion>
             version = new();
             buildNumber = string.Empty;
         }
-
+        if(IsRedux)
+            if (GetFieldValueAsString("CHANNEL_NAME") is string channelName && (channelName == "beta" ||  channelName == "internal" ))
+                channel = ReleaseChannel.Beta;
+        
         // try get redux commit hash
-        if (GetFieldValueAsString("VERSION_TEXT") is string possibleHash && possibleHash != "BUILD_INFO")
+        if (GetFieldValueAsString("DEBUG_INFO") is string possibleHash && possibleHash != "BUILD_INFO")
         {
-            commitHash = possibleHash;
+            commitHash = $"{channel.ToString().ToLower()}+{possibleHash}";
         }
         else
         {
             commitHash = string.Empty;
-        }
-
-        if (GetFieldValueAsString("VERSION_TEXT") is string channelName && channelName == "beta")
-        {
-            channel = ReleaseChannel.Beta;
         }
 
         return new GameVersion()
@@ -70,7 +68,7 @@ public class GameVersion : IEquatable<GameVersion>
     {
         return other is not null
             && VersionNumber == other.VersionNumber
-            && BuildNumber == other.BuildNumber;
+            && CommitHash == other.CommitHash;
     }
 
     public override bool Equals(object? obj)
