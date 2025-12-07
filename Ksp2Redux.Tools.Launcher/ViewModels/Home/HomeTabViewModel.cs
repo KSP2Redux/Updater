@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -238,11 +239,23 @@ public partial class HomeTabViewModel : ViewModelBase
                 // Run the patch installer.
                 var patcher = Ksp2Patch.FromFile(downloadedFile);
                 log($"Starting patch for {ksp2}\npatcher: {patcher}");
+                string PatchFromDir = ksp2.InstallDir;
+                string PatchToDir = parentWindow.Config.ReduxInstallPath;
+                if (ksp2.IsRedux)
+                {
+                    if(Directory.Exists(parentWindow.Config.ReduxInstallPath + "old"))
+                        Directory.Delete(parentWindow.Config.ReduxInstallPath + "old", true);
+                    Directory.Move(parentWindow.Config.ReduxInstallPath,parentWindow.Config.ReduxInstallPath + "old");
+                    Directory.CreateDirectory(PatchToDir);
+                    PatchFromDir = parentWindow.Config.ReduxInstallPath + "old";
+                }
                 await patcher.AsyncApply(
-                    ksp2.InstallDir,
-                    ksp2.InstallDir,
+                    PatchToDir,
+                    PatchFromDir,
                     log, log
                 );
+                parentWindow.Config.Ksp2InstallPath = PatchToDir + "/KSP2_x64.exe";
+                parentWindow.Config.Save();
                 // update install model state if patch ran successfully.
                 parentWindow.TryLoadKsp2Install();
             }

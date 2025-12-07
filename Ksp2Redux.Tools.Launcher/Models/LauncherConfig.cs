@@ -8,6 +8,7 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 public class LauncherConfig
 {
     public string Ksp2InstallPath { get; set; } = "";
+    public string ReduxInstallPath { get; set; } = "";
     public string ReduxRepoUrl { get; set; } = "";
     public string Pat { get; set; } = "";
     public ReleaseChannel ReleaseChannel { get; set; }
