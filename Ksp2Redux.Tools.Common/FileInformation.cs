@@ -19,16 +19,6 @@ public static class FileInformation
 
     public static HashSet<string> IgnoreFiles =
     [
-        $"{Ksp2X64Data}\\level0",
-        $"{Ksp2X64Data}\\level0.resS",
-        $"{Ksp2X64Data}\\resources.assets",
-        $"{Ksp2X64Data}\\resources.assets.resS",
-        /* $"{Ksp2X64Data}\\RuntimeInitializeOnLoads.json", */
-        /* $"{Ksp2X64Data}\\ScriptingAssemblies.json", */
-        $"{Ksp2X64Data}\\sharedassets0.assets",
-        $"{Ksp2X64Data}\\globalgamemanagers",
-        $"{Ksp2X64Data}\\globalgamemanagers.assets",
-        $"{Ksp2X64Data}\\globalgamemanagers.assets.resS",
         $"{Ksp2X64Data}\\data.unity3d",
         "Ksp2.log",
         "redux.log",
