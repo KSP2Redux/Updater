@@ -15,7 +15,7 @@ public static class FileInformation
     public static List<string> CopyFolders = [Ksp2X64Data, MonoBleedingEdge];
     public static List<string> CopyFiles = [Executable, CrashHandler, UnityPlayer, WinPixEventRuntime];
 
-    public static HashSet<string> IgnoreDirectories = [$"{Ksp2X64Data}\\Resources", "PDLauncher", "BepInEx", $@"{Ksp2X64Data}\StreamingAssets\aa"];
+    public static HashSet<string> IgnoreDirectories = ["PDLauncher", "BepInEx", $@"{Ksp2X64Data}\StreamingAssets\aa"];
 
     public static HashSet<string> IgnoreFiles =
     [
