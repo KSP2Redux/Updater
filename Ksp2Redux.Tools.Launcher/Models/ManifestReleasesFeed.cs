@@ -239,9 +239,7 @@ public class ManifestReleasesFeed
 
             Uri downloadUri;
 
-            if (apiResponse.StatusCode == System.Net.HttpStatusCode.Redirect ||
-                apiResponse.StatusCode == System.Net.HttpStatusCode.Found ||
-                apiResponse.StatusCode == System.Net.HttpStatusCode.MovedPermanently)
+            if (apiResponse.StatusCode is System.Net.HttpStatusCode.Redirect or System.Net.HttpStatusCode.MovedPermanently)
             {
                 downloadUri = apiResponse.Headers.Location;
             }

@@ -130,7 +130,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        if (!ksp2.IsRedux)
+        if (ksp2.Distribution != Distribution.Redux)
         {
             MainButtonEnabled = true;
             MainButtonShown = MainButtonState.Install;
@@ -173,125 +173,125 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private async Task RunPatchProcess()
     {
-        // lock main window tabs?
-
-        InstallLogLines.Clear();
-        IsInstallLogVisible = true;
-        IsProgressVisible = true;
-        DownloadProgressMb = 0;
-        DownloadProgressTotalMb = 450;
-        InstallProgressPatches = 0;
-        InstallProgressTotalPatches = 1;
-
-        // gather process dependencies.
-        var ksp2 = parentWindow.Ksp2;
-        if (ksp2 is null || SelectedVersion is null)
-        {
-            return;
-        }
-
-        // Set up process cancellation trigger.
-        MainButtonShown = MainButtonState.Cancel;
-        MainButtonEnabled = true;
-        MainButtonTooltip = "Cancel installation";
-        cancelCurrentOperation = new CancellationTokenSource();
-        var sb = new StringBuilder();
-        void log(string message)
-        {
-            Console.WriteLine(message);
-            Dispatcher.UIThread.Post(() =>
-            {
-                InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
-            });
-        }
-        void updateDownloadProgress(long value, long max)
-        {
-            DownloadProgressMb = value / 1024f / 1024f;
-            DownloadProgressTotalMb = max / 1024f / 1024f;
-        }
-
-        try
-        {
-            //Get list of patches that need to be installed.
-            List<ManifestReleasesFeed.Patch> patches;
-            int Channel = 0;
-            switch (SelectedVersion.Channel)
-            {
-                case "Stable":
-                    Channel = 0;
-                    break;
-                case "Beta":
-                    Channel = 1;
-                    break;
-                default:
-                    Channel = 0;
-                    break;
-            }
-            if (parentWindow.Ksp2.Distribution == Distribution.Redux)
-            {
-                patches = parentWindow.ReleasesFeed[Channel].GetPatchListToVersion(parentWindow.Ksp2.GameVersion,
-                    SelectedVersion.Version);
-            }
-            else
-            {
-                string distribution = "";
-                if (parentWindow.Ksp2.Distribution == Distribution.Steam)
-                {
-                    distribution = "steam";
-                }
-                else if (parentWindow.Ksp2.Distribution == Distribution.Epic)
-                {
-                    distribution = "epic";
-                }
-                else
-                {
-                    distribution = "portable";
-                }
-
-                patches = parentWindow.ReleasesFeed[Channel].GetPatchListToVersion(distribution, SelectedVersion.Version);
-            }
-            
-            foreach (var patch in patches)
-            {
-                // Download the patch file.
-                string downloadedFile = await parentWindow.ReleasesFeed[Channel].DownloadPatch(patch, log, updateDownloadProgress, cancelCurrentOperation.Token);
-                
-                // Run the patch installer.
-                var patcher = Ksp2Patch.FromFile(downloadedFile);
-                log($"Starting patch for {ksp2}\npatcher: {patcher}");
-                string PatchFromDir = ksp2.InstallDir;
-                string PatchToDir = Directory.GetCurrentDirectory() + "/install";
-                if(!Directory.Exists(PatchToDir))
-                    Directory.CreateDirectory(PatchToDir);
-                if (ksp2.Distribution == Distribution.Redux)
-                {
-                    if(Directory.Exists(PatchToDir + "tmp"))
-                        Directory.Delete(PatchToDir + "tmp", true);
-                    Directory.Move(PatchToDir,PatchToDir + "tmp");
-                    PatchFromDir = PatchToDir + "tmp";
-                }
-                await patcher.AsyncCopyAndApply(
-                    PatchFromDir,
-                    PatchToDir,
-                    log, log
-                );
-                parentWindow.Config.Ksp2InstallPath = PatchToDir + "/KSP2_x64.exe";
-                parentWindow.Config.Save();
-                // update install model state if patch ran successfully.
-                if(Directory.Exists(PatchToDir + "tmp"))
-                    Directory.Delete(PatchToDir + "tmp", true);
-                parentWindow.TryLoadKsp2Install();
-                await Task.Delay(250);
-            }
-        }
-        catch (Exception e)
-        {
-            log($"Error updating Redux: {e.Message}");
-        }
-        finally
-        {
-            cancelCurrentOperation = null;
-            UpdateMainButtonState();
-        }
+        // // lock main window tabs?
+        //
+        // InstallLogLines.Clear();
+        // IsInstallLogVisible = true;
+        // IsProgressVisible = true;
+        // DownloadProgressMb = 0;
+        // DownloadProgressTotalMb = 450;
+        // InstallProgressPatches = 0;
+        // InstallProgressTotalPatches = 1;
+        //
+        // // gather process dependencies.
+        // var ksp2 = parentWindow.Ksp2;
+        // if (ksp2 is null || SelectedVersion is null)
+        // {
+        //     return;
+        // }
+        //
+        // // Set up process cancellation trigger.
+        // MainButtonShown = MainButtonState.Cancel;
+        // MainButtonEnabled = true;
+        // MainButtonTooltip = "Cancel installation";
+        // cancelCurrentOperation = new CancellationTokenSource();
+        // var sb = new StringBuilder();
+        // void log(string message)
+        // {
+        //     Console.WriteLine(message);
+        //     Dispatcher.UIThread.Post(() =>
+        //     {
+        //         InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
+        //     });
+        // }
+        // void updateDownloadProgress(long value, long max)
+        // {
+        //     DownloadProgressMb = value / 1024f / 1024f;
+        //     DownloadProgressTotalMb = max / 1024f / 1024f;
+        // }
+        //
+        // try
+        // {
+        //     //Get list of patches that need to be installed.
+        //     List<ManifestReleasesFeed.Patch> patches;
+        //     int Channel = 0;
+        //     switch (SelectedVersion.Channel)
+        //     {
+        //         case "Stable":
+        //             Channel = 0;
+        //             break;
+        //         case "Beta":
+        //             Channel = 1;
+        //             break;
+        //         default:
+        //             Channel = 0;
+        //             break;
+        //     }
+        //     if (parentWindow.Ksp2.Distribution == Distribution.Redux)
+        //     {
+        //         patches = parentWindow.ReleasesFeed[Channel].GetPatchListToVersion(parentWindow.Ksp2.GameVersion,
+        //             SelectedVersion.Version);
+        //     }
+        //     else
+        //     {
+        //         string distribution = "";
+        //         if (parentWindow.Ksp2.Distribution == Distribution.Steam)
+        //         {
+        //             distribution = "steam";
+        //         }
+        //         else if (parentWindow.Ksp2.Distribution == Distribution.Epic)
+        //         {
+        //             distribution = "epic";
+        //         }
+        //         else
+        //         {
+        //             distribution = "portable";
+        //         }
+        //
+        //         patches = parentWindow.ReleasesFeed[Channel].GetPatchListToVersion(distribution, SelectedVersion.Version);
+        //     }
+        //     
+        //     foreach (var patch in patches)
+        //     {
+        //         // Download the patch file.
+        //         string downloadedFile = await parentWindow.ReleasesFeed[Channel].DownloadPatch(patch, log, updateDownloadProgress, cancelCurrentOperation.Token);
+        //         
+        //         // Run the patch installer.
+        //         var patcher = Ksp2Patch.FromFile(downloadedFile);
+        //         log($"Starting patch for {ksp2}\npatcher: {patcher}");
+        //         string PatchFromDir = ksp2.InstallDir;
+        //         string PatchToDir = Directory.GetCurrentDirectory() + "/install";
+        //         if(!Directory.Exists(PatchToDir))
+        //             Directory.CreateDirectory(PatchToDir);
+        //         if (ksp2.Distribution == Distribution.Redux)
+        //         {
+        //             if(Directory.Exists(PatchToDir + "tmp"))
+        //                 Directory.Delete(PatchToDir + "tmp", true);
+        //             Directory.Move(PatchToDir,PatchToDir + "tmp");
+        //             PatchFromDir = PatchToDir + "tmp";
+        //         }
+        //         await patcher.AsyncCopyAndApply(
+        //             PatchFromDir,
+        //             PatchToDir,
+        //             log, log
+        //         );
+        //         parentWindow.Config.Ksp2InstallPath = PatchToDir + "/KSP2_x64.exe";
+        //         parentWindow.Config.Save();
+        //         // update install model state if patch ran successfully.
+        //         if(Directory.Exists(PatchToDir + "tmp"))
+        //             Directory.Delete(PatchToDir + "tmp", true);
+        //         parentWindow.TryLoadKsp2Install();
+        //         await Task.Delay(250);
+        //     }
+        // }
+        // catch (Exception e)
+        // {
+        //     log($"Error updating Redux: {e.Message}");
+        // }
+        // finally
+        // {
+        //     cancelCurrentOperation = null;
+        //     UpdateMainButtonState();
+        // }
     }
 }
