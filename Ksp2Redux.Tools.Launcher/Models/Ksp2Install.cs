@@ -14,14 +14,9 @@ public class Ksp2Install
     public bool IsValid { get; }
 
     /// <summary>
-    /// True if the installation must be patched with a steam patch. False otherwise.
+    /// The distribution of the current install
     /// </summary>
-    public bool IsSteam { get; }
-
-    /// <summary>
-    /// True if a redux patch (of any version) has been installed.
-    /// </summary>
-    public bool IsRedux { get; }
+    public Distribution Distribution { get; }
 
     /// <summary>
     /// Game version deteced from reflection.
@@ -33,10 +28,11 @@ public class Ksp2Install
     public string ExePath { get; }
 
     private const string KSP2_EXE_NAME = "KSP2_x64.exe";
-    private static readonly string assemblyCSharpRelativePath = Path.Combine("KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
+    private static readonly string AssemblyCSharpRelativePath = Path.Combine("KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
     // Exists in Steam based installations, but doesn't exist in portable version.
-    private static readonly string steamworksText = Path.Combine("KSP2_x64_Data", "Plugins", "Steamworks.NET.txt");
-
+    private const string SteamworksText = "KSP2_x64_Data/Plugins/Steamworks.NET.txt";
+    private const string EpicGamesMarker = ".egstore";
+    
     public Ksp2Install(string exePath)
     {
         ExePath = exePath;
@@ -44,9 +40,16 @@ public class Ksp2Install
         if (IsValid)
         {
             InstallDir = Path.GetDirectoryName(exePath)!;
-            IsSteam = Path.Exists(Path.Combine(InstallDir, steamworksText));
-            IsRedux = Path.Exists(Path.Combine(InstallDir, "Redux"));
-            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir,IsRedux);
+            var isSteam = Path.Exists(Path.Combine(InstallDir, SteamworksText));
+            var isEpic = Path.Exists(Path.Combine(InstallDir, EpicGamesMarker));
+            var isRedux = Path.Exists(Path.Combine(InstallDir, "Redux"));
+
+            Distribution = isRedux ? Distribution.Redux   :
+                           isSteam ? Distribution.Steam   :
+                           isEpic  ? Distribution.Epic    : 
+                                     Distribution.Portable;
+            
+            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir,Distribution == Distribution.Redux);
         }
         else
         {
@@ -54,14 +57,14 @@ public class Ksp2Install
         }
     }
 
-    private static GameVersion? TryGetGameVersionFromMainAssembly(string installDir,bool IsRedux)
+    private static GameVersion? TryGetGameVersionFromMainAssembly(string installDir, bool isRedux)
     {
-        var mainAssembly = Path.Combine(installDir, assemblyCSharpRelativePath);
+        var mainAssembly = Path.Combine(installDir, AssemblyCSharpRelativePath);
         var module = ModuleDefinition.ReadModule(mainAssembly);
-        var versionType = module.Types.Where(t => t.Name == "VersionID").First();
+        var versionType = module.Types.First(t => t.Name == "VersionID");
         if (versionType is not null)
         {
-            var gameVersionFound = GameVersion.FromVersionIDType(versionType,IsRedux);
+            var gameVersionFound = GameVersion.FromVersionIDType(versionType,isRedux);
             module.Dispose();
             return gameVersionFound;
         }
@@ -71,6 +74,6 @@ public class Ksp2Install
 
     public override string ToString()
     {
-        return $"Ksp2Install: IsValid:{IsValid} IsSteam:{IsSteam} IsRedux:{IsRedux} GameVersion:{GameVersion} Dir:\"{InstallDir}\"";
+        return $"Ksp2Install: IsValid:{IsValid} Distribution:{Distribution} GameVersion:{GameVersion} Dir:\"{InstallDir}\"";
     }
 }

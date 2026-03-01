@@ -227,7 +227,7 @@ public partial class HomeTabViewModel : ViewModelBase
                     Channel = 0;
                     break;
             }
-            if (parentWindow.Ksp2.IsRedux)
+            if (parentWindow.Ksp2.Distribution == Distribution.Redux)
             {
                 patches = parentWindow.ReleasesFeed[Channel].GetPatchListToVersion(parentWindow.Ksp2.GameVersion,
                     SelectedVersion.Version);
@@ -235,9 +235,13 @@ public partial class HomeTabViewModel : ViewModelBase
             else
             {
                 string distribution = "";
-                if (parentWindow.Ksp2.IsSteam)
+                if (parentWindow.Ksp2.Distribution == Distribution.Steam)
                 {
                     distribution = "steam";
+                }
+                else if (parentWindow.Ksp2.Distribution == Distribution.Epic)
+                {
+                    distribution = "epic";
                 }
                 else
                 {
@@ -259,7 +263,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 string PatchToDir = Directory.GetCurrentDirectory() + "/install";
                 if(!Directory.Exists(PatchToDir))
                     Directory.CreateDirectory(PatchToDir);
-                if (ksp2.IsRedux)
+                if (ksp2.Distribution == Distribution.Redux)
                 {
                     if(Directory.Exists(PatchToDir + "tmp"))
                         Directory.Delete(PatchToDir + "tmp", true);
