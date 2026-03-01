@@ -1,36 +1,116 @@
-﻿namespace Ksp2Redux.Tools.Common;
+﻿
 
-public static class CacheRestore
+using System.IO.Compression;
+
+namespace Ksp2Redux.Tools.Common;
+
+public static class Cache
 {
-    public static void RecursivelyRestoreCache(string directory, string cache)
+    public static List<string> IgnoredDirectories = [Path.Combine("KSP2_x64_Data","StreamingAssets"), "UninstallTemp", "mods"];
+    public static List<string> SavedDirectories = ["Redux/Config"];
+
+
+    public static void RecursivelyCreateCache(string directory)
     {
-        var directoryInfo = new DirectoryInfo(directory);
-        List<string> toDelete = [];
-        List<string> toRestore = [];
-        foreach (var file in directoryInfo.GetFiles())
+        if (File.Exists(Path.Combine(directory, "uninstall.zip")))
         {
-            if (file.Name.EndsWith($".{cache}.r"))
+            File.Delete(Path.Combine(directory, "uninstall.zip"));
+        }
+        
+        
+        using var saveStream = File.Open(Path.Combine(directory, "uninstall.zip"), FileMode.Create, FileAccess.Write);
+        using (var memoryStream = new MemoryStream())
+        {
+            using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
             {
-                // Delete the cached file
-                toDelete.Add(file.FullName);
-                // And the file it refers to
-                toDelete.Add(file.FullName[..^$".{cache}.r".Length]);
+                AddFolder(zipArchive, directory, "");
             }
-            else if (file.Name.EndsWith($".{cache}"))
-            {
-                toDelete.Add(file.FullName);
-                toRestore.Add(file.FullName[..^$".{cache}".Length]);
-            }
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            memoryStream.CopyTo(saveStream);
+        }
+    }
+
+    public static void AddFolder(ZipArchive archive, string directory, string prefix)
+    {
+        if (IgnoredDirectories.Contains(prefix))
+        {
+            return;
+        }
+        var dir = new DirectoryInfo(directory);
+        foreach (var file in dir.GetFiles())
+        {
+            archive.CreateEntryFromFile(file.FullName, Path.Combine(prefix, file.Name));
         }
 
-        foreach (var file in toRestore)
+        foreach (var subDir in dir.GetDirectories())
         {
-            File.Copy($"{file}.{cache}", file, true);
+            AddFolder(archive, Path.Combine(directory, subDir.Name), Path.Combine(prefix, subDir.Name));
+        }
+    }
+    
+    // If isForRepatch is true, then the Redux/Config folder is saved, and 
+    public static void RecursivelyRestoreCache(string directory, bool isForRepatch=false)
+    {
+        if (!File.Exists(Path.Combine(directory, "uninstall.zip")))
+        {
+            throw new Exception("Original stock files were deleted, uninstallation is impossible");
         }
 
-        foreach (var file in toDelete)
+        if (isForRepatch)
         {
-            File.Delete(file);
+            Directory.CreateDirectory(Path.Combine(directory, "UninstallTemp"));
+            foreach (var dir in SavedDirectories)
+            {
+                Directory.Move(Path.Combine(directory, dir), Path.Combine(directory, "UninstallTemp", dir));
+            }
         }
+        
+        ClearOutFolder(directory);
+        
+        var zipFile = ZipFile.OpenRead(Path.Combine(directory, "uninstall.zip"));
+        zipFile.ExtractToDirectory(directory, true);
+        
+        if (!isForRepatch)
+        {
+            File.Delete(Path.Combine(directory, "uninstall.zip"));
+        }
+        else
+        {
+            foreach (var dir in SavedDirectories)
+            {
+                Directory.Move(Path.Combine(directory, "UninstallTemp", dir), Path.Combine(directory, dir));
+            }
+            Directory.Delete(Path.Combine(directory, "UninstallTemp"), true);
+        }
+    }
+
+    private static bool ClearOutFolder(string dir, string prefix="")
+    {
+        if (SavedDirectories.Contains(prefix))
+        {
+            return false;
+        }
+
+        var info = new DirectoryInfo(dir);
+        foreach (var file in info.GetFiles())
+        {
+            file.Delete();
+        }
+
+        bool removeFolder = true;
+        foreach (var directory in info.GetDirectories())
+        {
+            var prefix2 = Path.Combine(prefix, directory.Name);
+            var dir2 = Path.Combine(dir, directory.Name);
+            if (ClearOutFolder(dir2, prefix2))
+            {
+                directory.Delete(true);
+            }
+            else
+            {
+                removeFolder = false;
+            }
+        }
+        return removeFolder;
     }
 }

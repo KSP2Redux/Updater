@@ -7,13 +7,14 @@ Console.WriteLine(string.Join(", ",args));
 var ksp2Directory = args[0];
 var buildDirectory = args[1];
 var result = args[2];
+var checkRemovals = args.Length > 3 && args[3] == "true";
 
 Patch();
 Dump();
 
 void Patch()
 {
-   using var _ = Ksp2Patch.FromDiff(result, ksp2Directory, buildDirectory);
+   using var _ = Ksp2Patch.FromDiff(result, ksp2Directory, buildDirectory, checkRemovals);
 }
 
 void Dump()

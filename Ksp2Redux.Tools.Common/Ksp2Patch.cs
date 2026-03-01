@@ -141,6 +141,18 @@ public class Ksp2Patch : IDisposable
                     });
                 }
             }
+
+            foreach (var dir in originalDir.GetDirectories())
+            {
+                if (!Directory.Exists(Path.Combine(patchDirectory, dir.Name)))
+                {
+                    _manifest.operations.Add(new PatchOperation
+                    {
+                        fileName = Path.Combine(prefix, dir.Name),
+                        action = PatchOperation.PatchAction.Remove
+                    });
+                }
+            }
         }
 
         foreach (DirectoryInfo dir in patchDir.GetDirectories())
@@ -251,11 +263,11 @@ public class Ksp2Patch : IDisposable
         string targetDirectory,
         Action<string>? log = null,
         Action<string>? error = null,
-        string? cacheExt = ""
+        bool cacheAsStock = false
     )
     {
         await AsyncCopyKsp2Directory(ksp2Directory, targetDirectory, log);
-        await AsyncApply(targetDirectory, ksp2Directory, log, error, cacheExt);
+        await AsyncApply(targetDirectory, ksp2Directory, log, error, cacheAsStock);
     }
 
     public async Task AsyncApply(
@@ -263,7 +275,7 @@ public class Ksp2Patch : IDisposable
         string? sourceDirectory = null,
         Action<string>? log = null,
         Action<string>? error = null,
-        string? cacheExt = null
+        bool cacheAsStock = false
     )
     {
         sourceDirectory ??= targetDirectory;
@@ -342,27 +354,13 @@ public class Ksp2Patch : IDisposable
                                     $"installation directory"
                                 );
                             }
-
-                            if (cacheExt != null)
-                            {
-                                log?.Invoke($"Creating cached original file for {trueName} (cache {cacheExt})");
-                                await CopyFileAsync(
-                                    $"{sourceDirectory}{trueName}",
-                                    $"{targetDirectory}{trueName}.{cacheExt}"
-                                );
-                            }
-                            else
-                            {
-                                log?.Invoke($"Creating temporary file for {trueName}");
-                                await CopyFileAsync(
-                                    $"{sourceDirectory}{trueName}",
-                                    $"{targetDirectory}{trueName}.temp"
-                                );
-                            }
-
-                            await using FileStream originalFile = cacheExt != null ? File.OpenRead(
-                                $"{targetDirectory}{trueName}.{cacheExt}"
-                            ) : File.OpenRead($"{targetDirectory}{trueName}.temp");
+                            log?.Invoke($"Creating temporary file for {trueName}");
+                            await CopyFileAsync(
+                                $"{sourceDirectory}{trueName}",
+                                $"{targetDirectory}{trueName}.temp"
+                            );
+                            
+                            await using FileStream originalFile = File.OpenRead($"{targetDirectory}{trueName}.temp");
                             
                             await using FileStream targetFile = File.Open(
                                 $"{targetDirectory}{trueName}",
@@ -405,32 +403,23 @@ public class Ksp2Patch : IDisposable
                                 );
                             }
                             // Delete the original file if we are not caching it
-                            if (cacheExt == null) File.Delete($"");
+                            File.Delete($"{targetDirectory}{trueName}.temp");
                         }
                         else if (operation.action == PatchOperation.PatchAction.Remove)
                         {
                             log?.Invoke($"Deleting {trueName}");
 
-                            if (File.Exists($"{targetDirectory}{trueName}"))
+                            if (Directory.Exists($"{targetDirectory}{trueName}"))
                             {
-                                if (cacheExt != null)
-                                {
-                                    log?.Invoke($"Creating cached original file for {trueName} (cache {cacheExt})");
-                                    await CopyFileAsync(
-                                        $"{sourceDirectory}{trueName}",
-                                        $"{targetDirectory}{trueName}.{cacheExt}"
-                                    );
-                                }
-                                
+                                Directory.Delete($"{targetDirectory}{trueName}", true);
+                            }
+                            else if (File.Exists($"{targetDirectory}{trueName}"))
+                            {
                                 File.Delete($"{targetDirectory}{trueName}");
                             }
                         }
                         else // Add
                         {
-                            if (cacheExt != null)
-                            {
-                                await File.WriteAllTextAsync($"{targetDirectory}{trueName}.{cacheExt}.r", "");
-                            }
                             
                             log?.Invoke($"Copying {trueName} from patch");
 

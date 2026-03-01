@@ -4,4 +4,6 @@ public enum ReleaseChannel
 {
     Stable,
     Beta,
+    // This is used for manually applied patches
+    Develop
 }
