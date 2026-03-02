@@ -28,6 +28,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public LauncherConfig Config { get; }
     public Ksp2Install? Ksp2 { get; private set; }
     public Dictionary<string, ManifestReleasesFeed> ReleasesFeed { get; private set; }
+    public int CurrentTab { get; set; }
 
     public MainWindowViewModel()
     {
@@ -98,5 +99,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Ksp2 = new(Config.Ksp2InstallPath);
         }
+    }
+
+    public void GoToHome()
+    {
+        CurrentTab = 0;
+        OnPropertyChanged(nameof(CurrentTab));
     }
 }

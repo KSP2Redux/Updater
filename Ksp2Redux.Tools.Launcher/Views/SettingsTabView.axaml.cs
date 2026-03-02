@@ -25,4 +25,9 @@ public partial class SettingsTabView : UserControl
     {
         await Model.UninstallRedux();
     }
+
+    private async void InstallFromPatchFile(object? sender, RoutedEventArgs e)
+    {
+        await Model.InstallFromPatchFile();
+    }
 }

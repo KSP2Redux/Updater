@@ -53,6 +53,11 @@ public partial class SettingsTabViewModel() : ViewModelBase
     {
         Patterns = ["KSP2_x64.exe"],
     };
+    
+    private static readonly FilePickerFileType Patch = new("KSP2 Patch File")
+    {
+        Patterns = ["*.patch"],
+    };
 
     public async Task SelectGameInstallDirectory()
     {
@@ -121,5 +126,35 @@ public partial class SettingsTabViewModel() : ViewModelBase
         
         
         await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled").ShowAsync();
+    }
+
+    public async Task InstallFromPatchFile()
+    {
+        var chosenPath = await DoOpenPatchFilePickerAsync();
+
+        if (chosenPath is null) return;
+        
+        parentWindow.GoToHome();
+        
+        await parentWindow.HomeTab.InstallFromPatchFile(chosenPath.Path.LocalPath);
+    }
+
+
+    public async Task<IStorageFile?> DoOpenPatchFilePickerAsync()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
+            desktop.MainWindow?.StorageProvider is not { } provider)
+            throw new NullReferenceException("Missing StorageProvider instance.");
+        var startFolder = await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Downloads);
+        
+        var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
+        {
+            Title = "Open Patch File",
+            AllowMultiple = false,
+            FileTypeFilter = [Patch],
+            SuggestedStartLocation = startFolder,
+        });
+        
+        return files?.Count >= 1 ? files[0] : null;
     }
 }

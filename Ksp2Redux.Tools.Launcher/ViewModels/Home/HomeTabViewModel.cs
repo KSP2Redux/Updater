@@ -147,7 +147,7 @@ public partial class HomeTabViewModel : ViewModelBase
         if (ksp2.Distribution != Distribution.Redux)
         {
             MainButtonEnabled = true;
-            if (SelectedVersion.Version.Equals(ksp2.GameVersion))
+            if (selectedVersion.Version.Equals(ksp2.GameVersion) || selectedVersion.Channel == "installed")
             {
                 MainButtonShown = MainButtonState.Launch;
                 MainButtonTooltip = "Launch Stock KSP2";
@@ -160,7 +160,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        if (selectedVersion.Version.Equals(ksp2.GameVersion))
+        if (selectedVersion.Version.Equals(ksp2.GameVersion) || selectedVersion.Channel == "installed")
         {
             MainButtonEnabled = true;
             MainButtonShown = MainButtonState.Launch;
@@ -204,7 +204,6 @@ public partial class HomeTabViewModel : ViewModelBase
                 Versions.Add(releaseView);
             }
         }
-        Console.WriteLine(SelectedVersion.Version);
     }
 
     private async Task RunPatchProcess()
@@ -234,49 +233,103 @@ public partial class HomeTabViewModel : ViewModelBase
         MainButtonTooltip = "Cancel installation";
         cancelCurrentOperation = new CancellationTokenSource();
         var sb = new StringBuilder();
-        void log(string message)
-        {
-            Console.WriteLine(message);
-            Dispatcher.UIThread.Post(() =>
-            {
-                InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
-            });
-        }
-        void updateDownloadProgress(long value, long max)
-        {
-            DownloadProgressMb = value / 1024f / 1024f;
-            DownloadProgressTotalMb = max / 1024f / 1024f;
-        }
 
-        void updateStepsProgress(int current, int max)
+        Log("Creating install plan");
+            
+        var plan = parentWindow.ReleasesFeed[SelectedVersion.Channel]
+            .GetPatchListToVersion(parentWindow.Ksp2!.GameVersion!, SelectedVersion.Version);
+        try
+        {
+            await RunPlanOnInstall(plan, ksp2);
+        }
+        catch (Exception e)
+        {
+            Log($"Error updating Redux: {e.Message}");
+            Log($"Stack Trace: {e.StackTrace}");
+            Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
+        }
+        finally
+        {
+            cancelCurrentOperation = null;
+            parentWindow.TryLoadKsp2Install();
+            await UpdateVersionsList();
+        }
+    }
+
+    public async Task InstallFromPatchFile(string path)
+    {
+        
+        InstallLogLines.Clear();
+        IsInstallLogVisible = true;
+        IsProgressVisible = true;
+        DownloadProgressMb = 0;
+        DownloadProgressTotalMb = 0;
+        InstallProgressSteps = 0;
+        InstallProgressTotalSteps = 1;
+        
+        var plan = new InstallPlan();
+        plan.ApplyPatchFile(path);
+        plan.Prepatch();
+        plan.RevertToStock();
+        
+        parentWindow.TryLoadKsp2Install();
+        var ksp2 = parentWindow.Ksp2;
+        if (ksp2 is null || SelectedVersion is null)
+        {
+            return;
+        }
+        
+        MainButtonShown = MainButtonState.Cancel;
+        MainButtonEnabled = true;
+        MainButtonTooltip = "Cancel installation";
+        cancelCurrentOperation = new CancellationTokenSource();
+        
+        try
+        {
+            await RunPlanOnInstall(plan, ksp2);
+        }
+        catch (Exception e)
+        {
+            Log($"Error updating Redux: {e.Message}");
+            Log($"Stack Trace: {e.StackTrace}");
+            Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
+        }
+        finally
+        {
+            cancelCurrentOperation = null;
+            parentWindow.TryLoadKsp2Install();
+            await UpdateVersionsList();
+        }
+    }
+    
+
+    private async Task RunPlanOnInstall(InstallPlan plan, Ksp2Install ksp2)
+    {
+        UpdateStepsProgress(0, plan.Steps.Count);
+        plan.Describe(Log);
+
+        await plan.ApplyToFolder(ksp2.InstallDir, Log, UpdateDownloadProgress, UpdateStepsProgress,
+            cancelCurrentOperation!.Token);
+
+        void UpdateStepsProgress(int current, int max)
         {
             InstallProgressSteps = current;
             InstallProgressTotalSteps = max;
         }
 
-        try
+        void UpdateDownloadProgress(long value, long max)
         {
-            log("Creating install plan");
-            
-            var plan = parentWindow.ReleasesFeed[SelectedVersion.Channel]
-                .GetPatchListToVersion(parentWindow.Ksp2!.GameVersion!, SelectedVersion.Version);
-            updateStepsProgress(0, plan.Steps.Count);
-            
-            plan.Describe(log);
+            DownloadProgressMb = value / 1024f / 1024f;
+            DownloadProgressTotalMb = max / 1024f / 1024f;
+        }
+    }
 
-            await plan.ApplyToFolder(ksp2.InstallDir, log, updateDownloadProgress, updateStepsProgress,
-                cancelCurrentOperation.Token);
-        }
-        catch (Exception e)
+    private void Log(string message)
+    {
+        Console.WriteLine(message);
+        Dispatcher.UIThread.Post(() =>
         {
-            log($"Error updating Redux: {e.Message}");
-            log($"Stack Trace: {e.StackTrace}");
-            log($"Redux may be in an invalid state, try uninstalling and reinstalling");
-        }
-        finally
-        {
-            cancelCurrentOperation = null;
-            UpdateMainButtonState();
-        }
+            InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
+        });
     }
 }

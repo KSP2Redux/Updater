@@ -14,6 +14,7 @@
 		<TextBlock Margin="0 5" >Release channel:</TextBlock>
 		<ComboBox Name="ReleaseChannel" MaxDropDownHeight="100" SelectedValue="{Binding ReleaseChannel}" ItemsSource="{Binding ValidChannels}">
 		</ComboBox>
+		<Button Background="DarkCyan" Click="InstallFromPatchFile">Install From Patch File</Button>
 		<Button Background="DarkRed" Click="UninstallReduxClick">Uninstall Redux</Button>
 	</StackPanel>
 </UserControl>
