@@ -39,6 +39,7 @@ public static class Cache
         var dir = new DirectoryInfo(directory);
         foreach (var file in dir.GetFiles())
         {
+            if (file.Name == "uninstall.zip" && prefix == "") continue;
             archive.CreateEntryFromFile(file.FullName, Path.Combine(prefix, file.Name));
         }
 
@@ -61,14 +62,19 @@ public static class Cache
             Directory.CreateDirectory(Path.Combine(directory, "UninstallTemp"));
             foreach (var dir in SavedDirectories)
             {
-                Directory.Move(Path.Combine(directory, dir), Path.Combine(directory, "UninstallTemp", dir));
+                if (Directory.Exists(Path.Combine(directory, dir)))
+                {
+                    Directory.Move(Path.Combine(directory, dir), Path.Combine(directory, "UninstallTemp", dir));
+                }
             }
         }
         
         ClearOutFolder(directory);
-        
-        var zipFile = ZipFile.OpenRead(Path.Combine(directory, "uninstall.zip"));
-        zipFile.ExtractToDirectory(directory, true);
+
+        using (var zipFile = ZipFile.OpenRead(Path.Combine(directory, "uninstall.zip")))
+        {
+            zipFile.ExtractToDirectory(directory, true);
+        }
         
         if (!isForRepatch)
         {
@@ -78,7 +84,8 @@ public static class Cache
         {
             foreach (var dir in SavedDirectories)
             {
-                Directory.Move(Path.Combine(directory, "UninstallTemp", dir), Path.Combine(directory, dir));
+                if (Directory.Exists(Path.Combine(directory, "UninstallTemp", dir)))
+                    Directory.Move(Path.Combine(directory, "UninstallTemp", dir), Path.Combine(directory, dir));
             }
             Directory.Delete(Path.Combine(directory, "UninstallTemp"), true);
         }
@@ -86,7 +93,7 @@ public static class Cache
 
     private static bool ClearOutFolder(string dir, string prefix="")
     {
-        if (SavedDirectories.Contains(prefix))
+        if (IgnoredDirectories.Contains(prefix))
         {
             return false;
         }
@@ -94,6 +101,7 @@ public static class Cache
         var info = new DirectoryInfo(dir);
         foreach (var file in info.GetFiles())
         {
+            if (file.Name == "uninstall.zip" && prefix == "") continue;
             file.Delete();
         }
 

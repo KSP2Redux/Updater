@@ -5,7 +5,7 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
 public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGroupedComboBoxItem
 {
-    public string Channel => gameVersion.Channel.ToString();
+    public string Channel = gameVersion.Channel;
     public string VersionString => $"v{gameVersion.VersionNumber}.{gameVersion.BuildNumber}" +
                                    $"{(gameVersion.Channel == "stable"
                                        ? ""

@@ -61,17 +61,25 @@ public class Ksp2Install
 
     private static GameVersion? TryGetGameVersionFromMainAssembly(string installDir, bool isRedux)
     {
-        var mainAssembly = Path.Combine(installDir, AssemblyCSharpRelativePath);
-        var module = ModuleDefinition.ReadModule(mainAssembly);
-        var versionType = module.Types.First(t => t.Name == "VersionID");
-        if (versionType is not null)
+        try
         {
-            var gameVersionFound = GameVersion.FromVersionIDType(versionType,isRedux);
+            var mainAssembly = Path.Combine(installDir, AssemblyCSharpRelativePath);
+            var module = ModuleDefinition.ReadModule(mainAssembly);
+            var versionType = module.Types.First(t => t.Name == "VersionID");
+            if (versionType is not null)
+            {
+                var gameVersionFound = GameVersion.FromVersionIDType(versionType, isRedux);
+                module.Dispose();
+                return gameVersionFound;
+            }
+
             module.Dispose();
-            return gameVersionFound;
+            return null;
         }
-        module.Dispose();
-        return null;
+        catch (Exception e)
+        {
+            return null;
+        }
     }
 
     public override string ToString()

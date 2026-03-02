@@ -99,8 +99,9 @@ public partial class SettingsTabViewModel() : ViewModelBase
 
     public async Task UninstallRedux()
     {
-        parentWindow.TryLoadKsp2Install();
-        if (parentWindow.Ksp2?.Distribution != Distribution.Redux)
+        // parentWindow.TryLoadKsp2Install();
+        var installDir = Path.GetDirectoryName(parentWindow.Config.Ksp2InstallPath);;
+        if (!File.Exists(Path.Combine(installDir, "uninstall.zip")))
         {
             await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
             return;
@@ -113,7 +114,7 @@ public partial class SettingsTabViewModel() : ViewModelBase
         var result = await box.ShowAsync();
         if (result != ButtonResult.Yes) return;
         
-        Cache.RecursivelyRestoreCache(parentWindow.Ksp2.InstallDir);
+        Cache.RecursivelyRestoreCache(installDir);
         
         parentWindow.TryLoadKsp2Install();
         await parentWindow.HomeTab.UpdateVersionsList();

@@ -343,6 +343,7 @@ public class Ksp2Patch : IDisposable
                         string trueName = operation.fileName;
                         if (operation.action == PatchOperation.PatchAction.Patch)
                         {
+                            log?.Invoke($"Applying binary patch to {trueName}");
                             DirectoryInfo? parent = new FileInfo($"{targetDirectory}{trueName}").Directory;
                             Directory.CreateDirectory(parent!.FullName);
                             if (!File.Exists($"{sourceDirectory}{trueName}"))
@@ -357,49 +358,50 @@ public class Ksp2Patch : IDisposable
                                 $"{sourceDirectory}{trueName}",
                                 $"{targetDirectory}{trueName}.temp"
                             );
-                            
-                            await using FileStream originalFile = File.OpenRead($"{targetDirectory}{trueName}.temp");
-                            
-                            await using FileStream targetFile = File.Open(
-                                $"{targetDirectory}{trueName}",
-                                FileMode.Create,
-                                FileAccess.ReadWrite
-                            );
 
-                            if (!await ValidateFileHashAsync(originalFile, operation.originalHash!))
+                            await using (FileStream originalFile = File.OpenRead($"{targetDirectory}{trueName}.temp"))
                             {
-                                throw new InvalidDataException(
-                                    $"File {originalFile.Name} does not match expected hash " +
-                                    $"{FormatHash(operation.originalHash!)}. Cannot apply patch! Check that the " +
-                                    $"Redux patch you are applying is for the version of the game (Steam, portable " +
-                                    $"zip, or Epic) you are patching."
+                                await using FileStream targetFile = File.Open(
+                                    $"{targetDirectory}{trueName}",
+                                    FileMode.Create,
+                                    FileAccess.ReadWrite
                                 );
-                            }
 
-                            log?.Invoke($"Applying binary patch to {trueName}");
-
-                            try
-                            {
-                                string patchPath = Path.Combine(tempPatchDir, trueName + ".bsdiff");
-                                BinaryPatch.Apply(originalFile, () =>
+                                if (!await ValidateFileHashAsync(originalFile, operation.originalHash!))
                                 {
-                                    var memory = new MemoryStream(File.ReadAllBytes(patchPath));
-                                    return memory;
-                                }, targetFile);
-                            }
-                            catch (Exception e)
-                            {
-                                error?.Invoke(e.Message);
-                                throw;
-                            }
+                                    throw new InvalidDataException(
+                                        $"File {originalFile.Name} does not match expected hash " +
+                                        $"{FormatHash(operation.originalHash!)}. Cannot apply patch! Check that the " +
+                                        $"Redux patch you are applying is for the version of the game (Steam, portable " +
+                                        $"zip, or Epic) you are patching."
+                                    );
+                                }
 
-                            if (!await ValidateFileHashAsync(targetFile, operation.finalHash!))
-                            {
-                                throw new InvalidDataException(
-                                    $"File {targetFile.Name} does not match expected hash " +
-                                    $"{FormatHash(operation.finalHash!)}."
-                                );
+
+                                try
+                                {
+                                    string patchPath = Path.Combine(tempPatchDir, trueName + ".bsdiff");
+                                    BinaryPatch.Apply(originalFile, () =>
+                                    {
+                                        var memory = new MemoryStream(File.ReadAllBytes(patchPath));
+                                        return memory;
+                                    }, targetFile);
+                                }
+                                catch (Exception e)
+                                {
+                                    error?.Invoke(e.Message);
+                                    throw;
+                                }
+
+                                if (!await ValidateFileHashAsync(targetFile, operation.finalHash!))
+                                {
+                                    throw new InvalidDataException(
+                                        $"File {targetFile.Name} does not match expected hash " +
+                                        $"{FormatHash(operation.finalHash!)}."
+                                    );
+                                }
                             }
+                            
                             // Delete the original file if we are not caching it
                             File.Delete($"{targetDirectory}{trueName}.temp");
                         }

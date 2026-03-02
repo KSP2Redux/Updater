@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -49,7 +50,6 @@ public class ManifestReleasesFeed
     public class Patch
     {
         public string version { get; set; }
-        public string type { get; set; }
         public Requires requires { get; set; }
         public string url { get; set; }
         public string checksum_sha256 { get; set; }
@@ -89,8 +89,9 @@ public class ManifestReleasesFeed
 
     public class Requires
     {
-        public string? distribution { get; set; }
         public string? version { get; set; }
+
+        [JsonIgnore] public bool IsBasePatch => string.IsNullOrEmpty(version);
     }
 
     public class Manifest
@@ -124,47 +125,59 @@ public class ManifestReleasesFeed
             }
     }
 
+    // private InstallPlan GetBestFromPrepatchToVersion(GameVersion toGameVersion)
+    // {
+    //     var lowestCostSoFar = int.MaxValue;
+    //     InstallPlan bestPlan = new InstallPlan();
+    //     foreach (var release in manifest.patches)
+    //     {
+    //         if (string.Equals())
+    //     }
+    // }
+    
     //if user selects the initial version as to install then skip later patch checking as only 1 patch needed
-    public List<Patch> GetPatchListToVersion(string? distribution, GameVersion toGameVersion)
-    {
-        if (manifest?.patches is null)
-            return new List<Patch>();
-
-        Patch? matchingPrepatch = null;
-        foreach (var release in manifest.patches)
-        {
-            if (!string.IsNullOrWhiteSpace(release.requires?.distribution) &&
-                string.Equals(release.requires.distribution, distribution, StringComparison.OrdinalIgnoreCase))
-            {
-                matchingPrepatch = release;
-                break;
-            }
-        }
-
-        if (matchingPrepatch is null)
-            return new List<Patch>();
-
-        var prepatchVersion = matchingPrepatch.ParseVersion();
-
-        bool numericBuild = !string.IsNullOrEmpty(toGameVersion.CommitHash) &&
-                            toGameVersion.CommitHash.All(char.IsDigit);
-        string sep = numericBuild ? "." : "-";
-        string targetVersion = $"{toGameVersion.VersionNumber}{sep}{toGameVersion.CommitHash}";
-        if (string.Equals(matchingPrepatch.version, targetVersion, StringComparison.OrdinalIgnoreCase))
-        {
-            return new List<Patch> { matchingPrepatch };
-        }
-
-        var patchList = GetPatchListToVersion(prepatchVersion, toGameVersion);
-        patchList.Reverse();
-        patchList.Add(matchingPrepatch);
-        patchList.Reverse();
-        return patchList;
-    }
+    // public InstallPlan GetPatchListToVersion(GameVersion toGameVersion)
+    // {
+    //     
+    //     var plan = new InstallPlan();
+    //     if (manifest?.patches is null)
+    //         return plan;
+    //
+    //     
+    //     // Patch? matchingPrepatch = null;
+    //     // foreach (var release in manifest.patches)
+    //     // {
+    //     //     if (!string.IsNullOrWhiteSpace(release.requires?.distribution) &&
+    //     //         string.Equals(release.requires.distribution, distribution, StringComparison.OrdinalIgnoreCase))
+    //     //     {
+    //     //         matchingPrepatch = release;
+    //     //         break;
+    //     //     }
+    //     // }
+    //
+    //     var prepatchVersion = matchingPrepatch.ParseVersion();
+    //
+    //     bool numericBuild = !string.IsNullOrEmpty(toGameVersion.CommitHash) &&
+    //                         toGameVersion.CommitHash.All(char.IsDigit);
+    //     string sep = numericBuild ? "." : "-";
+    //     string targetVersion = $"{toGameVersion.VersionNumber}{sep}{toGameVersion.CommitHash}";
+    //     if (string.Equals(matchingPrepatch.version, targetVersion, StringComparison.OrdinalIgnoreCase))
+    //     {
+    //         return new List<Patch> { matchingPrepatch };
+    //     }
+    //
+    //     var patchList = GetPatchListToVersion(prepatchVersion, toGameVersion);
+    //     patchList.Reverse();
+    //     patchList.Add(matchingPrepatch);
+    //     patchList.Reverse();
+    //     return patchList;
+    // }
     //find the best path to use to get user to the correct game version from their game version
-    public List<Patch> GetPatchListToVersion(GameVersion fromGameVersion, GameVersion toGameVersion)
+    
+    
+    public InstallPlan GetPatchListToVersion(GameVersion fromGameVersion, GameVersion toGameVersion)
     {
-        if (manifest?.patches is null) return new List<Patch>();
+        if (manifest?.patches is null) return new InstallPlan();
 
         static string ToVersionString(GameVersion gv)
         {
@@ -182,43 +195,51 @@ public class ManifestReleasesFeed
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
         if (!patchesByOutput.ContainsKey(targetVersion))
-            return new List<Patch>();
+            return new InstallPlan();
 
-        var queue = new Queue<(string version, List<Patch> path)>();
-
-        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        queue.Enqueue((targetVersion, new List<Patch>()));
-        visited.Add(targetVersion);
-
-        while (queue.Count > 0)
+        if (GetPlan(startVersion, targetVersion, new InstallPlan()) is {} result)
         {
-            var (currentVer, currentPath) = queue.Dequeue();
+            return result;
+        }
+        
+        return new InstallPlan();
 
-            if (string.Equals(currentVer, startVersion, StringComparison.OrdinalIgnoreCase))
-            {
-                currentPath.Reverse();
-                return currentPath;
-            }
+        InstallPlan? GetPlan(string from, string to, InstallPlan initialPlan)
+        {
+            InstallPlan? bestPlan = null;
 
-            if (patchesByOutput.TryGetValue(currentVer, out var producers))
+            if (patchesByOutput.TryGetValue(to, out var patches))
             {
-                foreach (var patch in producers)
+                foreach (var patch in patches)
                 {
-                    var requiredVer = patch.requires?.version ?? patch.requires?.distribution;
-
-                    if (string.IsNullOrWhiteSpace(requiredVer) || visited.Contains(requiredVer))
-                        continue;
-
-                    visited.Add(requiredVer);
-
-                    var newPath = new List<Patch>(currentPath) { patch };
-                    queue.Enqueue((requiredVer, newPath));
+                    if (patch.requires.version == from)
+                    {
+                        bestPlan = new InstallPlan();
+                        bestPlan.ApplyPatchFile((log, progress,ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {from}");
+                        break;
+                    }
+                    
+                    if (patch.requires.IsBasePatch)
+                    {
+                        var testPlan = new InstallPlan();
+                        testPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from prepatch");
+                        testPlan.Prepatch();
+                        testPlan.RevertToStock();
+                        if (bestPlan == null || bestPlan.Cost > testPlan.Cost) bestPlan = testPlan;
+                    }
+                    else
+                    {
+                        var newInitialPlan = new InstallPlan();
+                        newInitialPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {patch.requires.version}");
+                        var testPlan = GetPlan(from, patch.requires.version!, newInitialPlan);
+                        if (testPlan != null && (bestPlan == null || bestPlan.Cost > testPlan.Cost)) bestPlan = testPlan;
+                    }
                 }
             }
-        }
 
-        return new List<Patch>();
+            if (bestPlan == null) return null;
+            return bestPlan + initialPlan;
+        }
     }
 
     public async Task<string> DownloadPatch(Patch patch, Action<string> log, Action<long, long> reportDownloadProgress,
