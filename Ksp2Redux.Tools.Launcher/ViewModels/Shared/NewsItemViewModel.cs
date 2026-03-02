@@ -7,30 +7,45 @@ using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
-public partial class NewsItemViewModel(News news) : ViewModelBase
+public class NewsItemViewModel(News news) : ViewModelBase
 {
-    public string Title => news.Title;
+    public News News { get; set; } = news;
 
-    public string Content => news.Content;
+    public string Title => News.Title;
 
-    public DateTime Date => news.Date;
+    public string Content => News.Content;
 
-    public string Author => news.Author;
+    public DateTime Date => News.Date;
 
-    [ObservableProperty] public partial Bitmap? Image { get; private set; }
+    public string Author => News.Author;
 
-    public string? Link => news.Link;
+    public Task<Bitmap?> Image => LoadImageAsync();
 
-    public string Subtitle => $"{news.Date:d} by {news.Author}";
+    public string? Link => News.Link;
 
-    public async Task LoadImageAsync()
+    public string Subtitle => $"{News.Date:d} by {News.Author}";
+    
+    public bool ImageVisible { get; private set; }
+
+    private async Task<Bitmap?> LoadImageAsync()
     {
-        if (string.IsNullOrEmpty(news.ImageUrl))
+        if (string.IsNullOrEmpty(News.ImageUrl))
         {
-            return;
+            ImageVisible = false;
+            OnPropertyChanged(nameof(ImageVisible));
+            return null;
         }
 
-        await using Stream stream = await news.LoadImageStreamAsync();
-        Image = await Task.Run(() => Bitmap.DecodeToWidth(stream, 800));
+        await using var stream = await News.LoadImageStreamAsync();
+        if (stream == null)
+        {
+            ImageVisible = false;
+            OnPropertyChanged(nameof(ImageVisible));
+            return null;
+        }
+
+        ImageVisible = true;
+        OnPropertyChanged(nameof(ImageVisible));
+        return await Task.Run(() => new Bitmap(stream));
     }
 }

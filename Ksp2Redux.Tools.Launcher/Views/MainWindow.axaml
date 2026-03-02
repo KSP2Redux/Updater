@@ -94,7 +94,7 @@
             </Border>
 
             <Border Grid.Row="1" Padding="24,0,24,24">
-                <TabControl Name="MainTabControl">
+                <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}">
                     <TabItem Name="HomeTab" Header="Home">
                         <views:HomeTabView DataContext="{Binding HomeTab}"/>
                     </TabItem>

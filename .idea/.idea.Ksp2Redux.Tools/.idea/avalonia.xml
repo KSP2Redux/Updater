@@ -17,6 +17,8 @@
         <entry key="Ksp2Redux.Tools.Launcher/Views/NewsItem.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
         <entry key="Ksp2Redux.Tools.Launcher/Views/NewsItemView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
         <entry key="Ksp2Redux.Tools.Launcher/Views/SettingsTabView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/Shared/NewsCollectionView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Views/Shared/NewsItemView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
       </map>
     </option>
   </component>

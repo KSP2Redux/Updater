@@ -1,6 +1,160 @@
-﻿namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
+﻿using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
+using Ksp2Redux.Tools.Launcher.Models;
+using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
+using System.Threading.Tasks;
+using Ksp2Redux.Tools.Common;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 
-public partial class SettingsTabViewModel : ViewModelBase
+namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
+
+public partial class SettingsTabViewModel() : ViewModelBase
 {
+    private readonly MainWindowViewModel parentWindow;
+    private readonly LauncherConfig config;
+    public string DisplayedInstallPath => config.Ksp2InstallPath;
+    public bool ChannelsLoaded = false;
+    
+    public string ReleaseChannel
+    {
+        get => ChannelsLoaded ? config.ReleaseChannel : "";
+        set
+        {
+            if (!ChannelsLoaded) return;
+            config.ReleaseChannel = value;
+            config.Save();
+            _ = parentWindow.HomeTab.UpdateVersionsList();
+        }
+    }
 
+    public ObservableCollection<string> ValidChannels { get; } = [];
+
+    public void SetLoaded()
+    {
+        ChannelsLoaded = true;
+        ReleaseChannel = config.ReleaseChannel;
+        OnPropertyChanged(nameof(ReleaseChannel));
+    }
+    
+    public SettingsTabViewModel(LauncherConfig config,MainWindowViewModel parentWindow) : this()
+    {
+        this.parentWindow = parentWindow;
+        this.config = config;
+    }
+
+    private const string STEAM_INSTALL_DIR = "C:/Program Files (x86)/Steam/steamapps/common/Kerbal Space Program 2/KSP2_x64.exe";
+
+    private static readonly FilePickerFileType Ksp2Exe = new("KSP2 installation")
+    {
+        Patterns = ["KSP2_x64.exe"],
+    };
+    
+    private static readonly FilePickerFileType Patch = new("KSP2 Patch File")
+    {
+        Patterns = ["*.patch"],
+    };
+
+    public async Task SelectGameInstallDirectory()
+    {
+
+        var chosenPath = await DoOpenFilePickerAsync();
+        if (chosenPath is not null)
+        {
+            config.Ksp2InstallPath = chosenPath.Path.LocalPath;
+            config.Save();
+            // TODO: trigger update patch status
+        }
+        parentWindow.TryLoadKsp2Install();
+        //return config.Ksp2InstallPath;
+    }
+
+    public async Task<IStorageFile?> DoOpenFilePickerAsync()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
+            desktop.MainWindow?.StorageProvider is not { } provider)
+            throw new NullReferenceException("Missing StorageProvider instance.");
+
+        IStorageFolder? startFolder = null;
+        // default to previously select install path if it exists.
+        if (!string.IsNullOrWhiteSpace(config.Ksp2InstallPath) && Path.Exists(config.Ksp2InstallPath))
+        {
+            startFolder = await provider.TryGetFolderFromPathAsync(config.Ksp2InstallPath);
+        }
+
+        // fallback on steam default path.
+        startFolder ??= await provider.TryGetFolderFromPathAsync(STEAM_INSTALL_DIR);
+        // fallback on something reasonable.
+        startFolder ??= await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Desktop);
+
+        var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
+        {
+            Title = "Open KSP2_x64.exe",
+            AllowMultiple = false,
+            FileTypeFilter = [Ksp2Exe],
+            SuggestedStartLocation = startFolder,
+        });
+
+        return files?.Count >= 1 ? files[0] : null;
+    }
+
+    public async Task UninstallRedux()
+    {
+        // parentWindow.TryLoadKsp2Install();
+        var installDir = Path.GetDirectoryName(parentWindow.Config.Ksp2InstallPath);;
+        if (!File.Exists(Path.Combine(installDir, "uninstall.zip")))
+        {
+            await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
+            return;
+        }
+        
+        var box = MessageBoxManager.GetMessageBoxStandard("Confirm", "Are you sure you want to uninstall Redux?",
+            ButtonEnum.YesNo);
+        
+        
+        var result = await box.ShowAsync();
+        if (result != ButtonResult.Yes) return;
+        
+        Cache.RecursivelyRestoreCache(installDir);
+        
+        parentWindow.TryLoadKsp2Install();
+        await parentWindow.HomeTab.UpdateVersionsList();
+        
+        
+        await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled").ShowAsync();
+    }
+
+    public async Task InstallFromPatchFile()
+    {
+        var chosenPath = await DoOpenPatchFilePickerAsync();
+
+        if (chosenPath is null) return;
+        
+        parentWindow.GoToHome();
+        
+        await parentWindow.HomeTab.InstallFromPatchFile(chosenPath.Path.LocalPath);
+    }
+
+
+    public async Task<IStorageFile?> DoOpenPatchFilePickerAsync()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
+            desktop.MainWindow?.StorageProvider is not { } provider)
+            throw new NullReferenceException("Missing StorageProvider instance.");
+        var startFolder = await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Downloads);
+        
+        var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
+        {
+            Title = "Open Patch File",
+            AllowMultiple = false,
+            FileTypeFilter = [Patch],
+            SuggestedStartLocation = startFolder,
+        });
+        
+        return files?.Count >= 1 ? files[0] : null;
+    }
 }

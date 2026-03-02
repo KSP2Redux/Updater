@@ -1,42 +1,57 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
 public partial class CommunityTabView : UserControl
 {
-    private readonly ILauncher _launcher;
+    public CommunityTabViewModel ViewModel => (CommunityTabViewModel)DataContext!;
 
     public CommunityTabView()
     {
         InitializeComponent();
-        _launcher = TopLevel.GetTopLevel(this)!.Launcher;
+    }
+
+    private void LaunchUri(Uri uri)
+    {
+        TopLevel.GetTopLevel(this)!.Launcher.LaunchUriAsync(uri);
     }
 
     private void DiscordLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        _launcher.LaunchUriAsync(new Uri("https://discord.gg/8yq8d5VGQR"));
+        LaunchUri(new Uri("https://discord.gg/8yq8d5VGQR"));
     }
 
     private void ForumsLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        _launcher.LaunchUriAsync(new Uri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux"));
+        LaunchUri(new Uri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux"));
     }
 
     private void WikiLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        _launcher.LaunchUriAsync(new Uri("https://kerbal.wiki"));
+        LaunchUri(new Uri("https://kerbal.wiki"));
     }
 
     private void YoutubeLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        _launcher.LaunchUriAsync(new Uri("https://www.youtube.com/@RendezvousEntertainmentModding"));
+        LaunchUri(new Uri("https://www.youtube.com/@RendezvousEntertainmentModding"));
     }
 
     private void GithubLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        _launcher.LaunchUriAsync(new Uri("https://github.com/KSP2Redux"));
+        LaunchUri(new Uri("https://github.com/KSP2Redux"));
+    }
+    
+    private void NewsLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedNews.Link is null)
+            return;
+        
+        LaunchUri(new Uri(ViewModel.SelectedNews.Link));
     }
 }

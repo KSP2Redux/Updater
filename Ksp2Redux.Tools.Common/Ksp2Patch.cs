@@ -35,7 +35,7 @@ public class Ksp2Patch : IDisposable
         return new Ksp2Patch(new ZipArchive(saveStream, ZipArchiveMode.Create, leaveOpen));
     }
 
-    public static FileStream FromDiff(string saveFile, string ksp2Directory, string targetDirectory)
+    public static FileStream FromDiff(string saveFile, string ksp2Directory, string targetDirectory, bool checkRemovals=false)
     {
         if (!Directory.Exists(ksp2Directory))
         {
@@ -50,7 +50,7 @@ public class Ksp2Patch : IDisposable
         FileStream writeFile = File.Open(saveFile, FileMode.Create, FileAccess.Write);
         using (Ksp2Patch patch = Empty(writeFile, true))
         {
-            ulong size = patch.RecursiveDiff(patch, ksp2Directory, targetDirectory);
+            ulong size = patch.RecursiveDiff(patch, ksp2Directory, targetDirectory, checkRemovals);
 
             Console.WriteLine($"Expected result size: {size}");
 
@@ -65,7 +65,7 @@ public class Ksp2Patch : IDisposable
         return writeFile;
     }
 
-    private ulong RecursiveDiff(Ksp2Patch patch, string originalDirectory, string patchDirectory, string prefix = "")
+    private ulong RecursiveDiff(Ksp2Patch patch, string originalDirectory, string patchDirectory, bool checkRemovals, string prefix = "")
     {
         ulong sum = 0UL;
         var patchDir = new DirectoryInfo(patchDirectory);
@@ -126,11 +126,40 @@ public class Ksp2Patch : IDisposable
             }
         }
 
+
+        if (checkRemovals)
+        {
+            var originalDir = new DirectoryInfo(originalDirectory);
+            foreach (FileInfo file in originalDir.GetFiles())
+            {
+                if (!File.Exists(Path.Combine(patchDirectory, file.Name)))
+                {
+                    _manifest.operations.Add(new PatchOperation
+                    {
+                        fileName = Path.Combine(prefix, file.Name),
+                        action = PatchOperation.PatchAction.Remove
+                    });
+                }
+            }
+
+            foreach (var dir in originalDir.GetDirectories())
+            {
+                if (!Directory.Exists(Path.Combine(patchDirectory, dir.Name)))
+                {
+                    _manifest.operations.Add(new PatchOperation
+                    {
+                        fileName = Path.Combine(prefix, dir.Name),
+                        action = PatchOperation.PatchAction.Remove
+                    });
+                }
+            }
+        }
+
         foreach (DirectoryInfo dir in patchDir.GetDirectories())
         {
             string newDir = Path.Combine(originalDirectory, dir.Name);
             if (FileInformation.IgnoreDirectories.Contains(Path.Combine(prefix, dir.Name))) continue;
-            sum += RecursiveDiff(patch, newDir, dir.FullName, Path.Combine(prefix, dir.Name));
+            sum += RecursiveDiff(patch, newDir, dir.FullName, checkRemovals, Path.Combine(prefix, dir.Name));
         }
 
         return sum;
@@ -143,23 +172,18 @@ public class Ksp2Patch : IDisposable
 
     public static async Task CopyFileAsync(string sourceFile, string destinationFile)
     {
-        await using var sourceStream = new FileStream(
-            sourceFile,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            4096,
-            FileOptions.Asynchronous | FileOptions.SequentialScan
-        );
-        await using var destinationStream = new FileStream(
-            destinationFile,
-            FileMode.OpenOrCreate,
-            FileAccess.Write,
-            FileShare.None,
-            4096,
-            FileOptions.Asynchronous | FileOptions.SequentialScan
-        );
-        await sourceStream.CopyToAsync(destinationStream);
+        const int bufferSize = 1024 * 1024; // 1 MiB
+        await using var source = new FileStream(
+            sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        await using var dest = new FileStream(
+            destinationFile, FileMode.Create, FileAccess.Write, FileShare.None,
+            bufferSize, FileOptions.Asynchronous);
+
+        try { dest.SetLength(source.Length); } catch { /* not critical */ }
+
+        await source.CopyToAsync(dest, bufferSize);
     }
 
     public static async Task AsyncCopyKsp2Directory(
@@ -175,7 +199,6 @@ public class Ksp2Patch : IDisposable
 
         foreach (string file in FileInformation.CopyFiles.Where(file => File.Exists($"{ksp2Directory}{file}")))
         {
-            log?.Invoke($"Copying {ksp2Directory}{file} to {targetDirectory}{file}");
             await CopyFileAsync($"{ksp2Directory}{file}", $"{targetDirectory}{file}");
         }
 
@@ -200,65 +223,39 @@ public class Ksp2Patch : IDisposable
         Action<string>? log = null
     )
     {
-        // Get information about the source directory
-        var dir = new DirectoryInfo(sourceDir);
+        var src = new DirectoryInfo(sourceDir);
+        if (!src.Exists) throw new DirectoryNotFoundException(sourceDir);
 
-        // Check if the source directory exists
-        if (!dir.Exists)
+        Directory.CreateDirectory(destinationDir);
+        
+        foreach (var d in src.EnumerateDirectories("*", SearchOption.AllDirectories))
         {
-            throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
+            Directory.CreateDirectory(Path.Join(destinationDir, Path.GetRelativePath(sourceDir, d.FullName)));
         }
 
-        // Cache directories before we start copying
-        DirectoryInfo[] dirs = dir.GetDirectories();
+        var semaphore = new SemaphoreSlim(8);
+        var tasks = new List<Task>();
 
-        // Create the destination directory
-        if (!Directory.Exists(destinationDir))
-            Directory.CreateDirectory(destinationDir);
-
-        FileInfo[] files = dir.GetFiles();
-        bool logFiles = true;
-        int countForProgress = 0;
-        int maxCountForProgress = 0;
-        int progress = 0;
-        if (files.Length > 255)
+        foreach (var file in src.EnumerateFiles("*", SearchOption.AllDirectories))
         {
-            log?.Invoke($"Copying {files.Length} files from {sourceDir} to {destinationDir}");
-            logFiles = false;
-            countForProgress = files.Length / 10;
-            maxCountForProgress = files.Length / 10;
-        }
+            var rel = Path.GetRelativePath(sourceDir, file.FullName);
+            var dst = Path.Join(destinationDir, rel);
 
-        foreach (FileInfo file in files)
-        {
-            string targetFilePath = Path.Combine(destinationDir, file.Name);
-            if (logFiles)
+            await semaphore.WaitAsync().ConfigureAwait(false);
+            tasks.Add(Task.Run(async () =>
             {
-                log?.Invoke($"Copying file {Path.Combine(sourceDir, file.Name)} to {targetFilePath}");
-            }
-            else
-            {
-                countForProgress--;
-                if (countForProgress == 0)
+                try
                 {
-                    progress += 10;
-                    log?.Invoke($"{progress}% complete");
-                    countForProgress = maxCountForProgress;
+                    await CopyFileAsync(file.FullName, dst).ConfigureAwait(false);
                 }
-            }
-
-            await CopyFileAsync(file.FullName, targetFilePath);
+                finally
+                {
+                    semaphore.Release();
+                }
+            }));
         }
 
-        if (recursive)
-        {
-            foreach (DirectoryInfo subDir in dirs)
-            {
-                string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
-                log?.Invoke($"Copying directory {Path.Combine(sourceDir, subDir.Name)} to {newDestinationDir}");
-                await AsyncCopyDirectory(subDir.FullName, newDestinationDir, true, log);
-            }
-        }
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     public async Task AsyncCopyAndApply(
@@ -291,7 +288,6 @@ public class Ksp2Patch : IDisposable
 
         targetDirectory = targetDirectory.TrimEnd('\\', '/') + '\\';
         sourceDirectory = sourceDirectory.TrimEnd('\\', '/') + '\\';
-        bool checkForOld = sourceDirectory == targetDirectory;
 
         // 1. Extract patch entries to temp folder
         string tempPatchDir = Path.Combine(Path.GetTempPath(), "Ksp2ReduxPatch_" + Guid.NewGuid());
@@ -347,97 +343,84 @@ public class Ksp2Patch : IDisposable
                         string trueName = operation.fileName;
                         if (operation.action == PatchOperation.PatchAction.Patch)
                         {
+                            log?.Invoke($"Applying binary patch to {trueName}");
                             DirectoryInfo? parent = new FileInfo($"{targetDirectory}{trueName}").Directory;
                             Directory.CreateDirectory(parent!.FullName);
-                            if (checkForOld)
+                            if (!File.Exists($"{sourceDirectory}{trueName}"))
                             {
-                                if (!File.Exists($"{targetDirectory}{trueName}.unpatched"))
-                                {
-                                    if (!File.Exists($"{targetDirectory}{trueName}"))
-                                    {
-                                        throw new Exception(
-                                            $"Failed to apply patch because {trueName} does not exist in target " +
-                                            $"installation directory"
-                                        );
-                                    }
-
-                                    log?.Invoke($"Creating unpatched original file for {trueName}");
-                                    await CopyFileAsync($"{targetDirectory}{trueName}",
-                                        $"{targetDirectory}{trueName}.unpatched");
-                                }
+                                throw new Exception(
+                                    $"Failed to apply patch because {trueName} does not exist in target " +
+                                    $"installation directory"
+                                );
                             }
-                            else
+                            log?.Invoke($"Creating temporary file for {trueName}");
+                            await CopyFileAsync(
+                                $"{sourceDirectory}{trueName}",
+                                $"{targetDirectory}{trueName}.temp"
+                            );
+
+                            await using (FileStream originalFile = File.OpenRead($"{targetDirectory}{trueName}.temp"))
                             {
-                                if (!File.Exists($"{sourceDirectory}{trueName}"))
+                                await using FileStream targetFile = File.Open(
+                                    $"{targetDirectory}{trueName}",
+                                    FileMode.Create,
+                                    FileAccess.ReadWrite
+                                );
+
+                                if (!await ValidateFileHashAsync(originalFile, operation.originalHash!))
                                 {
-                                    throw new Exception(
-                                        $"Failed to apply patch because {trueName} does not exist in target " +
-                                        $"installation directory"
+                                    throw new InvalidDataException(
+                                        $"File {originalFile.Name} does not match expected hash " +
+                                        $"{FormatHash(operation.originalHash!)}. Cannot apply patch! Check that the " +
+                                        $"Redux patch you are applying is for the version of the game (Steam, portable " +
+                                        $"zip, or Epic) you are patching."
                                     );
                                 }
 
-                                log?.Invoke($"Creating unpatched original file for {trueName}");
-                                await CopyFileAsync(
-                                    $"{sourceDirectory}{trueName}",
-                                    $"{targetDirectory}{trueName}.unpatched"
-                                );
-                            }
 
-                            await using FileStream originalFile = File.OpenRead(
-                                $"{targetDirectory}{trueName}.unpatched"
-                            );
-                            await using FileStream targetFile = File.Open(
-                                $"{targetDirectory}{trueName}",
-                                FileMode.Create,
-                                FileAccess.ReadWrite
-                            );
-
-                            if (!await ValidateFileHashAsync(originalFile, operation.originalHash!))
-                            {
-                                throw new InvalidDataException(
-                                    $"File {originalFile.Name} does not match expected hash " +
-                                    $"{FormatHash(operation.originalHash!)}. Cannot apply patch! Check that the " +
-                                    $"Redux patch you are applying is for the version of the game (Steam, portable " +
-                                    $"zip, or Epic) you are patching."
-                                );
-                            }
-
-                            log?.Invoke($"Applying binary patch to {trueName}");
-
-                            try
-                            {
-                                string patchPath = Path.Combine(tempPatchDir, trueName + ".bsdiff");
-                                BinaryPatch.Apply(originalFile, () =>
+                                try
                                 {
-                                    var memory = new MemoryStream(File.ReadAllBytes(patchPath));
-                                    return memory;
-                                }, targetFile);
-                            }
-                            catch (Exception e)
-                            {
-                                error?.Invoke(e.Message);
-                                throw;
-                            }
+                                    string patchPath = Path.Combine(tempPatchDir, trueName + ".bsdiff");
+                                    BinaryPatch.Apply(originalFile, () =>
+                                    {
+                                        var memory = new MemoryStream(File.ReadAllBytes(patchPath));
+                                        return memory;
+                                    }, targetFile);
+                                }
+                                catch (Exception e)
+                                {
+                                    error?.Invoke(e.Message);
+                                    throw;
+                                }
 
-                            if (!await ValidateFileHashAsync(targetFile, operation.finalHash!))
-                            {
-                                throw new InvalidDataException(
-                                    $"File {targetFile.Name} does not match expected hash " +
-                                    $"{FormatHash(operation.finalHash!)}."
-                                );
+                                if (!await ValidateFileHashAsync(targetFile, operation.finalHash!))
+                                {
+                                    throw new InvalidDataException(
+                                        $"File {targetFile.Name} does not match expected hash " +
+                                        $"{FormatHash(operation.finalHash!)}."
+                                    );
+                                }
                             }
+                            
+                            // Delete the original file if we are not caching it
+                            File.Delete($"{targetDirectory}{trueName}.temp");
                         }
                         else if (operation.action == PatchOperation.PatchAction.Remove)
                         {
                             log?.Invoke($"Deleting {trueName}");
 
-                            if (File.Exists($"{targetDirectory}{trueName}"))
+                            if (Directory.Exists($"{targetDirectory}{trueName}"))
+                            {
+                                Directory.Delete($"{targetDirectory}{trueName}", true);
+                            }
+                            else if (File.Exists($"{targetDirectory}{trueName}"))
                             {
                                 File.Delete($"{targetDirectory}{trueName}");
                             }
                         }
                         else // Add
                         {
+                            
                             log?.Invoke($"Copying {trueName} from patch");
 
                             DirectoryInfo? parent = new FileInfo($"{targetDirectory}{trueName}").Directory;
@@ -542,4 +525,7 @@ public class Ksp2Patch : IDisposable
     {
         _archive.Dispose();
     }
+
+    public override string ToString()
+        => $"Ksp2Patch: Operations:{_manifest.operations.Count}";
 }
