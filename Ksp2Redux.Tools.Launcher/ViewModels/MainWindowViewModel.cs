@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -26,7 +27,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public LauncherConfig Config { get; }
     public Ksp2Install? Ksp2 { get; private set; }
-    public ManifestReleasesFeed[] ReleasesFeed { get; private set; }
+    public Dictionary<string, ManifestReleasesFeed> ReleasesFeed { get; private set; }
 
     public MainWindowViewModel()
     {
@@ -34,26 +35,52 @@ public partial class MainWindowViewModel : ViewModelBase
 
         LoadNews();
         TryLoadKsp2Install();
-        var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
-        Directory.CreateDirectory(releaseDownloadCacheDir);
-        ReleasesFeed =
-        [
-            new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir),
-            new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir)
-        ];
-        InitializeAsync();
+        // ReleasesFeed =
+        // [
+        //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir),
+        //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir)
+        // ];
+        ReleasesFeed = [];
+
+        _ = InitializeAsync();
 
         HomeTab = new HomeTabViewModel(this);
         CommunityTab = new CommunityTabViewModel(NewsCollection);
         ModsTab = new ModsTabViewModel();
-        SettingsTab = new SettingsTabViewModel(Config,this);
+        SettingsTab = new SettingsTabViewModel(Config, this);
     }
-    private async void InitializeAsync()
+
+    private async Task InitializeAsync()
     {
-        await ReleasesFeed[0].UpdateManifest(ReleaseChannel.Stable);
-        await ReleasesFeed[1].UpdateManifest(ReleaseChannel.Beta);
+        // foreach (var feed in ReleasesFeed)
+        // {
+        //     await feed.Value.UpdateManifest();
+        // }
+        var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
+        Directory.CreateDirectory(releaseDownloadCacheDir);
+        foreach (var feed in Config.Feeds)
+        {
+            Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
+            var newFeed = new ManifestReleasesFeed(
+                LauncherConfig.GetLocalStorageDirectory(), feed.Repository,
+                releaseDownloadCacheDir, feed.Filename, feed.Token);
+            Console.WriteLine("Updating feed manifest");
+            try
+            {
+                await newFeed.UpdateManifest();
+                Console.WriteLine($"Done adding feed: {feed.Repository} / {feed.Filename}");
+                ReleasesFeed[newFeed.CurrentChannel] = newFeed;
+                SettingsTab.ValidChannels.Add(newFeed.CurrentChannel);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+        SettingsTab.SetLoaded();
         await HomeTab.UpdateVersionsList(false);
     }
+
     private async void LoadNews()
     {
         string tomlNewsContent = await News.GetTomlContent();

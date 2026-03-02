@@ -5,5 +5,6 @@ public enum Distribution
     Portable,
     Steam,
     Epic,
-    Redux
+    Redux,
+    Prepatched,
 }

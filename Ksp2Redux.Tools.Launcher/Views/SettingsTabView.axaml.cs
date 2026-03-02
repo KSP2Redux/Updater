@@ -2,6 +2,7 @@
 using Avalonia.Interactivity;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
@@ -18,5 +19,10 @@ public partial class SettingsTabView : UserControl
     {
         await Model.SelectGameInstallDirectory();
         InstallPath.Text = Model.DisplayedInstallPath;
+    }
+
+    private async void UninstallReduxClick(object? sender, RoutedEventArgs e)
+    {
+        await Model.UninstallRedux();
     }
 }

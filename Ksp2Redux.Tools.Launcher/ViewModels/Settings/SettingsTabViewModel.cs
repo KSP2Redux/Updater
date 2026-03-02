@@ -3,8 +3,13 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Ksp2Redux.Tools.Launcher.Models;
 using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
+using Ksp2Redux.Tools.Common;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
@@ -13,16 +18,29 @@ public partial class SettingsTabViewModel() : ViewModelBase
     private readonly MainWindowViewModel parentWindow;
     private readonly LauncherConfig config;
     public string DisplayedInstallPath => config.Ksp2InstallPath;
-    public ReleaseChannel ReleaseChannel
+    public bool ChannelsLoaded = false;
+    
+    public string ReleaseChannel
     {
-        get => config.ReleaseChannel;
+        get => ChannelsLoaded ? config.ReleaseChannel : "";
         set
         {
+            if (!ChannelsLoaded) return;
             config.ReleaseChannel = value;
             config.Save();
+            _ = parentWindow.HomeTab.UpdateVersionsList();
         }
     }
 
+    public ObservableCollection<string> ValidChannels { get; } = [];
+
+    public void SetLoaded()
+    {
+        ChannelsLoaded = true;
+        ReleaseChannel = config.ReleaseChannel;
+        OnPropertyChanged(nameof(ReleaseChannel));
+    }
+    
     public SettingsTabViewModel(LauncherConfig config,MainWindowViewModel parentWindow) : this()
     {
         this.parentWindow = parentWindow;
@@ -77,5 +95,30 @@ public partial class SettingsTabViewModel() : ViewModelBase
         });
 
         return files?.Count >= 1 ? files[0] : null;
+    }
+
+    public async Task UninstallRedux()
+    {
+        parentWindow.TryLoadKsp2Install();
+        if (parentWindow.Ksp2?.Distribution != Distribution.Redux)
+        {
+            await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
+            return;
+        }
+        
+        var box = MessageBoxManager.GetMessageBoxStandard("Confirm", "Are you sure you want to uninstall Redux?",
+            ButtonEnum.YesNo);
+        
+        
+        var result = await box.ShowAsync();
+        if (result != ButtonResult.Yes) return;
+        
+        Cache.RecursivelyRestoreCache(parentWindow.Ksp2.InstallDir);
+        
+        parentWindow.TryLoadKsp2Install();
+        await parentWindow.HomeTab.UpdateVersionsList();
+        
+        
+        await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled").ShowAsync();
     }
 }

@@ -6,7 +6,7 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class GameVersion : IEquatable<GameVersion>
 {
-    public ReleaseChannel Channel { get; set; }
+    public string Channel { get; set; }
     public required Version VersionNumber { get; set; }
     public required string BuildNumber { get; set; }
     public string? CommitHash { get; set; }
@@ -16,7 +16,7 @@ public class GameVersion : IEquatable<GameVersion>
     /// </summary>
     public static GameVersion FromVersionIDType(TypeDefinition versionType, bool IsRedux)
     {
-        ReleaseChannel channel = ReleaseChannel.Stable;
+        string channel = "stable";
         Version version;
         string buildNumber;
         string commitHash;
@@ -42,13 +42,13 @@ public class GameVersion : IEquatable<GameVersion>
             buildNumber = string.Empty;
         }
         if(IsRedux)
-            if (GetFieldValueAsString("CHANNEL_NAME") is string channelName && (channelName == "beta" ||  channelName == "internal" ))
-                channel = ReleaseChannel.Beta;
+            if (GetFieldValueAsString("CHANNEL_NAME") is { } channelName)
+                channel = channelName;
         
         // try get redux commit hash
-        if (GetFieldValueAsString("DEBUG_INFO") is string possibleHash && possibleHash != "BUILD_INFO")
+        if (GetFieldValueAsString("DEBUG_INFO") is { } possibleHash && possibleHash != "BUILD_INFO")
         {
-            commitHash = $"{channel.ToString().ToLower()}+{possibleHash}";
+            commitHash = $"{channel.ToLower()}+{possibleHash}";
         }
         else
         {

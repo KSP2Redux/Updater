@@ -262,20 +262,18 @@ public class Ksp2Patch : IDisposable
         string ksp2Directory,
         string targetDirectory,
         Action<string>? log = null,
-        Action<string>? error = null,
-        bool cacheAsStock = false
+        Action<string>? error = null
     )
     {
         await AsyncCopyKsp2Directory(ksp2Directory, targetDirectory, log);
-        await AsyncApply(targetDirectory, ksp2Directory, log, error, cacheAsStock);
+        await AsyncApply(targetDirectory, ksp2Directory, log, error);
     }
 
     public async Task AsyncApply(
         string targetDirectory,
         string? sourceDirectory = null,
         Action<string>? log = null,
-        Action<string>? error = null,
-        bool cacheAsStock = false
+        Action<string>? error = null
     )
     {
         sourceDirectory ??= targetDirectory;

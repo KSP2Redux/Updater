@@ -7,9 +7,9 @@ public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGro
 {
     public string Channel => gameVersion.Channel.ToString();
     public string VersionString => $"v{gameVersion.VersionNumber}.{gameVersion.BuildNumber}" +
-                                   $"{(gameVersion.Channel == ReleaseChannel.Stable
+                                   $"{(gameVersion.Channel == "stable"
                                        ? ""
-                                       : $"-{gameVersion.Channel.ToString().ToLower()}")}";
+                                       : $"-{gameVersion.Channel.ToLower()}")}";
 
     public bool IsSelectable => true;
 

@@ -18,17 +18,19 @@ public class ManifestReleasesFeed
     private readonly string downloadStorageDir;
     private readonly string githubRelativeRepoUri;
     private readonly HttpClient apiClient;
+    private readonly string manifestPath;
 
     private Manifest? manifest;
 
-    public ReleaseChannel CurrentChannel { get; private set; }
+    public String CurrentChannel { get; private set; }
 
     public ManifestReleasesFeed(
-        string BaseFilePath, string githubRelativeRepoUri, string personalAccessToken, string downloadStorageDir)
+        string BaseFilePath, string githubRelativeRepoUri, string downloadStorageDir, string manifestPath, string? token = null)
     {
         this.BaseFilePath = BaseFilePath;
         this.downloadStorageDir = downloadStorageDir;
         this.githubRelativeRepoUri = githubRelativeRepoUri;
+        this.manifestPath = manifestPath;
         apiClient = new()
         {
             BaseAddress = new Uri("https://api.github.com/repos/" + githubRelativeRepoUri + "/"),
@@ -38,9 +40,9 @@ public class ManifestReleasesFeed
         ProductInfoHeaderValue userAgent = new(header);
         apiClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
         apiClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github.v3.raw"));
-        if (!string.IsNullOrWhiteSpace(personalAccessToken))
+        if (!string.IsNullOrWhiteSpace(token))
         {
-            apiClient.DefaultRequestHeaders.Authorization = new("Bearer", personalAccessToken);
+            apiClient.DefaultRequestHeaders.Authorization = new("Bearer", token);
         }
     }
 
@@ -100,14 +102,15 @@ public class ManifestReleasesFeed
     }
 
 
-    public async Task UpdateManifest(ReleaseChannel channel)
+    public async Task UpdateManifest()
     {
         var response = await apiClient.GetAsync(
-            $"contents/Manifest.{channel}.json?ref=main");
+            $"contents/{manifestPath}?ref=main");
         var finalUrl = response.RequestMessage?.RequestUri?.ToString();
+        // Console.WriteLine($"Final url: {finalUrl}");
         response.EnsureSuccessStatusCode();
         manifest = System.Text.Json.JsonSerializer.Deserialize<Manifest>(await response.Content.ReadAsStringAsync());
-        CurrentChannel = channel;
+        CurrentChannel = manifest.channel;
     }
 
     public IEnumerable<GameVersion> GetAllVersions()

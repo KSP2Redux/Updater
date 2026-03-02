@@ -20,7 +20,7 @@ public partial class HomeTabView : UserControl
     {
         if (Model is not null)
         {
-            await Model.UpdateVersionsList();
+            // await Model.UpdateVersionsList();
             ShowButton(Model.MainButtonShown);
             Model.PropertyChanged += ReactToHomeTabPropertyChanged;
         }

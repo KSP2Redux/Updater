@@ -45,7 +45,7 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
     public ObservableCollection<LogItemViewModel> InstallLogLines { get; set; } = [];
 
-    private readonly ManifestReleasesFeed[] releasesFeed;
+    private readonly Dictionary<string,ManifestReleasesFeed> releasesFeed;
     private readonly MainWindowViewModel parentWindow;
     private CancellationTokenSource? cancelCurrentOperation;
 
@@ -73,8 +73,10 @@ public partial class HomeTabViewModel : ViewModelBase
     }
     private async void UpdateAsync()
     {
-        await releasesFeed[0].UpdateManifest(releasesFeed[0].CurrentChannel);
-        await releasesFeed[1].UpdateManifest(releasesFeed[1].CurrentChannel);
+        foreach (var feed in releasesFeed)
+        {
+            await feed.Value.UpdateManifest();
+        }
     }
 
     [RelayCommand]
@@ -163,9 +165,13 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void RebuildVersionsCollection()
     {
+        if (string.IsNullOrEmpty(parentWindow.Config.ReleaseChannel) || !releasesFeed.TryGetValue(parentWindow.Config.ReleaseChannel, out var value))
+        {
+            return;
+        }
         Versions.Clear();
-
-        foreach (var releaseView in releasesFeed[(int)parentWindow.Config.ReleaseChannel].GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
+        
+        foreach (var releaseView in value.GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
         {
             Versions.Add(releaseView);
         }

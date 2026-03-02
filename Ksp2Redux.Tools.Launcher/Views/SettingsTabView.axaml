@@ -12,9 +12,8 @@
 		<Button Name="selectInstallDirButton" Click="InstallDir_Click">Select</Button>
 
 		<TextBlock Margin="0 5" >Release channel:</TextBlock>
-		<ComboBox Name="ReleaseChannel" MaxDropDownHeight="100" SelectedIndex="{Binding ReleaseChannel}">
-			<ComboBoxItem>Release</ComboBoxItem>
-			<ComboBoxItem>Development</ComboBoxItem>
+		<ComboBox Name="ReleaseChannel" MaxDropDownHeight="100" SelectedValue="{Binding ReleaseChannel}" ItemsSource="{Binding ValidChannels}">
 		</ComboBox>
+		<Button Background="DarkRed" Click="UninstallReduxClick">Uninstall Redux</Button>
 	</StackPanel>
 </UserControl>
