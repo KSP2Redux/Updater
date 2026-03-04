@@ -12,10 +12,4 @@
       <PackageReference Include="Tomlyn" Version="0.20.0" />
     </ItemGroup>
 
-    <ItemGroup>
-      <None Update="test_manifest.toml">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-    </ItemGroup>
-
 </Project>
