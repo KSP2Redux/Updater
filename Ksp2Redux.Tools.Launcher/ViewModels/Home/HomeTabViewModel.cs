@@ -242,7 +242,7 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
-            await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Installed").ShowAsync();
+            Log("KSP2 Redux Successfully Installed");
         }
         catch (Exception e)
         {
@@ -289,7 +289,7 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
-            await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Installed").ShowAsync();
+            Log("KSP2 Redux Successfully Installed");
         }
         catch (Exception e)
         {
