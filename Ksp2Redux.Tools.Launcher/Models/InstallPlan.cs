@@ -111,6 +111,12 @@ public class InstallPlan
                 case InstallPlanAction.Prepatch:
                 {
                     log("Applying the correct prepatch");
+                    if (File.Exists(Path.Combine(install, "winhttp.dll")))
+                    {
+                        log("Deleting old modloader!");
+                        File.Delete(Path.Combine(install, "winhttp.dll"));
+                    }
+                    
                     if (!File.Exists(Path.Combine(install, "uninstall.zip")))
                     {
                         Cache.RecursivelyCreateCache(install);
