@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
+using MsBox.Avalonia;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
@@ -241,6 +242,7 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
+            await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Installed").ShowAsync();
         }
         catch (Exception e)
         {
@@ -287,6 +289,7 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
+            await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Installed").ShowAsync();
         }
         catch (Exception e)
         {
