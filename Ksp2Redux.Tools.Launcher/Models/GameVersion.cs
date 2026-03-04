@@ -68,7 +68,7 @@ public class GameVersion : IEquatable<GameVersion>
     {
         return other is not null
             && VersionNumber == other.VersionNumber
-            && CommitHash == other.CommitHash;
+            && BuildNumber == other.BuildNumber;
     }
 
     public override bool Equals(object? obj)

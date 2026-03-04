@@ -1,0 +1,11 @@
+﻿Example format of a patch upload manifest
+
+Repository = [github repository]
+Branch = [branch in repository the feed is in]
+File = [filename of the feed in the repository]
+Token = [the personal access token for the repository]
+Version = [the version ID of the upload]
+[[Patches]]
+File = [the file path of the .patch file]
+PreviousVersion = [optional, the version requirement of this patch if it's a delta patch rather than prepatch]
+(repeated for every separate patch used in this release)
