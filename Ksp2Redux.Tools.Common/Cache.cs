@@ -64,6 +64,11 @@ public static class Cache
             {
                 if (Directory.Exists(Path.Combine(directory, dir)))
                 {
+                    var parentDirectory = new DirectoryInfo(Path.Combine(directory, "UninstallTemp", dir)).Parent!;
+                    if (!parentDirectory.Exists)
+                    {
+                        parentDirectory.Create();
+                    }
                     Directory.Move(Path.Combine(directory, dir), Path.Combine(directory, "UninstallTemp", dir));
                 }
             }
@@ -85,7 +90,14 @@ public static class Cache
             foreach (var dir in SavedDirectories)
             {
                 if (Directory.Exists(Path.Combine(directory, "UninstallTemp", dir)))
+                {
+                    var parentDirectory = new DirectoryInfo(Path.Combine(directory, dir)).Parent!;
+                    if (!parentDirectory.Exists)
+                    {
+                        parentDirectory.Create();
+                    }
                     Directory.Move(Path.Combine(directory, "UninstallTemp", dir), Path.Combine(directory, dir));
+                }
             }
             Directory.Delete(Path.Combine(directory, "UninstallTemp"), true);
         }

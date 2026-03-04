@@ -199,7 +199,7 @@ public partial class HomeTabViewModel : ViewModelBase
         // Select the correct version with the release view
         foreach (var releaseView in value.GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
         {
-            if (Versions.All(x => !x.Version.Equals(releaseView.Version)))
+            if (Versions.All(x => !(x.Version.Equals(releaseView.Version) && x.Channel.Equals(releaseView.Channel))))
             {
                 Versions.Add(releaseView);
             }
