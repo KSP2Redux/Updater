@@ -79,6 +79,14 @@ public class GameVersionTest
     // { }
     //
     // [Test]
+    // public void FromVersionIDType_ReduxNoChannelNameField_ThrowsException()
+    // { }
+    //
+    // [Test]
+    // public void FromVersionIDType_StockNoChannelNameField_StableChannel()
+    // { }
+    //
+    // [Test]
     // public void FromVersionIDType_ReduxNullChannelName_StableChannel()
     // { }
     //
