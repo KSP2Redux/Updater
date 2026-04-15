@@ -3,11 +3,7 @@
 
 name: .NET
 
-on:
-  push:
-    branches: ["*"]
-  pull_request:
-    branches: ["*"]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -57,7 +53,7 @@ jobs:
         path: TestResults/
     - name: Report Test Results
       uses: dorny/test-reporter@v3
-      if: !cancelled()
+      if: always()
       with:
         name: Tests
         path: TestResults/**/*.trx
