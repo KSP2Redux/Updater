@@ -1,13 +1,13 @@
 ﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
-using Ksp2Redux.Tools.Launcher.Models;
 using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Launcher.Services;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 
@@ -15,20 +15,24 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
 public partial class SettingsTabViewModel() : ViewModelBase
 {
-    private readonly MainWindowViewModel parentWindow;
-    private readonly LauncherConfig config;
-    public string DisplayedInstallPath => config.Ksp2InstallPath;
+    private ILauncherConfigService _launcherConfigService;
+    private IKsp2InstallService _ksp2InstallService;
+    private ITabNavigatorService _tabNavigatorService;
+    private HomeTabViewModel _homeTabViewModel;
+    
+    
+    public string DisplayedInstallPath => _launcherConfigService.Config.Ksp2InstallPath;
     public bool ChannelsLoaded = false;
     
     public string ReleaseChannel
     {
-        get => ChannelsLoaded ? config.ReleaseChannel : "";
+        get => ChannelsLoaded ? _launcherConfigService.Config.ReleaseChannel : "";
         set
         {
             if (!ChannelsLoaded) return;
-            config.ReleaseChannel = value;
-            config.Save();
-            _ = parentWindow.HomeTab.UpdateVersionsList();
+            _launcherConfigService.Config.ReleaseChannel = value;
+            _launcherConfigService.Config.Save();
+            _ = _homeTabViewModel.UpdateVersionsList();
         }
     }
 
@@ -37,14 +41,17 @@ public partial class SettingsTabViewModel() : ViewModelBase
     public void SetLoaded()
     {
         ChannelsLoaded = true;
-        ReleaseChannel = config.ReleaseChannel;
+        ReleaseChannel = _launcherConfigService.Config.ReleaseChannel;
         OnPropertyChanged(nameof(ReleaseChannel));
     }
     
-    public SettingsTabViewModel(LauncherConfig config,MainWindowViewModel parentWindow) : this()
+    public SettingsTabViewModel(ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
+        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel) : this()
     {
-        this.parentWindow = parentWindow;
-        this.config = config;
+        _tabNavigatorService = tabNavigatorService;
+        _launcherConfigService = launcherConfigService;
+        _ksp2InstallService = ksp2InstallService;
+        _homeTabViewModel = homeTabViewModel;
     }
 
     private const string STEAM_INSTALL_DIR = "C:/Program Files (x86)/Steam/steamapps/common/Kerbal Space Program 2/KSP2_x64.exe";
@@ -65,11 +72,11 @@ public partial class SettingsTabViewModel() : ViewModelBase
         var chosenPath = await DoOpenFilePickerAsync();
         if (chosenPath is not null)
         {
-            config.Ksp2InstallPath = chosenPath.Path.LocalPath;
-            config.Save();
+            _launcherConfigService.Config.Ksp2InstallPath = chosenPath.Path.LocalPath;
+            _launcherConfigService.Config.Save();
             // TODO: trigger update patch status
         }
-        parentWindow.TryLoadKsp2Install();
+        _ksp2InstallService.TryLoadKsp2Install();
         //return config.Ksp2InstallPath;
     }
 
@@ -81,9 +88,9 @@ public partial class SettingsTabViewModel() : ViewModelBase
 
         IStorageFolder? startFolder = null;
         // default to previously select install path if it exists.
-        if (!string.IsNullOrWhiteSpace(config.Ksp2InstallPath) && Path.Exists(config.Ksp2InstallPath))
+        if (!string.IsNullOrWhiteSpace(_launcherConfigService.Config.Ksp2InstallPath) && Path.Exists(_launcherConfigService.Config.Ksp2InstallPath))
         {
-            startFolder = await provider.TryGetFolderFromPathAsync(config.Ksp2InstallPath);
+            startFolder = await provider.TryGetFolderFromPathAsync(_launcherConfigService.Config.Ksp2InstallPath);
         }
 
         // fallback on steam default path.
@@ -105,7 +112,7 @@ public partial class SettingsTabViewModel() : ViewModelBase
     public async Task UninstallRedux()
     {
         // parentWindow.TryLoadKsp2Install();
-        var installDir = Path.GetDirectoryName(parentWindow.Config.Ksp2InstallPath);;
+        var installDir = Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
         if (!File.Exists(Path.Combine(installDir, "uninstall.zip")))
         {
             await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
@@ -121,8 +128,8 @@ public partial class SettingsTabViewModel() : ViewModelBase
         
         Cache.RecursivelyRestoreCache(installDir);
         
-        parentWindow.TryLoadKsp2Install();
-        await parentWindow.HomeTab.UpdateVersionsList();
+        _ksp2InstallService.TryLoadKsp2Install();
+        await _homeTabViewModel.UpdateVersionsList();
         
         
         await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled").ShowAsync();
@@ -134,9 +141,9 @@ public partial class SettingsTabViewModel() : ViewModelBase
 
         if (chosenPath is null) return;
         
-        parentWindow.GoToHome();
+        _tabNavigatorService.GoToHome();
         
-        await parentWindow.HomeTab.InstallFromPatchFile(chosenPath.Path.LocalPath);
+        await _homeTabViewModel.InstallFromPatchFile(chosenPath.Path.LocalPath);
     }
 
 

@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 using MsBox.Avalonia;
 
@@ -20,7 +21,10 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
 public partial class HomeTabViewModel : ViewModelBase
 {
-    public ObservableCollection<NewsItemViewModel> NewsCollection { get; set; }
+    private IKsp2InstallService _ksp2InstallService;
+    private INewsItemCollectionService _newsCollectionService;
+    private ILauncherConfigService _launcherConfigService;
+    private IReleasesFeedService _releasesFeedService;
     
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
@@ -46,19 +50,20 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
     public ObservableCollection<LogItemViewModel> InstallLogLines { get; set; } = [];
 
-    private readonly Dictionary<string,ManifestReleasesFeed> releasesFeed;
-    private readonly MainWindowViewModel parentWindow;
     private CancellationTokenSource? cancelCurrentOperation;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
-    public HomeTabViewModel(MainWindowViewModel parentWindow)
+    public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService)
     {
-        NewsCollection = parentWindow.NewsCollection;
-        NewsCollectionViewModel = new NewsCollectionViewModel(NewsCollection);
-        releasesFeed = parentWindow.ReleasesFeed;
-        this.parentWindow = parentWindow;
+        _ksp2InstallService = ksp2InstallService;
+        _newsCollectionService = newsCollectionService;
+        _launcherConfigService = launcherConfigService;
+        _releasesFeedService = releasesFeedService;
+
+        NewsCollectionViewModel = new NewsCollectionViewModel(_newsCollectionService.NewsCollection);
         RebuildVersionsCollection();
         PropertyChanged += ReactToPropertyChanges;
     }
@@ -74,7 +79,7 @@ public partial class HomeTabViewModel : ViewModelBase
     }
     private async void UpdateAsync()
     {
-        foreach (var feed in releasesFeed)
+        foreach (var feed in _releasesFeedService.ReleasesFeed)
         {
             await feed.Value.UpdateManifest();
         }
@@ -96,12 +101,12 @@ public partial class HomeTabViewModel : ViewModelBase
     public async Task LaunchGame()
     {
         // Disable the main button while the game process is still running
-        if (parentWindow.Ksp2 is not null)
+        if (_ksp2InstallService.Ksp2 is not null)
         {
             MainButtonEnabled = false;
             using Process process = new();
-            process.StartInfo.FileName = parentWindow.Ksp2.ExePath;
-            process.StartInfo.WorkingDirectory = parentWindow.Ksp2.InstallDir;
+            process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
+            process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
             process.Start();
             await process.WaitForExitAsync();
             MainButtonEnabled = true;
@@ -124,8 +129,8 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void UpdateMainButtonState()
     {
-        parentWindow.TryLoadKsp2Install();
-        var ksp2 = parentWindow.Ksp2;
+        _ksp2InstallService.TryLoadKsp2Install();
+        var ksp2 = _ksp2InstallService.Ksp2;
         if (ksp2 is null || !ksp2.IsValid)
         {
             MainButtonEnabled = false;
@@ -178,17 +183,18 @@ public partial class HomeTabViewModel : ViewModelBase
     private void RebuildVersionsCollection()
     {
         // We want to do this for the moment, we could fix this logic later at some point
-        parentWindow.TryLoadKsp2Install();
+        _ksp2InstallService.TryLoadKsp2Install();
         
-        if (string.IsNullOrEmpty(parentWindow.Config.ReleaseChannel) || !releasesFeed.TryGetValue(parentWindow.Config.ReleaseChannel, out var value))
+        if (string.IsNullOrEmpty(_launcherConfigService.Config.ReleaseChannel)
+            || !_releasesFeedService.ReleasesFeed.TryGetValue(_launcherConfigService.Config.ReleaseChannel, out var value))
         {
             return;
         }
         Versions.Clear();
 
-        if (parentWindow.Ksp2?.GameVersion != null)
+        if (_ksp2InstallService.Ksp2?.GameVersion != null)
         {
-            var currentVersion = new GameVersionViewModel(parentWindow.Ksp2.GameVersion)
+            var currentVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2.GameVersion)
             {
                 Channel = "installed"
             };
@@ -221,8 +227,8 @@ public partial class HomeTabViewModel : ViewModelBase
         
         // gather process dependencies.
         
-        parentWindow.TryLoadKsp2Install();
-        var ksp2 = parentWindow.Ksp2;
+        _ksp2InstallService.TryLoadKsp2Install();
+        var ksp2 = _ksp2InstallService.Ksp2;
         if (ksp2 is null || SelectedVersion is null)
         {
             return;
@@ -237,8 +243,8 @@ public partial class HomeTabViewModel : ViewModelBase
 
         Log("Creating install plan");
             
-        var plan = parentWindow.ReleasesFeed[SelectedVersion.Channel]
-            .GetPatchListToVersion(parentWindow.Ksp2!.GameVersion!, SelectedVersion.Version);
+        var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
+            .GetPatchListToVersion(_ksp2InstallService.Ksp2!.GameVersion!, SelectedVersion.Version);
         try
         {
             await RunPlanOnInstall(plan, ksp2);
@@ -253,7 +259,7 @@ public partial class HomeTabViewModel : ViewModelBase
         finally
         {
             cancelCurrentOperation = null;
-            parentWindow.TryLoadKsp2Install();
+            _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
         }
     }
@@ -274,8 +280,8 @@ public partial class HomeTabViewModel : ViewModelBase
         plan.Prepatch();
         plan.RevertToStock();
         
-        parentWindow.TryLoadKsp2Install();
-        var ksp2 = parentWindow.Ksp2;
+        _ksp2InstallService.TryLoadKsp2Install();
+        var ksp2 = _ksp2InstallService.Ksp2;
         if (ksp2 is null || SelectedVersion is null)
         {
             return;
@@ -300,7 +306,7 @@ public partial class HomeTabViewModel : ViewModelBase
         finally
         {
             cancelCurrentOperation = null;
-            parentWindow.TryLoadKsp2Install();
+            _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
         }
     }

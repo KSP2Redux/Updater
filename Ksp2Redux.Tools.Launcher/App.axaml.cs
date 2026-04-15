@@ -3,8 +3,14 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels;
+using Ksp2Redux.Tools.Launcher.ViewModels.Community;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
+using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Ksp2Redux.Tools.Launcher.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Ksp2Redux.Tools.Launcher;
 
@@ -17,12 +23,30 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // From Avalonia doc, because we're using Community Toolkit we don't want duplicate validation
+        // https://docs.avaloniaui.net/docs/app-development/dependency-injection#step-1-install-the-nuget-package-for-di
+        BindingPlugins.DataValidators.RemoveAt(0);
+        
+        ServiceCollection serviceCollection = new();
+        serviceCollection.AddSingleton<MainWindowViewModel>();
+        serviceCollection.AddSingleton<HomeTabViewModel>();
+        serviceCollection.AddSingleton<CommunityTabViewModel>();
+        serviceCollection.AddSingleton<ModsTabViewModel>();
+        serviceCollection.AddSingleton<SettingsTabViewModel>();
+        serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
+        serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
+        serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
+        serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
+        serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
+        
+        ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
+        
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = serviceProvider.GetRequiredService<MainWindowViewModel>(),
             };
         }
 
