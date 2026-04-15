@@ -251,7 +251,7 @@ public class ManifestReleasesFeed
     {
         ct.ThrowIfCancellationRequested();
         string FileName = patch.url.Split("/").Last();
-        string patchDownloadTo = Path.Combine(downloadStorageDir, FileName);
+        string patchDownloadTo = _fileSystem.Path.Combine(downloadStorageDir, FileName);
 
         log($"Downloading {FileName}");
         reportDownloadProgress(0, patch.size);

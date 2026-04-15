@@ -72,8 +72,8 @@ public partial class MainWindowViewModel : ViewModelBase
         // {
         //     await feed.Value.UpdateManifest();
         // }
-        var releaseDownloadCacheDir = Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
-        Directory.CreateDirectory(releaseDownloadCacheDir);
+        var releaseDownloadCacheDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
+        _fileSystem.Directory.CreateDirectory(releaseDownloadCacheDir);
         foreach (var feed in _launcherConfigService.Config.Feeds)
         {
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");

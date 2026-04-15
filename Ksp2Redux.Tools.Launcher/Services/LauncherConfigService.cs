@@ -31,7 +31,7 @@ public class LauncherConfigService : ILauncherConfigService
 
     private LauncherConfig GetOrCreateCurrentConfig(IFileSystem fileSystem)
     {
-        Directory.CreateDirectory(GetLocalStorageDirectory());
+        _fileSystem.Directory.CreateDirectory(GetLocalStorageDirectory());
         var configFilePath = GetConfigFilePath();
 
         LauncherConfig? config = null;
@@ -60,19 +60,19 @@ public class LauncherConfigService : ILauncherConfigService
     
     public void Save()
     {
-        var directory = Path.GetDirectoryName(Config.StoragePath);
-        Directory.CreateDirectory(directory!);
+        var directory = _fileSystem.Path.GetDirectoryName(Config.StoragePath);
+        _fileSystem.Directory.CreateDirectory(directory!);
         _fileSystem.File.WriteAllText(Config.StoragePath, JsonSerializer.Serialize(Config, StorageOptions));
     }
 
     private string GetConfigFilePath()
     {
-        return Path.Combine(GetLocalStorageDirectory(), LauncherConfigJson);
+        return _fileSystem.Path.Combine(GetLocalStorageDirectory(), LauncherConfigJson);
     }
 
     public string GetLocalStorageDirectory()
     {
         var appdataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appdataPath, ReduxLauncherConfigFolder);
+        return _fileSystem.Path.Combine(appdataPath, ReduxLauncherConfigFolder);
     }
 }

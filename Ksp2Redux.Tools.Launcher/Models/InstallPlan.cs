@@ -106,7 +106,7 @@ public class InstallPlan
                     Cache.RecursivelyRestoreCache(install); // Test: Add layer of abstraction
                     break;
                 case InstallPlanAction.RevertToStock:
-                    if (_fileSystem.File.Exists(Path.Combine(install, "uninstall.zip")))    // Test: Add layer of abstraction
+                    if (_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))    // Test: Add layer of abstraction
                     {
                         log("Reverting KSP2 Redux to Stock for repatching");
                         Cache.RecursivelyRestoreCache(install, true);   // Test: Add layer of abstraction
@@ -119,19 +119,19 @@ public class InstallPlan
                 case InstallPlanAction.Prepatch:
                 {
                     log("Applying the correct prepatch");
-                    if (_fileSystem.File.Exists(Path.Combine(install, "winhttp.dll")))  // Test: Add layer of abstraction
+                    if (_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "winhttp.dll")))  // Test: Add layer of abstraction
                     {
                         log("Deleting old modloader!");
-                        _fileSystem.File.Delete(Path.Combine(install, "winhttp.dll"));  // Test: Add layer of abstraction
+                        _fileSystem.File.Delete(_fileSystem.Path.Combine(install, "winhttp.dll"));  // Test: Add layer of abstraction
                     }
                     
-                    if (!_fileSystem.File.Exists(Path.Combine(install, "uninstall.zip")))   // Test: Add layer of abstraction
+                    if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))   // Test: Add layer of abstraction
                     {
                         Cache.RecursivelyCreateCache(install);  // Test: Add layer of abstraction
                     }
 
-                    var patchFile = Path.GetTempFileName();
-                    var exe = Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
+                    var patchFile = _fileSystem.Path.GetTempFileName();
+                    var exe = _fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
                     var ksp2Install = new Ksp2Install(_fileSystem, exe); // Test: Inject File, Path and ModuleDefinition abstractions
                     switch (ksp2Install.Distribution)
                     {

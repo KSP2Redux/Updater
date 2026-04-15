@@ -91,7 +91,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
         IStorageFolder? startFolder = null;
         // default to previously select install path if it exists.
-        if (!string.IsNullOrWhiteSpace(_launcherConfigService.Config.Ksp2InstallPath) && Path.Exists(_launcherConfigService.Config.Ksp2InstallPath))
+        if (!string.IsNullOrWhiteSpace(_launcherConfigService.Config.Ksp2InstallPath) && _fileSystem.Path.Exists(_launcherConfigService.Config.Ksp2InstallPath))
         {
             startFolder = await provider.TryGetFolderFromPathAsync(_launcherConfigService.Config.Ksp2InstallPath);
         }
@@ -115,8 +115,8 @@ public partial class SettingsTabViewModel : ViewModelBase
     public async Task UninstallRedux()
     {
         // parentWindow.TryLoadKsp2Install();
-        var installDir = Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
-        if (!_fileSystem.File.Exists(Path.Combine(installDir, "uninstall.zip")))
+        var installDir = _fileSystem.Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
+        if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
         {
             await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
             return;
