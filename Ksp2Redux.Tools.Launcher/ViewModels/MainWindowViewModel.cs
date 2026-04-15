@@ -72,14 +72,14 @@ public partial class MainWindowViewModel : ViewModelBase
         // {
         //     await feed.Value.UpdateManifest();
         // }
-        var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
+        var releaseDownloadCacheDir = Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
         Directory.CreateDirectory(releaseDownloadCacheDir);
         foreach (var feed in _launcherConfigService.Config.Feeds)
         {
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
                 _fileSystem,
-                LauncherConfig.GetLocalStorageDirectory(), feed.Repository,
+                _launcherConfigService.GetLocalStorageDirectory(), feed.Repository,
                 releaseDownloadCacheDir, feed.Filename, feed.Token);
             Console.WriteLine("Updating feed manifest");
             try

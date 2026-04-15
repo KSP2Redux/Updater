@@ -33,7 +33,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         {
             if (!ChannelsLoaded) return;
             _launcherConfigService.Config.ReleaseChannel = value;
-            _launcherConfigService.Config.Save();
+            _launcherConfigService.Save();
             _ = _homeTabViewModel.UpdateVersionsList();
         }
     }
@@ -76,7 +76,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         if (chosenPath is not null)
         {
             _launcherConfigService.Config.Ksp2InstallPath = chosenPath.Path.LocalPath;
-            _launcherConfigService.Config.Save();
+            _launcherConfigService.Save();
             // TODO: trigger update patch status
         }
         _ksp2InstallService.TryLoadKsp2Install();
