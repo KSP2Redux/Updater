@@ -2,13 +2,14 @@
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Community;
 
-public partial class CommunityTabViewModel(ObservableCollection<NewsItemViewModel> newsCollection) : ViewModelBase
+public partial class CommunityTabViewModel(INewsItemCollectionService newsCollectionService) : ViewModelBase
 {
-    public NewsCollectionViewModel NewsCollectionViewModel { get; set; } = new(newsCollection);
+    public NewsCollectionViewModel NewsCollectionViewModel { get; set; } = new(newsCollectionService.NewsCollection);
 
     private int SelectedNewsId
     {

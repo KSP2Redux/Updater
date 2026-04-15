@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
@@ -16,39 +17,49 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    public ObservableCollection<Shared.NewsItemViewModel> NewsCollection { get; set; } = [];
-
+    private IKsp2InstallService _ksp2InstallService;
+    private INewsItemCollectionService _newsCollectionService;
+    private ILauncherConfigService _launcherConfigService;
+    private IReleasesFeedService _releasesFeedService;
+    private ITabNavigatorService _tabNavigatorService;
+    
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
-
-    public LauncherConfig Config { get; }
-    public Ksp2Install? Ksp2 { get; private set; }
-    public Dictionary<string, ManifestReleasesFeed> ReleasesFeed { get; private set; }
+    
     public int CurrentTab { get; set; }
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
+        SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
+        INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
+        IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService)
     {
-        Config = LauncherConfig.GetOrCreateCurrentConfig();
-
+        _ksp2InstallService = ksp2InstallService;
+        _newsCollectionService = newsCollectionService;
+        _launcherConfigService = launcherConfigService;
+        _releasesFeedService = releasesFeedService;
+        _tabNavigatorService = tabNavigatorService;
+        
+        _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
+        
         LoadNews();
-        TryLoadKsp2Install();
+        _ksp2InstallService.TryLoadKsp2Install();
         // ReleasesFeed =
         // [
         //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir),
         //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir)
         // ];
-        ReleasesFeed = [];
+        // ReleasesFeed = [];
 
         _ = InitializeAsync();
 
-        HomeTab = new HomeTabViewModel(this);
-        CommunityTab = new CommunityTabViewModel(NewsCollection);
-        ModsTab = new ModsTabViewModel();
-        SettingsTab = new SettingsTabViewModel(Config, this);
+        HomeTab = homeTab;
+        CommunityTab = communityTab;
+        ModsTab = modsTab;
+        SettingsTab = settingsTabViewModel;
     }
 
     private async Task InitializeAsync()
@@ -59,7 +70,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // }
         var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
         Directory.CreateDirectory(releaseDownloadCacheDir);
-        foreach (var feed in Config.Feeds)
+        foreach (var feed in _launcherConfigService.Config.Feeds)
         {
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
@@ -70,7 +81,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 await newFeed.UpdateManifest();
                 Console.WriteLine($"Done adding feed: {feed.Repository} / {feed.Filename}");
-                ReleasesFeed[newFeed.CurrentChannel] = newFeed;
+                _releasesFeedService.AddOrSet(newFeed.CurrentChannel, newFeed);
                 SettingsTab.ValidChannels.Add(newFeed.CurrentChannel);
             }
             catch (Exception e)
@@ -89,21 +100,13 @@ public partial class MainWindowViewModel : ViewModelBase
         List<News> newsList = await News.FindAllNews();
         foreach (News news in newsList)
         {
-            NewsCollection.Add(new Shared.NewsItemViewModel(news));
+            _newsCollectionService.Add(new Shared.NewsItemViewModel(news));
         }
     }
-
-    public void TryLoadKsp2Install()
+    
+    private void CurrentTabChanged(object? sender, ITabNavigatorService.CurrentTabChangedEventArgs e)
     {
-        if (!string.IsNullOrWhiteSpace(Config.Ksp2InstallPath))
-        {
-            Ksp2 = new(Config.Ksp2InstallPath);
-        }
-    }
-
-    public void GoToHome()
-    {
-        CurrentTab = 0;
+        CurrentTab = e.CurrentTab;
         OnPropertyChanged(nameof(CurrentTab));
     }
 }
