@@ -12,6 +12,7 @@
         <UseWPF>true</UseWPF>
         <RootNamespace>Ksp2Redux.Tools</RootNamespace>
         <NoWarn>$(NoWarn);WPF0001</NoWarn>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
     </PropertyGroup>
 
     <ItemGroup>
