@@ -3,20 +3,16 @@
 
 name: .NET
 
-on:
-  push:
-    branches: [ "*" ]
-  pull_request:
-    branches: [ "*" ]
+on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
@@ -36,27 +32,29 @@ jobs:
     needs: build
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
     - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: build-artifacts
+    - name: Restore dependencies
+    run: dotnet restore
     - name: Test
-      run: dotnet test --no-build --verbosity normal --logger trx --results-directory TestResults
+      run: dotnet test --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
         path: TestResults/
-    - name: Publish Test Results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
+    - name: Report Test Results
+      uses: dorny/test-reporter@v3
+      if: !cancelled()
       with:
-        files: TestResults/**/*.trx
+        name: Tests
+        path: TestResults/**/*.trx
+        reporter: dotnet-trx
