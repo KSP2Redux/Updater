@@ -16,7 +16,7 @@ public class GameVersionTest
         // Arrange
         TypeDefinition versionIDType = GenerateMockVersionID(
             ("VERSION_TEXT", version + "." + buildNumber),
-            ("DEBUG_INFO", "_")
+            ("DEBUG_INFO", "0000")
         );
 
         // Act
@@ -46,7 +46,7 @@ public class GameVersionTest
         TypeDefinition versionIDType = GenerateMockVersionID(
             ("VERSION_TEXT", version + "." + buildNumber),
             ("CHANNEL_NAME", channel),
-            ("DEBUG_INFO", "_")
+            ("DEBUG_INFO", "0000")
         );
 
         // Act
@@ -61,50 +61,222 @@ public class GameVersionTest
         Assert.That(result.VersionNumber, Is.EqualTo(expectedVersion));
         Assert.That(result.BuildNumber, Is.EqualTo(expectedBuildNumber));
     }
+
+    [Test]
+    public void FromVersionIDType_NoVersionTextField_ThrowsInvalidOperation(
+        [Values(true, false)]
+        bool isRedux
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("CHANNEL_NAME", "stable"),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, isRedux);
+        });
+    }
+
+    [Test]
+    public void FromVersionIDType_NullOrWhiteSpaceVersionText_ThrowsInvalidOperation(
+        [Values("", " ")]
+        string fullVersionText,
+        [Values(true, false)]
+        bool isRedux
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", fullVersionText),
+            ("CHANNEL_NAME", "stable"),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, isRedux);
+        });
+    }
     
-    // [Test]
-    // public void FromVersionIDType_NoVersionTextField_ThrowsException()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_NullOrWhiteSpaceVersionText_EmptyVersionAndBuildNumber()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_IncorrectVersionParse_ThrowsException()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_IncorrectVersionTokenLength_ThrowsException()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_ReduxNoChannelNameField_ThrowsException()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_StockNoChannelNameField_StableChannel()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_ReduxNullChannelName_StableChannel()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_ReduxWhiteSpaceChannelName_WhiteSpaceChannel()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_NoDebugInfoField_ThrowsException()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_NullDebugInfo_EmptyCommitHash()
-    // { }
-    //
-    // [Test]
-    // public void FromVersionIDType_WhiteSpaceDebugInfo_ChannelPlusWhiteSpaceCommitHash()
-    // { }
+    [Test]
+    public void FromVersionIDType_IncorrectVersionParse_ThrowsInvalidOperation(
+        [Values("a.b.c.d.e", "0.0.0..0", ".0.0.0.0")]
+        string fullVersionText,
+        [Values(true, false)]
+        bool isRedux
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", fullVersionText),
+            ("CHANNEL_NAME", "stable"),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, isRedux);
+        });
+    }
+    
+    [Test]
+    public void FromVersionIDType_IncorrectVersionTokenLength_ThrowsInvalidOperation(
+        [Values("0.0.0.0", "0.0.0.0.0.0")]
+        string fullVersionText,
+        [Values(true, false)]
+        bool isRedux
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", fullVersionText),
+            ("CHANNEL_NAME", "stable"),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, isRedux);
+        });
+    }
+    
+    [Test]
+    public void FromVersionIDType_ReduxNoChannelNameField_ThrowsInvalidOperation()
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", "0.0.0.0.0"),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, true);
+        });
+    }
+
+    [Test]
+    public void FromVersionIDType_StockNoChannelNameField_StableChannel()
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", "0.0.0.0.0"),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        GameVersion result = GameVersion.FromVersionIDType(versionIDType, true);
+        
+        // Assert
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Channel, Is.EqualTo("stable"));
+    }
+
+    [Test]
+    public void FromVersionIDType_ReduxNullChannelName_ThrowsInvalidOperation()
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", "0.0.0.0.0"),
+            ("CHANNEL_NAME", null),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, true);
+        });
+    }
+
+    [Test]
+    public void FromVersionIDType_ReduxWhiteSpaceChannelName_ThrowsInvalidOperation(
+        [Values("", " ")]
+        string channelName
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", "0.0.0.0.0"),
+            ("CHANNEL_NAME", channelName),
+            ("DEBUG_INFO", "0000")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, true);
+        });
+    }
+
+    [Test]
+    public void FromVersionIDType_NoDebugInfoField_ThrowsInvalidOperation(
+        [Values(true, false)]
+        bool isRedux
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", "0.0.0.0.0"),
+            ("CHANNEL_NAME", "stable")
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, isRedux);
+        });
+    }
+
+    [Test]
+    public void FromVersionIDType_NullDebugInfo_ThrowsInvalidOperation(
+        [Values(true, false)]
+        bool isRedux
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", "0.0.0.0.0"),
+            ("CHANNEL_NAME", "stable"),
+            ("DEBUG_INFO", null)
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, isRedux);
+        });
+    }
+    
+    [Test]
+    public void FromVersionIDType_WhiteSpaceDebugInfo_ThrowsInvalidOperation(
+        [Values("", " ")]
+        string debugInfo,
+        [Values(true, false)]
+        bool isRedux
+    )
+    {
+        // Arrange
+        TypeDefinition versionIDType = GenerateMockVersionID(
+            ("VERSION_TEXT", "0.0.0.0.0"),
+            ("CHANNEL_NAME", "stable"),
+            ("DEBUG_INFO", debugInfo)
+        );
+
+        // Act
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            GameVersion.FromVersionIDType(versionIDType, isRedux);
+        });
+    }
     
     [Test]
     public void FromVersionIDType_DebugInfoIsBuildInfo_EmptyCommitHash(
@@ -279,7 +451,7 @@ public class GameVersionTest
     
     
     
-    private static TypeDefinition GenerateMockVersionID(params List<(string name, string value)> fields)
+    private static TypeDefinition GenerateMockVersionID(params List<(string name, string? value)> fields)
     {
         AssemblyDefinition? assembly = AssemblyDefinition.CreateAssembly(
             new AssemblyNameDefinition("MockAssembly", new Version(1, 0, 0, 0)),
