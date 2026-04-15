@@ -42,7 +42,7 @@ jobs:
       with:
         name: build-artifacts
     - name: Restore dependencies
-    run: dotnet restore
+      run: dotnet restore
     - name: Test
       run: dotnet test --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
     - name: Upload test results
