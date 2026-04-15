@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -17,11 +18,13 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private IKsp2InstallService _ksp2InstallService;
-    private INewsItemCollectionService _newsCollectionService;
-    private ILauncherConfigService _launcherConfigService;
-    private IReleasesFeedService _releasesFeedService;
-    private ITabNavigatorService _tabNavigatorService;
+    private readonly IKsp2InstallService _ksp2InstallService;
+    private readonly INewsItemCollectionService _newsCollectionService;
+    private readonly ILauncherConfigService _launcherConfigService;
+    private readonly IReleasesFeedService _releasesFeedService;
+    private readonly ITabNavigatorService _tabNavigatorService;
+    private readonly IFileSystem _fileSystem;
+
     
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -35,14 +38,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
-        IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService)
+        IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem)
     {
         _ksp2InstallService = ksp2InstallService;
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
         _tabNavigatorService = tabNavigatorService;
-        
+        _fileSystem = fileSystem;
+
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
         LoadNews();
@@ -74,6 +78,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
+                _fileSystem,
                 LauncherConfig.GetLocalStorageDirectory(), feed.Repository,
                 releaseDownloadCacheDir, feed.Filename, feed.Token);
             Console.WriteLine("Updating feed manifest");

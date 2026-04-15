@@ -1,4 +1,5 @@
-﻿using Ksp2Redux.Tools.Launcher.Models;
+﻿using System.IO.Abstractions;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
 
@@ -8,7 +9,7 @@ public interface IKsp2InstallService
     void TryLoadKsp2Install();
 }
 
-public class Ksp2InstallService(ILauncherConfigService launcherConfigService) : IKsp2InstallService
+public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem) : IKsp2InstallService
 {
     public Ksp2Install? Ksp2 { get; private set; }
     
@@ -16,7 +17,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService) : 
     {
         if (!string.IsNullOrWhiteSpace(launcherConfigService.Config.Ksp2InstallPath))
         {
-            Ksp2 = new(launcherConfigService.Config.Ksp2InstallPath);
+            Ksp2 = new(fileSystem, launcherConfigService.Config.Ksp2InstallPath);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Ksp2Redux.Tools.Launcher.Models;
+﻿using System.IO.Abstractions;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
 
@@ -9,12 +10,7 @@ public interface ILauncherConfigService
     LauncherConfig Config { get; }
 }
 
-public class LauncherConfigService : ILauncherConfigService
+public class LauncherConfigService(IFileSystem fileSystem) : ILauncherConfigService
 {
-    public LauncherConfig Config { get; set; }
-
-    public LauncherConfigService()
-    {
-        Config = LauncherConfig.GetOrCreateCurrentConfig();
-    }
+    public LauncherConfig Config { get; set; } = LauncherConfig.GetOrCreateCurrentConfig(fileSystem);
 }

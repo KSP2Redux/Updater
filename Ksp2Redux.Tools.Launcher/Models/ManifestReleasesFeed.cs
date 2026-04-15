@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -15,6 +16,7 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class ManifestReleasesFeed
 {
+    private readonly IFileSystem _fileSystem;
     private readonly string BaseFilePath;
     private readonly string downloadStorageDir;
     private readonly string githubRelativeRepoUri;
@@ -26,8 +28,10 @@ public class ManifestReleasesFeed
     public String CurrentChannel { get; private set; }
 
     public ManifestReleasesFeed(
-        string BaseFilePath, string githubRelativeRepoUri, string downloadStorageDir, string manifestPath, string? token = null)
+        IFileSystem fileSystem, string BaseFilePath, string githubRelativeRepoUri, string downloadStorageDir,
+        string manifestPath, string? token = null)
     {
+        _fileSystem = fileSystem;
         this.BaseFilePath = BaseFilePath;
         this.downloadStorageDir = downloadStorageDir;
         this.githubRelativeRepoUri = githubRelativeRepoUri;
@@ -177,7 +181,7 @@ public class ManifestReleasesFeed
     
     public InstallPlan GetPatchListToVersion(GameVersion fromGameVersion, GameVersion toGameVersion)
     {
-        if (manifest?.patches is null) return new InstallPlan();
+        if (manifest?.patches is null) return new InstallPlan(_fileSystem);
 
         static string ToVersionString(GameVersion gv)
         {
@@ -195,14 +199,14 @@ public class ManifestReleasesFeed
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
         if (!patchesByOutput.ContainsKey(targetVersion))
-            return new InstallPlan();
+            return new InstallPlan(_fileSystem);
 
-        if (GetPlan(startVersion, targetVersion, new InstallPlan()) is {} result)
+        if (GetPlan(startVersion, targetVersion, new InstallPlan(_fileSystem)) is {} result)
         {
             return result;
         }
         
-        return new InstallPlan();
+        return new InstallPlan(_fileSystem);
 
         InstallPlan? GetPlan(string from, string to, InstallPlan initialPlan)
         {
@@ -214,14 +218,14 @@ public class ManifestReleasesFeed
                 {
                     if (patch.requires.version == from)
                     {
-                        bestPlan = new InstallPlan();
+                        bestPlan = new InstallPlan(_fileSystem);
                         bestPlan.ApplyPatchFile((log, progress,ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {from}");
                         break;
                     }
                     
                     if (patch.requires.IsBasePatch)
                     {
-                        var testPlan = new InstallPlan();
+                        var testPlan = new InstallPlan(_fileSystem);
                         testPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from prepatch");
                         testPlan.Prepatch();
                         testPlan.RevertToStock();
@@ -229,7 +233,7 @@ public class ManifestReleasesFeed
                     }
                     else
                     {
-                        var newInitialPlan = new InstallPlan();
+                        var newInitialPlan = new InstallPlan(_fileSystem);
                         newInitialPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {patch.requires.version}");
                         var testPlan = GetPlan(from, patch.requires.version!, newInitialPlan);
                         if (testPlan != null && (bestPlan == null || bestPlan.Cost > testPlan.Cost)) bestPlan = testPlan;
@@ -252,7 +256,7 @@ public class ManifestReleasesFeed
         log($"Downloading {FileName}");
         reportDownloadProgress(0, patch.size);
 
-        if (!File.Exists(patchDownloadTo) || new FileInfo(patchDownloadTo).Length != patch.size)
+        if (!_fileSystem.File.Exists(patchDownloadTo) || new FileInfo(patchDownloadTo).Length != patch.size)
         {
             string assetApiUrl = await GetAssetApiUrl(patch.url, ct);
 

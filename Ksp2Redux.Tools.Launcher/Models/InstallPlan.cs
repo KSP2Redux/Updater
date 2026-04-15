@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -11,6 +12,8 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class InstallPlan
 {
+    private readonly IFileSystem _fileSystem;
+    
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
     private const string PORTABLE_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.portable-prepatch.patch";
@@ -22,6 +25,11 @@ public class InstallPlan
     public record struct Step(InstallPlanAction Action, Func<Action<string>, Action<long, long>, CancellationToken, Task<string>>? Argument = null, string ArgumentDescription = "Undescribed");
 
     public List<Step> Steps = [];
+
+    public InstallPlan(IFileSystem fileSystem)
+    {
+        _fileSystem = fileSystem;
+    }
 
     public void Uninstall()
     {
@@ -52,7 +60,7 @@ public class InstallPlan
     // path that involves it if necessary
     public int Cost => Steps.Count + (Steps.Any(x => x.Action == InstallPlanAction.RevertToStock) ? 1000 : 0);
 
-    public static InstallPlan operator +(InstallPlan a, InstallPlan b) => new()
+    public static InstallPlan operator +(InstallPlan a, InstallPlan b) => new(a._fileSystem)
     {
         Steps = a.Steps.Concat(b.Steps).ToList() 
     };
@@ -95,13 +103,13 @@ public class InstallPlan
             {
                 case InstallPlanAction.Uninstall:
                     log("Uninstalling KSP2 Redux");
-                    Cache.RecursivelyRestoreCache(install);
+                    Cache.RecursivelyRestoreCache(install); // Test: Add layer of abstraction
                     break;
                 case InstallPlanAction.RevertToStock:
-                    if (File.Exists(Path.Combine(install, "uninstall.zip")))
+                    if (_fileSystem.File.Exists(Path.Combine(install, "uninstall.zip")))    // Test: Add layer of abstraction
                     {
                         log("Reverting KSP2 Redux to Stock for repatching");
-                        Cache.RecursivelyRestoreCache(install, true);
+                        Cache.RecursivelyRestoreCache(install, true);   // Test: Add layer of abstraction
                     }
                     else
                     {
@@ -111,26 +119,26 @@ public class InstallPlan
                 case InstallPlanAction.Prepatch:
                 {
                     log("Applying the correct prepatch");
-                    if (File.Exists(Path.Combine(install, "winhttp.dll")))
+                    if (_fileSystem.File.Exists(Path.Combine(install, "winhttp.dll")))  // Test: Add layer of abstraction
                     {
                         log("Deleting old modloader!");
-                        File.Delete(Path.Combine(install, "winhttp.dll"));
+                        _fileSystem.File.Delete(Path.Combine(install, "winhttp.dll"));  // Test: Add layer of abstraction
                     }
                     
-                    if (!File.Exists(Path.Combine(install, "uninstall.zip")))
+                    if (!_fileSystem.File.Exists(Path.Combine(install, "uninstall.zip")))   // Test: Add layer of abstraction
                     {
-                        Cache.RecursivelyCreateCache(install);
+                        Cache.RecursivelyCreateCache(install);  // Test: Add layer of abstraction
                     }
 
                     var patchFile = Path.GetTempFileName();
                     var exe = Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
-                    var ksp2Install = new Ksp2Install(exe);
+                    var ksp2Install = new Ksp2Install(_fileSystem, exe); // Test: Inject File, Path and ModuleDefinition abstractions
                     switch (ksp2Install.Distribution)
                     {
                         case Distribution.Portable:
                         {
                             log("Applying portable prepatch");
-                            await using var stream = _thisAssembly.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);
+                            await using var stream = _thisAssembly.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);   // Test: Add layer of abstraction
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
@@ -140,7 +148,7 @@ public class InstallPlan
                         case Distribution.Steam:
                         {
                             log("Applying steam prepatch");
-                            await using var stream = _thisAssembly.GetManifestResourceStream(STEAM_PREPATCH_NAME);
+                            await using var stream = _thisAssembly.GetManifestResourceStream(STEAM_PREPATCH_NAME);  // Test: Add layer of abstraction
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
@@ -150,7 +158,7 @@ public class InstallPlan
                         case Distribution.Epic:
                         {
                             log("Applying epic prepatch");
-                            await using var stream = _thisAssembly.GetManifestResourceStream(EPIC_PREPATCH_NAME);
+                            await using var stream = _thisAssembly.GetManifestResourceStream(EPIC_PREPATCH_NAME);   // Test: Add layer of abstraction
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
@@ -166,13 +174,13 @@ public class InstallPlan
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    using (var patch = Ksp2Patch.FromFile(patchFile))
+                    using (var patch = Ksp2Patch.FromFile(patchFile))   // Test: Convert to factory, add interface for patch
                     {
                         await patch.AsyncApply(install, install, log, log);
                     }
                     
                     delete_patch:
-                    File.Delete(patchFile);
+                    _fileSystem.File.Delete(patchFile); // Test: Add layer of abstraction
                     break;
                 }
 

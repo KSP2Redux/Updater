@@ -4,6 +4,7 @@ using Avalonia.Platform.Storage;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Abstractions;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Services;
@@ -13,12 +14,13 @@ using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
-public partial class SettingsTabViewModel() : ViewModelBase
+public partial class SettingsTabViewModel : ViewModelBase
 {
-    private ILauncherConfigService _launcherConfigService;
-    private IKsp2InstallService _ksp2InstallService;
-    private ITabNavigatorService _tabNavigatorService;
-    private HomeTabViewModel _homeTabViewModel;
+    private readonly IFileSystem _fileSystem;
+    private readonly ILauncherConfigService _launcherConfigService;
+    private readonly IKsp2InstallService _ksp2InstallService;
+    private readonly ITabNavigatorService _tabNavigatorService;
+    private readonly HomeTabViewModel _homeTabViewModel;
     
     
     public string DisplayedInstallPath => _launcherConfigService.Config.Ksp2InstallPath;
@@ -45,9 +47,10 @@ public partial class SettingsTabViewModel() : ViewModelBase
         OnPropertyChanged(nameof(ReleaseChannel));
     }
     
-    public SettingsTabViewModel(ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
-        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel) : this()
+    public SettingsTabViewModel(IFileSystem fileSystem, ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
+        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel)
     {
+        _fileSystem = fileSystem;
         _tabNavigatorService = tabNavigatorService;
         _launcherConfigService = launcherConfigService;
         _ksp2InstallService = ksp2InstallService;
@@ -113,7 +116,7 @@ public partial class SettingsTabViewModel() : ViewModelBase
     {
         // parentWindow.TryLoadKsp2Install();
         var installDir = Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
-        if (!File.Exists(Path.Combine(installDir, "uninstall.zip")))
+        if (!_fileSystem.File.Exists(Path.Combine(installDir, "uninstall.zip")))
         {
             await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
             return;

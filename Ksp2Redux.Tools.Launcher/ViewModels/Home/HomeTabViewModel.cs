@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -21,10 +22,11 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
 public partial class HomeTabViewModel : ViewModelBase
 {
-    private IKsp2InstallService _ksp2InstallService;
-    private INewsItemCollectionService _newsCollectionService;
-    private ILauncherConfigService _launcherConfigService;
-    private IReleasesFeedService _releasesFeedService;
+    private readonly IKsp2InstallService _ksp2InstallService;
+    private readonly INewsItemCollectionService _newsCollectionService;
+    private readonly ILauncherConfigService _launcherConfigService;
+    private readonly IReleasesFeedService _releasesFeedService;
+    private readonly IFileSystem _fileSystem;
     
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
@@ -56,12 +58,13 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IFileSystem fileSystem)
     {
         _ksp2InstallService = ksp2InstallService;
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
+        _fileSystem = fileSystem;
 
         NewsCollectionViewModel = new NewsCollectionViewModel(_newsCollectionService.NewsCollection);
         RebuildVersionsCollection();
@@ -275,7 +278,7 @@ public partial class HomeTabViewModel : ViewModelBase
         InstallProgressSteps = 0;
         InstallProgressTotalSteps = 1;
         
-        var plan = new InstallPlan();
+        var plan = new InstallPlan(_fileSystem);
         plan.ApplyPatchFile(path);
         plan.Prepatch();
         plan.RevertToStock();

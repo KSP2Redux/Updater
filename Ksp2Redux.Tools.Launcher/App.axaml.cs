@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
@@ -38,6 +39,7 @@ public partial class App : Application
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
+        serviceCollection.AddSingleton<IFileSystem, FileSystem>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

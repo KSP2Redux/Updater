@@ -1,6 +1,7 @@
 ﻿using Mono.Cecil;
 using System;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 
@@ -34,10 +35,11 @@ public class Ksp2Install
     private const string EpicGamesMarker = ".egstore";
     private const string PrepatchMarker = "prepatched.nodelete";
     
-    public Ksp2Install(string exePath)
+    public Ksp2Install(IFileSystem fileSystem, string exePath)
     {
         ExePath = exePath;
-        IsValid = File.Exists(exePath) && Path.GetFileName(exePath) == KSP2_EXE_NAME;
+
+        IsValid = fileSystem.File.Exists(exePath) && Path.GetFileName(exePath) == KSP2_EXE_NAME;
         if (IsValid)
         {
             InstallDir = Path.GetDirectoryName(exePath)!;
