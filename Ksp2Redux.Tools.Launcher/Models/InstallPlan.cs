@@ -146,7 +146,7 @@ public class InstallPlan
                         case Distribution.Portable:
                         {
                             log("Applying portable prepatch");
-                            await using var stream = _assemblyService.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);   // Test: Add layer of abstraction
+                            await using var stream = _assemblyService.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
@@ -156,7 +156,7 @@ public class InstallPlan
                         case Distribution.Steam:
                         {
                             log("Applying steam prepatch");
-                            await using var stream = _assemblyService.GetManifestResourceStream(STEAM_PREPATCH_NAME);  // Test: Add layer of abstraction
+                            await using var stream = _assemblyService.GetManifestResourceStream(STEAM_PREPATCH_NAME);
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
@@ -166,7 +166,7 @@ public class InstallPlan
                         case Distribution.Epic:
                         {
                             log("Applying epic prepatch");
-                            await using var stream = _assemblyService.GetManifestResourceStream(EPIC_PREPATCH_NAME);   // Test: Add layer of abstraction
+                            await using var stream = _assemblyService.GetManifestResourceStream(EPIC_PREPATCH_NAME);
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
