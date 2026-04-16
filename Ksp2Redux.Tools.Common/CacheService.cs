@@ -5,15 +5,23 @@ using System.IO.Compression;
 
 namespace Ksp2Redux.Tools.Common;
 
-public static class Cache
+public interface ICacheService
 {
-    public static List<string> GetIgnoredDirectories(IFileSystem fileSystem)
+    List<string> IgnoredDirectories { get; }
+    void RecursivelyCreateCache(string directory);
+    void AddFolder(ZipArchive archive, string directory, string prefix);
+    void RecursivelyRestoreCache(string directory, bool isForRepatch=false);
+}
+
+public class CacheService(IFileSystem fileSystem) : ICacheService
+{
+    public List<string> IgnoredDirectories
         => [fileSystem.Path.Combine("KSP2_x64_Data","StreamingAssets"), "UninstallTemp", "mods"];
     
-    public static List<string> SavedDirectories = ["Redux/Config"];
+    public List<string> SavedDirectories = ["Redux/Config"];
 
 
-    public static void RecursivelyCreateCache(IFileSystem fileSystem, string directory)
+    public void RecursivelyCreateCache(string directory)
     {
         if (fileSystem.File.Exists(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
@@ -25,16 +33,16 @@ public static class Cache
         {
             using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
             {
-                AddFolder(fileSystem, zipArchive, directory, "");
+                AddFolder(zipArchive, directory, "");
             }
             memoryStream.Seek(0, SeekOrigin.Begin);
             memoryStream.CopyTo(saveStream);
         }
     }
 
-    public static void AddFolder(IFileSystem fileSystem, ZipArchive archive, string directory, string prefix)
+    public void AddFolder(ZipArchive archive, string directory, string prefix)
     {
-        if (GetIgnoredDirectories(fileSystem).Contains(prefix))
+        if (IgnoredDirectories.Contains(prefix))
         {
             return;
         }
@@ -47,12 +55,12 @@ public static class Cache
 
         foreach (var subDir in dir.GetDirectories())
         {
-            AddFolder(fileSystem, archive, fileSystem.Path.Combine(directory, subDir.Name), fileSystem.Path.Combine(prefix, subDir.Name));
+            AddFolder(archive, fileSystem.Path.Combine(directory, subDir.Name), fileSystem.Path.Combine(prefix, subDir.Name));
         }
     }
     
     // If isForRepatch is true, then the Redux/Config folder is saved, and 
-    public static void RecursivelyRestoreCache(IFileSystem fileSystem, string directory, bool isForRepatch=false)
+    public void RecursivelyRestoreCache(string directory, bool isForRepatch=false)
     {
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
@@ -76,7 +84,7 @@ public static class Cache
             }
         }
         
-        ClearOutFolder(fileSystem, directory);
+        ClearOutFolder(directory);
 
         using (var zipFile = ZipFile.OpenRead(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
@@ -105,9 +113,9 @@ public static class Cache
         }
     }
 
-    private static bool ClearOutFolder(IFileSystem fileSystem, string dir, string prefix="")
+    private bool ClearOutFolder(string dir, string prefix="")
     {
-        if (GetIgnoredDirectories(fileSystem).Contains(prefix))
+        if (IgnoredDirectories.Contains(prefix))
         {
             return false;
         }
@@ -124,7 +132,7 @@ public static class Cache
         {
             var prefix2 = fileSystem.Path.Combine(prefix, directory.Name);
             var dir2 = fileSystem.Path.Combine(dir, directory.Name);
-            if (ClearOutFolder(fileSystem, dir2, prefix2))
+            if (ClearOutFolder(dir2, prefix2))
             {
                 directory.Delete(true);
             }

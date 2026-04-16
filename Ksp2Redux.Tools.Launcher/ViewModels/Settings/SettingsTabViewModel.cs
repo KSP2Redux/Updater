@@ -16,6 +16,7 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 public partial class SettingsTabViewModel : ViewModelBase
 {
     private readonly IFileSystem _fileSystem;
+    private readonly ICacheService _cacheService;
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly ITabNavigatorService _tabNavigatorService;
@@ -46,10 +47,11 @@ public partial class SettingsTabViewModel : ViewModelBase
         OnPropertyChanged(nameof(ReleaseChannel));
     }
     
-    public SettingsTabViewModel(IFileSystem fileSystem, ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
+    public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel)
     {
         _fileSystem = fileSystem;
+        _cacheService = cacheService;
         _tabNavigatorService = tabNavigatorService;
         _launcherConfigService = launcherConfigService;
         _ksp2InstallService = ksp2InstallService;
@@ -128,7 +130,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         var result = await box.ShowAsync();
         if (result != ButtonResult.Yes) return;
         
-        Cache.RecursivelyRestoreCache(_fileSystem, installDir);
+        _cacheService.RecursivelyRestoreCache(installDir);
         
         _ksp2InstallService.TryLoadKsp2Install();
         await _homeTabViewModel.UpdateVersionsList();
@@ -145,7 +147,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         
         _tabNavigatorService.GoToHome();
         
-        await _homeTabViewModel.InstallFromPatchFile(_fileSystem, chosenPath.Path.LocalPath);
+        await _homeTabViewModel.InstallFromPatchFile(chosenPath.Path.LocalPath);
     }
 
 

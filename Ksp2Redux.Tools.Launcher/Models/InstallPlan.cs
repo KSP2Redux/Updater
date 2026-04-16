@@ -13,6 +13,7 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 public class InstallPlan
 {
     private readonly IFileSystem _fileSystem;
+    private readonly ICacheService _cacheService;
     
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -26,9 +27,10 @@ public class InstallPlan
 
     public List<Step> Steps = [];
 
-    public InstallPlan(IFileSystem fileSystem)
+    public InstallPlan(IFileSystem fileSystem, ICacheService cacheService)
     {
         _fileSystem = fileSystem;
+        _cacheService = cacheService;
     }
 
     public void Uninstall()
@@ -60,7 +62,7 @@ public class InstallPlan
     // path that involves it if necessary
     public int Cost => Steps.Count + (Steps.Any(x => x.Action == InstallPlanAction.RevertToStock) ? 1000 : 0);
 
-    public static InstallPlan operator +(InstallPlan a, InstallPlan b) => new(a._fileSystem)
+    public static InstallPlan operator +(InstallPlan a, InstallPlan b) => new(a._fileSystem, a._cacheService)
     {
         Steps = a.Steps.Concat(b.Steps).ToList() 
     };
@@ -103,13 +105,13 @@ public class InstallPlan
             {
                 case InstallPlanAction.Uninstall:
                     log("Uninstalling KSP2 Redux");
-                    Cache.RecursivelyRestoreCache(_fileSystem, install);
+                    _cacheService.RecursivelyRestoreCache(install);
                     break;
                 case InstallPlanAction.RevertToStock:
                     if (_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
                         log("Reverting KSP2 Redux to Stock for repatching");
-                        Cache.RecursivelyRestoreCache(_fileSystem, install, true);
+                        _cacheService.RecursivelyRestoreCache(install, true);
                     }
                     else
                     {
@@ -127,7 +129,7 @@ public class InstallPlan
                     
                     if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
-                        Cache.RecursivelyCreateCache(_fileSystem, install);
+                        _cacheService.RecursivelyCreateCache(install);
                     }
 
                     var patchFile = _fileSystem.Path.GetTempFileName();

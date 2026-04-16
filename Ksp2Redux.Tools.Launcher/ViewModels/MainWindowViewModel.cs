@@ -7,6 +7,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -24,6 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IReleasesFeedService _releasesFeedService;
     private readonly ITabNavigatorService _tabNavigatorService;
     private readonly IFileSystem _fileSystem;
+    private readonly ICacheService _cacheService;
 
     
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
@@ -38,7 +40,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
-        IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem)
+        IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
+        ICacheService cacheService)
     {
         _ksp2InstallService = ksp2InstallService;
         _newsCollectionService = newsCollectionService;
@@ -46,6 +49,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _releasesFeedService = releasesFeedService;
         _tabNavigatorService = tabNavigatorService;
         _fileSystem = fileSystem;
+        _cacheService = cacheService;
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
@@ -79,6 +83,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
                 _fileSystem,
+                _cacheService,
                 _launcherConfigService.GetLocalStorageDirectory(), feed.Repository,
                 releaseDownloadCacheDir, feed.Filename, feed.Token);
             Console.WriteLine("Updating feed manifest");
