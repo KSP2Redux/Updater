@@ -4,12 +4,14 @@ using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
-public class NewsItemViewModel(News news) : ViewModelBase
+public class NewsItemViewModel(INewsService newsService, News news) : ViewModelBase
 {
     public News News { get; set; } = news;
+    public int NewsId => newsService.GetNewsId(News);
 
     public string Title => News.Title;
 
@@ -36,7 +38,7 @@ public class NewsItemViewModel(News news) : ViewModelBase
             return null;
         }
 
-        await using var stream = await News.LoadImageStreamAsync();
+        await using var stream = await newsService.LoadImageStreamAsync(News);
         if (stream == null)
         {
             ImageVisible = false;

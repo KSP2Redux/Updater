@@ -42,6 +42,7 @@ public partial class App : Application
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
         serviceCollection.AddSingleton<IFileSystem, FileSystem>();
         serviceCollection.AddSingleton<ICacheService, CacheService>();
+        serviceCollection.AddSingleton<INewsService, NewsService>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

@@ -26,6 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ITabNavigatorService _tabNavigatorService;
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
+    private readonly INewsService _newsService;
 
     
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
@@ -41,7 +42,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
-        ICacheService cacheService)
+        ICacheService cacheService, INewsService newsService)
     {
         _ksp2InstallService = ksp2InstallService;
         _newsCollectionService = newsCollectionService;
@@ -50,6 +51,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _tabNavigatorService = tabNavigatorService;
         _fileSystem = fileSystem;
         _cacheService = cacheService;
+        _newsService = newsService;
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
@@ -105,12 +107,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async void LoadNews()
     {
-        string tomlNewsContent = await News.GetTomlContent();
-        News.LoadNewsFromToml(tomlNewsContent);
-        List<News> newsList = await News.FindAllNews();
+        string tomlNewsContent = await _newsService.GetTomlContent();
+        _newsService.LoadNewsFromToml(tomlNewsContent);
+        List<News> newsList = await _newsService.FindAllNews();
         foreach (News news in newsList)
         {
-            _newsCollectionService.Add(new Shared.NewsItemViewModel(news));
+            _newsCollectionService.Add(new Shared.NewsItemViewModel(_newsService, news));
         }
     }
     
