@@ -21,10 +21,13 @@ public partial class MainWindow
     private string TargetFolderTrimmed => TargetFolder.Text.TrimEnd('\\', '/');
 
     #endregion
+    
+    private readonly IEnvironmentProvider _environmentProvider;
 
     public MainWindow()
     {
         InitializeComponent();
+        _environmentProvider = SystemEnvironmentProvider.Instance;
     }
 
     private void BrowseKsp2InstallFolder_OnClick(object sender, RoutedEventArgs e)
@@ -151,6 +154,7 @@ public partial class MainWindow
             if (CopyFiles.IsChecked == true)
             {
                 await patchFile.AsyncCopyAndApply(
+                    _environmentProvider,
                     StockFolderTrimmed,
                     TargetFolderTrimmed,
                     LogToUI,
@@ -160,6 +164,7 @@ public partial class MainWindow
             else
             {
                 await patchFile.AsyncApply(
+                    _environmentProvider,
                     StockFolderTrimmed,
                     StockFolderTrimmed,
                     LogToUI,

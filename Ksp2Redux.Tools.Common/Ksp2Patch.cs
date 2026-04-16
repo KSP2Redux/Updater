@@ -265,6 +265,7 @@ public class Ksp2Patch : IDisposable
     }
 
     public async Task AsyncCopyAndApply(
+        IEnvironmentProvider environmentProvider,
         string ksp2Directory,
         string targetDirectory,
         Action<string>? log = null,
@@ -272,10 +273,11 @@ public class Ksp2Patch : IDisposable
     )
     {
         await AsyncCopyKsp2Directory(_fileSystem, ksp2Directory, targetDirectory, log);
-        await AsyncApply(targetDirectory, ksp2Directory, log, error);
+        await AsyncApply(environmentProvider, targetDirectory, ksp2Directory, log, error);
     }
 
     public async Task AsyncApply(
+        IEnvironmentProvider environmentProvider,
         string targetDirectory,
         string? sourceDirectory = null,
         Action<string>? log = null,
@@ -334,7 +336,7 @@ public class Ksp2Patch : IDisposable
             }
 
             // 2. Patch in parallel
-            int maxConcurrency = Math.Max(Environment.ProcessorCount, 2);
+            int maxConcurrency = Math.Max(environmentProvider.ProcessorCount, 2);
             using var semaphore = new SemaphoreSlim(maxConcurrency);
             var tasks = new List<Task>();
 

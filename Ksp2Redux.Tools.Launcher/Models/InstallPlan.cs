@@ -14,6 +14,7 @@ public class InstallPlan
 {
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
+    private readonly IEnvironmentProvider _environmentProvider;
     
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -27,10 +28,11 @@ public class InstallPlan
 
     public List<Step> Steps = [];
 
-    public InstallPlan(IFileSystem fileSystem, ICacheService cacheService)
+    public InstallPlan(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
+        _environmentProvider = environmentProvider;
     }
 
     public void Uninstall()
@@ -62,7 +64,7 @@ public class InstallPlan
     // path that involves it if necessary
     public int Cost => Steps.Count + (Steps.Any(x => x.Action == InstallPlanAction.RevertToStock) ? 1000 : 0);
 
-    public static InstallPlan operator +(InstallPlan a, InstallPlan b) => new(a._fileSystem, a._cacheService)
+    public static InstallPlan operator +(InstallPlan a, InstallPlan b) => new(a._fileSystem, a._cacheService, a._environmentProvider)
     {
         Steps = a.Steps.Concat(b.Steps).ToList() 
     };
@@ -178,7 +180,7 @@ public class InstallPlan
 
                     using (var patch = Ksp2Patch.FromFile(_fileSystem, patchFile))   // Test: Convert to factory, add interface for patch
                     {
-                        await patch.AsyncApply(install, install, log, log);
+                        await patch.AsyncApply(_environmentProvider, install, install, log, log);
                     }
                     
                     delete_patch:
@@ -189,7 +191,7 @@ public class InstallPlan
                 case InstallPlanAction.ApplyPatchFile:
                 {
                     var patch = Ksp2Patch.FromFile(_fileSystem, await step.Argument!(log, downloadProgress, ct));
-                    await patch.AsyncApply(install, install, log, log);
+                    await patch.AsyncApply(_environmentProvider, install, install, log, log);
                     break;
                 }
                 default:

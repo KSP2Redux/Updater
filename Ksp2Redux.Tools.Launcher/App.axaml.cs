@@ -1,3 +1,4 @@
+using System;
 using System.IO.Abstractions;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -43,6 +44,7 @@ public partial class App : Application
         serviceCollection.AddSingleton<IFileSystem, FileSystem>();
         serviceCollection.AddSingleton<ICacheService, CacheService>();
         serviceCollection.AddSingleton<INewsService, NewsService>();
+        serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

@@ -19,6 +19,7 @@ public class ManifestReleasesFeed
 {
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
+    private readonly IEnvironmentProvider _environmentProvider;
     private readonly string BaseFilePath;
     private readonly string downloadStorageDir;
     private readonly string githubRelativeRepoUri;
@@ -30,11 +31,12 @@ public class ManifestReleasesFeed
     public String CurrentChannel { get; private set; }
 
     public ManifestReleasesFeed(
-        IFileSystem fileSystem, ICacheService cacheService, string BaseFilePath, string githubRelativeRepoUri, string downloadStorageDir,
-        string manifestPath, string? token = null)
+        IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider, string BaseFilePath,
+        string githubRelativeRepoUri, string downloadStorageDir, string manifestPath, string? token = null)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
+        _environmentProvider = environmentProvider;
         this.BaseFilePath = BaseFilePath;
         this.downloadStorageDir = downloadStorageDir;
         this.githubRelativeRepoUri = githubRelativeRepoUri;
@@ -184,7 +186,7 @@ public class ManifestReleasesFeed
     
     public InstallPlan GetPatchListToVersion(GameVersion fromGameVersion, GameVersion toGameVersion)
     {
-        if (manifest?.patches is null) return new InstallPlan(_fileSystem, _cacheService);
+        if (manifest?.patches is null) return new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
 
         static string ToVersionString(GameVersion gv)
         {
@@ -202,14 +204,14 @@ public class ManifestReleasesFeed
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
         if (!patchesByOutput.ContainsKey(targetVersion))
-            return new InstallPlan(_fileSystem, _cacheService);
+            return new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
 
-        if (GetPlan(startVersion, targetVersion, new InstallPlan(_fileSystem, _cacheService)) is {} result)
+        if (GetPlan(startVersion, targetVersion, new InstallPlan(_fileSystem, _cacheService, _environmentProvider)) is {} result)
         {
             return result;
         }
         
-        return new InstallPlan(_fileSystem, _cacheService);
+        return new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
 
         InstallPlan? GetPlan(string from, string to, InstallPlan initialPlan)
         {
@@ -221,14 +223,14 @@ public class ManifestReleasesFeed
                 {
                     if (patch.requires.version == from)
                     {
-                        bestPlan = new InstallPlan(_fileSystem, _cacheService);
+                        bestPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
                         bestPlan.ApplyPatchFile((log, progress,ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {from}");
                         break;
                     }
                     
                     if (patch.requires.IsBasePatch)
                     {
-                        var testPlan = new InstallPlan(_fileSystem, _cacheService);
+                        var testPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
                         testPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from prepatch");
                         testPlan.Prepatch();
                         testPlan.RevertToStock();
@@ -236,7 +238,7 @@ public class ManifestReleasesFeed
                     }
                     else
                     {
-                        var newInitialPlan = new InstallPlan(_fileSystem, _cacheService);
+                        var newInitialPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
                         newInitialPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {patch.requires.version}");
                         var testPlan = GetPlan(from, patch.requires.version!, newInitialPlan);
                         if (testPlan != null && (bestPlan == null || bestPlan.Cost > testPlan.Cost)) bestPlan = testPlan;

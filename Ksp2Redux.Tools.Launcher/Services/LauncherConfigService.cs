@@ -17,15 +17,18 @@ public interface ILauncherConfigService
 public class LauncherConfigService : ILauncherConfigService
 {
     private readonly IFileSystem _fileSystem;
+    private readonly IEnvironmentProvider _environmentProvider;
+    
     public LauncherConfig Config { get; set; }
     private readonly JsonSerializerOptions StorageOptions = new() { WriteIndented = true };
     
     private const string ReduxLauncherConfigFolder = "Ksp2Redux";
     private const string LauncherConfigJson = "redux-launcher-config.json";
 
-    public LauncherConfigService(IFileSystem fileSystem)
+    public LauncherConfigService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider)
     {
         _fileSystem = fileSystem;
+        _environmentProvider = environmentProvider;
         Config = GetOrCreateCurrentConfig(_fileSystem);
     }
 
@@ -72,7 +75,7 @@ public class LauncherConfigService : ILauncherConfigService
 
     public string GetLocalStorageDirectory()
     {
-        var appdataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var appdataPath = _environmentProvider.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         return _fileSystem.Path.Combine(appdataPath, ReduxLauncherConfigFolder);
     }
 }

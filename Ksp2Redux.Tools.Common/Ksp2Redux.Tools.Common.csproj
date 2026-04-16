@@ -9,6 +9,11 @@
 
     <ItemGroup>
       <PackageReference Include="BsDiff" Version="1.1.0" />
+      <PackageReference Include="EnvironmentAbstractions" Version="5.0.0" />
+      <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
       <PackageReference Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.1.1" />
     </ItemGroup>
 

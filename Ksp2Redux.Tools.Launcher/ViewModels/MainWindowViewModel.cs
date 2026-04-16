@@ -19,7 +19,6 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private readonly IKsp2InstallService _ksp2InstallService;
     private readonly INewsItemCollectionService _newsCollectionService;
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IReleasesFeedService _releasesFeedService;
@@ -27,8 +26,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
     private readonly INewsService _newsService;
+    private readonly IEnvironmentProvider _environmentProvider;
 
-    
+
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
     public HomeTabViewModel HomeTab { get; }
@@ -42,9 +42,8 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
-        ICacheService cacheService, INewsService newsService)
+        ICacheService cacheService, INewsService newsService, IEnvironmentProvider environmentProvider)
     {
-        _ksp2InstallService = ksp2InstallService;
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
@@ -52,11 +51,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _fileSystem = fileSystem;
         _cacheService = cacheService;
         _newsService = newsService;
+        _environmentProvider = environmentProvider;
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
         LoadNews();
-        _ksp2InstallService.TryLoadKsp2Install();
+        ksp2InstallService.TryLoadKsp2Install();
         // ReleasesFeed =
         // [
         //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir),
@@ -86,6 +86,7 @@ public partial class MainWindowViewModel : ViewModelBase
             var newFeed = new ManifestReleasesFeed(
                 _fileSystem,
                 _cacheService,
+                _environmentProvider,
                 _launcherConfigService.GetLocalStorageDirectory(), feed.Repository,
                 releaseDownloadCacheDir, feed.Filename, feed.Token);
             Console.WriteLine("Updating feed manifest");
