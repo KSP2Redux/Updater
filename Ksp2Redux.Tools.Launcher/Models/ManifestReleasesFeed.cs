@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
@@ -20,6 +21,7 @@ public class ManifestReleasesFeed
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
     private readonly IEnvironmentProvider _environmentProvider;
+    private readonly IAssemblyService _assemblyService;
     private readonly string BaseFilePath;
     private readonly string downloadStorageDir;
     private readonly string githubRelativeRepoUri;
@@ -31,12 +33,13 @@ public class ManifestReleasesFeed
     public String CurrentChannel { get; private set; }
 
     public ManifestReleasesFeed(
-        IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider, string BaseFilePath,
-        string githubRelativeRepoUri, string downloadStorageDir, string manifestPath, string? token = null)
+        IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, 
+        string BaseFilePath, string githubRelativeRepoUri, string downloadStorageDir, string manifestPath, string? token = null)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
         _environmentProvider = environmentProvider;
+        _assemblyService = assemblyService;
         this.BaseFilePath = BaseFilePath;
         this.downloadStorageDir = downloadStorageDir;
         this.githubRelativeRepoUri = githubRelativeRepoUri;
@@ -45,8 +48,7 @@ public class ManifestReleasesFeed
         {
             BaseAddress = new Uri("https://api.github.com/repos/" + githubRelativeRepoUri + "/"),
         };
-        ProductHeaderValue header = new("Ksp2ReduxLauncher",
-            Assembly.GetExecutingAssembly().GetName().Version?.ToString());
+        ProductHeaderValue header = new("Ksp2ReduxLauncher", _assemblyService.GetName().Version?.ToString());
         ProductInfoHeaderValue userAgent = new(header);
         apiClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
         apiClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github.v3.raw"));
@@ -186,7 +188,7 @@ public class ManifestReleasesFeed
     
     public InstallPlan GetPatchListToVersion(GameVersion fromGameVersion, GameVersion toGameVersion)
     {
-        if (manifest?.patches is null) return new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
+        if (manifest?.patches is null) return new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
 
         static string ToVersionString(GameVersion gv)
         {
@@ -204,14 +206,14 @@ public class ManifestReleasesFeed
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
         if (!patchesByOutput.ContainsKey(targetVersion))
-            return new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
+            return new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
 
-        if (GetPlan(startVersion, targetVersion, new InstallPlan(_fileSystem, _cacheService, _environmentProvider)) is {} result)
+        if (GetPlan(startVersion, targetVersion, new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService)) is {} result)
         {
             return result;
         }
         
-        return new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
+        return new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
 
         InstallPlan? GetPlan(string from, string to, InstallPlan initialPlan)
         {
@@ -223,14 +225,14 @@ public class ManifestReleasesFeed
                 {
                     if (patch.requires.version == from)
                     {
-                        bestPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
+                        bestPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
                         bestPlan.ApplyPatchFile((log, progress,ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {from}");
                         break;
                     }
                     
                     if (patch.requires.IsBasePatch)
                     {
-                        var testPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
+                        var testPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
                         testPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from prepatch");
                         testPlan.Prepatch();
                         testPlan.RevertToStock();
@@ -238,7 +240,7 @@ public class ManifestReleasesFeed
                     }
                     else
                     {
-                        var newInitialPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
+                        var newInitialPlan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
                         newInitialPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {patch.requires.version}");
                         var testPlan = GetPlan(from, patch.requires.version!, newInitialPlan);
                         if (testPlan != null && (bestPlan == null || bestPlan.Cost > testPlan.Cost)) bestPlan = testPlan;

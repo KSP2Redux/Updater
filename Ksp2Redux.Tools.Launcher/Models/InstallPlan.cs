@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
@@ -15,24 +16,24 @@ public class InstallPlan
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
     private readonly IEnvironmentProvider _environmentProvider;
+    private readonly IAssemblyService _assemblyService;
     
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
     private const string PORTABLE_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.portable-prepatch.patch";
 
-    private static Assembly _thisAssembly = Assembly.GetExecutingAssembly();
-
-
+    
     // The Argument is string getPath(log, progress)
     public record struct Step(InstallPlanAction Action, Func<Action<string>, Action<long, long>, CancellationToken, Task<string>>? Argument = null, string ArgumentDescription = "Undescribed");
 
     public List<Step> Steps = [];
 
-    public InstallPlan(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider)
+    public InstallPlan(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
         _environmentProvider = environmentProvider;
+        _assemblyService = assemblyService;
     }
 
     public void Uninstall()
@@ -64,10 +65,13 @@ public class InstallPlan
     // path that involves it if necessary
     public int Cost => Steps.Count + (Steps.Any(x => x.Action == InstallPlanAction.RevertToStock) ? 1000 : 0);
 
-    public static InstallPlan operator +(InstallPlan a, InstallPlan b) => new(a._fileSystem, a._cacheService, a._environmentProvider)
+    public static InstallPlan operator +(InstallPlan a, InstallPlan b)
     {
-        Steps = a.Steps.Concat(b.Steps).ToList() 
-    };
+        return new InstallPlan(a._fileSystem, a._cacheService, a._environmentProvider, a._assemblyService)
+        {
+            Steps = a.Steps.Concat(b.Steps).ToList()
+        };
+    }
 
     public void Describe(Action<string> log)
     {
@@ -142,7 +146,7 @@ public class InstallPlan
                         case Distribution.Portable:
                         {
                             log("Applying portable prepatch");
-                            await using var stream = _thisAssembly.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);   // Test: Add layer of abstraction
+                            await using var stream = _assemblyService.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);   // Test: Add layer of abstraction
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
@@ -152,7 +156,7 @@ public class InstallPlan
                         case Distribution.Steam:
                         {
                             log("Applying steam prepatch");
-                            await using var stream = _thisAssembly.GetManifestResourceStream(STEAM_PREPATCH_NAME);  // Test: Add layer of abstraction
+                            await using var stream = _assemblyService.GetManifestResourceStream(STEAM_PREPATCH_NAME);  // Test: Add layer of abstraction
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
@@ -162,7 +166,7 @@ public class InstallPlan
                         case Distribution.Epic:
                         {
                             log("Applying epic prepatch");
-                            await using var stream = _thisAssembly.GetManifestResourceStream(EPIC_PREPATCH_NAME);   // Test: Add layer of abstraction
+                            await using var stream = _assemblyService.GetManifestResourceStream(EPIC_PREPATCH_NAME);   // Test: Add layer of abstraction
                             await using var fstream =
                                 new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;

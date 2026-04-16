@@ -29,6 +29,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
     private readonly IEnvironmentProvider _environmentProvider;
+    private readonly IAssemblyService _assemblyService;
     
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
@@ -60,7 +61,7 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
     {
         _ksp2InstallService = ksp2InstallService;
         _newsCollectionService = newsCollectionService;
@@ -69,6 +70,7 @@ public partial class HomeTabViewModel : ViewModelBase
         _fileSystem = fileSystem;
         _cacheService = cacheService;
         _environmentProvider = environmentProvider;
+        _assemblyService = assemblyService;
 
         NewsCollectionViewModel = new NewsCollectionViewModel(_newsCollectionService.NewsCollection);
         RebuildVersionsCollection();
@@ -282,7 +284,7 @@ public partial class HomeTabViewModel : ViewModelBase
         InstallProgressSteps = 0;
         InstallProgressTotalSteps = 1;
         
-        var plan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider);
+        var plan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
         plan.ApplyPatchFile(path);
         plan.Prepatch();
         plan.RevertToStock();

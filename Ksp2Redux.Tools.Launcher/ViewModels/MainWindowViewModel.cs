@@ -27,7 +27,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ICacheService _cacheService;
     private readonly INewsService _newsService;
     private readonly IEnvironmentProvider _environmentProvider;
-
+    private readonly IAssemblyService _assemblyService;
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -42,7 +42,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
-        ICacheService cacheService, INewsService newsService, IEnvironmentProvider environmentProvider)
+        ICacheService cacheService, INewsService newsService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
@@ -52,6 +52,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _cacheService = cacheService;
         _newsService = newsService;
         _environmentProvider = environmentProvider;
+        _assemblyService = assemblyService;
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
@@ -87,6 +88,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 _fileSystem,
                 _cacheService,
                 _environmentProvider,
+                _assemblyService,
                 _launcherConfigService.GetLocalStorageDirectory(), feed.Repository,
                 releaseDownloadCacheDir, feed.Filename, feed.Token);
             Console.WriteLine("Updating feed manifest");
