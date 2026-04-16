@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.IO.Abstractions;
 using System.Windows;
 using System.Windows.Controls;
 using Ksp2Redux.Tools.Common;
@@ -145,7 +146,7 @@ public partial class MainWindow
 
             _isCurrentlyRunningPatch = true;
             PatchLog.Text = "Beginning Patch!\n";
-            Ksp2Patch patchFile = Ksp2Patch.FromFile(PatchFile.Text);
+            Ksp2Patch patchFile = Ksp2Patch.FromFile(new FileSystem(), PatchFile.Text);
             bool errored = false;
             if (CopyFiles.IsChecked == true)
             {

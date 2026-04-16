@@ -103,13 +103,13 @@ public class InstallPlan
             {
                 case InstallPlanAction.Uninstall:
                     log("Uninstalling KSP2 Redux");
-                    Cache.RecursivelyRestoreCache(install); // Test: Add layer of abstraction
+                    Cache.RecursivelyRestoreCache(_fileSystem, install);
                     break;
                 case InstallPlanAction.RevertToStock:
-                    if (_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))    // Test: Add layer of abstraction
+                    if (_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
                         log("Reverting KSP2 Redux to Stock for repatching");
-                        Cache.RecursivelyRestoreCache(install, true);   // Test: Add layer of abstraction
+                        Cache.RecursivelyRestoreCache(_fileSystem, install, true);
                     }
                     else
                     {
@@ -119,20 +119,20 @@ public class InstallPlan
                 case InstallPlanAction.Prepatch:
                 {
                     log("Applying the correct prepatch");
-                    if (_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "winhttp.dll")))  // Test: Add layer of abstraction
+                    if (_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "winhttp.dll")))
                     {
                         log("Deleting old modloader!");
-                        _fileSystem.File.Delete(_fileSystem.Path.Combine(install, "winhttp.dll"));  // Test: Add layer of abstraction
+                        _fileSystem.File.Delete(_fileSystem.Path.Combine(install, "winhttp.dll"));
                     }
                     
-                    if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))   // Test: Add layer of abstraction
+                    if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
-                        Cache.RecursivelyCreateCache(install);  // Test: Add layer of abstraction
+                        Cache.RecursivelyCreateCache(_fileSystem, install);
                     }
 
                     var patchFile = _fileSystem.Path.GetTempFileName();
                     var exe = _fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
-                    var ksp2Install = new Ksp2Install(_fileSystem, exe); // Test: Inject File, Path and ModuleDefinition abstractions
+                    var ksp2Install = new Ksp2Install(_fileSystem, exe); // Test: Inject ModuleDefinition abstractions
                     switch (ksp2Install.Distribution)
                     {
                         case Distribution.Portable:
@@ -174,19 +174,19 @@ public class InstallPlan
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    using (var patch = Ksp2Patch.FromFile(patchFile))   // Test: Convert to factory, add interface for patch
+                    using (var patch = Ksp2Patch.FromFile(_fileSystem, patchFile))   // Test: Convert to factory, add interface for patch
                     {
                         await patch.AsyncApply(install, install, log, log);
                     }
                     
                     delete_patch:
-                    _fileSystem.File.Delete(patchFile); // Test: Add layer of abstraction
+                    _fileSystem.File.Delete(patchFile);
                     break;
                 }
 
                 case InstallPlanAction.ApplyPatchFile:
                 {
-                    var patch = Ksp2Patch.FromFile(await step.Argument!(log, downloadProgress, ct));
+                    var patch = Ksp2Patch.FromFile(_fileSystem, await step.Argument!(log, downloadProgress, ct));
                     await patch.AsyncApply(install, install, log, log);
                     break;
                 }

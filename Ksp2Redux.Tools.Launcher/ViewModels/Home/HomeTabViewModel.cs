@@ -267,7 +267,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
-    public async Task InstallFromPatchFile(string path)
+    public async Task InstallFromPatchFile(IFileSystem fileSystem, string path)
     {
         
         InstallLogLines.Clear();

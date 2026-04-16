@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <PackageReference Include="BsDiff" Version="1.1.0" />
+      <PackageReference Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.1.1" />
     </ItemGroup>
 
 </Project>

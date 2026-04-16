@@ -3,7 +3,6 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.IO.Abstractions;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
@@ -129,7 +128,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         var result = await box.ShowAsync();
         if (result != ButtonResult.Yes) return;
         
-        Cache.RecursivelyRestoreCache(installDir);
+        Cache.RecursivelyRestoreCache(_fileSystem, installDir);
         
         _ksp2InstallService.TryLoadKsp2Install();
         await _homeTabViewModel.UpdateVersionsList();
@@ -146,7 +145,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         
         _tabNavigatorService.GoToHome();
         
-        await _homeTabViewModel.InstallFromPatchFile(chosenPath.Path.LocalPath);
+        await _homeTabViewModel.InstallFromPatchFile(_fileSystem, chosenPath.Path.LocalPath);
     }
 
 
