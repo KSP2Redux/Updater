@@ -46,6 +46,7 @@ public partial class App : Application
         serviceCollection.AddSingleton<INewsService, NewsService>();
         serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
         serviceCollection.AddSingleton<IAssemblyService, ExecutingAssemblyService>();
+        serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

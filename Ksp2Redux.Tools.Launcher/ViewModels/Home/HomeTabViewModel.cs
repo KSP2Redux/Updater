@@ -23,13 +23,9 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 public partial class HomeTabViewModel : ViewModelBase
 {
     private readonly IKsp2InstallService _ksp2InstallService;
-    private readonly INewsItemCollectionService _newsCollectionService;
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IReleasesFeedService _releasesFeedService;
-    private readonly IFileSystem _fileSystem;
-    private readonly ICacheService _cacheService;
-    private readonly IEnvironmentProvider _environmentProvider;
-    private readonly IAssemblyService _assemblyService;
+    private readonly IInstallPlanService _installPlanService;
     
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
@@ -61,18 +57,14 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService)
     {
         _ksp2InstallService = ksp2InstallService;
-        _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
-        _fileSystem = fileSystem;
-        _cacheService = cacheService;
-        _environmentProvider = environmentProvider;
-        _assemblyService = assemblyService;
+        _installPlanService = installPlanService;
 
-        NewsCollectionViewModel = new NewsCollectionViewModel(_newsCollectionService.NewsCollection);
+        NewsCollectionViewModel = new NewsCollectionViewModel(newsCollectionService.NewsCollection);
         RebuildVersionsCollection();
         PropertyChanged += ReactToPropertyChanges;
     }
@@ -284,7 +276,7 @@ public partial class HomeTabViewModel : ViewModelBase
         InstallProgressSteps = 0;
         InstallProgressTotalSteps = 1;
         
-        var plan = new InstallPlan(_fileSystem, _cacheService, _environmentProvider, _assemblyService);
+        var plan = new InstallPlan();
         plan.ApplyPatchFile(path);
         plan.Prepatch();
         plan.RevertToStock();
@@ -324,9 +316,9 @@ public partial class HomeTabViewModel : ViewModelBase
     private async Task RunPlanOnInstall(InstallPlan plan, Ksp2Install ksp2)
     {
         UpdateStepsProgress(0, plan.Steps.Count);
-        plan.Describe(Log);
+        _installPlanService.Describe(plan, Log);
 
-        await plan.ApplyToFolder(ksp2.InstallDir, Log, UpdateDownloadProgress, UpdateStepsProgress,
+        await _installPlanService.ApplyToFolder(plan, ksp2.InstallDir, Log, UpdateDownloadProgress, UpdateStepsProgress,
             cancelCurrentOperation!.Token);
 
         void UpdateStepsProgress(int current, int max)

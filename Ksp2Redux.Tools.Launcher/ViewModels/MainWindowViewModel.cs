@@ -86,8 +86,6 @@ public partial class MainWindowViewModel : ViewModelBase
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
                 _fileSystem,
-                _cacheService,
-                _environmentProvider,
                 _assemblyService,
                 _launcherConfigService.GetLocalStorageDirectory(), feed.Repository,
                 releaseDownloadCacheDir, feed.Filename, feed.Token);
