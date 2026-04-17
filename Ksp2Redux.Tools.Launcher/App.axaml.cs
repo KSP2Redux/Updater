@@ -47,6 +47,7 @@ public partial class App : Application
         serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
         serviceCollection.AddSingleton<IAssemblyService, ExecutingAssemblyService>();
         serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
+        serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

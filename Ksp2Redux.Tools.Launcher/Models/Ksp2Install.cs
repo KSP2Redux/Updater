@@ -4,11 +4,15 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
+using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class Ksp2Install
 {
+    private readonly IFileSystem _fileSystem;
+    private readonly IModuleDefinitionService _moduleDefinitionService;
+
     /// <summary>
     /// If the path pointed to represents a valid KSP2 installation or not.
     /// </summary>
@@ -38,25 +42,27 @@ public class Ksp2Install
     private const string EpicGamesMarker = ".egstore";
     private const string PrepatchMarker = "prepatched.nodelete";
     
-    public Ksp2Install(IFileSystem fileSystem, string exePath)
+    public Ksp2Install(IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, string exePath)
     {
+        _fileSystem = fileSystem;
+        _moduleDefinitionService = moduleDefinitionService;
         ExePath = exePath;
 
-        IsValid = fileSystem.File.Exists(exePath) && fileSystem.Path.GetFileName(exePath) == KSP2_EXE_NAME;
+        IsValid = _fileSystem.File.Exists(exePath) && _fileSystem.Path.GetFileName(exePath) == KSP2_EXE_NAME;
         if (IsValid)
         {
-            InstallDir = fileSystem.Path.GetDirectoryName(exePath)!;
-            var isSteam = fileSystem.Path.Exists(fileSystem.Path.Combine(InstallDir, SteamworksText));
-            var isEpic = fileSystem.Path.Exists(fileSystem.Path.Combine(InstallDir, EpicGamesMarker));
-            var isRedux = fileSystem.Path.Exists(fileSystem.Path.Combine(InstallDir, "Redux"));
-            var isPrepatch = fileSystem.Path.Exists(fileSystem.Path.Combine(InstallDir, PrepatchMarker));
+            InstallDir = _fileSystem.Path.GetDirectoryName(exePath)!;
+            var isSteam = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, SteamworksText));
+            var isEpic = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, EpicGamesMarker));
+            var isRedux = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, "Redux"));
+            var isPrepatch = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, PrepatchMarker));
             Distribution = isRedux    ? Distribution.Redux   :
                            isPrepatch ? Distribution.Prepatched :
                            isSteam    ? Distribution.Steam   :
                            isEpic     ? Distribution.Epic    : 
                                         Distribution.Portable;
             
-            GameVersion = TryGetGameVersionFromMainAssembly(fileSystem, InstallDir,Distribution == Distribution.Redux);
+            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir,Distribution == Distribution.Redux);
         }
         else
         {
@@ -64,12 +70,12 @@ public class Ksp2Install
         }
     }
 
-    private static GameVersion? TryGetGameVersionFromMainAssembly(IFileSystem fileSystem, string installDir, bool isRedux)
+    private GameVersion? TryGetGameVersionFromMainAssembly(string installDir, bool isRedux)
     {
         try
         {
-            var mainAssembly = fileSystem.Path.Combine(installDir, GetAssemblyCSharpRelativePath(fileSystem));
-            var module = ModuleDefinition.ReadModule(mainAssembly);
+            var mainAssembly = _fileSystem.Path.Combine(installDir, GetAssemblyCSharpRelativePath(_fileSystem));
+            var module = _moduleDefinitionService.ReadModule(mainAssembly);
             var versionType = module.Types.First(t => t.Name == "VersionID");
             if (versionType is not null)
             {

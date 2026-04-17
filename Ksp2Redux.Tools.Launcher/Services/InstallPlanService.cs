@@ -16,7 +16,8 @@ public interface IInstallPlanService
         Action<long, long> downloadProgress, Action<int, int> stepsProgress, CancellationToken ct);
 }
 
-public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService) : IInstallPlanService
+public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider,
+    IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -90,7 +91,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
                     var patchFile = fileSystem.Path.GetTempFileName();
                     var exe = fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
-                    var ksp2Install = new Ksp2Install(fileSystem, exe); // Test: Inject ModuleDefinition abstractions
+                    var ksp2Install = new Ksp2Install(fileSystem, moduleDefinitionService, exe);
                     switch (ksp2Install.Distribution)
                     {
                         case Distribution.Portable:

@@ -9,7 +9,7 @@ public interface IKsp2InstallService
     void TryLoadKsp2Install();
 }
 
-public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem) : IKsp2InstallService
+public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService) : IKsp2InstallService
 {
     public Ksp2Install? Ksp2 { get; private set; }
     
@@ -17,7 +17,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
     {
         if (!string.IsNullOrWhiteSpace(launcherConfigService.Config.Ksp2InstallPath))
         {
-            Ksp2 = new(fileSystem, launcherConfigService.Config.Ksp2InstallPath);
+            Ksp2 = new(fileSystem, moduleDefinitionService, launcherConfigService.Config.Ksp2InstallPath);
         }
     }
 }
