@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -10,11 +11,15 @@ using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class ManifestReleasesFeed
 {
+    private readonly IFileSystem _fileSystem;
+    private readonly IAssemblyService _assemblyService;
     private readonly string BaseFilePath;
     private readonly string downloadStorageDir;
     private readonly string githubRelativeRepoUri;
@@ -25,9 +30,11 @@ public class ManifestReleasesFeed
 
     public String CurrentChannel { get; private set; }
 
-    public ManifestReleasesFeed(
+    public ManifestReleasesFeed(IFileSystem fileSystem, IAssemblyService assemblyService, 
         string BaseFilePath, string githubRelativeRepoUri, string downloadStorageDir, string manifestPath, string? token = null)
     {
+        _fileSystem = fileSystem;
+        _assemblyService = assemblyService;
         this.BaseFilePath = BaseFilePath;
         this.downloadStorageDir = downloadStorageDir;
         this.githubRelativeRepoUri = githubRelativeRepoUri;
@@ -36,8 +43,7 @@ public class ManifestReleasesFeed
         {
             BaseAddress = new Uri("https://api.github.com/repos/" + githubRelativeRepoUri + "/"),
         };
-        ProductHeaderValue header = new("Ksp2ReduxLauncher",
-            Assembly.GetExecutingAssembly().GetName().Version?.ToString());
+        ProductHeaderValue header = new("Ksp2ReduxLauncher", _assemblyService.GetName().Version?.ToString());
         ProductInfoHeaderValue userAgent = new(header);
         apiClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
         apiClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github.v3.raw"));
@@ -247,12 +253,12 @@ public class ManifestReleasesFeed
     {
         ct.ThrowIfCancellationRequested();
         string FileName = patch.url.Split("/").Last();
-        string patchDownloadTo = Path.Combine(downloadStorageDir, FileName);
+        string patchDownloadTo = _fileSystem.Path.Combine(downloadStorageDir, FileName);
 
         log($"Downloading {FileName}");
         reportDownloadProgress(0, patch.size);
 
-        if (!File.Exists(patchDownloadTo) || new FileInfo(patchDownloadTo).Length != patch.size)
+        if (!_fileSystem.File.Exists(patchDownloadTo) || _fileSystem.FileInfo.New(patchDownloadTo).Length != patch.size)
         {
             string assetApiUrl = await GetAssetApiUrl(patch.url, ct);
 
@@ -285,7 +291,7 @@ public class ManifestReleasesFeed
             long contentLength = downloadResponse.Content.Headers.ContentLength ?? patch.size;
 
             using var downloadStream = await downloadResponse.Content.ReadAsStreamAsync(ct);
-            using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None,
+            using var fileStream = _fileSystem.FileStream.New(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None,
                 bufferSize: 64 * 1024, useAsync: true);
 
             var buffer = new byte[64 * 1024];

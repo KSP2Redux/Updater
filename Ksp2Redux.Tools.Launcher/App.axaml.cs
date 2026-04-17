@@ -1,8 +1,11 @@
+using System;
+using System.IO.Abstractions;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -38,6 +41,13 @@ public partial class App : Application
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
+        serviceCollection.AddSingleton<IFileSystem, FileSystem>();
+        serviceCollection.AddSingleton<ICacheService, CacheService>();
+        serviceCollection.AddSingleton<INewsService, NewsService>();
+        serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
+        serviceCollection.AddSingleton<IAssemblyService, ExecutingAssemblyService>();
+        serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
+        serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

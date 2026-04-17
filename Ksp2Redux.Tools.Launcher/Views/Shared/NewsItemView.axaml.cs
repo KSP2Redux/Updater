@@ -21,7 +21,7 @@ public partial class NewsItemView : UserControl
             return;
         
         // set selected news to this
-        mainWindowViewModel.CommunityTab.SetSelectedNewsId(News.GetNewsId(ViewModel?.News));
+        mainWindowViewModel.CommunityTab.SetSelectedNewsId(ViewModel?.NewsId ?? -1);
         // change to community tab if not already there
         mainWindow.MainTabControl.SelectedItem = mainWindow.CommunityTab;
     }

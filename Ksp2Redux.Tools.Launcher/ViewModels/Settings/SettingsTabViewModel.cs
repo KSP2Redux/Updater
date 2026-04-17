@@ -3,7 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System;
 using System.Collections.ObjectModel;
-using System.IO;
+using System.IO.Abstractions;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Services;
@@ -13,12 +13,14 @@ using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
-public partial class SettingsTabViewModel() : ViewModelBase
+public partial class SettingsTabViewModel : ViewModelBase
 {
-    private ILauncherConfigService _launcherConfigService;
-    private IKsp2InstallService _ksp2InstallService;
-    private ITabNavigatorService _tabNavigatorService;
-    private HomeTabViewModel _homeTabViewModel;
+    private readonly IFileSystem _fileSystem;
+    private readonly ICacheService _cacheService;
+    private readonly ILauncherConfigService _launcherConfigService;
+    private readonly IKsp2InstallService _ksp2InstallService;
+    private readonly ITabNavigatorService _tabNavigatorService;
+    private readonly HomeTabViewModel _homeTabViewModel;
     
     
     public string DisplayedInstallPath => _launcherConfigService.Config.Ksp2InstallPath;
@@ -31,7 +33,7 @@ public partial class SettingsTabViewModel() : ViewModelBase
         {
             if (!ChannelsLoaded) return;
             _launcherConfigService.Config.ReleaseChannel = value;
-            _launcherConfigService.Config.Save();
+            _launcherConfigService.Save();
             _ = _homeTabViewModel.UpdateVersionsList();
         }
     }
@@ -45,9 +47,11 @@ public partial class SettingsTabViewModel() : ViewModelBase
         OnPropertyChanged(nameof(ReleaseChannel));
     }
     
-    public SettingsTabViewModel(ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
-        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel) : this()
+    public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
+        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel)
     {
+        _fileSystem = fileSystem;
+        _cacheService = cacheService;
         _tabNavigatorService = tabNavigatorService;
         _launcherConfigService = launcherConfigService;
         _ksp2InstallService = ksp2InstallService;
@@ -73,7 +77,7 @@ public partial class SettingsTabViewModel() : ViewModelBase
         if (chosenPath is not null)
         {
             _launcherConfigService.Config.Ksp2InstallPath = chosenPath.Path.LocalPath;
-            _launcherConfigService.Config.Save();
+            _launcherConfigService.Save();
             // TODO: trigger update patch status
         }
         _ksp2InstallService.TryLoadKsp2Install();
@@ -88,7 +92,7 @@ public partial class SettingsTabViewModel() : ViewModelBase
 
         IStorageFolder? startFolder = null;
         // default to previously select install path if it exists.
-        if (!string.IsNullOrWhiteSpace(_launcherConfigService.Config.Ksp2InstallPath) && Path.Exists(_launcherConfigService.Config.Ksp2InstallPath))
+        if (!string.IsNullOrWhiteSpace(_launcherConfigService.Config.Ksp2InstallPath) && _fileSystem.Path.Exists(_launcherConfigService.Config.Ksp2InstallPath))
         {
             startFolder = await provider.TryGetFolderFromPathAsync(_launcherConfigService.Config.Ksp2InstallPath);
         }
@@ -112,8 +116,8 @@ public partial class SettingsTabViewModel() : ViewModelBase
     public async Task UninstallRedux()
     {
         // parentWindow.TryLoadKsp2Install();
-        var installDir = Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
-        if (!File.Exists(Path.Combine(installDir, "uninstall.zip")))
+        var installDir = _fileSystem.Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
+        if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
         {
             await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
             return;
@@ -126,7 +130,7 @@ public partial class SettingsTabViewModel() : ViewModelBase
         var result = await box.ShowAsync();
         if (result != ButtonResult.Yes) return;
         
-        Cache.RecursivelyRestoreCache(installDir);
+        _cacheService.RecursivelyRestoreCache(installDir);
         
         _ksp2InstallService.TryLoadKsp2Install();
         await _homeTabViewModel.UpdateVersionsList();

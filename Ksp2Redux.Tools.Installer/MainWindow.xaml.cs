@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.IO.Abstractions;
 using System.Windows;
 using System.Windows.Controls;
 using Ksp2Redux.Tools.Common;
@@ -20,10 +21,13 @@ public partial class MainWindow
     private string TargetFolderTrimmed => TargetFolder.Text.TrimEnd('\\', '/');
 
     #endregion
+    
+    private readonly IEnvironmentProvider _environmentProvider;
 
     public MainWindow()
     {
         InitializeComponent();
+        _environmentProvider = SystemEnvironmentProvider.Instance;
     }
 
     private void BrowseKsp2InstallFolder_OnClick(object sender, RoutedEventArgs e)
@@ -145,11 +149,12 @@ public partial class MainWindow
 
             _isCurrentlyRunningPatch = true;
             PatchLog.Text = "Beginning Patch!\n";
-            Ksp2Patch patchFile = Ksp2Patch.FromFile(PatchFile.Text);
+            Ksp2Patch patchFile = Ksp2Patch.FromFile(new FileSystem(), PatchFile.Text);
             bool errored = false;
             if (CopyFiles.IsChecked == true)
             {
                 await patchFile.AsyncCopyAndApply(
+                    _environmentProvider,
                     StockFolderTrimmed,
                     TargetFolderTrimmed,
                     LogToUI,
@@ -159,6 +164,7 @@ public partial class MainWindow
             else
             {
                 await patchFile.AsyncApply(
+                    _environmentProvider,
                     StockFolderTrimmed,
                     StockFolderTrimmed,
                     LogToUI,

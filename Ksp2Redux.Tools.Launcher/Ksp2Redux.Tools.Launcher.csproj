@@ -28,13 +28,29 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="EnvironmentAbstractions" Version="5.0.0" />
+        <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.3.26207.106" />
         <PackageReference Include="Mono.Cecil" Version="0.11.6" />
         <PackageReference Include="Octokit" Version="14.0.0" />
+        <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
+        <PackageReference Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.1.1" />
         <PackageReference Include="Tomlyn" Version="0.19.0" />
     </ItemGroup>
 
+    <ItemGroup>
+        <!--Used by Microsoft.CodeAnalysis.BannedApiAnalyzers-->
+        <AdditionalFiles Include="BannedSymbols.txt" />
+    </ItemGroup>
+    
     <ItemGroup>
       <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj" />
     </ItemGroup>

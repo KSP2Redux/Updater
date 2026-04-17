@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -17,12 +19,16 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private IKsp2InstallService _ksp2InstallService;
-    private INewsItemCollectionService _newsCollectionService;
-    private ILauncherConfigService _launcherConfigService;
-    private IReleasesFeedService _releasesFeedService;
-    private ITabNavigatorService _tabNavigatorService;
-    
+    private readonly INewsItemCollectionService _newsCollectionService;
+    private readonly ILauncherConfigService _launcherConfigService;
+    private readonly IReleasesFeedService _releasesFeedService;
+    private readonly ITabNavigatorService _tabNavigatorService;
+    private readonly IFileSystem _fileSystem;
+    private readonly ICacheService _cacheService;
+    private readonly INewsService _newsService;
+    private readonly IEnvironmentProvider _environmentProvider;
+    private readonly IAssemblyService _assemblyService;
+
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
     public HomeTabViewModel HomeTab { get; }
@@ -35,18 +41,23 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
-        IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService)
+        IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
+        ICacheService cacheService, INewsService newsService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
     {
-        _ksp2InstallService = ksp2InstallService;
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
         _tabNavigatorService = tabNavigatorService;
-        
+        _fileSystem = fileSystem;
+        _cacheService = cacheService;
+        _newsService = newsService;
+        _environmentProvider = environmentProvider;
+        _assemblyService = assemblyService;
+
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
         LoadNews();
-        _ksp2InstallService.TryLoadKsp2Install();
+        ksp2InstallService.TryLoadKsp2Install();
         // ReleasesFeed =
         // [
         //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir),
@@ -68,13 +79,15 @@ public partial class MainWindowViewModel : ViewModelBase
         // {
         //     await feed.Value.UpdateManifest();
         // }
-        var releaseDownloadCacheDir = Path.Combine(LauncherConfig.GetLocalStorageDirectory(), "download-cache");
-        Directory.CreateDirectory(releaseDownloadCacheDir);
+        var releaseDownloadCacheDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
+        _fileSystem.Directory.CreateDirectory(releaseDownloadCacheDir);
         foreach (var feed in _launcherConfigService.Config.Feeds)
         {
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
-                LauncherConfig.GetLocalStorageDirectory(), feed.Repository,
+                _fileSystem,
+                _assemblyService,
+                _launcherConfigService.GetLocalStorageDirectory(), feed.Repository,
                 releaseDownloadCacheDir, feed.Filename, feed.Token);
             Console.WriteLine("Updating feed manifest");
             try
@@ -95,12 +108,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async void LoadNews()
     {
-        string tomlNewsContent = await News.GetTomlContent();
-        News.LoadNewsFromToml(tomlNewsContent);
-        List<News> newsList = await News.FindAllNews();
+        string tomlNewsContent = await _newsService.GetTomlContent();
+        _newsService.LoadNewsFromToml(tomlNewsContent);
+        List<News> newsList = await _newsService.FindAllNews();
         foreach (News news in newsList)
         {
-            _newsCollectionService.Add(new Shared.NewsItemViewModel(news));
+            _newsCollectionService.Add(new Shared.NewsItemViewModel(_newsService, news));
         }
     }
     

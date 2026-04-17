@@ -7,7 +7,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Community;
 
-public partial class CommunityTabViewModel(INewsItemCollectionService newsCollectionService) : ViewModelBase
+public partial class CommunityTabViewModel(INewsItemCollectionService newsCollectionService, INewsService newsService) : ViewModelBase
 {
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; } = new(newsCollectionService.NewsCollection);
 
@@ -26,7 +26,7 @@ public partial class CommunityTabViewModel(INewsItemCollectionService newsCollec
         }
     } = -1;
 
-    public NewsItemViewModel SelectedNews => new (News.GetNews(SelectedNewsId));
+    public NewsItemViewModel SelectedNews => new(newsService, newsService.GetNews(SelectedNewsId));
     
     public bool NewsVisible => SelectedNewsId != -1;
     

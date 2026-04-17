@@ -1,0 +1,45 @@
+﻿// Created manually for KSP2Redux
+
+// Used by Microsoft.CodeAnalysis.BannedApiAnalyzers to create warnings
+// Doc: https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.BannedApiAnalyzers/BannedApiAnalyzers.Help.md
+// More infos: https://tedspence.com/block-a-method-call-in-your-dotnet-project-with-roslyn-7692b1cbbd22
+
+// Usage of System.IO.File and others
+T:System.IO.Directory; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.DirectoryInfo; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.DriveInfo; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.FileStream; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.File; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.FileInfo; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.FileSystemWatcher; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.FileVersionInfo; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+T:System.IO.Path; (Redux) Use System.IO.Abstractions.IFileSystem instead.
+
+// Usage of System.Environment (already handled by EnvironmentAbstractions.BannedApiAnalyzer)
+
+// Usage of static methods from Mono.Cecil.ModuleDefinition
+M:Mono.Cecil.ModuleDefinition.CreateModule(System.String,Mono.Cecil.ModuleKind); (Redux) Use IModuleDefinitionService instead. Add the method if it doesn't exist.
+M:Mono.Cecil.ModuleDefinition.CreateModule(System.String,Mono.Cecil.ModuleParameters); (Redux) Use IModuleDefinitionService instead. Add the method if it doesn't exist.
+M:Mono.Cecil.ModuleDefinition.ReadModule(System.String); (Redux) Use IModuleDefinitionService instead. Add the method if it doesn't exist.
+M:Mono.Cecil.ModuleDefinition.ReadModule(System.String,Mono.Cecil.ReaderParameters); (Redux) Use IModuleDefinitionService instead. Add the method if it doesn't exist.
+M:Mono.Cecil.ModuleDefinition.ReadModule(System.IO.Stream); (Redux) Use IModuleDefinitionService instead. Add the method if it doesn't exist.
+M:Mono.Cecil.ModuleDefinition.ReadModule(System.IO.Stream,Mono.Cecil.ReaderParameters); (Redux) Use IModuleDefinitionService instead. Add the method if it doesn't exist.
+
+// Usage of static methods from System.Reflection.Assembly
+M:System.Reflection.Assembly.GetAssembly(System.Type); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.SetEntryAssembly(System.Reflection.Assembly); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.GetEntryAssembly; (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.Load(System.Byte[]); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.Load(System.Byte[],System.Byte[]); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.LoadFile(System.String); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.LoadFrom(System.String); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.LoadFrom(System.String,System.Byte[],System.Configuration.Assemblies.AssemblyHashAlgorithm); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.UnsafeLoadFrom(System.String); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.ReflectionOnlyLoad(System.Byte[]); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.ReflectionOnlyLoad(System.String); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.ReflectionOnlyLoadFrom(System.String); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.Load(System.String); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.LoadWithPartialName(System.String); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.Load(System.Reflection.AssemblyName); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.GetExecutingAssembly; (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+M:System.Reflection.Assembly.GetCallingAssembly; (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
