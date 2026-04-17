@@ -10,6 +10,10 @@ public interface IModuleDefinitionService
 
 public class ModuleDefinitionService : IModuleDefinitionService
 {
+#pragma warning disable RS0030
+    
     public ModuleDefinition ReadModule(string fileName)
         => ModuleDefinition.ReadModule(fileName);
+    
+#pragma warning restore RS0030
 }

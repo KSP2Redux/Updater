@@ -99,7 +99,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             log("Applying portable prepatch");
                             await using var stream = assemblyService.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);
                             await using var fstream =
-                                new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                                fileSystem.FileStream.New(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
                             await fstream.FlushAsync();
                             break;
@@ -109,7 +109,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             log("Applying steam prepatch");
                             await using var stream = assemblyService.GetManifestResourceStream(STEAM_PREPATCH_NAME);
                             await using var fstream =
-                                new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                                fileSystem.FileStream.New(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
                             await fstream.FlushAsync();
                             break;
@@ -119,7 +119,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             log("Applying epic prepatch");
                             await using var stream = assemblyService.GetManifestResourceStream(EPIC_PREPATCH_NAME);
                             await using var fstream =
-                                new FileStream(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                                fileSystem.FileStream.New(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                             await stream?.CopyToAsync(fstream)!;
                             await fstream.FlushAsync();
                             break;

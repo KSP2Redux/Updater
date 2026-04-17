@@ -258,7 +258,7 @@ public class ManifestReleasesFeed
         log($"Downloading {FileName}");
         reportDownloadProgress(0, patch.size);
 
-        if (!_fileSystem.File.Exists(patchDownloadTo) || new FileInfo(patchDownloadTo).Length != patch.size)
+        if (!_fileSystem.File.Exists(patchDownloadTo) || _fileSystem.FileInfo.New(patchDownloadTo).Length != patch.size)
         {
             string assetApiUrl = await GetAssetApiUrl(patch.url, ct);
 
@@ -291,7 +291,7 @@ public class ManifestReleasesFeed
             long contentLength = downloadResponse.Content.Headers.ContentLength ?? patch.size;
 
             using var downloadStream = await downloadResponse.Content.ReadAsStreamAsync(ct);
-            using var fileStream = new FileStream(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None,
+            using var fileStream = _fileSystem.FileStream.New(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None,
                 bufferSize: 64 * 1024, useAsync: true);
 
             var buffer = new byte[64 * 1024];

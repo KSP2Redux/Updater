@@ -15,9 +15,13 @@ public interface IAssemblyService
 
 public class ExecutingAssemblyService : IAssemblyService
 {
+#pragma warning disable RS0030
+    
     public Stream? GetManifestResourceStream(string name)
         => Assembly.GetExecutingAssembly().GetManifestResourceStream(name);
 
     public AssemblyName GetName()
         => Assembly.GetExecutingAssembly().GetName();
+    
+#pragma warning restore RS0030
 }
