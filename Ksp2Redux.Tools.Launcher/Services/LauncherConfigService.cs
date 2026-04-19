@@ -29,10 +29,10 @@ public class LauncherConfigService : ILauncherConfigService
     {
         _fileSystem = fileSystem;
         _environmentProvider = environmentProvider;
-        Config = GetOrCreateCurrentConfig(_fileSystem);
+        GetOrCreateCurrentConfig(_fileSystem);
     }
 
-    private LauncherConfig GetOrCreateCurrentConfig(IFileSystem fileSystem)
+    private void GetOrCreateCurrentConfig(IFileSystem fileSystem)
     {
         _fileSystem.Directory.CreateDirectory(GetLocalStorageDirectory());
         var configFilePath = GetConfigFilePath();
@@ -50,15 +50,14 @@ public class LauncherConfigService : ILauncherConfigService
 
         if (config is null)
         {
-            config = new(configFilePath);
+            Config = new(configFilePath);
             Save();
         }
         else
         {
-            config.StoragePath = configFilePath;
+            Config = config;
+            Config.StoragePath = configFilePath;
         }
-
-        return config;
     }
     
     public void Save()
