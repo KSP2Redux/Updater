@@ -45,7 +45,56 @@ public class LauncherConfigServiceTest
     
     // ctor
     [Test]
-    public void Constructor_NoAppData_ThrowsExceptionAndNoFileSystemAction()
+    [Description("""
+                 If for some reasons there is no path to LocalApplicationData:
+                    - The ctor should throw an exception
+                    - It shouldn't try to access/create the directory
+                    - It shouldn't try to access the file
+                    - It shouldn't try to create a new file
+                 Here the program doesn't find a file similar to the config
+                 """)]
+    public void Constructor_NoAppDataFolderNoSimilarFile_ThrowsExceptionAndNoFileSystemAction()
+    {
+        // Arrange
+        Mock<IEnvironmentProvider> environmentProvider  = new();
+        Mock<IPath> path = new();
+        Mock<IDirectory> directory = new();
+        Mock<IFile> file = new();
+        Mock<IFileSystem> fileSystem = new();
+        
+        environmentProvider.Setup(ep => ep.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
+            .Returns("");
+        path.Setup(p => p.Combine(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("incorrect combined path");
+        file.Setup(f => f.ReadAllText("incorrect combined path"))
+            .Throws<FileNotFoundException>();
+        path.Setup(p => p.GetDirectoryName(It.IsAny<string>()))
+            .Returns("incorrect directory");
+        
+        fileSystem.SetupGet(fs => fs.Path).Returns(path.Object);
+        fileSystem.SetupGet(fs => fs.Directory).Returns(directory.Object);
+        fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
+        
+        // Act Assert
+        Assert.Throws<Exception>(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object));
+        directory.Verify(d => d.CreateDirectory("incorrect combined path"), Times.Never,
+            "Tried to create a directory for the config when appdata didn't exist");
+        file.Verify(d => d.ReadAllText("incorrect combined path"), Times.Never, 
+            "Tried to read a file when appdata didn't exist");
+        file.Verify(d => d.WriteAllText(It.IsAny<string>(), It.IsAny<string>()), Times.Never, 
+            "Tried to create a file when appdata didn't exist");
+    }
+    
+    [Test]
+    [Description("""
+                 If for some reasons there is no path to LocalApplicationData:
+                    - The ctor should throw an exception
+                    - It shouldn't try to access/create the directory
+                    - It shouldn't try to access the file
+                    - It shouldn't try to create a new file
+                 Here the program finds a file similar to the config, it should read it anyway
+                 """)]
+    public void Constructor_NoAppDataFolderWithSimilarFile_ThrowsExceptionAndNoFileSystemAction()
     {
         // Arrange
         Mock<IEnvironmentProvider> environmentProvider  = new();
