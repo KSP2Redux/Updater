@@ -19,38 +19,22 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 public class ManifestReleasesFeed
 {
     private readonly IFileSystem _fileSystem;
-    private readonly IAssemblyService _assemblyService;
-    private readonly string BaseFilePath;
-    private readonly string downloadStorageDir;
-    private readonly string githubRelativeRepoUri;
-    private readonly HttpClient apiClient;
-    private readonly string manifestPath;
+    private readonly IManifestReleasesFeedProviderService _manifestReleasesFeedProviderService;
+
+    private readonly string _downloadStorageDir;
+    private readonly FeedInfo _feed;
 
     private Manifest? manifest;
 
     public String CurrentChannel { get; private set; }
 
-    public ManifestReleasesFeed(IFileSystem fileSystem, IAssemblyService assemblyService, 
-        string BaseFilePath, string githubRelativeRepoUri, string downloadStorageDir, string manifestPath, string? token = null)
+    public ManifestReleasesFeed(IFileSystem fileSystem, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService,
+        string downloadStorageDir, FeedInfo feed)
     {
         _fileSystem = fileSystem;
-        _assemblyService = assemblyService;
-        this.BaseFilePath = BaseFilePath;
-        this.downloadStorageDir = downloadStorageDir;
-        this.githubRelativeRepoUri = githubRelativeRepoUri;
-        this.manifestPath = manifestPath;
-        apiClient = new()
-        {
-            BaseAddress = new Uri("https://api.github.com/repos/" + githubRelativeRepoUri + "/"),
-        };
-        ProductHeaderValue header = new("Ksp2ReduxLauncher", _assemblyService.GetName().Version?.ToString());
-        ProductInfoHeaderValue userAgent = new(header);
-        apiClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
-        apiClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github.v3.raw"));
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            apiClient.DefaultRequestHeaders.Authorization = new("Bearer", token);
-        }
+        _manifestReleasesFeedProviderService = manifestReleasesFeedProviderService;
+        _downloadStorageDir = downloadStorageDir;
+        _feed = feed;
     }
 
     public class Patch
@@ -111,12 +95,7 @@ public class ManifestReleasesFeed
 
     public async Task UpdateManifest()
     {
-        var response = await apiClient.GetAsync(
-            $"contents/{manifestPath}?ref=main");
-        var finalUrl = response.RequestMessage?.RequestUri?.ToString();
-        // Console.WriteLine($"Final url: {finalUrl}");
-        response.EnsureSuccessStatusCode();
-        manifest = System.Text.Json.JsonSerializer.Deserialize<Manifest>(await response.Content.ReadAsStringAsync());
+        manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
         CurrentChannel = manifest.channel;
     }
 
@@ -253,41 +232,14 @@ public class ManifestReleasesFeed
     {
         ct.ThrowIfCancellationRequested();
         string FileName = patch.url.Split("/").Last();
-        string patchDownloadTo = _fileSystem.Path.Combine(downloadStorageDir, FileName);
+        string patchDownloadTo = _fileSystem.Path.Combine(_downloadStorageDir, FileName);
 
         log($"Downloading {FileName}");
         reportDownloadProgress(0, patch.size);
 
         if (!_fileSystem.File.Exists(patchDownloadTo) || _fileSystem.FileInfo.New(patchDownloadTo).Length != patch.size)
         {
-            string assetApiUrl = await GetAssetApiUrl(patch.url, ct);
-
-            using var apiRequest = new HttpRequestMessage(HttpMethod.Get, assetApiUrl);
-            apiRequest.Headers.Accept.Add(new("application/octet-stream"));
-
-            using var apiResponse = await apiClient.SendAsync(apiRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-
-            Uri downloadUri;
-
-            if (apiResponse.StatusCode is System.Net.HttpStatusCode.Redirect or System.Net.HttpStatusCode.MovedPermanently)
-            {
-                downloadUri = apiResponse.Headers.Location;
-            }
-            else if (apiResponse.IsSuccessStatusCode)
-            {
-                downloadUri = apiResponse.RequestMessage.RequestUri;
-            }
-            else
-            {
-                throw new Exception($"Failed to get download URL: {apiResponse.StatusCode}");
-            }
-
-            using var cleanClient = new HttpClient();
-
-            using var downloadResponse =
-                await cleanClient.GetAsync(downloadUri, HttpCompletionOption.ResponseHeadersRead, ct);
-            downloadResponse.EnsureSuccessStatusCode();
-
+            using var downloadResponse = await _manifestReleasesFeedProviderService.DownloadPatchAsync(_feed, patch, ct);
             long contentLength = downloadResponse.Content.Headers.ContentLength ?? patch.size;
 
             using var downloadStream = await downloadResponse.Content.ReadAsStreamAsync(ct);
@@ -318,28 +270,5 @@ public class ManifestReleasesFeed
 
         log("Download complete.");
         return patchDownloadTo;
-    }
-
-    private async Task<string> GetAssetApiUrl(string browserUrl, CancellationToken ct)
-    {
-        var uri = new Uri(browserUrl);
-        var segments = uri.Segments;
-
-        string tag = Uri.UnescapeDataString(segments[^2].Trim('/'));
-        string fileName = Uri.UnescapeDataString(segments[^1]);
-
-        using var response = await apiClient.GetAsync($"releases/tags/{tag}", ct);
-        response.EnsureSuccessStatusCode();
-
-        using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
-        foreach (var asset in doc.RootElement.GetProperty("assets").EnumerateArray())
-        {
-            if (asset.GetProperty("name").GetString() == fileName)
-            {
-                return asset.GetProperty("url").GetString();
-            }
-        }
-
-        throw new FileNotFoundException($"Could not find asset '{fileName}' in release '{tag}'");
     }
 }

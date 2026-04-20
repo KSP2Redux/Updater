@@ -24,10 +24,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IReleasesFeedService _releasesFeedService;
     private readonly ITabNavigatorService _tabNavigatorService;
     private readonly IFileSystem _fileSystem;
-    private readonly ICacheService _cacheService;
     private readonly INewsService _newsService;
-    private readonly IEnvironmentProvider _environmentProvider;
-    private readonly IAssemblyService _assemblyService;
+    private readonly IManifestReleasesFeedProviderService _manifestReleasesFeedProviderService;
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -42,21 +40,19 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
-        ICacheService cacheService, INewsService newsService, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
+        INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
         _tabNavigatorService = tabNavigatorService;
         _fileSystem = fileSystem;
-        _cacheService = cacheService;
         _newsService = newsService;
-        _environmentProvider = environmentProvider;
-        _assemblyService = assemblyService;
+        _manifestReleasesFeedProviderService = manifestReleasesFeedProviderService;
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
-        LoadNews();
+        _ = LoadNews();
         ksp2InstallService.TryLoadKsp2Install();
         // ReleasesFeed =
         // [
@@ -85,10 +81,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
-                _fileSystem,
-                _assemblyService,
-                _launcherConfigService.GetLocalStorageDirectory(), feed.Repository,
-                releaseDownloadCacheDir, feed.Filename, feed.Token);
+                _fileSystem, _manifestReleasesFeedProviderService, releaseDownloadCacheDir, feed);
             Console.WriteLine("Updating feed manifest");
             try
             {
@@ -106,10 +99,9 @@ public partial class MainWindowViewModel : ViewModelBase
         await HomeTab.UpdateVersionsList(false);
     }
 
-    private async void LoadNews()
+    private async Task LoadNews()
     {
-        string tomlNewsContent = await _newsService.GetTomlContent();
-        _newsService.LoadNewsFromToml(tomlNewsContent);
+        await _newsService.FetchNews();
         List<News> newsList = await _newsService.FindAllNews();
         foreach (News news in newsList)
         {
