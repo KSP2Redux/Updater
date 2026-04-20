@@ -19,6 +19,8 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    public const int SettingsTabId = 3;
+    
     private readonly INewsItemCollectionService _newsCollectionService;
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IReleasesFeedService _releasesFeedService;
@@ -34,7 +36,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
     
-    public int CurrentTab { get; set; }
+    [ObservableProperty] public partial int CurrentTab { get; set; }
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
@@ -112,6 +114,5 @@ public partial class MainWindowViewModel : ViewModelBase
     private void CurrentTabChanged(object? sender, ITabNavigatorService.CurrentTabChangedEventArgs e)
     {
         CurrentTab = e.CurrentTab;
-        OnPropertyChanged(nameof(CurrentTab));
     }
 }

@@ -5,16 +5,33 @@
              xmlns:settings="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Settings"
              x:DataType="settings:SettingsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Ksp2Redux.Tools.Launcher.Views.SettingsTabView">
-	<StackPanel Margin="20">
-		<TextBlock Margin="0 5" >KSP2 installation directory:</TextBlock>
-		<TextBox Name="InstallPath" Watermark="C:\Steam\SteamGames\KSP2\KSP2_x64.exe" Text="{Binding DisplayedInstallPath}"/>
-		<Button Name="selectInstallDirButton" Click="InstallDir_Click">Select</Button>
+             x:Class="Ksp2Redux.Tools.Launcher.Views.SettingsTabView"
+             VerticalAlignment="Stretch">
 
-		<TextBlock Margin="0 5" >Release channel:</TextBlock>
-		<ComboBox Name="ReleaseChannel" MaxDropDownHeight="100" SelectedValue="{Binding ReleaseChannel}" ItemsSource="{Binding ValidChannels}">
-		</ComboBox>
-		<Button Background="DarkCyan" Click="InstallFromPatchFile">Install From Patch File</Button>
-		<Button Background="DarkRed" Click="UninstallReduxClick">Uninstall Redux</Button>
-	</StackPanel>
+	<Grid ColumnDefinitions="0.7*,0.3*" VerticalAlignment="Stretch">
+		<StackPanel Grid.Column="0" Margin="20">
+			<TextBlock FontFamily="{StaticResource JetBrainsMonoLight}"
+			           FontSize="24" TextAlignment="Left" Margin="0,16,0,8">
+				SETTINGS
+			</TextBlock>
+			<Grid RowDefinitions="Auto,*,*,*,*,*" ColumnDefinitions="Auto,*" ColumnSpacing="10" RowSpacing="10">
+				<TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">KSP2 installation directory</TextBlock>
+				<Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" ColumnSpacing="5">
+					<TextBox Grid.Column="0" HorizontalAlignment="Stretch" Name="InstallPath" Watermark="C:\Steam\SteamGames\KSP2\KSP2_x64.exe" Text="{Binding DisplayedInstallPath}"/>
+					<Button Grid.Column="1" Name="selectInstallDirButton" Click="InstallDir_Click">Select</Button>
+				</Grid>
+
+				<TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0 5">Release channel</TextBlock>
+				<ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Name="ReleaseChannel" MaxDropDownHeight="100" SelectedValue="{Binding ReleaseChannel}" ItemsSource="{Binding ValidChannels}" />
+			
+				<Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 10 0 10" />
+			
+				<Button Grid.Row="3" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="InstallFromPatchFile">Install From Patch File</Button>
+			
+				<Separator Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 10 0 10" />
+			
+				<Button Grid.Row="5" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="UninstallReduxClick">Uninstall Redux</Button>
+			</Grid>
+		</StackPanel>
+	</Grid>
 </UserControl>
