@@ -49,6 +49,7 @@ public partial class App : Application
         serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
         serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();
+        serviceCollection.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         
