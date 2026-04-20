@@ -15,20 +15,13 @@ public interface INewsService
     Task<List<News>> FindAllNews();
     News GetNews(int id);
     int GetNewsId(News? news);
-    Task<string> GetTomlContent();
     void LoadNewsFromToml(string tomlContent);
     Task<MemoryStream?> LoadImageStreamAsync(News news);
+    Task FetchNews();
 }
 
-public class NewsService : INewsService
+public class NewsService(INewsProviderService newsProviderService) : INewsService
 {
-    private readonly string _rawRepoTargetUrl = "https://raw.githubusercontent.com/SamBret/LauncherNews/refs/heads/main/";
-    private readonly string _tomlTargetFile = "news.toml";
-    private string _tomlTargetUrl => _rawRepoTargetUrl + _tomlTargetFile;
-    private string _imageTargetUrl => _rawRepoTargetUrl + "images/";
-
-    private readonly HttpClient _httpClient = new();
-    
     private List<News> _newsList = new();
     
     public async Task<List<News>> FindAllNews() => await Task.Run(() => _newsList.OrderByDescending(n => n.Date).ToList());
@@ -36,10 +29,11 @@ public class NewsService : INewsService
     public News GetNews(int id) => id == -1 ? new News() : _newsList[id];
     
     public int GetNewsId(News? news) => news == null ? -1 : _newsList.IndexOf(news);
-    
-    public async Task<string> GetTomlContent()
+
+    public async Task FetchNews()
     {
-        return await _httpClient.GetStringAsync(_tomlTargetUrl);
+        string tomlNewsContent = await newsProviderService.GetTomlContent();
+        LoadNewsFromToml(tomlNewsContent);
     }
     
     public void LoadNewsFromToml(string tomlContent)
@@ -65,7 +59,7 @@ public class NewsService : INewsService
         byte[] data = new byte[1];
         try
         {
-            data = await _httpClient.GetByteArrayAsync(_imageTargetUrl + news.ImageUrl);
+            data = await newsProviderService.GetImageData(news.ImageUrl);
             return new MemoryStream(data);
         }
         catch (HttpRequestException e)

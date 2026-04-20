@@ -56,7 +56,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
-        LoadNews();
+        _ = LoadNews();
         ksp2InstallService.TryLoadKsp2Install();
         // ReleasesFeed =
         // [
@@ -106,10 +106,9 @@ public partial class MainWindowViewModel : ViewModelBase
         await HomeTab.UpdateVersionsList(false);
     }
 
-    private async void LoadNews()
+    private async Task LoadNews()
     {
-        string tomlNewsContent = await _newsService.GetTomlContent();
-        _newsService.LoadNewsFromToml(tomlNewsContent);
+        await _newsService.FetchNews();
         List<News> newsList = await _newsService.FindAllNews();
         foreach (News news in newsList)
         {
