@@ -27,6 +27,7 @@
                                              HeaderBrush="Gray"
                                              ItemBrush="Black" />
             <converters:SelectableConverter x:Key="SelectableConverter" />
+            <converters:IsSettingsTabConverter x:Key="IsSettingsTabConverter" />
         </ResourceDictionary>
     </Application.Resources>
 
@@ -38,5 +39,7 @@
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="Focusable" Value="False"/>
         </Style>
+        
+        <StyleInclude Source="/Styles.axaml"/>
     </Application.Styles>
 </Application>

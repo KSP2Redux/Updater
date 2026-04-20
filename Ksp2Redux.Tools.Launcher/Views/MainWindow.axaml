@@ -83,7 +83,15 @@
         </Style>
     </Window.Styles>
 
-    <Border BorderBrush="#dc1501" BorderThickness="2" CornerRadius="8">
+    <Border BorderBrush="#dc1501" BorderThickness="2" CornerRadius="8" VerticalAlignment="Stretch">
+        <Border.Background>
+            <LinearGradientBrush Opacity="{Binding CurrentTab, Converter={StaticResource IsSettingsTabConverter}}"
+                                 StartPoint="0%,50%" EndPoint="100%,50%">
+                <GradientStop Color="#66000000" Offset="0.6"/>
+                <GradientStop Color="#00000000" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+        
         <Grid RowDefinitions="Auto,*">
             <Border Name="TitleBar">
                 <Grid Height="32" Background="#ff000000" PointerPressed="TitleBar_PointerPressed"
@@ -94,7 +102,7 @@
             </Border>
 
             <Border Grid.Row="1" Padding="24,0,24,24">
-                <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}">
+                <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
                     <TabItem Name="HomeTab" Header="Home">
                         <views:HomeTabView DataContext="{Binding HomeTab}"/>
                     </TabItem>
@@ -116,7 +124,7 @@
                                 </Canvas>
                             </Grid>
                         </TabItem.Header>
-                        <views:SettingsTabView DataContext="{Binding SettingsTab}"/>
+                        <views:SettingsTabView DataContext="{Binding SettingsTab}" />
                     </TabItem>
                 </TabControl>
             </Border>

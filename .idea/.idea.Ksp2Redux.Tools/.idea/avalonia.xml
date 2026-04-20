@@ -8,6 +8,7 @@
         <entry key="Ksp2Redux.Tools.Launcher/Controls/TabControl.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
         <entry key="Ksp2Redux.Tools.Launcher/Controls/TabItem.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
         <entry key="Ksp2Redux.Tools.Launcher/Controls/TabStripItem.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+        <entry key="Ksp2Redux.Tools.Launcher/Styles.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
         <entry key="Ksp2Redux.Tools.Launcher/Styles/Icons.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
         <entry key="Ksp2Redux.Tools.Launcher/Views/CommunityTabView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
         <entry key="Ksp2Redux.Tools.Launcher/Views/HomeTabView.axaml" value="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />

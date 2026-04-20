@@ -1,0 +1,21 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <Button>Test Button</Button>
+        </Border>
+    </Design.PreviewWith>
+
+    <Style Selector="Button">
+        <Setter Property="Background" Value="#66666666"></Setter>
+        <Setter Property="BorderThickness" Value="0"></Setter>
+        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="#ff333333"></Setter>
+        </Style>
+    </Style>
+    
+    <Style Selector="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
+    </Style>
+</Styles>
