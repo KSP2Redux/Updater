@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.IO.Compression;
+using Ksp2Redux.Tools.Common.Service;
 
-namespace Ksp2Redux.Tools.Common;
+namespace Ksp2Redux.Tools.Launcher.Services;
 
 public interface ICacheService
 {
@@ -14,7 +15,7 @@ public interface ICacheService
     void RecursivelyRestoreCache(string directory, bool isForRepatch=false);
 }
 
-public class CacheService(IFileSystem fileSystem) : ICacheService
+public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService) : ICacheService
 {
     public List<string> IgnoredDirectories
         => [fileSystem.Path.Combine("KSP2_x64_Data","StreamingAssets"), "UninstallTemp", "mods"];
@@ -87,9 +88,9 @@ public class CacheService(IFileSystem fileSystem) : ICacheService
         
         ClearOutFolder(directory);
 
-        using (var zipFile = ZipFile.OpenRead(fileSystem.Path.Combine(directory, "uninstall.zip")))
+        using (var zipFile = zipFileService.OpenRead(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
-            zipFile.ExtractToDirectory(directory, true);
+            zipFileService.ExtractToDirectory(zipFile, directory, true);
         }
         
         if (!isForRepatch)

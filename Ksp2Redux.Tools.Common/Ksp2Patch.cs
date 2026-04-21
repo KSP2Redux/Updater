@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Ksp2Redux.Tools.Common.Service;
 
 namespace Ksp2Redux.Tools.Common;
 
@@ -168,9 +169,9 @@ public class Ksp2Patch : IDisposable
         return sum;
     }
 
-    public static Ksp2Patch FromFile(IFileSystem fileSystem, string path)
+    public static Ksp2Patch FromFile(IFileSystem fileSystem, IZipFileService zipFileService, string path)
     {
-        return new Ksp2Patch(fileSystem, ZipFile.OpenRead(path));
+        return new Ksp2Patch(fileSystem, zipFileService.OpenRead(path));
     }
 
     public static async Task CopyFileAsync(IFileSystem fileSystem, string sourceFile, string destinationFile)

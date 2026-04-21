@@ -2,6 +2,7 @@
 
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Common.Service;
 
 Console.WriteLine(string.Join(", ",args));
 
@@ -11,6 +12,7 @@ var result = args[2];
 var checkRemovals = args.Length > 3 && args[3] == "true";
 
 IFileSystem fileSystem = new FileSystem();
+IZipFileService zipFileService = new ZipFileService();
 
 Patch();
 Dump();
@@ -23,7 +25,7 @@ void Patch()
 
 void Dump()
 {
-    using var patch = Ksp2Patch.FromFile(fileSystem, result);
+    using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, result);
     Console.Write(patch.GetDiffInfo());
 }
 

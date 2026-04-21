@@ -6,6 +6,7 @@ using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Common.Service;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -50,6 +51,7 @@ public partial class App : Application
         serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();
         serviceCollection.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
+        serviceCollection.AddSingleton<IZipFileService, ZipFileService>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

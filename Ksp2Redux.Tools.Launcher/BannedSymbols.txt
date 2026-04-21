@@ -43,3 +43,7 @@ M:System.Reflection.Assembly.LoadWithPartialName(System.String); (Redux) Use IAs
 M:System.Reflection.Assembly.Load(System.Reflection.AssemblyName); (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
 M:System.Reflection.Assembly.GetExecutingAssembly; (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
 M:System.Reflection.Assembly.GetCallingAssembly; (Redux) Use IAssemblyService instead. Add the method if it doesn't exist.
+
+// Usage of ZipFile
+T:System.IO.Compression.ZipFile; (Redux) Use IZipFileService instead. Add the method if it doesn't exist.
+M:System.IO.Compression.ZipFileExtensions.ExtractToDirectory(System.IO.Compression.ZipArchive,System.String,System.Boolean); (Redux) Use IZipFileService instead.
