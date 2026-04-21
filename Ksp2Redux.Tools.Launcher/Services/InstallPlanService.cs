@@ -4,6 +4,7 @@ using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Common.Service;
 using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
@@ -17,7 +18,7 @@ public interface IInstallPlanService
 }
 
 public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider,
-    IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService) : IInstallPlanService
+    IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService, IZipFileService zipFileService) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -133,7 +134,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    using (var patch = Ksp2Patch.FromFile(fileSystem, patchFile))   // Test: Convert to factory, add interface for patch
+                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile))   // Test: Convert to factory, add interface for patch
                     {
                         await patch.AsyncApply(environmentProvider, install, install, log, log);
                     }
@@ -145,7 +146,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
                 case InstallPlanAction.ApplyPatchFile:
                 {
-                    var patch = Ksp2Patch.FromFile(fileSystem, await step.Argument!(log, downloadProgress, ct));
+                    var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, await step.Argument!(log, downloadProgress, ct));
                     await patch.AsyncApply(environmentProvider, install, install, log, log);
                     break;
                 }
