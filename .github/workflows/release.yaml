@@ -57,7 +57,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.get_version.outputs.TAG }}
-        TITLE: "Launcher v${{ steps.get_version.outputs.VERSION }}"
+        TITLE: "Updater v${{ steps.get_version.outputs.VERSION }}"
       run: |
         gh release create "$TAG" \
           ./publish/Ksp2Updater-win-x64.exe \
