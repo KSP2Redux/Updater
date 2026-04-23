@@ -51,22 +51,15 @@ jobs:
         mv ./publish/win/Ksp2ReduxTools.Launcher.exe ./publish/Ksp2Launcher-win-x64.exe
         mv ./publish/linux/Ksp2ReduxTools.Launcher ./publish/Ksp2Launcher-linux-x64
 
-    - name: Generate Changelog
+    - name: Create Release with Auto-Notes
       if: steps.check_tag.outputs.exists == 'false'
-      id: changelog
-      uses: JayR_05/changelog-generator-action@v1.2.0
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Create Release
-      if: steps.check_tag.outputs.exists == 'false'
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ env.TAG }}
-        name: Launcher v${{ env.VERSION }}
-        body: ${{ steps.changelog.outputs.changelog }}
-        files: |
-          ./publish/Ksp2Launcher-win-x64.exe
-          ./publish/Ksp2Launcher-linux-x64
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.get_version.outputs.TAG }}
+        TITLE: "Launcher v${{ steps.get_version.outputs.VERSION }}"
+      run: |
+        gh release create "$TAG" \
+          ./publish/Ksp2Launcher-win-x64.exe \
+          ./publish/Ksp2Launcher-linux-x64 \
+          --title "$TITLE" \
+          --generate-notes
