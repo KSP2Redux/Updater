@@ -158,7 +158,7 @@
 		<Border BorderThickness="1" CornerRadius="8" BorderBrush="WhiteSmoke" Background="#7A000000"
 				Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Margin="0 5" Height="340"
 				IsVisible="{Binding IsInstallLogVisible}">
-			<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+			<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" x:Name="InstallLogScroll">
 				<ItemsControl Margin="24,16, 24,16" ItemsSource="{Binding InstallLogLines}"
                               Background="Transparent">
 					<ItemsControl.ItemTemplate>

@@ -1,8 +1,10 @@
-﻿using Avalonia.Controls;
+﻿using System;
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
@@ -54,6 +56,19 @@ public partial class HomeTabView : UserControl
             case HomeTabViewModel.MainButtonState.Cancel:
                 CancelButton.IsVisible = true;
                 break;
+        }
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (Model is not null)
+        {
+            Model.InstallLogLines.CollectionChanged +=
+                (evt,args) =>
+                {
+                    Dispatcher.UIThread.Post(() => InstallLogScroll.ScrollToEnd());
+                };
         }
     }
 }
