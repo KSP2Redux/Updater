@@ -20,8 +20,8 @@ jobs:
         fetch-depth: 0 # Essential to check existing tags
 
     - name: Extract Version from .csproj
-        id: get_version
-        run: |
+      id: get_version
+      run: |
           # Extracts the text between <Version> and </Version> tags
           VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' Ksp2ReduxTools.Launcher/Ksp2ReduxTools.Launcher.csproj)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
