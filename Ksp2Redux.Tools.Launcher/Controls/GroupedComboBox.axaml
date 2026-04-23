@@ -17,9 +17,11 @@
     </UserControl.DataTemplates>
 
     <ComboBox
+        Name="InnerComboBox"
         Width="250"
         ItemsSource="{Binding GroupedItems, ElementName=Root}"
-        SelectedItem="{Binding SelectedItem, ElementName=Root, Mode=TwoWay}">
+        SelectedItem="{Binding SelectedItem, ElementName=Root, Mode=OneWay}"
+        SelectionChanged="OnInnerSelectionChanged">
         <ComboBox.Styles>
             <Style Selector="ComboBoxItem">
                 <Setter Property="IsEnabled"

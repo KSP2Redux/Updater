@@ -190,7 +190,17 @@ public partial class HomeTabViewModel : ViewModelBase
         _ksp2InstallService.TryLoadKsp2Install();
         
         Versions.Clear();
-        AddInstalledVersionToList();
+        
+        GameVersionViewModel? currentVersion = null;
+        if (_ksp2InstallService.Ksp2?.GameVersion != null)
+        {
+            currentVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2.GameVersion)
+            {
+                Channel = "installed"
+            };
+            Versions.Add(currentVersion);
+        }
+        
         
         if (string.IsNullOrEmpty(_launcherConfigService.Config.ReleaseChannel)
             || !_releasesFeedService.ReleasesFeed.TryGetValue(_launcherConfigService.Config.ReleaseChannel, out var value))
@@ -205,20 +215,8 @@ public partial class HomeTabViewModel : ViewModelBase
                 Versions.Add(releaseView);
             }
         }
-    }
-
-    private void AddInstalledVersionToList()
-    {
-        if (_ksp2InstallService.Ksp2?.GameVersion != null)
-        {
-            var currentVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2.GameVersion)
-            {
-                Channel = "installed"
-            };
-            Versions.Add(currentVersion);
-            SelectedVersion = currentVersion;
-            OnPropertyChanged(nameof(SelectedVersion));
-        }
+        
+        SelectedVersion = currentVersion;
     }
 
     private async Task RunPatchProcess()

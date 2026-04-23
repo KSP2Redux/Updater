@@ -7,12 +7,14 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 
 namespace Ksp2Redux.Tools.Launcher.Controls
 {
     public partial class GroupedComboBox : UserControl
     {
         private readonly ObservableCollection<object> _groupedItems = [];
+        private bool _isRebuilding;
 
         /// <summary>
         /// The flattened list of headers and items
@@ -89,23 +91,60 @@ namespace Ksp2Redux.Tools.Launcher.Controls
 
         private void Rebuild()
         {
-            _groupedItems.Clear();
-            if (ItemsSource == null || GroupKeySelector == null)
+            _isRebuilding = true;
+            try
+            {
+                _groupedItems.Clear();
+                if (ItemsSource == null || GroupKeySelector == null)
+                {
+                    return;
+                }
+
+                IOrderedEnumerable<IGrouping<string, object>> groups = ItemsSource.Cast<object>()
+                    .GroupBy(GroupKeySelector)
+                    .OrderBy(g => g.Key);
+
+                foreach (IGrouping<string, object> grp in groups)
+                {
+                    _groupedItems.Add(new GroupHeader(grp.Key));
+                    foreach (object item in grp)
+                    {
+                        _groupedItems.Add(item);
+                    }
+                }
+            }
+            finally
+            {
+                _isRebuilding = false;
+                if (SelectedItem != null && _groupedItems.Contains(SelectedItem))
+                {
+                    InnerComboBox.SelectedItem = SelectedItem;
+                }
+            }
+        }
+
+        private void OnInnerSelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (_isRebuilding)
             {
                 return;
             }
 
-            IOrderedEnumerable<IGrouping<string, object>> groups = ItemsSource.Cast<object>()
-                .GroupBy(GroupKeySelector)
-                .OrderBy(g => g.Key);
+            ComboBox? combo = sender as ComboBox;
+            object? picked = combo?.SelectedItem;
 
-            foreach (IGrouping<string, object> grp in groups)
+            if (picked is IGroupedComboBoxItem { IsSelectable: false })
             {
-                _groupedItems.Add(new GroupHeader(grp.Key));
-                foreach (object item in grp)
+                if (combo != null)
                 {
-                    _groupedItems.Add(item);
+                    Dispatcher.UIThread.Post(() => combo.SelectedItem = SelectedItem);
                 }
+                return;
+            }
+
+            if (picked != null)
+            {
+                SelectedItem = picked;
             }
         }
     }
