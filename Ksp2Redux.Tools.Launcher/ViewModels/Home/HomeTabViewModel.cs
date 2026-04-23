@@ -267,6 +267,7 @@ public partial class HomeTabViewModel : ViewModelBase
             cancelCurrentOperation = null;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
+            IsProgressVisible = false;
         }
     }
 
@@ -314,6 +315,7 @@ public partial class HomeTabViewModel : ViewModelBase
             cancelCurrentOperation = null;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
+            IsProgressVisible = false;
         }
     }
     
