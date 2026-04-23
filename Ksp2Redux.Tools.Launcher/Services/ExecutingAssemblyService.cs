@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Reflection;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
@@ -11,6 +12,8 @@ public interface IAssemblyService
     
     Stream? GetManifestResourceStream(string name);
     AssemblyName GetName();
+    
+    Version? GetVersion();
 }
 
 public class ExecutingAssemblyService : IAssemblyService
@@ -22,6 +25,9 @@ public class ExecutingAssemblyService : IAssemblyService
 
     public AssemblyName GetName()
         => Assembly.GetExecutingAssembly().GetName();
-    
+
+    public Version? GetVersion()
+        => Assembly.GetExecutingAssembly().GetName().Version;
+
 #pragma warning restore RS0030
 }

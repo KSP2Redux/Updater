@@ -30,17 +30,19 @@ public class UpdateService : IUpdateService
     private Version? _version;
     private IFileSystem _fileSystem;
     private IEnvironmentProvider _environmentProvider;
+    private IAssemblyService _assemblyService;
 
-    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider)
+    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
     {
         _client = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Launcher"));
         _fileSystem = fileSystem;
         _environmentProvider = environmentProvider;
+        _assemblyService = assemblyService;
+        _version = assemblyService.GetVersion();
         var uri = new Uri(launcherConfigService.Config.LauncherRepo.TrimEnd('/'));
         var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         _owner = parts[0];
         _repo = parts[1];
-        _version = new Version(Constants.Version);
     }
 
     /// <summary>

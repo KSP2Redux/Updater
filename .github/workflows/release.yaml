@@ -19,12 +19,13 @@ jobs:
       with:
         fetch-depth: 0 # Essential to check existing tags
 
-    - name: Extract Version
-      id: get_version
-      run: |
-        VERSION=$(grep 'public const string Version =' Ksp2Redux.Tools.Launcher/Constants.cs | sed 's/.*"\(.*\)".*/\1/')
-        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        echo "TAG=launcher-v$VERSION" >> $GITHUB_OUTPUT
+    - name: Extract Version from .csproj
+        id: get_version
+        run: |
+          # Extracts the text between <Version> and </Version> tags
+          VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' Ksp2ReduxTools.Launcher/Ksp2ReduxTools.Launcher.csproj)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=launcher-v$VERSION" >> $GITHUB_OUTPUT
 
     - name: Check if Tag Exists
       id: check_tag
