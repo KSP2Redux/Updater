@@ -109,7 +109,7 @@
                     <TabItem Name="CommunityTab" Header="Community">
                         <views:CommunityTabView DataContext="{Binding CommunityTab}"/>
                     </TabItem>
-                    <TabItem Name="ModsTab" Header="Mods" IsVisible="False">
+                    <TabItem Name="ModsTab" Header="Mods">
                         <views:ModsTabView DataContext="{Binding ModsTab}"/>
                     </TabItem>
                     <TabItem Name="SettingsTab">
