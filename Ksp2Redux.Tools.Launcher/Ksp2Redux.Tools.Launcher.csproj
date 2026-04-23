@@ -11,7 +11,7 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <LangVersion>preview</LangVersion>
-        <Version>0.0.1.0</Version>
+        <Version>0.0.1.1</Version>
     </PropertyGroup>
 
     <ItemGroup>

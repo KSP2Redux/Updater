@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -31,7 +32,12 @@ public class UpdateService : IUpdateService
     private IFileSystem _fileSystem;
     private IEnvironmentProvider _environmentProvider;
     private IAssemblyService _assemblyService;
-
+#pragma warning disable RS0030
+#pragma warning disable IL3000
+    private static bool _isSingleFile =  string.IsNullOrEmpty(Assembly.GetEntryAssembly()?.Location);
+#pragma warning restore IL3000
+#pragma warning restore RS0030
+    
     public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
     {
         _client = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Launcher"));
@@ -51,6 +57,7 @@ public class UpdateService : IUpdateService
     /// <param name="autoRestart">true only when this is dispatched on the launch of the program, not the every 10 minute check</param>
     public async Task CheckAndPerformUpdateAsync(bool autoRestart)
     {
+        Console.WriteLine("Checking for updates.");
         var releases = await _client.Repository.Release.GetAll(_owner, _repo);
         
         var latestRelease = releases.Where(r => r.TagName.StartsWith("launcher-v") && !r.Prerelease)
@@ -65,6 +72,14 @@ public class UpdateService : IUpdateService
 
         if (latestRelease != null && latestRelease.Version > _version)
         {
+            Console.WriteLine($"Update found, v{latestRelease.Version}");
+
+            if (!_isSingleFile)
+            {
+                Console.WriteLine("Running in non-single-file version somehow, will not perform update");
+                return;
+            }
+            
             if (!autoRestart)
             {
                 await MessageBoxManager.GetMessageBoxStandard("Update Found",

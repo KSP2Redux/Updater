@@ -91,7 +91,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task InitializeAsync()
     {
         // First start the updater service
-        await _updateService.CheckAndPerformUpdateAsync(true);
+        await _updateService.CheckAndPerformUpdateAsync(false);
         
         // foreach (var feed in ReleasesFeed)
         // {
