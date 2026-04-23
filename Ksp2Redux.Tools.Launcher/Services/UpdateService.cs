@@ -78,6 +78,9 @@ public class UpdateService : IUpdateService
             if (!_isSingleFile)
             {
                 Console.WriteLine("Running in non-single-file version somehow, will not perform update");
+                await MessageBoxManager.GetMessageBoxStandard("Update Found",
+                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.", ButtonEnum.Ok,
+                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
                 return false;
             }
             

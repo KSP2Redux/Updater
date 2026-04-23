@@ -95,8 +95,23 @@ public class ManifestReleasesFeed
 
     public async Task UpdateManifest()
     {
-        manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
-        CurrentChannel = manifest.channel;
+        try
+        {
+            manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
+            CurrentChannel = manifest.channel;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Could not download manifest");
+            manifest = new Manifest
+            {
+                schemaVersion = 0,
+                patches = [],
+                channel = "invalid",
+                generatedAt = DateTime.MinValue,
+            };
+            CurrentChannel = "invalid";
+        }
     }
 
     public IEnumerable<GameVersion> GetAllVersions()

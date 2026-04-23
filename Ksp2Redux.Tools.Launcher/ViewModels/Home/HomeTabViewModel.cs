@@ -74,11 +74,11 @@ public partial class HomeTabViewModel : ViewModelBase
     public async Task UpdateVersionsList(bool updateChannels = true)
     {
         if(updateChannels)
-            UpdateAsync();
+            await UpdateAsync();
         RebuildVersionsCollection();
         UpdateMainButtonState();
     }
-    private async void UpdateAsync()
+    private async Task UpdateAsync()
     {
         foreach (var feed in _releasesFeedService.ReleasesFeed)
         {

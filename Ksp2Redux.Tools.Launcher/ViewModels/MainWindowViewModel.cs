@@ -37,8 +37,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
-    
-    
+
     [ObservableProperty] public partial int CurrentTab { get; set; }
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
@@ -59,7 +58,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
-        _ = LoadNews();
+        _ = LoadNews().ContinueWith(LogErrors);
         ksp2InstallService.TryLoadKsp2Install();
         // ReleasesFeed =
         // [
@@ -68,7 +67,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // ];
         // ReleasesFeed = [];
 
-        _ = InitializeAsync();
+        _ = InitializeAsync().ContinueWith(LogErrors);
 
         HomeTab = homeTab;
         CommunityTab = communityTab;
@@ -86,6 +85,14 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         
         timer.Start();
+    }
+
+    private void LogErrors(Task antecedent)
+    {
+        if (antecedent.IsFaulted)
+        {
+            Console.WriteLine(antecedent.Exception);
+        }
     }
 
     private async Task InitializeAsync()
