@@ -82,7 +82,7 @@ public class UpdateService : IUpdateService
             }
             
             var result = await MessageBoxManager.GetMessageBoxStandard("Update Found",
-                "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new versions.", ButtonEnum.OkCancel,
+                "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.", ButtonEnum.OkCancel,
                 windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
 
             if (result != ButtonResult.Ok) return false;
