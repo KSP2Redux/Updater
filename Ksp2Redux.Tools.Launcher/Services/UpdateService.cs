@@ -17,7 +17,8 @@ namespace Ksp2Redux.Tools.Launcher.Services;
 
 public interface IUpdateService
 {
-    public Task CheckAndPerformUpdateAsync(bool autoRestart);
+    
+    public Task<bool> CheckAndPerformUpdateAsync();
 }
 
 /// <summary>
@@ -54,8 +55,8 @@ public class UpdateService : IUpdateService
     /// <summary>
     /// Checks for an update from the provided GitHub repository, and downloads and installs it later
     /// </summary>
-    /// <param name="autoRestart">true only when this is dispatched on the launch of the program, not the every 10 minute check</param>
-    public async Task CheckAndPerformUpdateAsync(bool autoRestart)
+    /// <returns>A boolean whether to allow updating redux versions after this</returns>
+    public async Task<bool> CheckAndPerformUpdateAsync()
     {
         Console.WriteLine("Checking for updates.");
         var releases = await _client.Repository.Release.GetAll(_owner, _repo);
@@ -77,15 +78,14 @@ public class UpdateService : IUpdateService
             if (!_isSingleFile)
             {
                 Console.WriteLine("Running in non-single-file version somehow, will not perform update");
-                return;
+                return false;
             }
             
-            if (!autoRestart)
-            {
-                await MessageBoxManager.GetMessageBoxStandard("Update Found",
-                    "The launcher will download and update, it may restart a few times during this.", ButtonEnum.Ok,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
-            }
+            var result = await MessageBoxManager.GetMessageBoxStandard("Update Found",
+                "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new versions.", ButtonEnum.OkCancel,
+                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
+
+            if (result != ButtonResult.Ok) return false;
             
             var platformKeyword = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
             var asset = latestRelease.Release.Assets
@@ -109,6 +109,8 @@ public class UpdateService : IUpdateService
                 TriggerRestart(tempPath);
             }
         }
+
+        return true;
     }
     
     private void TriggerRestart(string newFilesPath)

@@ -128,6 +128,8 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
+    private bool _installationDisabled = false;
+    
     private void UpdateMainButtonState()
     {
         _ksp2InstallService.TryLoadKsp2Install();
@@ -139,8 +141,6 @@ public partial class HomeTabViewModel : ViewModelBase
             MainButtonTooltip = "KSP2 installation not detected.  Please select a directory containing KSP2 on the settings tab.";
             return;
         }
-        
-        
         
         var selectedVersion = SelectedVersion;
         if (selectedVersion is null)
@@ -161,6 +161,7 @@ public partial class HomeTabViewModel : ViewModelBase
             }
             else
             {
+                MainButtonEnabled = !_installationDisabled;
                 MainButtonShown = MainButtonState.Install;
                 MainButtonTooltip = "Install Ksp2Redux";
             }
@@ -175,7 +176,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         else
         {
-            MainButtonEnabled = true;
+            MainButtonEnabled = !_installationDisabled;
             MainButtonShown = MainButtonState.Update;
             MainButtonTooltip = "Update Ksp2Redux";
         }
@@ -341,5 +342,10 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
         });
+    }
+    
+    public void DisableInstallation()
+    {
+        _installationDisabled = true;
     }
 }

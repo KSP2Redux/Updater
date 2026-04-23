@@ -82,7 +82,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         timer.Tick += async (sender, args) =>
         {
-            await _updateService.CheckAndPerformUpdateAsync(false);
+            if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
         };
         
         timer.Start();
@@ -91,7 +91,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task InitializeAsync()
     {
         // First start the updater service
-        await _updateService.CheckAndPerformUpdateAsync(false);
+        if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
         
         // foreach (var feed in ReleasesFeed)
         // {
