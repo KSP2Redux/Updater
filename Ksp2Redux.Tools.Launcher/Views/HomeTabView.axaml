@@ -191,18 +191,21 @@
         <Border Grid.Row="0" Grid.RowSpan="4" Grid.Column="0" Grid.ColumnSpan="2"
                 VerticalAlignment="Bottom"
                 Background="#CC000000"
-                Padding="16,12"
+                Padding="8,2"
                 IsVisible="{Binding InstallationDisabled}">
 	        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
 		        <TextBlock Grid.Column="0"
 		                   Foreground="#dc1501"
 		                   FontFamily="{StaticResource JetBrainsMonoRegular}"
+		                   FontSize="11"
 		                   VerticalAlignment="Center"
 		                   Text="New version of the updater app is necessary to install or update redux" />
 		        <Button Grid.Column="1"
 		                Content="Install update"
 		                Click="TriggerInstall"
-		                Margin="16,0,0,0" />
+		                FontSize="11"
+		                Padding="8,2"
+		                Margin="12,0,0,0" />
 	        </Grid>
         </Border>
 	</Grid>
