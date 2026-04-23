@@ -58,7 +58,6 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         var i = 0;
         foreach (var step in installPlan.Steps)
         {
-            stepsProgress(++i, installPlan.Steps.Count);
             switch (step.Action)
             {
                 case InstallPlanAction.Uninstall:
@@ -155,6 +154,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             }
 
             await Task.Delay(250, ct);
+            stepsProgress(++i, installPlan.Steps.Count);
         }
     }
 }
