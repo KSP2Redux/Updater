@@ -25,7 +25,7 @@ jobs:
           # Extracts the text between <Version> and </Version> tags
           VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "TAG=launcher-v$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=updater-v$VERSION" >> $GITHUB_OUTPUT
 
     - name: Check if Tag Exists
       id: check_tag
@@ -49,8 +49,8 @@ jobs:
       run: |
         dotnet publish Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
         dotnet publish Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
-        mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Launcher-win-x64.exe
-        mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Launcher-linux-x64
+        mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Updater-win-x64.exe
+        mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Updater-linux-x64
 
     - name: Create Release with Auto-Notes
       if: steps.check_tag.outputs.exists == 'false'
@@ -60,7 +60,7 @@ jobs:
         TITLE: "Launcher v${{ steps.get_version.outputs.VERSION }}"
       run: |
         gh release create "$TAG" \
-          ./publish/Ksp2Launcher-win-x64.exe \
-          ./publish/Ksp2Launcher-linux-x64 \
+          ./publish/Ksp2Updater-win-x64.exe \
+          ./publish/Ksp2Updater-linux-x64 \
           --title "$TITLE" \
           --generate-notes
