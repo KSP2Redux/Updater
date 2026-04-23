@@ -22,7 +22,7 @@ jobs:
     - name: Extract Version
       id: get_version
       run: |
-        VERSION=$(grep 'public const string Version =' Ksp2ReduxTools.Launcher/Constants.cs | sed 's/.*"\(.*\)".*/\1/')
+        VERSION=$(grep 'public const string Version =' Ksp2Redux.Tools.Launcher/Constants.cs | sed 's/.*"\(.*\)".*/\1/')
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "TAG=launcher-v$VERSION" >> $GITHUB_OUTPUT
 
@@ -46,10 +46,10 @@ jobs:
     - name: Build and Publish
       if: steps.check_tag.outputs.exists == 'false'
       run: |
-        dotnet publish Ksp2ReduxTools.Launcher/Ksp2ReduxTools.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
-        dotnet publish Ksp2ReduxTools.Launcher/Ksp2ReduxTools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
-        mv ./publish/win/Ksp2ReduxTools.Launcher.exe ./publish/Ksp2Launcher-win-x64.exe
-        mv ./publish/linux/Ksp2ReduxTools.Launcher ./publish/Ksp2Launcher-linux-x64
+        dotnet publish Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
+        dotnet publish Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+        mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Launcher-win-x64.exe
+        mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Launcher-linux-x64
 
     - name: Create Release with Auto-Notes
       if: steps.check_tag.outputs.exists == 'false'
