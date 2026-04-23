@@ -1,4 +1,5 @@
 ﻿
+using System.Xml.Linq;
 using Mono.Cecil;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
@@ -13,7 +14,10 @@ public class ModuleDefinitionService : IModuleDefinitionService
 #pragma warning disable RS0030
     
     public ModuleDefinition ReadModule(string fileName)
-        => ModuleDefinition.ReadModule(fileName);
+        => ModuleDefinition.ReadModule(fileName, new ReaderParameters
+        {
+            InMemory = true,
+        });
     
 #pragma warning restore RS0030
 }

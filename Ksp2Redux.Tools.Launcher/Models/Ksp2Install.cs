@@ -36,12 +36,12 @@ public class Ksp2Install
 
     private static string GetAssemblyCSharpRelativePath(IFileSystem fileSystem)
         => fileSystem.Path.Combine("KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
-    
+
     // Exists in Steam based installations, but doesn't exist in portable version.
     private const string SteamworksText = "KSP2_x64_Data/Plugins/Steamworks.NET.txt";
     private const string EpicGamesMarker = ".egstore";
     private const string PrepatchMarker = "prepatched.nodelete";
-    
+
     public Ksp2Install(IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, string exePath)
     {
         _fileSystem = fileSystem;
@@ -56,13 +56,13 @@ public class Ksp2Install
             var isEpic = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, EpicGamesMarker));
             var isRedux = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, "Redux"));
             var isPrepatch = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, PrepatchMarker));
-            Distribution = isRedux    ? Distribution.Redux   :
-                           isPrepatch ? Distribution.Prepatched :
-                           isSteam    ? Distribution.Steam   :
-                           isEpic     ? Distribution.Epic    : 
-                                        Distribution.Portable;
-            
-            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir,Distribution == Distribution.Redux);
+            Distribution = isRedux ? Distribution.Redux :
+                isPrepatch ? Distribution.Prepatched :
+                isSteam ? Distribution.Steam :
+                isEpic ? Distribution.Epic :
+                Distribution.Portable;
+
+            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir, Distribution == Distribution.Redux);
         }
         else
         {
@@ -75,17 +75,10 @@ public class Ksp2Install
         try
         {
             var mainAssembly = _fileSystem.Path.Combine(installDir, GetAssemblyCSharpRelativePath(_fileSystem));
-            var module = _moduleDefinitionService.ReadModule(mainAssembly);
+            using var module = _moduleDefinitionService.ReadModule(mainAssembly);
             var versionType = module.Types.First(t => t.Name == "VersionID");
-            if (versionType is not null)
-            {
-                var gameVersionFound = GameVersion.FromVersionIDType(versionType, isRedux);
-                module.Dispose();
-                return gameVersionFound;
-            }
 
-            module.Dispose();
-            return null;
+            return versionType is not null ? GameVersion.FromVersionIDType(versionType, isRedux) : null;
         }
         catch (Exception e)
         {
@@ -95,6 +88,7 @@ public class Ksp2Install
 
     public override string ToString()
     {
-        return $"Ksp2Install: IsValid:{IsValid} Distribution:{Distribution} GameVersion:{GameVersion} Dir:\"{InstallDir}\"";
+        return
+            $"Ksp2Install: IsValid:{IsValid} Distribution:{Distribution} GameVersion:{GameVersion} Dir:\"{InstallDir}\"";
     }
 }
