@@ -263,6 +263,8 @@ public partial class HomeTabViewModel : ViewModelBase
             cancelCurrentOperation = null;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
+            SelectedVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2!.GameVersion!);
+            UpdateMainButtonState();
         }
     }
 
@@ -310,6 +312,8 @@ public partial class HomeTabViewModel : ViewModelBase
             cancelCurrentOperation = null;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
+            SelectedVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2!.GameVersion!);
+            UpdateMainButtonState();
         }
     }
     
