@@ -152,9 +152,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-
-            await Task.Delay(250, ct);
             stepsProgress(++i, installPlan.Steps.Count);
+            await Task.Delay(250, ct);
         }
     }
 }
