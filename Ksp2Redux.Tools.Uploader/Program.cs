@@ -24,19 +24,42 @@ var github = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Uploader")
     Credentials = new Credentials(uploadManifest.Token)
 };
 
-var newRelease = new NewRelease("v" + uploadManifest.Version)
+var tag = "v" + uploadManifest.Version;
+
+Release createdRelease;
+try
 {
-    Name = $"KSP2 Redux {uploadManifest.Version}",
-    Body = "Automated upload for KSP2 Redux (Fill in later if not on dev pipeline)",
-    Draft = false,
-    Prerelease = false,
-};
+    createdRelease = await github.Repository.Release.Get(repoOwner, repoName, tag);
+    Console.WriteLine($"Found existing release at: {createdRelease.HtmlUrl}");
+}
+catch (NotFoundException)
+{
+    var newRelease = new NewRelease(tag)
+    {
+        Name = $"KSP2 Redux {uploadManifest.Version}",
+        Body = "Automated upload for KSP2 Redux (Fill in later if not on dev pipeline)",
+        Draft = false,
+        Prerelease = false,
+    };
 
-var createdRelease = await github.Repository.Release.Create(repoOwner, repoName, newRelease);
+    createdRelease = await github.Repository.Release.Create(repoOwner, repoName, newRelease);
 
-Console.WriteLine($"Created release at: {createdRelease.HtmlUrl}");
+    Console.WriteLine($"Created release at: {createdRelease.HtmlUrl}");
+}
 
 List<JsonPatch> patchesToPrepend = [];
+
+var existingAssets = (await github.Repository.Release.GetAllAssets(repoOwner, repoName, createdRelease.Id)).ToList();
+
+var extensionsToReplace = uploadManifest.Patches
+    .Select(p => Path.GetExtension(p.File))
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+foreach (var existing in existingAssets.Where(a => extensionsToReplace.Contains(Path.GetExtension(a.Name))).ToList())
+{
+    await github.Repository.Release.DeleteAsset(repoOwner, repoName, existing.Id);
+    Console.WriteLine($"Deleted existing asset: {existing.Name}");
+}
 
 foreach (var patch in uploadManifest.Patches)
 {
@@ -52,15 +75,17 @@ foreach (var patch in uploadManifest.Patches)
         }
     };
 
+    var fileName = Path.GetFileName(patch.File);
+
     await using var stream = File.OpenRead(patch.File);
 
     var upload = new ReleaseAssetUpload
     {
-        FileName = Path.GetFileName(patch.File),
+        FileName = fileName,
         ContentType = "application/octet-stream",
         RawData = stream,
     };
-    
+
     var asset = await github.Repository.Release.UploadAsset(createdRelease, upload);
     
     jsonPatch.Url = asset.BrowserDownloadUrl;
