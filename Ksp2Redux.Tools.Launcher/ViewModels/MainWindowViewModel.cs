@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -28,6 +29,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IFileSystem _fileSystem;
     private readonly INewsService _newsService;
     private readonly IManifestReleasesFeedProviderService _manifestReleasesFeedProviderService;
+    private readonly IUpdateService _updateService;
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -36,13 +38,14 @@ public partial class MainWindowViewModel : ViewModelBase
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
     
+    
     [ObservableProperty] public partial int CurrentTab { get; set; }
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
-        INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService)
+        INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
@@ -51,6 +54,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _fileSystem = fileSystem;
         _newsService = newsService;
         _manifestReleasesFeedProviderService = manifestReleasesFeedProviderService;
+        
+        _updateService = updateService;
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
@@ -69,10 +74,25 @@ public partial class MainWindowViewModel : ViewModelBase
         CommunityTab = communityTab;
         ModsTab = modsTab;
         SettingsTab = settingsTabViewModel;
+
+        var timer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMinutes(10)
+        };
+
+        timer.Tick += async (sender, args) =>
+        {
+            await _updateService.CheckAndPerformUpdateAsync(false);
+        };
+        
+        timer.Start();
     }
 
     private async Task InitializeAsync()
     {
+        // First start the updater service
+        await _updateService.CheckAndPerformUpdateAsync(true);
+        
         // foreach (var feed in ReleasesFeed)
         // {
         //     await feed.Value.UpdateManifest();
@@ -99,6 +119,8 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         SettingsTab.SetLoaded();
         await HomeTab.UpdateVersionsList(false);
+        
+        // Now schedule update checks every 10 minutes
     }
 
     private async Task LoadNews()

@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO.Abstractions;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -119,12 +120,12 @@ public partial class SettingsTabViewModel : ViewModelBase
         var installDir = _fileSystem.Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
         if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
         {
-            await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...").ShowAsync();
+            await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...", windowStartupLocation:WindowStartupLocation.CenterOwner).ShowAsync();
             return;
         }
         
         var box = MessageBoxManager.GetMessageBoxStandard("Confirm", "Are you sure you want to uninstall Redux?",
-            ButtonEnum.YesNo);
+            ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
         
         
         var result = await box.ShowAsync();
@@ -136,7 +137,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         await _homeTabViewModel.UpdateVersionsList();
         
         
-        await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled").ShowAsync();
+        await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled", windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
     }
 
     public async Task InstallFromPatchFile()

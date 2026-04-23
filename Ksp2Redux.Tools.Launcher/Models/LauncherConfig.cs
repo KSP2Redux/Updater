@@ -10,7 +10,9 @@ public class LauncherConfig
     public string ReleaseChannel { get; set; }
     public GameVersion? LastInstalledVersion { get; set; }
     public List<FeedInfo> Feeds { get; set; } = [];
-    
+
+    public string LauncherRepo { get; set; } = "https://github.com/KSP2Redux/Updater";
+
     [JsonIgnore]
     public string StoragePath { get; set; }
 
