@@ -1,0 +1,72 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+    outputs:
+      tag_exists: ${{ steps.check_tag.outputs.exists }}
+      version: ${{ steps.get_version.outputs.VERSION }}
+      tag: ${{ steps.get_version.outputs.TAG }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Essential to check existing tags
+
+    - name: Extract Version
+      id: get_version
+      run: |
+        VERSION=$(grep 'public const string Version =' Ksp2ReduxTools.Launcher/Constants.cs | sed 's/.*"\(.*\)".*/\1/')
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "TAG=launcher-v$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Check if Tag Exists
+      id: check_tag
+      run: |
+        if git show-ref --tags --verify --quiet "refs/tags/${{ env.TAG }}"; then
+          echo "Tag ${{ env.TAG }} already exists. Skipping build and release."
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "New version detected: ${{ env.TAG }}. Proceeding..."
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Setup .NET
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x 
+
+    - name: Build and Publish
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        dotnet publish Ksp2ReduxTools.Launcher/Ksp2ReduxTools.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
+        dotnet publish Ksp2ReduxTools.Launcher/Ksp2ReduxTools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+        mv ./publish/win/Ksp2ReduxTools.Launcher.exe ./publish/Ksp2Launcher-win-x64.exe
+        mv ./publish/linux/Ksp2ReduxTools.Launcher ./publish/Ksp2Launcher-linux-x64
+
+    - name: Generate Changelog
+      if: steps.check_tag.outputs.exists == 'false'
+      id: changelog
+      uses: JayR_05/changelog-generator-action@v1.2.0
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create Release
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.TAG }}
+        name: Launcher v${{ env.VERSION }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        files: |
+          ./publish/Ksp2Launcher-win-x64.exe
+          ./publish/Ksp2Launcher-linux-x64
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
