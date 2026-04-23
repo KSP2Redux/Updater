@@ -187,13 +187,26 @@ public partial class HomeTabViewModel : ViewModelBase
         // We want to do this for the moment, we could fix this logic later at some point
         _ksp2InstallService.TryLoadKsp2Install();
         
+        Versions.Clear();
+        AddInstalledVersionToList();
+        
         if (string.IsNullOrEmpty(_launcherConfigService.Config.ReleaseChannel)
             || !_releasesFeedService.ReleasesFeed.TryGetValue(_launcherConfigService.Config.ReleaseChannel, out var value))
         {
             return;
         }
-        Versions.Clear();
+        // Select the correct version with the release view
+        foreach (var releaseView in value.GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
+        {
+            if (Versions.All(x => !(x.Version.Equals(releaseView.Version) && x.Channel.Equals(releaseView.Channel))))
+            {
+                Versions.Add(releaseView);
+            }
+        }
+    }
 
+    private void AddInstalledVersionToList()
+    {
         if (_ksp2InstallService.Ksp2?.GameVersion != null)
         {
             var currentVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2.GameVersion)
@@ -203,15 +216,6 @@ public partial class HomeTabViewModel : ViewModelBase
             Versions.Add(currentVersion);
             SelectedVersion = currentVersion;
             OnPropertyChanged(nameof(SelectedVersion));
-        }
-        
-        // Select the correct version with the release view
-        foreach (var releaseView in value.GetAllVersions().Select(gv => new GameVersionViewModel(gv)))
-        {
-            if (Versions.All(x => !(x.Version.Equals(releaseView.Version) && x.Channel.Equals(releaseView.Channel))))
-            {
-                Versions.Add(releaseView);
-            }
         }
     }
 
@@ -263,8 +267,6 @@ public partial class HomeTabViewModel : ViewModelBase
             cancelCurrentOperation = null;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
-            SelectedVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2!.GameVersion!);
-            UpdateMainButtonState();
         }
     }
 
@@ -312,8 +314,6 @@ public partial class HomeTabViewModel : ViewModelBase
             cancelCurrentOperation = null;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
-            SelectedVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2!.GameVersion!);
-            UpdateMainButtonState();
         }
     }
     
