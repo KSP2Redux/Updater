@@ -5,6 +5,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using Ksp2Redux.Tools.Launcher.ViewModels;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
@@ -69,6 +70,18 @@ public partial class HomeTabView : UserControl
                 {
                     Dispatcher.UIThread.Post(() => InstallLogScroll.ScrollToEnd());
                 };
+        }
+    }
+
+    private async void TriggerInstall(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await Model!.UpdateLauncher();
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
         }
     }
 }

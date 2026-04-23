@@ -26,6 +26,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IReleasesFeedService _releasesFeedService;
     private readonly IInstallPlanService _installPlanService;
+    private readonly IUpdateService _updateService;
     
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
@@ -49,6 +50,7 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial float InstallProgressSteps { get; private set; } = 1;
     [ObservableProperty] public partial float InstallProgressTotalSteps { get; private set; } = 3;
     [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
+    [ObservableProperty] public partial bool InstallationDisabled { get; private set; } = false;
     public ObservableCollection<LogItemViewModel> InstallLogLines { get; set; } = [];
 
     private CancellationTokenSource? cancelCurrentOperation;
@@ -57,12 +59,13 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
         _installPlanService = installPlanService;
+        _updateService = updateService;
 
         NewsCollectionViewModel = new NewsCollectionViewModel(newsCollectionService.NewsCollection);
         RebuildVersionsCollection();
@@ -128,7 +131,6 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
-    private bool _installationDisabled = false;
     
     private void UpdateMainButtonState()
     {
@@ -161,7 +163,7 @@ public partial class HomeTabViewModel : ViewModelBase
             }
             else
             {
-                MainButtonEnabled = !_installationDisabled;
+                MainButtonEnabled = !InstallationDisabled;
                 MainButtonShown = MainButtonState.Install;
                 MainButtonTooltip = "Install Ksp2Redux";
             }
@@ -176,7 +178,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         else
         {
-            MainButtonEnabled = !_installationDisabled;
+            MainButtonEnabled = !InstallationDisabled;
             MainButtonShown = MainButtonState.Update;
             MainButtonTooltip = "Update Ksp2Redux";
         }
@@ -352,6 +354,11 @@ public partial class HomeTabViewModel : ViewModelBase
     
     public void DisableInstallation()
     {
-        _installationDisabled = true;
+        InstallationDisabled = true;
+    }
+
+    public async Task UpdateLauncher()
+    {
+        await _updateService.CheckAndPerformUpdateAsync();
     }
 }
