@@ -29,6 +29,8 @@ jobs:
 
     - name: Check if Tag Exists
       id: check_tag
+      env:
+        TAG: ${{ steps.get_version.outputs.TAG }}
       run: |
         if git show-ref --tags --verify --quiet "refs/tags/${{ env.TAG }}"; then
           echo "Tag ${{ env.TAG }} already exists. Skipping build and release."
@@ -57,7 +59,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.get_version.outputs.TAG }}
-        TITLE: "Launcher v${{ steps.get_version.outputs.VERSION }}"
+        TITLE: "Updater v${{ steps.get_version.outputs.VERSION }}"
       run: |
         gh release create "$TAG" \
           ./publish/Ksp2Updater-win-x64.exe \
