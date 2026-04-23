@@ -56,7 +56,7 @@ public class UpdateService : IUpdateService
         var latestRelease = releases.Where(r => r.TagName.StartsWith("launcher-v") && !r.Prerelease)
             .Select(r =>
             {
-                var versionPart = r.TagName.Replace("launcher-v", "");
+                var versionPart = r.TagName.Replace("updater-v", "");
                 return Version.TryParse(versionPart, out var v) ? new { Release = r, Version = v } : null;
             })
             .Where(v => v != null)
