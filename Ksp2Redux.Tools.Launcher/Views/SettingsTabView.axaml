@@ -30,7 +30,7 @@
 			
 				<Separator Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 10 0 10" />
 			
-				<Button Grid.Row="5" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="UninstallReduxClick">Uninstall Redux</Button>
+				<Button Grid.Row="5" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Classes="danger" Click="UninstallReduxClick">Uninstall Redux</Button>
 			</Grid>
 		</StackPanel>
 	</Grid>

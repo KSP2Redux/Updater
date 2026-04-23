@@ -15,6 +15,14 @@
         </Style>
     </Style>
     
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="#B33A3A" />
+        <Setter Property="Foreground" Value="White" />
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="#D44A4A" />
+        </Style>
+    </Style>
+    
     <Style Selector="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
     </Style>
