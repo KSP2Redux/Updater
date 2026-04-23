@@ -60,7 +60,7 @@ public class UpdateService : IUpdateService
         Console.WriteLine("Checking for updates.");
         var releases = await _client.Repository.Release.GetAll(_owner, _repo);
         
-        var latestRelease = releases.Where(r => r.TagName.StartsWith("launcher-v") && !r.Prerelease)
+        var latestRelease = releases.Where(r => r.TagName.StartsWith("updater-v") && !r.Prerelease)
             .Select(r =>
             {
                 var versionPart = r.TagName.Replace("updater-v", "");
