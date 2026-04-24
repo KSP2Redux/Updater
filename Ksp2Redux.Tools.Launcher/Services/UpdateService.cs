@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -97,12 +97,11 @@ public class UpdateService : IUpdateService
             if (asset != null)
             {
                 var tempPath = _fileSystem.Path.Combine(_fileSystem.Path.GetTempPath(), asset.Name);
-                using (var httpClient = new HttpClient())
-                {
-                   
-                   var data = await httpClient.GetByteArrayAsync(asset.BrowserDownloadUrl);
-                   await _fileSystem.File.WriteAllBytesAsync(tempPath, data);
-                }
+                var response = await _client.Connection.Get<byte[]>(
+                    new Uri(asset.Url),
+                    new Dictionary<string, string>(),
+                    "application/octet-stream");
+                await _fileSystem.File.WriteAllBytesAsync(tempPath, response.Body);
                 
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {

@@ -1,11 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Launcher.Models;
+using Octokit;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
 
@@ -17,95 +19,71 @@ public interface IManifestReleasesFeedProviderService
 
 public class ManifestReleasesFeedProviderService(IAssemblyService assemblyService) : IManifestReleasesFeedProviderService
 {
-    private readonly Dictionary<FeedInfo, HttpClient> apiClients = new();
+    private readonly Dictionary<FeedInfo, GitHubClient> _clients = new();
+    private readonly HttpClient _downloadClient = new();
 
-    private HttpClient GetOrCreateClient(FeedInfo feed)
+    private GitHubClient GetOrCreateClient(FeedInfo feed)
     {
-        if (apiClients.TryGetValue(feed, out var existingClient))
-            return existingClient;
-        
-        
-        HttpClient newApiClient = new()
-        {
-            BaseAddress = new Uri("https://api.github.com/repos/" + feed.Repository + "/"),
-        };
-        ProductHeaderValue header = new("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString());
-        ProductInfoHeaderValue userAgent = new(header);
-        newApiClient.DefaultRequestHeaders.UserAgent.Add(userAgent);
-        newApiClient.DefaultRequestHeaders.Accept.Add(new("application/vnd.github.v3.raw"));
+        if (_clients.TryGetValue(feed, out var existing))
+            return existing;
+
+        var header = new Octokit.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString());
+        var client = new GitHubClient(header);
         if (!string.IsNullOrWhiteSpace(feed.Token))
         {
-            newApiClient.DefaultRequestHeaders.Authorization = new("Bearer", feed.Token);
+            client.Credentials = new Credentials(feed.Token);
         }
-        
-        apiClients.Add(feed, newApiClient);
-        return newApiClient;
+
+        _clients.Add(feed, client);
+        return client;
     }
-    
+
+    private static (string Owner, string Name) ParseRepository(string repository)
+    {
+        var trimmed = repository.TrimEnd('/');
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+        {
+            var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            return (segments[0], segments[1]);
+        }
+
+        var parts = trimmed.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return (parts[0], parts[1]);
+    }
+
     public async Task<ManifestReleasesFeed.Manifest?> GetManifest(FeedInfo feed)
     {
-        var response = await GetOrCreateClient(feed).GetAsync(
-            $"contents/{feed.Filename}?ref=main");
-        var finalUrl = response.RequestMessage?.RequestUri?.ToString();
-        // Console.WriteLine($"Final url: {finalUrl}");
-        response.EnsureSuccessStatusCode();
-        ManifestReleasesFeed.Manifest? manifest = System.Text.Json.JsonSerializer.Deserialize<ManifestReleasesFeed.Manifest>(await response.Content.ReadAsStringAsync());
-        return manifest;
+        var (owner, name) = ParseRepository(feed.Repository);
+        var bytes = await GetOrCreateClient(feed).Repository.Content
+            .GetRawContentByRef(owner, name, feed.Filename, "main");
+        return System.Text.Json.JsonSerializer.Deserialize<ManifestReleasesFeed.Manifest>(bytes);
     }
 
     public async Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ManifestReleasesFeed.Patch patch, CancellationToken ct)
     {
-        string assetApiUrl = await GetAssetApiUrl(feed, patch.url, ct);
+        var (owner, name) = ParseRepository(feed.Repository);
+        var client = GetOrCreateClient(feed);
 
-        using var apiRequest = new HttpRequestMessage(HttpMethod.Get, assetApiUrl);
-        apiRequest.Headers.Accept.Add(new("application/octet-stream"));
-
-        using var apiResponse = await GetOrCreateClient(feed)
-            .SendAsync(apiRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-
-        Uri downloadUri;
-
-        if (apiResponse.StatusCode is System.Net.HttpStatusCode.Redirect or System.Net.HttpStatusCode.MovedPermanently)
-        {
-            downloadUri = apiResponse.Headers.Location;
-        }
-        else if (apiResponse.IsSuccessStatusCode)
-        {
-            downloadUri = apiResponse.RequestMessage.RequestUri;
-        }
-        else
-        {
-            throw new Exception($"Failed to get download URL: {apiResponse.StatusCode}");
-        }
-
-        using var cleanClient = new HttpClient();
-
-        var downloadResponse =
-            await cleanClient.GetAsync(downloadUri, HttpCompletionOption.ResponseHeadersRead, ct);
-        downloadResponse.EnsureSuccessStatusCode();
-        return downloadResponse;
-    }
-    
-    private async Task<string> GetAssetApiUrl(FeedInfo feed, string browserUrl, CancellationToken ct)
-    {
-        var uri = new Uri(browserUrl);
+        var uri = new Uri(patch.url);
         var segments = uri.Segments;
+        var tag = Uri.UnescapeDataString(segments[^2].Trim('/'));
+        var fileName = Uri.UnescapeDataString(segments[^1]);
 
-        string tag = Uri.UnescapeDataString(segments[^2].Trim('/'));
-        string fileName = Uri.UnescapeDataString(segments[^1]);
+        var release = await client.Repository.Release.Get(owner, name, tag);
+        var asset = release.Assets.FirstOrDefault(a => a.Name == fileName)
+            ?? throw new FileNotFoundException($"Could not find asset '{fileName}' in release '{tag}'");
 
-        using var response = await GetOrCreateClient(feed).GetAsync($"releases/tags/{tag}", ct);
-        response.EnsureSuccessStatusCode();
-
-        using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
-        foreach (var asset in doc.RootElement.GetProperty("assets").EnumerateArray())
+        var request = new HttpRequestMessage(HttpMethod.Get, asset.Url);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+        request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
+            new System.Net.Http.Headers.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString())));
+        if (!string.IsNullOrWhiteSpace(feed.Token))
         {
-            if (asset.GetProperty("name").GetString() == fileName)
-            {
-                return asset.GetProperty("url").GetString();
-            }
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", feed.Token);
         }
 
-        throw new FileNotFoundException($"Could not find asset '{fileName}' in release '{tag}'");
+        var response = await _downloadClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        return response;
     }
 }
