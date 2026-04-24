@@ -199,26 +199,22 @@ public class Ksp2Patch : IDisposable
     {
         if (!fileSystem.Directory.Exists(ksp2Directory)) throw new DirectoryNotFoundException(ksp2Directory);
         if (!fileSystem.Directory.Exists(targetDirectory)) fileSystem.Directory.CreateDirectory(targetDirectory);
-        targetDirectory = targetDirectory.TrimEnd('\\', '/') + '\\';
-        ksp2Directory = ksp2Directory.TrimEnd('\\', '/') + '\\';
 
-        foreach (string file in FileInformation.CopyFiles.Where(file => fileSystem.File.Exists($"{ksp2Directory}{file}")))
+        foreach (string file in FileInformation.CopyFiles.Where(file =>
+                     fileSystem.File.Exists(fileSystem.Path.Combine(ksp2Directory, file))))
         {
-            await CopyFileAsync(fileSystem, $"{ksp2Directory}{file}", $"{targetDirectory}{file}");
+            await CopyFileAsync(fileSystem,
+                fileSystem.Path.Combine(ksp2Directory, file),
+                fileSystem.Path.Combine(targetDirectory, file));
         }
 
         foreach (string directory in FileInformation.CopyFolders.Where(directory =>
-                     fileSystem.Directory.Exists($"{ksp2Directory}{directory}")
-                 ))
+                     fileSystem.Directory.Exists(fileSystem.Path.Combine(ksp2Directory, directory))))
         {
-            log?.Invoke($"Copying directory {ksp2Directory}{directory} to {targetDirectory}{directory}");
-            await AsyncCopyDirectory(
-                fileSystem,
-                $"{ksp2Directory}{directory}",
-                $"{targetDirectory}{directory}",
-                true,
-                log
-            );
+            var source = fileSystem.Path.Combine(ksp2Directory, directory);
+            var destination = fileSystem.Path.Combine(targetDirectory, directory);
+            log?.Invoke($"Copying directory {source} to {destination}");
+            await AsyncCopyDirectory(fileSystem, source, destination, true, log);
         }
     }
 
@@ -295,9 +291,6 @@ public class Ksp2Patch : IDisposable
             throw new DirectoryNotFoundException(sourceDirectory);
         }
 
-        targetDirectory = targetDirectory.TrimEnd('\\', '/') + '\\';
-        sourceDirectory = sourceDirectory.TrimEnd('\\', '/') + '\\';
-
         // 1. Extract patch entries to temp folder
         string tempPatchDir = _fileSystem.Path.Combine(_fileSystem.Path.GetTempPath(), "Ksp2ReduxPatch_" + Guid.NewGuid());
         _fileSystem.Directory.CreateDirectory(tempPatchDir);
@@ -307,6 +300,7 @@ public class Ksp2Patch : IDisposable
             // Extract patch & add entries
             foreach (PatchOperation operation in _manifest.operations)
             {
+                string entryFsName = NormalizeEntryPath(operation.fileName);
                 switch (operation.action)
                 {
                     case PatchOperation.PatchAction.Patch:
@@ -314,7 +308,7 @@ public class Ksp2Patch : IDisposable
                         ZipArchiveEntry? entry = _archive.GetEntry(operation.fileName + ".bsdiff");
                         if (entry != null)
                         {
-                            string outPath = _fileSystem.Path.Combine(tempPatchDir, operation.fileName + ".bsdiff");
+                            string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName + ".bsdiff");
                             _fileSystem.Directory.CreateDirectory(_fileSystem.Path.GetDirectoryName(outPath)!);
                             entry.ExtractToFile(outPath);
                         }
@@ -326,7 +320,7 @@ public class Ksp2Patch : IDisposable
                         ZipArchiveEntry? entry = _archive.GetEntry(operation.fileName);
                         if (entry != null)
                         {
-                            string outPath = _fileSystem.Path.Combine(tempPatchDir, operation.fileName);
+                            string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName);
                             _fileSystem.Directory.CreateDirectory(_fileSystem.Path.GetDirectoryName(outPath)!);
                             entry.ExtractToFile(outPath);
                         }
@@ -349,13 +343,16 @@ public class Ksp2Patch : IDisposable
                 {
                     try
                     {
-                        string trueName = operation.fileName;
+                        string trueName = NormalizeEntryPath(operation.fileName);
+                        string targetPath = _fileSystem.Path.Combine(targetDirectory, trueName);
+                        string sourcePath = _fileSystem.Path.Combine(sourceDirectory, trueName);
+                        string tempPath = targetPath + ".temp";
                         if (operation.action == PatchOperation.PatchAction.Patch)
                         {
                             log?.Invoke($"Applying binary patch to {trueName}");
-                            IDirectoryInfo? parent = _fileSystem.FileInfo.New($"{targetDirectory}{trueName}").Directory;
+                            IDirectoryInfo? parent = _fileSystem.FileInfo.New(targetPath).Directory;
                             _fileSystem.Directory.CreateDirectory(parent!.FullName);
-                            if (!_fileSystem.File.Exists($"{sourceDirectory}{trueName}"))
+                            if (!_fileSystem.File.Exists(sourcePath))
                             {
                                 throw new Exception(
                                     $"Failed to apply patch because {trueName} does not exist in target " +
@@ -363,16 +360,12 @@ public class Ksp2Patch : IDisposable
                                 );
                             }
                             log?.Invoke($"Creating temporary file for {trueName}");
-                            await CopyFileAsync(
-                                _fileSystem,
-                                $"{sourceDirectory}{trueName}",
-                                $"{targetDirectory}{trueName}.temp"
-                            );
+                            await CopyFileAsync(_fileSystem, sourcePath, tempPath);
 
-                            await using (FileSystemStream originalFile = _fileSystem.File.OpenRead($"{targetDirectory}{trueName}.temp"))
+                            await using (FileSystemStream originalFile = _fileSystem.File.OpenRead(tempPath))
                             {
                                 await using FileSystemStream targetFile = _fileSystem.File.Open(
-                                    $"{targetDirectory}{trueName}",
+                                    targetPath,
                                     FileMode.Create,
                                     FileAccess.ReadWrite
                                 );
@@ -413,31 +406,31 @@ public class Ksp2Patch : IDisposable
                             }
                             
                             // Delete the original file if we are not caching it
-                            _fileSystem.File.Delete($"{targetDirectory}{trueName}.temp");
+                            _fileSystem.File.Delete(tempPath);
                         }
                         else if (operation.action == PatchOperation.PatchAction.Remove)
                         {
                             log?.Invoke($"Deleting {trueName}");
 
-                            if (_fileSystem.Directory.Exists($"{targetDirectory}{trueName}"))
+                            if (_fileSystem.Directory.Exists(targetPath))
                             {
-                                _fileSystem.Directory.Delete($"{targetDirectory}{trueName}", true);
+                                _fileSystem.Directory.Delete(targetPath, true);
                             }
-                            else if (_fileSystem.File.Exists($"{targetDirectory}{trueName}"))
+                            else if (_fileSystem.File.Exists(targetPath))
                             {
-                                _fileSystem.File.Delete($"{targetDirectory}{trueName}");
+                                _fileSystem.File.Delete(targetPath);
                             }
                         }
                         else // Add
                         {
-                            
+
                             log?.Invoke($"Copying {trueName} from patch");
 
-                            IDirectoryInfo? parent = _fileSystem.FileInfo.New($"{targetDirectory}{trueName}").Directory;
+                            IDirectoryInfo? parent = _fileSystem.FileInfo.New(targetPath).Directory;
                             _fileSystem.Directory.CreateDirectory(parent!.FullName);
 
                             await using FileSystemStream targetFile = _fileSystem.File.Open(
-                                $"{targetDirectory}{trueName}",
+                                targetPath,
                                 FileMode.Create,
                                 FileAccess.ReadWrite
                             );
@@ -499,6 +492,9 @@ public class Ksp2Patch : IDisposable
 
         return reader.ReadToEnd();
     }
+
+    private static string NormalizeEntryPath(string path) =>
+        path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
 
     private static bool ValidateFileHash(Stream stream, byte[] hash)
     {
