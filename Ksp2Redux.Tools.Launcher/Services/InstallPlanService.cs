@@ -145,8 +145,17 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
                 case InstallPlanAction.ApplyPatchFile:
                 {
-                    var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, await step.Argument!(log, downloadProgress, ct));
-                    await patch.AsyncApply(environmentProvider, install, install, log, log);
+                    var patchPath = await step.Argument!(log, downloadProgress, ct);
+                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath))
+                    {
+                        await patch.AsyncApply(environmentProvider, install, install, log, log);
+                    }
+                    if (step.DeleteAfter && fileSystem.File.Exists(patchPath))
+                    {
+                        log($"Cleaning up downloaded patch {patchPath}");
+                        try { fileSystem.File.Delete(patchPath); }
+                        catch (Exception ex) { log($"Failed to delete patch {patchPath}: {ex.Message}"); }
+                    }
                     break;
                 }
                 default:

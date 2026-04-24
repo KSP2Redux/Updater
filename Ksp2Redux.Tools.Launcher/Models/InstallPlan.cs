@@ -14,7 +14,8 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 public class InstallPlan
 {
     // The Argument is string getPath(log, progress)
-    public record struct Step(InstallPlanAction Action, Func<Action<string>, Action<long, long>, CancellationToken, Task<string>>? Argument = null, string ArgumentDescription = "Undescribed");
+    // DeleteAfter indicates the resolved patch file should be deleted once applied (used for downloaded patches).
+    public record struct Step(InstallPlanAction Action, Func<Action<string>, Action<long, long>, CancellationToken, Task<string>>? Argument = null, string ArgumentDescription = "Undescribed", bool DeleteAfter = false);
 
     public List<Step> Steps = [];
 
@@ -40,7 +41,7 @@ public class InstallPlan
 
     public void ApplyPatchFile(Func<Action<string>, Action<long, long>,CancellationToken,Task<string>> path, string description)
     {
-        Steps.Insert(0, new Step(InstallPlanAction.ApplyPatchFile, path, description));
+        Steps.Insert(0, new Step(InstallPlanAction.ApplyPatchFile, path, description, DeleteAfter: true));
     }
 
     // We treat reverting to stock as 1000 cost cuz we should really try to avoid it, but we still want to do the shortest
