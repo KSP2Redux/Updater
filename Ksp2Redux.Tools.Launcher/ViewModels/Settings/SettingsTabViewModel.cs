@@ -54,6 +54,19 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 
+    public string SteamAppId
+    {
+        get => _launcherConfigService.Config.SteamAppId;
+        set
+        {
+            var normalized = value?.Trim() ?? "";
+            if (_launcherConfigService.Config.SteamAppId == normalized) return;
+            _launcherConfigService.Config.SteamAppId = normalized;
+            _launcherConfigService.Save();
+            OnPropertyChanged();
+        }
+    }
+
     public void SetLoaded()
     {
         ChannelsLoaded = true;

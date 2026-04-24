@@ -101,8 +101,6 @@ public partial class HomeTabViewModel : ViewModelBase
         await RunPatchProcess();
     }
 
-    private const string Ksp2SteamAppId = "954850";
-
     [RelayCommand]
     public async Task LaunchGame()
     {
@@ -110,9 +108,11 @@ public partial class HomeTabViewModel : ViewModelBase
 
         if (_launcherConfigService.Config.LaunchThroughSteam)
         {
+            var appId = _launcherConfigService.Config.SteamAppId;
+            if (string.IsNullOrWhiteSpace(appId)) appId = "954850";
             var startInfo = new ProcessStartInfo
             {
-                FileName = $"steam://rungameid/{Ksp2SteamAppId}",
+                FileName = $"steam://rungameid/{appId}",
                 UseShellExecute = true,
             };
             Process.Start(startInfo);

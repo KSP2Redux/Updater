@@ -14,7 +14,7 @@
 			           FontSize="24" TextAlignment="Left" Margin="0,16,0,8">
 				SETTINGS
 			</TextBlock>
-			<Grid RowDefinitions="Auto,*,*,*,*,*,*" ColumnDefinitions="Auto,*" ColumnSpacing="10" RowSpacing="10">
+			<Grid RowDefinitions="Auto,*,*,*,*,*,*,*" ColumnDefinitions="Auto,*" ColumnSpacing="10" RowSpacing="10">
 				<TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">KSP2 installation directory</TextBlock>
 				<Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" ColumnSpacing="5">
 					<TextBox Grid.Column="0" HorizontalAlignment="Stretch" Name="InstallPath" Watermark="C:\Steam\SteamGames\KSP2\KSP2_x64.exe" Text="{Binding DisplayedInstallPath}"/>
@@ -27,13 +27,16 @@
 				<TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0 5">Launch through Steam</TextBlock>
 				<CheckBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left" IsChecked="{Binding LaunchThroughSteam}" />
 
-				<Separator Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 10 0 10" />
+				<TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0 5" ToolTip.Tip="Override to launch a Steam 'Add a Non-Steam Game' shortcut for KSP2. Leave as 954850 for the normal Steam release.">Steam app id</TextBlock>
+				<TextBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Watermark="954850" Text="{Binding SteamAppId}" IsEnabled="{Binding LaunchThroughSteam}" />
 
-				<Button Grid.Row="4" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="InstallFromPatchFile">Install From Patch File</Button>
+				<Separator Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 10 0 10" />
 
-				<Separator Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 10 0 10" />
+				<Button Grid.Row="5" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="InstallFromPatchFile">Install From Patch File</Button>
 
-				<Button Grid.Row="6" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Classes="danger" Click="UninstallReduxClick">Uninstall Redux</Button>
+				<Separator Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 10 0 10" />
+
+				<Button Grid.Row="7" Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Classes="danger" Click="UninstallReduxClick">Uninstall Redux</Button>
 			</Grid>
 		</StackPanel>
 	</Grid>
