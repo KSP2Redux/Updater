@@ -15,6 +15,5 @@ public class News
     public string Content { get; set; } = "";
     public DateTime Date { get; set; }
     public string Author { get; set; } = "";
-    public string? ImageUrl { get; set; }
     public string Link { get; set; } = "";
 }

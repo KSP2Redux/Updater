@@ -124,7 +124,7 @@
 			<Canvas Width="240" Height="70">
 				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
 				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
-				<TextBlock>INSTALL</TextBlock>
+				<TextBlock FontFamily="{StaticResource LedCounter7}">INSTALL</TextBlock>
 			</Canvas>
 		</Button>
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="UpdateButton" Command="{Binding UpdateRedux}"
@@ -133,7 +133,7 @@
 			<Canvas Width="240" Height="70">
 				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
 				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
-				<TextBlock>UPDATE</TextBlock>
+				<TextBlock FontFamily="{StaticResource LedCounter7}">UPDATE</TextBlock>
 			</Canvas>
 		</Button>
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" ClickMode="Press" Command="{Binding CancelCurrentMainButtonAction}"
@@ -142,7 +142,7 @@
 			<Canvas Width="240" Height="70">
 				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
 				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
-				<TextBlock>CANCEL</TextBlock>
+				<TextBlock FontFamily="{StaticResource LedCounter7}">CANCEL</TextBlock>
 			</Canvas>
 		</Button>
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="LaunchButton" Command="{Binding LaunchGame}"
@@ -151,7 +151,7 @@
 			<Canvas Width="240" Height="70">
 				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
 				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
-				<TextBlock>LAUNCH</TextBlock>
+				<TextBlock FontFamily="{StaticResource LedCounter7}">LAUNCH</TextBlock>
 			</Canvas>
 		</Button>
 

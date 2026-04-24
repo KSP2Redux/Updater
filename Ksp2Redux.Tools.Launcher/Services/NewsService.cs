@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Launcher.Models;
 using Tomlyn;
 using Tomlyn.Model;
@@ -15,8 +16,6 @@ public interface INewsService
     Task<List<News>> FindAllNews();
     News GetNews(int id);
     int GetNewsId(News? news);
-    void LoadNewsFromToml(string tomlContent);
-    Task<MemoryStream?> LoadImageStreamAsync(News news);
     Task FetchNews();
 }
 
@@ -32,40 +31,22 @@ public class NewsService(INewsProviderService newsProviderService) : INewsServic
 
     public async Task FetchNews()
     {
-        string tomlNewsContent = await newsProviderService.GetTomlContent();
-        LoadNewsFromToml(tomlNewsContent);
+        // string tomlNewsContent = await newsProviderService.GetTomlContent();
+        // LoadNewsFromToml(tomlNewsContent);
+        var rssNewsContent = await newsProviderService.GetSyndicationFeed();
+        LoadNewsFromFeed(rssNewsContent);
     }
-    
-    public void LoadNewsFromToml(string tomlContent)
-    {
-        var model = Toml.ToModel(tomlContent);
-        var newsArray = (TomlTableArray)model["news"];
 
-        _newsList = newsArray
-            .Select(entry => new News
-            {
-                Title = (string)entry["Title"],
-                Content = (string)entry["Content"],
-                Date = Convert.ToDateTime(entry["Date"]),
-                Author = (string)entry["Author"],
-                ImageUrl = entry.TryGetValue("ImageUrl", out var image) ? (string)image : null,
-                Link = entry.TryGetValue("Link", out var link) ? (string)link : "",
-            })
-            .ToList();
-    }
-    
-    public async Task<MemoryStream?> LoadImageStreamAsync(News news)
+    private void LoadNewsFromFeed(Feed rssNewsContent)
     {
-        byte[] data = new byte[1];
-        try
-        {
-            data = await newsProviderService.GetImageData(news.ImageUrl);
-            return new MemoryStream(data);
-        }
-        catch (HttpRequestException e)
-        {
-            Console.WriteLine($"Couldn't load image: {e}");
-        }
-        return null;
+        _newsList = rssNewsContent.Items.Select(item => new News
+            {
+                Title = item.Title,
+                Author = item.Author,
+                Content = item.Content,
+                Link = item.Link,
+                Date = (DateTime)item.PublishingDate!
+            }
+        ).OrderBy(n => n.Date).ToList();
     }
 }

@@ -15,6 +15,7 @@ public partial class CommunityTabView : UserControl
     public CommunityTabView()
     {
         InitializeComponent();
+        Html.BaseStylesheet = App.NewsStylesheet;
     }
 
     private void LaunchUri(Uri uri)

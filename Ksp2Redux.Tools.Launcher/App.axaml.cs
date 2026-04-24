@@ -1,8 +1,11 @@
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.IO.Abstractions;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Common.Service;
 using Ksp2Redux.Tools.Launcher.Services;
@@ -26,6 +29,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        LoadGlobalStylesheet();
+
         ServiceCollection serviceCollection = new();
         serviceCollection.AddSingleton<MainWindowViewModel>();
         serviceCollection.AddSingleton<HomeTabViewModel>();
@@ -61,5 +66,21 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+    
+    public static string NewsStylesheet { get; private set; } = string.Empty;
+    private void LoadGlobalStylesheet()
+    {
+        try 
+        {
+            var uri = new Uri("avares://Ksp2Redux.Tools.Launcher/Assets/news.css");
+            using var stream = AssetLoader.Open(uri);
+            using var reader = new StreamReader(stream);
+            NewsStylesheet = reader.ReadToEnd();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to load CSS: {ex.Message}");
+        }
     }
 }

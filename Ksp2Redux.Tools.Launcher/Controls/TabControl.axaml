@@ -31,8 +31,8 @@
                 Background="{TemplateBinding Background}"
                 HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
                 VerticalAlignment="{TemplateBinding VerticalAlignment}">
-          <StackPanel>
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="30">
+          <DockPanel LastChildFill="True">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" ColumnSpacing="30">
               <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/logo.png" Width="260" Grid.Column="0" Margin="16,0,0,0"/>
               <ItemsPresenter Name="PART_ItemsPresenter"
                               VerticalAlignment="Center"
@@ -45,9 +45,8 @@
                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
                               Content="{TemplateBinding SelectedContent}"
-                              ContentTemplate="{TemplateBinding SelectedContentTemplate}"
-                              DockPanel.Dock="Bottom"/>
-          </StackPanel>
+                              ContentTemplate="{TemplateBinding SelectedContentTemplate}"/>
+          </DockPanel>
         </Border>
       </ControlTemplate>
     </Setter>

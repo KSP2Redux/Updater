@@ -1,30 +1,27 @@
 ﻿using System.Net.Http;
+using System.ServiceModel.Syndication;
 using System.Threading.Tasks;
+using System.Xml;
+using CodeHollow.FeedReader;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
 
 public interface INewsProviderService
 {
-    Task<string> GetTomlContent();
-    Task<byte[]> GetImageData(string imageUrl);
+    Task<Feed> GetSyndicationFeed();
 }
 
 public class NewsProviderService : INewsProviderService
 {
-    private readonly string _rawRepoTargetUrl = "https://raw.githubusercontent.com/SamBret/LauncherNews/refs/heads/main/";
-    private readonly string _tomlTargetFile = "news.toml";
-    private string _tomlTargetUrl => _rawRepoTargetUrl + _tomlTargetFile;
-    private string _imageTargetUrl => _rawRepoTargetUrl + "images/";
+    // private readonly string _rawRepoTargetUrl = "https://raw.githubusercontent.com/SamBret/LauncherNews/refs/heads/main/";
+    // private readonly string _tomlTargetFile = "news.toml";
+    // private string _tomlTargetUrl => _rawRepoTargetUrl + _tomlTargetFile;
+    // private string _imageTargetUrl => _rawRepoTargetUrl + "images/";
 
-    private readonly HttpClient _httpClient = new();
-    
-    public async Task<string> GetTomlContent()
+    private const string RssFeed = "https://ksp2redux.org/blog/rss.xml";
+    public async Task<Feed> GetSyndicationFeed()
     {
-        return await _httpClient.GetStringAsync(_tomlTargetUrl);
-    }
-
-    public async Task<byte[]> GetImageData(string imageUrl)
-    {
-        return await _httpClient.GetByteArrayAsync(_imageTargetUrl + imageUrl);
+        var items = await FeedReader.ReadAsync(RssFeed);
+        return items ?? new Feed();
     }
 }

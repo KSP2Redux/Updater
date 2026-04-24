@@ -21,33 +21,7 @@ public class NewsItemViewModel(INewsService newsService, News news) : ViewModelB
 
     public string Author => News.Author;
 
-    public Task<Bitmap?> Image => LoadImageAsync();
-
     public string? Link => News.Link;
 
-    public string Subtitle => $"{News.Date:d} by {News.Author}";
-    
-    public bool ImageVisible { get; private set; }
-
-    private async Task<Bitmap?> LoadImageAsync()
-    {
-        if (string.IsNullOrEmpty(News.ImageUrl))
-        {
-            ImageVisible = false;
-            OnPropertyChanged(nameof(ImageVisible));
-            return null;
-        }
-
-        await using var stream = await newsService.LoadImageStreamAsync(News);
-        if (stream == null)
-        {
-            ImageVisible = false;
-            OnPropertyChanged(nameof(ImageVisible));
-            return null;
-        }
-
-        ImageVisible = true;
-        OnPropertyChanged(nameof(ImageVisible));
-        return await Task.Run(() => new Bitmap(stream));
-    }
+    public string Subtitle => $"{News.Date:d}";
 }

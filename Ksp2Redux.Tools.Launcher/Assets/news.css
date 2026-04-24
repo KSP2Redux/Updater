@@ -1,0 +1,17 @@
+body, * {
+    color: #FFFFFF;
+}
+
+img, iframe, video, table {
+    max-width: 100%;
+    height: auto;
+}
+
+pre, code {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+a {
+    word-break: break-word;
+}

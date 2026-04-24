@@ -11,7 +11,7 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <LangVersion>preview</LangVersion>
-        <Version>0.0.2.2</Version>
+        <Version>0.0.2.3</Version>
     </PropertyGroup>
 
     <ItemGroup>
@@ -25,6 +25,7 @@
         <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
         <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
+        <PackageReference Include="CodeHollow.FeedReader" Version="1.2.6" />
         <PackageReference Include="CommandLineParser" Version="2.9.1" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
         <PackageReference Include="EnvironmentAbstractions" Version="5.0.0" />
@@ -40,7 +41,6 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.3.26207.106" />
         <PackageReference Include="Mono.Cecil" Version="0.11.6" />
         <PackageReference Include="Octokit" Version="14.0.0" />
-        <PackageReference Include="System.ServiceModel.Syndication" Version="11.0.0-preview.3.26207.106" />
         <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
         <PackageReference Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.1.1" />
         <PackageReference Include="Tomlyn" Version="0.19.0" />
