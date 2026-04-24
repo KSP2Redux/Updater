@@ -113,7 +113,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 var option = await MessageBoxManager.GetMessageBoxStandard("KSP2 Install Found",
                     $"Found KSP2 install at: {installLocation}\nWould you like to set this as the install used for Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
+                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
 
                 if (option == ButtonResult.Yes)
                 {
@@ -126,7 +126,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 await MessageBoxManager.GetMessageBoxStandard("KSP2 Install Not Found!",
                     "Your KSP2 install was not detected, go to the settings tab to set it", ButtonEnum.Ok,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
+                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
             }
         }
         

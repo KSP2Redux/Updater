@@ -80,13 +80,13 @@ public class UpdateService : IUpdateService
                 Console.WriteLine("Running in non-single-file version somehow, will not perform update");
                 await MessageBoxManager.GetMessageBoxStandard("Update Found",
                     "You are not running in a single file build, rebuild from the latest main to be able to install Redux.", ButtonEnum.Ok,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
+                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
                 return false;
             }
             
             var result = await MessageBoxManager.GetMessageBoxStandard("Update Found",
                 "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.", ButtonEnum.OkCancel,
-                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
+                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
 
             if (result != ButtonResult.Ok) return false;
             
