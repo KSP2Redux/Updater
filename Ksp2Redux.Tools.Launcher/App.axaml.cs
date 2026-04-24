@@ -2,8 +2,6 @@ using System;
 using System.IO.Abstractions;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Common.Service;
@@ -28,10 +26,6 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        // From Avalonia doc, because we're using Community Toolkit we don't want duplicate validation
-        // https://docs.avaloniaui.net/docs/app-development/dependency-injection#step-1-install-the-nuget-package-for-di
-        BindingPlugins.DataValidators.RemoveAt(0);
-        
         ServiceCollection serviceCollection = new();
         serviceCollection.AddSingleton<MainWindowViewModel>();
         serviceCollection.AddSingleton<HomeTabViewModel>();
@@ -60,7 +54,6 @@ public partial class App : Application
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
                 DataContext = serviceProvider.GetRequiredService<MainWindowViewModel>(),
@@ -68,18 +61,5 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-
-    private static void DisableAvaloniaDataAnnotationValidation()
-    {
-        // Get an array of plugins to remove
-        DataAnnotationsValidationPlugin[] dataValidationPluginsToRemove =
-            BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
-
-        // remove each entry found
-        foreach (DataAnnotationsValidationPlugin plugin in dataValidationPluginsToRemove)
-        {
-            BindingPlugins.DataValidators.Remove(plugin);
-        }
     }
 }

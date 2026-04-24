@@ -9,8 +9,6 @@
         x:Class="Ksp2Redux.Tools.Launcher.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="32"
         SystemDecorations="None"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/favicon.ico"
