@@ -26,18 +26,29 @@ var github = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Uploader")
 
 var tag = "v" + uploadManifest.Version;
 
+var releaseBody = ReadChangelogSection(uploadManifest.Changelog)
+                  ?? "Automated upload for KSP2 Redux (Fill in later if not on dev pipeline)";
+
 Release createdRelease;
 try
 {
     createdRelease = await github.Repository.Release.Get(repoOwner, repoName, tag);
     Console.WriteLine($"Found existing release at: {createdRelease.HtmlUrl}");
+
+    if (!string.IsNullOrWhiteSpace(uploadManifest.Changelog))
+    {
+        var update = createdRelease.ToUpdate();
+        update.Body = releaseBody;
+        createdRelease = await github.Repository.Release.Edit(repoOwner, repoName, createdRelease.Id, update);
+        Console.WriteLine("Updated release body from changelog");
+    }
 }
 catch (NotFoundException)
 {
     var newRelease = new NewRelease(tag)
     {
         Name = $"KSP2 Redux {uploadManifest.Version}",
-        Body = "Automated upload for KSP2 Redux (Fill in later if not on dev pipeline)",
+        Body = releaseBody,
         Draft = false,
         Prerelease = false,
     };
@@ -129,4 +140,29 @@ string GetChecksum(string path)
     using var sha256 = SHA256.Create();
     var hashBytes = sha256.ComputeHash(stream);
     return Convert.ToHexString(hashBytes);
+}
+
+static string? ReadChangelogSection(string? changelogPath)
+{
+    if (string.IsNullOrWhiteSpace(changelogPath)) return null;
+    if (!File.Exists(changelogPath))
+    {
+        Console.WriteLine($"Changelog file not found: {changelogPath}");
+        return null;
+    }
+
+    var lines = File.ReadAllLines(changelogPath);
+    var section = new List<string>();
+    foreach (var line in lines)
+    {
+        if (line.Trim() == "---")
+        {
+            if (section.Count > 0) break;
+            continue;
+        }
+        section.Add(line);
+    }
+
+    var text = string.Join('\n', section).Trim();
+    return text.Length == 0 ? null : text;
 }
