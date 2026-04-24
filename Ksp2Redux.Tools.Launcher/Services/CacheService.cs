@@ -19,8 +19,16 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
 {
     public List<string> IgnoredDirectories
         => [fileSystem.Path.Combine("KSP2_x64_Data","StreamingAssets"), "UninstallTemp", "mods"];
-    
+
     public List<string> SavedDirectories = ["Redux/Config"];
+
+    // Paths (relative to the install dir) that are always deleted during a restore, even if they
+    // fall under an IgnoredDirectories subtree. Used for Redux-produced artifacts that live inside
+    // otherwise-ignored stock folders (e.g. baked subscenes under StreamingAssets).
+    public List<string> PurgeOnRestore =>
+    [
+        fileSystem.Path.Combine("KSP2_x64_Data", "StreamingAssets", "EntityScenes"),
+    ];
 
 
     public void RecursivelyCreateCache(string directory)
@@ -29,17 +37,15 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
         {
             fileSystem.File.Delete(fileSystem.Path.Combine(directory, "uninstall.zip"));
         }
-        
-        using var saveStream = fileSystem.File.Open(fileSystem.Path.Combine(directory, "uninstall.zip"), FileMode.Create, FileAccess.Write);
-        using (var memoryStream = new MemoryStream())
+
+        var tempFile = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), $"uninstall-{Guid.CreateVersion7()}.zip");
+        using var saveStream = fileSystem.File.Open(tempFile, FileMode.Create, FileAccess.Write);
+        using (var zipArchive = new ZipArchive(saveStream, ZipArchiveMode.Create, false))
         {
-            using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
-            {
-                AddFolder(zipArchive, directory, "");
-            }
-            memoryStream.Seek(0, SeekOrigin.Begin);
-            memoryStream.CopyTo(saveStream);
+            AddFolder(zipArchive, directory, "");
         }
+        
+        fileSystem.File.Move(tempFile, fileSystem.Path.Combine(directory, "uninstall.zip"));
     }
 
     public void AddFolder(ZipArchive archive, string directory, string prefix)
@@ -86,6 +92,19 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
             }
         }
         
+        foreach (var relative in PurgeOnRestore)
+        {
+            var full = fileSystem.Path.Combine(directory, relative);
+            if (fileSystem.Directory.Exists(full))
+            {
+                fileSystem.Directory.Delete(full, true);
+            }
+            else if (fileSystem.File.Exists(full))
+            {
+                fileSystem.File.Delete(full);
+            }
+        }
+
         ClearOutFolder(directory);
 
         using (var zipFile = zipFileService.OpenRead(fileSystem.Path.Combine(directory, "uninstall.zip")))
