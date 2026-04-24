@@ -54,7 +54,11 @@ public class Ksp2Install
             InstallDir = _fileSystem.Path.GetDirectoryName(exePath)!;
             var isSteam = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, SteamworksText));
             var isEpic = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, EpicGamesMarker));
-            var isRedux = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, "Redux"));
+            // Revert-to-stock keeps Redux/Config, so ignore a Config-only Redux folder.
+            var reduxDir = _fileSystem.Path.Combine(InstallDir, "Redux");
+            var isRedux = _fileSystem.Directory.Exists(reduxDir)
+                && _fileSystem.Directory.EnumerateFileSystemEntries(reduxDir)
+                    .Any(p => !string.Equals(_fileSystem.Path.GetFileName(p), "Config", StringComparison.OrdinalIgnoreCase));
             var isPrepatch = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, PrepatchMarker));
             Distribution = isRedux ? Distribution.Redux :
                 isPrepatch ? Distribution.Prepatched :
