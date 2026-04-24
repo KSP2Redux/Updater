@@ -169,4 +169,9 @@ public partial class SettingsTabViewModel : ViewModelBase
         
         return files?.Count >= 1 ? files[0] : null;
     }
+
+    public void UpdateInstallPath()
+    {
+        OnPropertyChanged(nameof(DisplayedInstallPath));
+    }
 }

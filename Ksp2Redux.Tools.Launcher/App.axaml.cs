@@ -15,6 +15,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Ksp2Redux.Tools.Launcher;
 
@@ -53,6 +54,7 @@ public partial class App : Application
         serviceCollection.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
         serviceCollection.AddSingleton<IZipFileService, ZipFileService>();
         serviceCollection.AddSingleton<IUpdateService, UpdateService>();
+        serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
         
         ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
         

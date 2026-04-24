@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Common;
@@ -15,6 +16,8 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
@@ -30,6 +33,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly INewsService _newsService;
     private readonly IManifestReleasesFeedProviderService _manifestReleasesFeedProviderService;
     private readonly IUpdateService _updateService;
+    private readonly IKsp2DetectorService _ksp2DetectorService;
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -44,7 +48,8 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
-        INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService)
+        INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService,
+        IKsp2DetectorService ksp2DetectorService)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
@@ -53,6 +58,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _fileSystem = fileSystem;
         _newsService = newsService;
         _manifestReleasesFeedProviderService = manifestReleasesFeedProviderService;
+        _ksp2DetectorService = ksp2DetectorService;
         
         _updateService = updateService;
 
@@ -99,6 +105,30 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         // First start the updater service
         if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+        
+        // Now we want to check if KSP2 is set, and if not try and set it
+        if (string.IsNullOrEmpty(_launcherConfigService.Config.Ksp2InstallPath))
+        {
+            if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
+            {
+                var option = await MessageBoxManager.GetMessageBoxStandard("KSP2 Install Found",
+                    $"Found KSP2 install at: {installLocation}\nWould you like to set this as the install used for Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
+                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
+
+                if (option == ButtonResult.Yes)
+                {
+                    _launcherConfigService.Config.Ksp2InstallPath = installLocation;
+                    _launcherConfigService.Save();
+                    SettingsTab.UpdateInstallPath();
+                }
+            }
+            else
+            {
+                await MessageBoxManager.GetMessageBoxStandard("KSP2 Install Not Found!",
+                    "Your KSP2 install was not detected, go to the settings tab to set it", ButtonEnum.Ok,
+                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsync();
+            }
+        }
         
         // foreach (var feed in ReleasesFeed)
         // {
