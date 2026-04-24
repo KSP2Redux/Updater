@@ -41,6 +41,19 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public ObservableCollection<string> ValidChannels { get; } = [];
 
+    public bool LaunchThroughSteam
+    {
+        get => _launcherConfigService.Config.LaunchThroughSteam;
+        set
+        {
+            if (_launcherConfigService.Config.LaunchThroughSteam == value) return;
+            _launcherConfigService.Config.LaunchThroughSteam = value;
+            _launcherConfigService.Save();
+            OnPropertyChanged();
+            _homeTabViewModel.RefreshMainButtonState();
+        }
+    }
+
     public void SetLoaded()
     {
         ChannelsLoaded = true;

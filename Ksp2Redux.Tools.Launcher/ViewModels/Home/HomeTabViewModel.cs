@@ -101,20 +101,31 @@ public partial class HomeTabViewModel : ViewModelBase
         await RunPatchProcess();
     }
 
+    private const string Ksp2SteamAppId = "954850";
+
     [RelayCommand]
     public async Task LaunchGame()
     {
-        // Disable the main button while the game process is still running
-        if (_ksp2InstallService.Ksp2 is not null)
+        if (_ksp2InstallService.Ksp2 is null) return;
+
+        if (_launcherConfigService.Config.LaunchThroughSteam)
         {
-            MainButtonEnabled = false;
-            using Process process = new();
-            process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
-            process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
-            process.Start();
-            await process.WaitForExitAsync();
-            MainButtonEnabled = true;
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = $"steam://rungameid/{Ksp2SteamAppId}",
+                UseShellExecute = true,
+            };
+            Process.Start(startInfo);
+            return;
         }
+
+        MainButtonEnabled = false;
+        using Process process = new();
+        process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
+        process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
+        process.Start();
+        await process.WaitForExitAsync();
+        MainButtonEnabled = true;
     }
 
     [RelayCommand]
@@ -132,6 +143,8 @@ public partial class HomeTabViewModel : ViewModelBase
     }
 
     
+    public void RefreshMainButtonState() => UpdateMainButtonState();
+
     private void UpdateMainButtonState()
     {
         _ksp2InstallService.TryLoadKsp2Install();
@@ -143,7 +156,7 @@ public partial class HomeTabViewModel : ViewModelBase
             MainButtonTooltip = "KSP2 installation not detected.  Please select a directory containing KSP2 on the settings tab.";
             return;
         }
-        
+
         var selectedVersion = SelectedVersion;
         if (selectedVersion is null)
         {
@@ -152,7 +165,10 @@ public partial class HomeTabViewModel : ViewModelBase
             MainButtonTooltip = "Please select a version to install or launch.";
             return;
         }
-        
+
+        var linuxLaunchBlocked = OperatingSystem.IsLinux() && !_launcherConfigService.Config.LaunchThroughSteam;
+        const string linuxLaunchBlockedTooltip = "Enable \"Launch through Steam\" in settings to launch on Linux.";
+
         if (ksp2.Distribution != Distribution.Redux)
         {
             MainButtonEnabled = true;
@@ -160,6 +176,11 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 MainButtonShown = MainButtonState.Launch;
                 MainButtonTooltip = "Launch Stock KSP2";
+                if (linuxLaunchBlocked)
+                {
+                    MainButtonEnabled = false;
+                    MainButtonTooltip = linuxLaunchBlockedTooltip;
+                }
             }
             else
             {
@@ -175,6 +196,11 @@ public partial class HomeTabViewModel : ViewModelBase
             MainButtonEnabled = true;
             MainButtonShown = MainButtonState.Launch;
             MainButtonTooltip = "Launch Ksp2Redux";
+            if (linuxLaunchBlocked)
+            {
+                MainButtonEnabled = false;
+                MainButtonTooltip = linuxLaunchBlockedTooltip;
+            }
         }
         else
         {

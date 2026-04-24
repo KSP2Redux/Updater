@@ -8,6 +8,7 @@ public class LauncherConfig
 {
     public string Ksp2InstallPath { get; set; } = "";
     public string ReleaseChannel { get; set; } = "beta";
+    public bool LaunchThroughSteam { get; set; } = false;
     public GameVersion? LastInstalledVersion { get; set; }
     public List<FeedInfo> Feeds { get; set; } = [
         new FeedInfo
