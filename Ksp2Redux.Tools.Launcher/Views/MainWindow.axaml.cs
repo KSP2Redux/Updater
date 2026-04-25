@@ -15,6 +15,7 @@ public partial class MainWindow : Window
         Opened += (_, _) =>
         {
             DisableWindowResize();
+            ApplyNativeRoundedCorners();
             SetCustomWndProc();
         };
     }
@@ -73,10 +74,30 @@ public partial class MainWindow : Window
         SetWindowLongPtr(hwnd, GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(NewWndProcDelegate));
     }
 
+    private void ApplyNativeRoundedCorners()
+    {
+        IPlatformHandle? handle = TryGetPlatformHandle();
+        if (handle is null || !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            var preference = (int)DwmWindowCornerPreference.Round;
+            _ = DwmSetWindowAttribute(
+                handle.Handle,
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                ref preference,
+                Marshal.SizeOf<int>());
+        }
+    }
+
     private delegate nint WndProcDelegate(nint hWnd, uint msg, nint wParam, nint lParam);
     private static nint _originalWndProc;
     private static nint _hwnd;
     private static readonly WndProcDelegate NewWndProcDelegate = CustomWndProc;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
 
     private static nint CustomWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
     {
@@ -105,4 +126,15 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern nint CallWindowProc(nint lpPrevWndFunc, nint hWnd, uint msg, nint wParam, nint lParam);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int pvAttribute, int cbAttribute);
+
+    private enum DwmWindowCornerPreference
+    {
+        Default = 0,
+        DoNotRound = 1,
+        Round = 2,
+        RoundSmall = 3,
+    }
 }
