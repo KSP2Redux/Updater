@@ -3,15 +3,12 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using System.ComponentModel;
-using System.Threading.Tasks;
-using Avalonia.Threading;
-using Ksp2Redux.Tools.Launcher.ViewModels;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
 public partial class HomeTabView : UserControl
 {
-    private HomeTabViewModel? Model => (DataContext as HomeTabViewModel);
+    private HomeTabViewModel? Model => DataContext as HomeTabViewModel;
 
     public HomeTabView()
     {
@@ -57,19 +54,8 @@ public partial class HomeTabView : UserControl
             case HomeTabViewModel.MainButtonState.Cancel:
                 CancelButton.IsVisible = true;
                 break;
-        }
-    }
-
-    protected override void OnDataContextChanged(EventArgs e)
-    {
-        base.OnDataContextChanged(e);
-        if (Model is not null)
-        {
-            Model.InstallLogLines.CollectionChanged +=
-                (evt,args) =>
-                {
-                    Dispatcher.UIThread.Post(() => InstallLogScroll.ScrollToEnd());
-                };
+            default:
+                throw new ArgumentOutOfRangeException(nameof(which), which, null);
         }
     }
 
@@ -83,5 +69,11 @@ public partial class HomeTabView : UserControl
         {
             Console.WriteLine(exception);
         }
+    }
+
+    private void InstallLogTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        var lastLineIndex = Math.Max(0, InstallLogTextBox.GetLineCount() - 1);
+        InstallLogTextBox.ScrollToLine(lastLineIndex);
     }
 }

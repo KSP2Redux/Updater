@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -72,16 +73,40 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
 
     public async Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ManifestReleasesFeed.Patch patch, CancellationToken ct)
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, patch.url);
+        var url = patch.url;
+        var hasToken = !string.IsNullOrWhiteSpace(feed.Token);
+
+        if (hasToken && TryParseBrowserDownloadUrl(patch.url, out var parsed))
+        {
+            var release = await GetOrCreateClient(feed).Repository.Release
+                .Get(parsed.Owner, parsed.Repo, parsed.Tag);
+            var asset = release.Assets.FirstOrDefault(a => string.Equals(a.Name, parsed.Name, StringComparison.Ordinal));
+            if (asset != null) url = asset.Url;
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
             new System.Net.Http.Headers.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString())));
-        if (!string.IsNullOrWhiteSpace(feed.Token))
+        if (hasToken)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", feed.Token);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
         }
 
         var response = await _downloadClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
         return response;
+    }
+
+    private static bool TryParseBrowserDownloadUrl(string url, out (string Owner, string Repo, string Tag, string Name) parsed)
+    {
+        parsed = default;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        if (!uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)) return false;
+        var seg = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (seg.Length < 6 || seg[2] != "releases" || seg[3] != "download") return false;
+        var name = string.Join('/', seg.Skip(5));
+        parsed = (seg[0], seg[1], Uri.UnescapeDataString(seg[4]), Uri.UnescapeDataString(name));
+        return true;
     }
 }

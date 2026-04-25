@@ -37,6 +37,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
+    [ObservableProperty] public partial bool IsUpdateDownloading { get; set; }
+
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
@@ -61,6 +63,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _ksp2DetectorService = ksp2DetectorService;
         
         _updateService = updateService;
+        _updateService.DownloadingChanged += downloading =>
+            Dispatcher.UIThread.Post(() => IsUpdateDownloading = downloading);
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
         
@@ -103,6 +107,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task InitializeAsync()
     {
+        if (Program.PartialUpdate)
+        {
+            var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
+            await MessageBoxManager.GetMessageBoxStandard("Partial Update Complete",
+                $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+        }
+
         // First start the updater service
         if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
         

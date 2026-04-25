@@ -8,8 +8,11 @@
         Width="1000" Height="700" CanResize="False"
         x:Class="Ksp2Redux.Tools.Launcher.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        Background="Transparent"
         ExtendClientAreaToDecorationsHint="True"
-        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        TransparencyBackgroundFallback="Transparent"
+        WindowDecorations="None"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/favicon.ico"
         Title="KSP2 Redux">
@@ -25,31 +28,35 @@
     <!-- ReSharper restore Xaml.RedundantResource -->
 
     <Window.Styles>
-        <Style Selector="Window">
-            <Setter Property="Background">
-                <Setter.Value>
-                    <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png"></ImageBrush>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style Selector="Border#TitleBar">
             <Setter Property="CornerRadius" Value="8,8,0,0" />
             <Setter Property="ClipToBounds" Value="True" />
 
-            <Style Selector="^ Button">
+            <Style Selector="^ Button.titlebar-button">
                 <Setter Property="CornerRadius" Value="0" />
                 <Setter Property="Height" Value="32" />
                 <Setter Property="Width" Value="32" />
+                <Setter Property="Padding" Value="0" />
                 <Setter Property="Background" Value="Transparent" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="BorderThickness" Value="0" />
 
                 <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
                     <Setter Property="Foreground" Value="White" />
+                    <Setter Property="HorizontalAlignment" Value="Center" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
                 </Style>
-                <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="#80ffffff" />
+                <Style Selector="^ Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="Transparent" />
                 </Style>
-                <Style Selector="^#CloseButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Style Selector="^:pointerover Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="#50ffffff" />
+                </Style>
+                <Style Selector="^#CloseButton Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^#CloseButton:pointerover Border.titlebar-button-surface">
                     <Setter Property="Background" Value="#dc1501" />
                 </Style>
             </Style>
@@ -81,51 +88,103 @@
         </Style>
     </Window.Styles>
 
-    <Border BorderBrush="#dc1501" BorderThickness="2" CornerRadius="8" VerticalAlignment="Stretch">
-        <Border.Background>
-            <LinearGradientBrush Opacity="{Binding CurrentTab, Converter={StaticResource IsSettingsTabConverter}}"
-                                 StartPoint="0%,50%" EndPoint="100%,50%">
-                <GradientStop Color="#66000000" Offset="0.6"/>
-                <GradientStop Color="#00000000" Offset="1"/>
-            </LinearGradientBrush>
-        </Border.Background>
-        
-        <Grid RowDefinitions="Auto,*">
-            <Border Name="TitleBar">
-                <Grid Height="32" Background="#ff000000" PointerPressed="TitleBar_PointerPressed"
-                      ColumnDefinitions="*,Auto,Auto">
-                    <Button Grid.Column="1" Content="—" Click="Minimize_Click" />
-                    <Button Name="CloseButton" Grid.Column="2" Content="✕" Click="Close_Click" />
-                </Grid>
-            </Border>
+    <Border BorderBrush="#dc1501" BorderThickness="2" CornerRadius="10" VerticalAlignment="Stretch">
+        <Border Margin="2" CornerRadius="8" ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*">
+                <Border Grid.RowSpan="2">
+                    <Border.Background>
+                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" />
+                    </Border.Background>
+                </Border>
+                <Border Grid.RowSpan="2">
+                    <Border.Background>
+                        <LinearGradientBrush Opacity="{Binding CurrentTab, Converter={StaticResource IsSettingsTabConverter}}"
+                                             StartPoint="0%,50%" EndPoint="100%,50%">
+                            <GradientStop Color="#66000000" Offset="0.6"/>
+                            <GradientStop Color="#00000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border Name="TitleBar">
+                    <Grid Height="32" Background="#ff000000" PointerPressed="TitleBar_PointerPressed"
+                          ColumnDefinitions="*,32,32">
+                        <Button Classes="titlebar-button"
+                                Grid.Column="1"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Minimize_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Text="−"
+                                           FontSize="14"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                        <Button Name="CloseButton" Classes="titlebar-button" Grid.Column="2"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Close_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Text="✕"
+                                           FontSize="13"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                    </Grid>
+                </Border>
 
-            <Border Grid.Row="1" Padding="24,0,24,24">
-                <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
-                    <TabItem Name="HomeTab" Header="Home">
-                        <views:HomeTabView DataContext="{Binding HomeTab}"/>
-                    </TabItem>
-                    <TabItem Name="CommunityTab" Header="Community">
-                        <views:CommunityTabView DataContext="{Binding CommunityTab}"/>
-                    </TabItem>
-                    <TabItem Name="ModsTab" Header="Mods">
-                        <views:ModsTabView DataContext="{Binding ModsTab}"/>
-                    </TabItem>
-                    <TabItem Name="SettingsTab">
-                        <TabItem.Header>
-                            <Grid Margin="2,6,2,8">
-                                <Canvas Width="16" Height="16">
-                                    <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
-                                        <Rectangle.OpacityMask>
-                                            <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/settings-icon.png"></ImageBrush>
-                                        </Rectangle.OpacityMask>
-                                    </Rectangle>
-                                </Canvas>
-                            </Grid>
-                        </TabItem.Header>
-                        <views:SettingsTabView DataContext="{Binding SettingsTab}" />
-                    </TabItem>
-                </TabControl>
-            </Border>
-        </Grid>
+                <Border Grid.Row="1" Padding="24,0,24,24">
+                    <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
+                        <TabItem Name="HomeTab" Header="Home">
+                            <views:HomeTabView DataContext="{Binding HomeTab}"/>
+                        </TabItem>
+                        <TabItem Name="CommunityTab" Header="Community">
+                            <views:CommunityTabView DataContext="{Binding CommunityTab}"/>
+                        </TabItem>
+                        <TabItem Name="ModsTab" Header="Mods">
+                            <views:ModsTabView DataContext="{Binding ModsTab}"/>
+                        </TabItem>
+                        <TabItem Name="SettingsTab">
+                            <TabItem.Header>
+                                <Grid Margin="2,6,2,8">
+                                    <Canvas Width="16" Height="16">
+                                        <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+                                            <Rectangle.OpacityMask>
+                                                <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/settings-icon.png"></ImageBrush>
+                                            </Rectangle.OpacityMask>
+                                        </Rectangle>
+                                    </Canvas>
+                                </Grid>
+                            </TabItem.Header>
+                            <views:SettingsTabView DataContext="{Binding SettingsTab}" />
+                        </TabItem>
+                    </TabControl>
+                </Border>
+
+                <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="#cc000000">
+                    <TextBlock Text="Update Downloading..."
+                               Foreground="White" FontSize="32"
+                               FontFamily="{StaticResource JetBrainsMonoLight}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Border>
     </Border>
 </Window>

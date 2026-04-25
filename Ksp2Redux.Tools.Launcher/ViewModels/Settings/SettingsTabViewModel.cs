@@ -67,6 +67,19 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 
+    public string LaunchArguments
+    {
+        get => _launcherConfigService.Config.LaunchArguments;
+        set
+        {
+            var normalized = value ?? "";
+            if (_launcherConfigService.Config.LaunchArguments == normalized) return;
+            _launcherConfigService.Config.LaunchArguments = normalized;
+            _launcherConfigService.Save();
+            OnPropertyChanged();
+        }
+    }
+
     public void SetLoaded()
     {
         ChannelsLoaded = true;

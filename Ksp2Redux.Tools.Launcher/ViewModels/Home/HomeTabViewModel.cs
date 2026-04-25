@@ -50,8 +50,9 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial float InstallProgressSteps { get; private set; } = 1;
     [ObservableProperty] public partial float InstallProgressTotalSteps { get; private set; } = 3;
     [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
+    [ObservableProperty] public partial string InstallLogText { get; private set; } = string.Empty;
     [ObservableProperty] public partial bool InstallationDisabled { get; private set; } = false;
-    public ObservableCollection<LogItemViewModel> InstallLogLines { get; set; } = [];
+    private readonly StringBuilder _installLogBuilder = new();
 
     private CancellationTokenSource? cancelCurrentOperation;
 
@@ -123,6 +124,11 @@ public partial class HomeTabViewModel : ViewModelBase
         using Process process = new();
         process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
         process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
+        var launchArgs = _launcherConfigService.Config.LaunchArguments;
+        if (!string.IsNullOrWhiteSpace(launchArgs))
+        {
+            process.StartInfo.Arguments = launchArgs;
+        }
         process.Start();
         await process.WaitForExitAsync();
         MainButtonEnabled = true;
@@ -249,7 +255,7 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         // // lock main window tabs?
         
-        InstallLogLines.Clear();
+        ResetInstallLog();
         IsInstallLogVisible = true;
         IsProgressVisible = true;
         DownloadProgressMb = 0;
@@ -271,7 +277,6 @@ public partial class HomeTabViewModel : ViewModelBase
         MainButtonEnabled = true;
         MainButtonTooltip = "Cancel installation";
         cancelCurrentOperation = new CancellationTokenSource();
-        var sb = new StringBuilder();
 
         Log("Creating install plan");
             
@@ -300,7 +305,7 @@ public partial class HomeTabViewModel : ViewModelBase
     public async Task InstallFromPatchFile(string path)
     {
         
-        InstallLogLines.Clear();
+        ResetInstallLog();
         IsInstallLogVisible = true;
         IsProgressVisible = true;
         DownloadProgressMb = 0;
@@ -351,19 +356,32 @@ public partial class HomeTabViewModel : ViewModelBase
         UpdateStepsProgress(0, plan.Steps.Count);
         _installPlanService.Describe(plan, Log);
 
-        await _installPlanService.ApplyToFolder(plan, ksp2.InstallDir, Log, UpdateDownloadProgress, UpdateStepsProgress,
+        await Task.Run(
+            () => _installPlanService.ApplyToFolder(
+                plan,
+                ksp2.InstallDir,
+                Log,
+                UpdateDownloadProgress,
+                UpdateStepsProgress,
+                cancelCurrentOperation!.Token),
             cancelCurrentOperation!.Token);
 
         void UpdateStepsProgress(int current, int max)
         {
-            InstallProgressSteps = current;
-            InstallProgressTotalSteps = max;
+            Dispatcher.UIThread.Post(() =>
+            {
+                InstallProgressSteps = current;
+                InstallProgressTotalSteps = max;
+            });
         }
 
         void UpdateDownloadProgress(long value, long max)
         {
-            DownloadProgressMb = value / 1024f / 1024f;
-            DownloadProgressTotalMb = max / 1024f / 1024f;
+            Dispatcher.UIThread.Post(() =>
+            {
+                DownloadProgressMb = value / 1024f / 1024f;
+                DownloadProgressTotalMb = max / 1024f / 1024f;
+            });
         }
     }
 
@@ -372,8 +390,15 @@ public partial class HomeTabViewModel : ViewModelBase
         Console.WriteLine(message);
         Dispatcher.UIThread.Post(() =>
         {
-            InstallLogLines.Add(new LogItemViewModel() { LogItemText = message });
+            _installLogBuilder.AppendLine(message);
+            InstallLogText = _installLogBuilder.ToString();
         });
+    }
+
+    private void ResetInstallLog()
+    {
+        _installLogBuilder.Clear();
+        InstallLogText = string.Empty;
     }
     
     public void DisableInstallation()

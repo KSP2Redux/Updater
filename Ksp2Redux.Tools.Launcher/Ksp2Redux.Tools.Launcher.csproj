@@ -11,13 +11,13 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <LangVersion>preview</LangVersion>
-        <Version>0.0.3.1</Version>
+        <Version>0.0.4.1</Version>
     </PropertyGroup>
 
     <ItemGroup>
         <AvaloniaResource Include="Assets\**" />
     </ItemGroup>
-    
+
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="12.0.1" />
         <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
@@ -50,7 +50,7 @@
         <!--Used by Microsoft.CodeAnalysis.BannedApiAnalyzers-->
         <AdditionalFiles Include="BannedSymbols.txt" />
     </ItemGroup>
-    
+
     <ItemGroup>
       <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj" />
     </ItemGroup>

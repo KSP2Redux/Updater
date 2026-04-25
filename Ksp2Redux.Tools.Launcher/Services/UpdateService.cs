@@ -21,6 +21,8 @@ public interface IUpdateService
 {
 
     public Task<bool> CheckAndPerformUpdateAsync();
+
+    event Action<bool>? DownloadingChanged;
 }
 
 /// <summary>
@@ -28,6 +30,8 @@ public interface IUpdateService
 /// </summary>
 public class UpdateService : IUpdateService
 {
+    public event Action<bool>? DownloadingChanged;
+
     private HttpClient _http;
     private string _owner;
     private string _repo;
@@ -121,47 +125,77 @@ public class UpdateService : IUpdateService
                 if (asset.Digest == null || !asset.Digest.StartsWith(sha256Prefix, StringComparison.OrdinalIgnoreCase))
                 {
                     Console.WriteLine($"No sha256 digest reported by GitHub for {asset.Name}, refusing to update.");
-                    await MessageBoxManager.GetMessageBoxStandard("Update Failed",
-                        $"The update could not be verified: GitHub did not report a SHA-256 digest for {asset.Name}.", ButtonEnum.Ok,
-                        windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                    await ShowUpdateFailedAsync();
                     return false;
                 }
 
                 var expectedHash = asset.Digest[sha256Prefix.Length..].Trim().ToLowerInvariant();
-                var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
-                var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
-                if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                DownloadingChanged?.Invoke(true);
+                var restartTriggered = false;
+                try
                 {
-                    Console.WriteLine($"Checksum mismatch for {asset.Name}: expected {expectedHash}, got {actualHash}");
-                    await MessageBoxManager.GetMessageBoxStandard("Update Failed",
-                        "The downloaded update did not match its published checksum and was discarded.", ButtonEnum.Ok,
-                        windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                    var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
+                    var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+                    if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"Checksum mismatch for {asset.Name}: expected {expectedHash}, got {actualHash}");
+                        await ShowUpdateFailedAsync();
+                        return false;
+                    }
+
+                    var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
+                    _fileSystem.Directory.CreateDirectory(updateDir);
+                    foreach (var stale in _fileSystem.Directory.EnumerateFiles(updateDir))
+                    {
+                        try { _fileSystem.File.Delete(stale); } catch { }
+                    }
+
+                    var updatePath = _fileSystem.Path.Combine(updateDir, asset.Name);
+                    await _fileSystem.File.WriteAllBytesAsync(updatePath, bytes);
+
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        await Process.Start("chmod", $"+x \"{updatePath}\"").WaitForExitAsync();
+                    }
+
+                    TriggerRestart(updatePath);
+                    restartTriggered = true;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Update download/install failed: {e}");
+                    await ShowUpdateFailedAsync();
                     return false;
                 }
-
-                var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
-                _fileSystem.Directory.CreateDirectory(updateDir);
-                foreach (var stale in _fileSystem.Directory.EnumerateFiles(updateDir))
+                finally
                 {
-                    try { _fileSystem.File.Delete(stale); } catch { }
+                    if (!restartTriggered) DownloadingChanged?.Invoke(false);
                 }
-
-                var updatePath = _fileSystem.Path.Combine(updateDir, asset.Name);
-                await _fileSystem.File.WriteAllBytesAsync(updatePath, bytes);
-
-                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    await Process.Start("chmod", $"+x \"{updatePath}\"").WaitForExitAsync();
-                }
-
-                TriggerRestart(updatePath);
             }
         }
 
         return true;
     }
     
+    private async Task ShowUpdateFailedAsync()
+    {
+        var repo = _launcherConfigService.Config.LauncherRepo.TrimEnd('/');
+        var releasesUrl = $"{repo}/releases";
+        await MessageBoxManager.GetMessageBoxStandard("Update Failed!",
+            $"Please download the latest version of the launcher from\n{releasesUrl}", ButtonEnum.Ok,
+            windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+        try
+        {
+            Process.Start(new ProcessStartInfo(releasesUrl) { UseShellExecute = true });
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed to open releases page: {e}");
+        }
+    }
+
     private void TriggerRestart(string newFilesPath)
     {
         var whereAmI = _environmentProvider.ProcessPath!;
