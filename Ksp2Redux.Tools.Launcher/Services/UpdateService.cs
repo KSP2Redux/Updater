@@ -1,23 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
-using Octokit;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
 
 
 public interface IUpdateService
 {
-    
+
     public Task<bool> CheckAndPerformUpdateAsync();
 }
 
@@ -26,7 +27,7 @@ public interface IUpdateService
 /// </summary>
 public class UpdateService : IUpdateService
 {
-    private GitHubClient _client;
+    private HttpClient _http;
     private string _owner;
     private string _repo;
     private Version? _version;
@@ -38,10 +39,25 @@ public class UpdateService : IUpdateService
     private static bool _isSingleFile =  string.IsNullOrEmpty(Assembly.GetEntryAssembly()?.Location);
 #pragma warning restore IL3000
 #pragma warning restore RS0030
-    
+
+    private class GitHubReleaseAsset
+    {
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } = "";
+    }
+
+    private class GitHubRelease
+    {
+        [JsonPropertyName("tag_name")] public string TagName { get; set; } = "";
+        [JsonPropertyName("prerelease")] public bool Prerelease { get; set; }
+        [JsonPropertyName("assets")] public GitHubReleaseAsset[] Assets { get; set; } = [];
+    }
+
     public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
     {
-        _client = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Launcher"));
+        _http = new HttpClient();
+        _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(
+            new ProductHeaderValue("Ksp2Redux.Tools.Launcher", assemblyService.GetName().Version?.ToString() ?? "0.0.0")));
         _fileSystem = fileSystem;
         _environmentProvider = environmentProvider;
         _assemblyService = assemblyService;
@@ -59,8 +75,9 @@ public class UpdateService : IUpdateService
     public async Task<bool> CheckAndPerformUpdateAsync()
     {
         Console.WriteLine("Checking for updates.");
-        var releases = await _client.Repository.Release.GetAll(_owner, _repo);
-        
+        var releases = await _http.GetFromJsonAsync<GitHubRelease[]>(
+            $"https://api.github.com/repos/{_owner}/{_repo}/releases") ?? [];
+
         var latestRelease = releases.Where(r => r.TagName.StartsWith("updater-v") && !r.Prerelease)
             .Select(r =>
             {
@@ -83,13 +100,13 @@ public class UpdateService : IUpdateService
                     windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
                 return false;
             }
-            
+
             var result = await MessageBoxManager.GetMessageBoxStandard("Update Found",
                 "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.", ButtonEnum.OkCancel,
                 windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
 
             if (result != ButtonResult.Ok) return false;
-            
+
             var platformKeyword = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
             var asset = latestRelease.Release.Assets
                 .FirstOrDefault(a => a.Name.Contains(platformKeyword, StringComparison.OrdinalIgnoreCase));
@@ -97,12 +114,9 @@ public class UpdateService : IUpdateService
             if (asset != null)
             {
                 var tempPath = _fileSystem.Path.Combine(_fileSystem.Path.GetTempPath(), asset.Name);
-                var response = await _client.Connection.Get<byte[]>(
-                    new Uri(asset.Url),
-                    new Dictionary<string, string>(),
-                    "application/octet-stream");
-                await _fileSystem.File.WriteAllBytesAsync(tempPath, response.Body);
-                
+                var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
+                await _fileSystem.File.WriteAllBytesAsync(tempPath, bytes);
+
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
                     await Process.Start("chmod", $"+x \"{tempPath}\"").WaitForExitAsync();

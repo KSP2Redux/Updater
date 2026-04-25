@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -54,27 +52,27 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
     public async Task<ManifestReleasesFeed.Manifest?> GetManifest(FeedInfo feed)
     {
         var (owner, name) = ParseRepository(feed.Repository);
-        var bytes = await GetOrCreateClient(feed).Repository.Content
-            .GetRawContentByRef(owner, name, feed.Filename, "main");
-        return System.Text.Json.JsonSerializer.Deserialize<ManifestReleasesFeed.Manifest>(bytes);
+
+        if (!string.IsNullOrWhiteSpace(feed.Token))
+        {
+            var bytes = await GetOrCreateClient(feed).Repository.Content
+                .GetRawContentByRef(owner, name, feed.Filename, "main");
+            return System.Text.Json.JsonSerializer.Deserialize<ManifestReleasesFeed.Manifest>(bytes);
+        }
+
+        var rawUrl = $"https://raw.githubusercontent.com/{owner}/{name}/main/{feed.Filename}";
+        var request = new HttpRequestMessage(HttpMethod.Get, rawUrl);
+        request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
+            new System.Net.Http.Headers.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString())));
+        using var response = await _downloadClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        return await System.Text.Json.JsonSerializer.DeserializeAsync<ManifestReleasesFeed.Manifest>(stream);
     }
 
     public async Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ManifestReleasesFeed.Patch patch, CancellationToken ct)
     {
-        var (owner, name) = ParseRepository(feed.Repository);
-        var client = GetOrCreateClient(feed);
-
-        var uri = new Uri(patch.url);
-        var segments = uri.Segments;
-        var tag = Uri.UnescapeDataString(segments[^2].Trim('/'));
-        var fileName = Uri.UnescapeDataString(segments[^1]);
-
-        var release = await client.Repository.Release.Get(owner, name, tag);
-        var asset = release.Assets.FirstOrDefault(a => a.Name == fileName)
-            ?? throw new FileNotFoundException($"Could not find asset '{fileName}' in release '{tag}'");
-
-        var request = new HttpRequestMessage(HttpMethod.Get, asset.Url);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+        var request = new HttpRequestMessage(HttpMethod.Get, patch.url);
         request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
             new System.Net.Http.Headers.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString())));
         if (!string.IsNullOrWhiteSpace(feed.Token))
