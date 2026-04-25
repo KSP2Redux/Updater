@@ -177,6 +177,13 @@
                         </TabItem>
                     </TabControl>
                 </Border>
+
+                <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="#cc000000">
+                    <TextBlock Text="Update Downloading..."
+                               Foreground="White" FontSize="32"
+                               FontFamily="{StaticResource JetBrainsMonoLight}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
             </Grid>
         </Border>
     </Border>

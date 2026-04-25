@@ -124,6 +124,11 @@ public partial class HomeTabViewModel : ViewModelBase
         using Process process = new();
         process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
         process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
+        var launchArgs = _launcherConfigService.Config.LaunchArguments;
+        if (!string.IsNullOrWhiteSpace(launchArgs))
+        {
+            process.StartInfo.Arguments = launchArgs;
+        }
         process.Start();
         await process.WaitForExitAsync();
         MainButtonEnabled = true;
