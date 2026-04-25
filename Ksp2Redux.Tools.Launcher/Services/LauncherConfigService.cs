@@ -57,7 +57,56 @@ public class LauncherConfigService : ILauncherConfigService
         {
             Config = config;
             Config.StoragePath = configFilePath;
+            if (MigrateLegacySingleInstall())
+            {
+                Save();
+            }
         }
+    }
+
+    private bool MigrateLegacySingleInstall()
+    {
+        var didMigrate = false;
+        if (Config.Ksp2Installs.Count == 0 && !string.IsNullOrWhiteSpace(Config.Ksp2InstallPath))
+        {
+            var entry = new Ksp2InstallEntry
+            {
+                ExePath = Config.Ksp2InstallPath,
+                ReleaseChannel = string.IsNullOrEmpty(Config.ReleaseChannel) ? "beta" : Config.ReleaseChannel,
+                LastInstalledVersion = Config.LastInstalledVersion,
+                Name = DeriveDefaultInstallName(Config.Ksp2InstallPath),
+                LaunchThroughSteam = Config.LaunchThroughSteam,
+                SteamAppId = string.IsNullOrEmpty(Config.SteamAppId) ? "954850" : Config.SteamAppId,
+                LaunchArguments = Config.LaunchArguments,
+            };
+            Config.Ksp2Installs.Add(entry);
+            Config.ActiveKsp2InstallId = entry.Id;
+            Config.Ksp2InstallPath = "";
+            Config.LastInstalledVersion = null;
+            didMigrate = true;
+        }
+
+        if (Config.Ksp2Installs.Count > 0 &&
+            (Config.ActiveKsp2InstallId is null ||
+             Config.Ksp2Installs.TrueForAll(e => e.Id != Config.ActiveKsp2InstallId)))
+        {
+            Config.ActiveKsp2InstallId = Config.Ksp2Installs[0].Id;
+            didMigrate = true;
+        }
+
+        return didMigrate;
+    }
+
+    public static string DeriveDefaultInstallName(string exePath)
+    {
+        if (string.IsNullOrWhiteSpace(exePath)) return "KSP2";
+        var trimmed = exePath.TrimEnd('/', '\\');
+        var lastSep = trimmed.LastIndexOfAny(['/', '\\']);
+        if (lastSep <= 0) return "KSP2";
+        var dir = trimmed[..lastSep];
+        var prevSep = dir.LastIndexOfAny(['/', '\\']);
+        var leaf = prevSep < 0 ? dir : dir[(prevSep + 1)..];
+        return string.IsNullOrEmpty(leaf) ? "KSP2" : leaf;
     }
     
     public void Save()

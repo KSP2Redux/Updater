@@ -31,8 +31,11 @@ public partial class HomeTabViewModel : ViewModelBase
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
+    public ObservableCollection<Ksp2InstallChoiceViewModel> Installs { get; } = [];
 
     [ObservableProperty] public partial GameVersionViewModel? SelectedVersion { get; set; }
+    [ObservableProperty] public partial Ksp2InstallChoiceViewModel? SelectedInstall { get; set; }
+    [ObservableProperty] public partial bool IsInstallSwitcherEnabled { get; private set; }
 
     public enum MainButtonState
     {
@@ -71,8 +74,44 @@ public partial class HomeTabViewModel : ViewModelBase
         _updateService = updateService;
 
         NewsCollectionViewModel = new NewsCollectionViewModel(newsCollectionService.NewsCollection);
+        RebuildInstallsCollection();
         RebuildVersionsCollection();
         PropertyChanged += ReactToPropertyChanges;
+
+        _ksp2InstallService.InstallsChanged += (_, _) =>
+            Dispatcher.UIThread.Post(() =>
+            {
+                RebuildInstallsCollection();
+                UpdateMainButtonState();
+            });
+        _ksp2InstallService.ActiveInstallChanged += (_, _) =>
+            Dispatcher.UIThread.Post(async () =>
+            {
+                SyncSelectedInstall();
+                await UpdateVersionsList(false);
+            });
+    }
+
+    private void RebuildInstallsCollection()
+    {
+        Installs.Clear();
+        foreach (var entry in _ksp2InstallService.Entries)
+        {
+            Installs.Add(new Ksp2InstallChoiceViewModel(entry));
+        }
+        IsInstallSwitcherEnabled = Installs.Count > 1;
+        SyncSelectedInstall();
+    }
+
+    private bool _suppressInstallSelectionChange;
+    private void SyncSelectedInstall()
+    {
+        var activeId = _ksp2InstallService.ActiveEntry?.Id;
+        var match = activeId is null ? null : Installs.FirstOrDefault(i => i.Id == activeId);
+        if (ReferenceEquals(SelectedInstall, match)) return;
+        _suppressInstallSelectionChange = true;
+        try { SelectedInstall = match; }
+        finally { _suppressInstallSelectionChange = false; }
     }
 
 
@@ -108,10 +147,12 @@ public partial class HomeTabViewModel : ViewModelBase
     public async Task LaunchGame()
     {
         if (_ksp2InstallService.Ksp2 is null) return;
+        var activeEntry = _ksp2InstallService.ActiveEntry;
+        if (activeEntry is null) return;
 
-        if (_launcherConfigService.Config.LaunchThroughSteam)
+        if (activeEntry.LaunchThroughSteam)
         {
-            var appId = _launcherConfigService.Config.SteamAppId;
+            var appId = activeEntry.SteamAppId;
             if (string.IsNullOrWhiteSpace(appId)) appId = "954850";
             var startInfo = new ProcessStartInfo
             {
@@ -126,7 +167,7 @@ public partial class HomeTabViewModel : ViewModelBase
         using Process process = new();
         process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
         process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
-        var launchArgs = _launcherConfigService.Config.LaunchArguments;
+        var launchArgs = activeEntry.LaunchArguments;
         if (!string.IsNullOrWhiteSpace(launchArgs))
         {
             process.StartInfo.Arguments = launchArgs;
@@ -144,9 +185,17 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void ReactToPropertyChanges(object? sender, PropertyChangedEventArgs? e)
     {
-        if (e?.PropertyName == "SelectedVersion")
+        if (e?.PropertyName == nameof(SelectedVersion))
         {
             UpdateMainButtonState();
+        }
+        else if (e?.PropertyName == nameof(SelectedInstall))
+        {
+            if (_suppressInstallSelectionChange) return;
+            if (SelectedInstall is { } choice)
+            {
+                _ksp2InstallService.SetActiveInstall(choice.Id);
+            }
         }
     }
 
@@ -174,7 +223,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        var linuxLaunchBlocked = OperatingSystem.IsLinux() && !_launcherConfigService.Config.LaunchThroughSteam;
+        var linuxLaunchBlocked = OperatingSystem.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false);
         const string linuxLaunchBlockedTooltip = "Enable \"Launch through Steam\" in settings to launch on Linux.";
 
         if (ksp2.Distribution != Distribution.Redux)
@@ -236,8 +285,9 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         
         
-        if (string.IsNullOrEmpty(_launcherConfigService.Config.ReleaseChannel)
-            || !_releasesFeedService.ReleasesFeed.TryGetValue(_launcherConfigService.Config.ReleaseChannel, out var value))
+        var activeChannel = _ksp2InstallService.ActiveEntry?.ReleaseChannel;
+        if (string.IsNullOrEmpty(activeChannel)
+            || !_releasesFeedService.ReleasesFeed.TryGetValue(activeChannel, out var value))
         {
             return;
         }

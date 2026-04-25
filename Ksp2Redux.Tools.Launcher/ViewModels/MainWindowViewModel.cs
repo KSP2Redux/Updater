@@ -34,6 +34,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IManifestReleasesFeedProviderService _manifestReleasesFeedProviderService;
     private readonly IUpdateService _updateService;
     private readonly IKsp2DetectorService _ksp2DetectorService;
+    private readonly IKsp2InstallService _ksp2InstallService;
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -61,7 +62,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _newsService = newsService;
         _manifestReleasesFeedProviderService = manifestReleasesFeedProviderService;
         _ksp2DetectorService = ksp2DetectorService;
-        
+        _ksp2InstallService = ksp2InstallService;
+
         _updateService = updateService;
         _updateService.DownloadingChanged += downloading =>
             Dispatcher.UIThread.Post(() => IsUpdateDownloading = downloading);
@@ -118,20 +120,18 @@ public partial class MainWindowViewModel : ViewModelBase
         // First start the updater service
         if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
         
-        // Now we want to check if KSP2 is set, and if not try and set it
-        if (string.IsNullOrEmpty(_launcherConfigService.Config.Ksp2InstallPath))
+        // Now we want to check if any KSP2 installs are registered, and if not try and detect one
+        if (_ksp2InstallService.Entries.Count == 0)
         {
             if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
             {
                 var option = await MessageBoxManager.GetMessageBoxStandard("KSP2 Install Found",
-                    $"Found KSP2 install at: {installLocation}\nWould you like to set this as the install used for Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
+                    $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
                     windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
 
                 if (option == ButtonResult.Yes)
                 {
-                    _launcherConfigService.Config.Ksp2InstallPath = installLocation;
-                    _launcherConfigService.Save();
-                    SettingsTab.UpdateInstallPath();
+                    _ksp2InstallService.AddInstall(installLocation);
                 }
             }
             else

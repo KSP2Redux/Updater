@@ -103,23 +103,38 @@
     <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="Auto,*">
         <shared:NewsCollectionView Grid.RowSpan="2" DataContext="{Binding NewsCollectionViewModel}"/>
 
-		<controls:GroupedComboBox
-            Name="VersionSelector" Width="250" Grid.Row="2" Grid.Column="0"
-            FontFamily="{StaticResource JetBrainsMonoRegular}"
-            HorizontalAlignment="Stretch" Margin="8,20, 8,10"
-            Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
-            ItemsSource="{Binding Versions}"
-            GroupKeySelector="{Binding GameVersionGroupKeySelector}"
-            SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
-			<controls:GroupedComboBox.Styles>
-				<Style Selector="ComboBoxItem">
-					<Setter Property="IsEnabled"
-                            Value="{Binding Converter={StaticResource SelectableConverter}}"/>
-					<Setter Property="IsHitTestVisible"
-                            Value="{Binding Converter={StaticResource SelectableConverter}}"/>
-				</Style>
-			</controls:GroupedComboBox.Styles>
-		</controls:GroupedComboBox>
+		<StackPanel Grid.Row="2" Grid.Column="0" Orientation="Vertical" Margin="8,20,8,10">
+			<ComboBox Name="InstallSelector" Width="250"
+			          FontFamily="{StaticResource JetBrainsMonoRegular}"
+			          HorizontalAlignment="Stretch" Margin="0,0,0,6"
+			          Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
+			          IsEnabled="{Binding IsInstallSwitcherEnabled}"
+			          ItemsSource="{Binding Installs}"
+			          SelectedItem="{Binding SelectedInstall, Mode=TwoWay}">
+				<ComboBox.ItemTemplate>
+					<DataTemplate DataType="home:Ksp2InstallChoiceViewModel">
+						<TextBlock Text="{Binding Name}" Margin="4,2,0,0" />
+					</DataTemplate>
+				</ComboBox.ItemTemplate>
+			</ComboBox>
+			<controls:GroupedComboBox
+				Name="VersionSelector" Width="250"
+				FontFamily="{StaticResource JetBrainsMonoRegular}"
+				HorizontalAlignment="Stretch"
+				Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
+				ItemsSource="{Binding Versions}"
+				GroupKeySelector="{Binding GameVersionGroupKeySelector}"
+				SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
+				<controls:GroupedComboBox.Styles>
+					<Style Selector="ComboBoxItem">
+						<Setter Property="IsEnabled"
+								Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+						<Setter Property="IsHitTestVisible"
+								Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+					</Style>
+				</controls:GroupedComboBox.Styles>
+			</controls:GroupedComboBox>
+		</StackPanel>
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">

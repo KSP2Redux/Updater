@@ -1,11 +1,14 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System;
 using System.Collections.ObjectModel;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -22,73 +25,39 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly ITabNavigatorService _tabNavigatorService;
     private readonly HomeTabViewModel _homeTabViewModel;
-    
-    
-    public string DisplayedInstallPath => _launcherConfigService.Config.Ksp2InstallPath;
+    private readonly IAssemblyService _assemblyService;
+
+    public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
-    
-    public string ReleaseChannel
-    {
-        get => ChannelsLoaded ? _launcherConfigService.Config.ReleaseChannel : "";
-        set
-        {
-            if (!ChannelsLoaded) return;
-            _launcherConfigService.Config.ReleaseChannel = value;
-            _launcherConfigService.Save();
-            _ = _homeTabViewModel.UpdateVersionsList();
-        }
-    }
 
     public ObservableCollection<string> ValidChannels { get; } = [];
 
-    public bool LaunchThroughSteam
-    {
-        get => _launcherConfigService.Config.LaunchThroughSteam;
-        set
-        {
-            if (_launcherConfigService.Config.LaunchThroughSteam == value) return;
-            _launcherConfigService.Config.LaunchThroughSteam = value;
-            _launcherConfigService.Save();
-            OnPropertyChanged();
-            _homeTabViewModel.RefreshMainButtonState();
-        }
-    }
+    [ObservableProperty] public partial Ksp2InstallRowViewModel? SelectedInstall { get; set; }
+    [ObservableProperty] public partial bool HasSelectedInstall { get; private set; }
+    [ObservableProperty] public partial bool CanRemoveSelectedInstall { get; private set; }
 
-    public string SteamAppId
-    {
-        get => _launcherConfigService.Config.SteamAppId;
-        set
-        {
-            var normalized = value?.Trim() ?? "";
-            if (_launcherConfigService.Config.SteamAppId == normalized) return;
-            _launcherConfigService.Config.SteamAppId = normalized;
-            _launcherConfigService.Save();
-            OnPropertyChanged();
-        }
-    }
+    public string LauncherVersion => _assemblyService.GetVersion()?.ToString(4) ?? "?";
 
-    public string LaunchArguments
-    {
-        get => _launcherConfigService.Config.LaunchArguments;
-        set
-        {
-            var normalized = value ?? "";
-            if (_launcherConfigService.Config.LaunchArguments == normalized) return;
-            _launcherConfigService.Config.LaunchArguments = normalized;
-            _launcherConfigService.Save();
-            OnPropertyChanged();
-        }
-    }
+    private bool _suppressActiveSync;
 
     public void SetLoaded()
     {
         ChannelsLoaded = true;
-        ReleaseChannel = _launcherConfigService.Config.ReleaseChannel;
-        OnPropertyChanged(nameof(ReleaseChannel));
     }
-    
-    public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService, IKsp2InstallService ksp2InstallService,
-        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel)
+
+    partial void OnSelectedInstallChanged(Ksp2InstallRowViewModel? value)
+    {
+        HasSelectedInstall = value is not null;
+        CanRemoveSelectedInstall = value is not null && Installs.Count > 1;
+        if (_suppressActiveSync) return;
+        if (value is null) return;
+        _ksp2InstallService.SetActiveInstall(value.Id);
+        _homeTabViewModel.RefreshMainButtonState();
+    }
+
+    public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService,
+        IKsp2InstallService ksp2InstallService,
+        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
@@ -96,6 +65,38 @@ public partial class SettingsTabViewModel : ViewModelBase
         _launcherConfigService = launcherConfigService;
         _ksp2InstallService = ksp2InstallService;
         _homeTabViewModel = homeTabViewModel;
+        _assemblyService = assemblyService;
+
+        _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
+        _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
+        RebuildInstalls();
+    }
+
+    private void RebuildInstalls()
+    {
+        var activeId = _ksp2InstallService.ActiveEntry?.Id;
+        Installs.Clear();
+        foreach (var entry in _ksp2InstallService.Entries)
+        {
+            Installs.Add(new Ksp2InstallRowViewModel(_ksp2InstallService, entry, entry.Id == activeId));
+        }
+        SyncSelectedInstall();
+    }
+
+    private void SyncSelectedInstall()
+    {
+        var activeId = _ksp2InstallService.ActiveEntry?.Id;
+        var match = activeId is null ? null : Installs.FirstOrDefault(r => r.Id == activeId);
+        foreach (var row in Installs)
+        {
+            var shouldBeActive = row.Id == activeId;
+            if (row.IsActive != shouldBeActive) row.IsActive = shouldBeActive;
+        }
+        CanRemoveSelectedInstall = match is not null && Installs.Count > 1;
+        if (ReferenceEquals(SelectedInstall, match)) return;
+        _suppressActiveSync = true;
+        try { SelectedInstall = match; }
+        finally { _suppressActiveSync = false; }
     }
 
     private const string STEAM_INSTALL_DIR = "C:/Program Files (x86)/Steam/steamapps/common/Kerbal Space Program 2/KSP2_x64.exe";
@@ -104,24 +105,34 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         Patterns = ["KSP2_x64.exe"],
     };
-    
+
     private static readonly FilePickerFileType Patch = new("KSP2 Patch File")
     {
         Patterns = ["*.patch"],
     };
 
-    public async Task SelectGameInstallDirectory()
+    [RelayCommand]
+    public async Task AddInstall()
     {
-
         var chosenPath = await DoOpenFilePickerAsync();
-        if (chosenPath is not null)
+        if (chosenPath is null) return;
+
+        var path = chosenPath.Path.LocalPath;
+        var existing = _ksp2InstallService.Entries.FirstOrDefault(e =>
+            string.Equals(e.ExePath, path, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
         {
-            _launcherConfigService.Config.Ksp2InstallPath = chosenPath.Path.LocalPath;
-            _launcherConfigService.Save();
-            // TODO: trigger update patch status
+            _ksp2InstallService.SetActiveInstall(existing.Id);
+            return;
         }
-        _ksp2InstallService.TryLoadKsp2Install();
-        //return config.Ksp2InstallPath;
+        _ksp2InstallService.AddInstall(path);
+    }
+
+    [RelayCommand]
+    public void RemoveSelectedInstall()
+    {
+        if (Installs.Count <= 1) return;
+        if (SelectedInstall is { } row) _ksp2InstallService.RemoveInstall(row.Id);
     }
 
     public async Task<IStorageFile?> DoOpenFilePickerAsync()
@@ -131,15 +142,12 @@ public partial class SettingsTabViewModel : ViewModelBase
             throw new NullReferenceException("Missing StorageProvider instance.");
 
         IStorageFolder? startFolder = null;
-        // default to previously select install path if it exists.
-        if (!string.IsNullOrWhiteSpace(_launcherConfigService.Config.Ksp2InstallPath) && _fileSystem.Path.Exists(_launcherConfigService.Config.Ksp2InstallPath))
+        var lastKnownPath = _ksp2InstallService.ActiveEntry?.ExePath;
+        if (!string.IsNullOrWhiteSpace(lastKnownPath) && _fileSystem.Path.Exists(lastKnownPath))
         {
-            startFolder = await provider.TryGetFolderFromPathAsync(_launcherConfigService.Config.Ksp2InstallPath);
+            startFolder = await provider.TryGetFolderFromPathAsync(lastKnownPath);
         }
-
-        // fallback on steam default path.
         startFolder ??= await provider.TryGetFolderFromPathAsync(STEAM_INSTALL_DIR);
-        // fallback on something reasonable.
         startFolder ??= await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Desktop);
 
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
@@ -155,9 +163,15 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public async Task UninstallRedux()
     {
-        // parentWindow.TryLoadKsp2Install();
-        var installDir = _fileSystem.Path.GetDirectoryName(_launcherConfigService.Config.Ksp2InstallPath);;
-        if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
+        var activeExe = _ksp2InstallService.ActiveEntry?.ExePath;
+        if (string.IsNullOrWhiteSpace(activeExe))
+        {
+            await MessageBoxManager.GetMessageBoxStandard("Error!", "No active KSP2 install selected.",
+                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+            return;
+        }
+        var installDir = _fileSystem.Path.GetDirectoryName(activeExe);
+        if (string.IsNullOrEmpty(installDir) || !_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
         {
             await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...", windowStartupLocation:WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
             return;
@@ -169,13 +183,13 @@ public partial class SettingsTabViewModel : ViewModelBase
 
         var result = await box.ShowAsOwnedAsync();
         if (result != ButtonResult.Yes) return;
-        
+
         _cacheService.RecursivelyRestoreCache(installDir);
-        
+
         _ksp2InstallService.TryLoadKsp2Install();
         await _homeTabViewModel.UpdateVersionsList();
-        
-        
+
+
         await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled", windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
     }
 
@@ -184,9 +198,9 @@ public partial class SettingsTabViewModel : ViewModelBase
         var chosenPath = await DoOpenPatchFilePickerAsync();
 
         if (chosenPath is null) return;
-        
+
         _tabNavigatorService.GoToHome();
-        
+
         await _homeTabViewModel.InstallFromPatchFile(chosenPath.Path.LocalPath);
     }
 
@@ -197,7 +211,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             desktop.MainWindow?.StorageProvider is not { } provider)
             throw new NullReferenceException("Missing StorageProvider instance.");
         var startFolder = await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Downloads);
-        
+
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
         {
             Title = "Open Patch File",
@@ -205,12 +219,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             FileTypeFilter = [Patch],
             SuggestedStartLocation = startFolder,
         });
-        
-        return files?.Count >= 1 ? files[0] : null;
-    }
 
-    public void UpdateInstallPath()
-    {
-        OnPropertyChanged(nameof(DisplayedInstallPath));
+        return files?.Count >= 1 ? files[0] : null;
     }
 }

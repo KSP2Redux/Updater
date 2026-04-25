@@ -12,6 +12,8 @@ public class LauncherConfig
     public string SteamAppId { get; set; } = "954850";
     public string LaunchArguments { get; set; } = "-popupwindow";
     public GameVersion? LastInstalledVersion { get; set; }
+    public List<Ksp2InstallEntry> Ksp2Installs { get; set; } = [];
+    public Guid? ActiveKsp2InstallId { get; set; }
     public List<FeedInfo> Feeds { get; set; } = [
         new FeedInfo
         {

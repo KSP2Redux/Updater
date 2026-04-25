@@ -24,6 +24,20 @@ public class LauncherConfigServiceTest
         Feeds = [],
         StoragePath = "/appdata/Ksp2Redux/redux-launcher-config.json"
     };
+
+    // Same content as simpleLauncherConfigJson but already migrated to the multi-install schema.
+    private string simpleLauncherConfigJsonMigrated => $$"""
+                                              {
+                                                  "Ksp2InstallPath": "",
+                                                  "ReleaseChannel": "channel",
+                                                  "LastInstalledVersion": null,
+                                                  "Feeds": [],
+                                                  "Ksp2Installs": [
+                                                      { "Id": "11111111-1111-1111-1111-111111111111", "Name": "patch", "ExePath": "ksp2 install patch", "ReleaseChannel": "channel", "LastInstalledVersion": null }
+                                                  ],
+                                                  "ActiveKsp2InstallId": "11111111-1111-1111-1111-111111111111"
+                                              }
+                                              """;
     
     private string emptyLauncherConfigJson = """
                                             {
@@ -222,7 +236,7 @@ public class LauncherConfigServiceTest
     }
 
     [Test]
-    public void Constructor_CorrectDeserialize_CorrectConfig()
+    public void Constructor_CorrectDeserialize_MigratesLegacySingleInstall()
     {
         // Arrange
         Mock<IEnvironmentProvider> environmentProvider  = new();
@@ -230,7 +244,7 @@ public class LauncherConfigServiceTest
         Mock<IDirectory> directory = new();
         Mock<IFile> file = new();
         Mock<IFileSystem> fileSystem = new();
-        
+
         environmentProvider.Setup(ep => ep.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
             .Returns("/appdata");
         path.Setup(p => p.Combine("/appdata", "Ksp2Redux"))
@@ -241,16 +255,63 @@ public class LauncherConfigServiceTest
             .Returns(simpleLauncherConfigJson);
         path.Setup(p => p.GetDirectoryName("/appdata/Ksp2Redux/redux-launcher-config.json"))
             .Returns("/appdata/Ksp2Redux");
-        
+
         fileSystem.SetupGet(fs => fs.Path).Returns(path.Object);
         fileSystem.SetupGet(fs => fs.Directory).Returns(directory.Object);
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
-        
+
         // Act
         LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object);
-        
+
+        // Assert: legacy single-install was migrated to the new schema.
+        var cfg = launcherConfigService.Config;
+        Assert.Multiple(() =>
+        {
+            Assert.That(cfg.Ksp2InstallPath, Is.Empty, "Legacy install path should be cleared after migration.");
+            Assert.That(cfg.LastInstalledVersion, Is.Null, "Legacy LastInstalledVersion should be cleared after migration.");
+            Assert.That(cfg.Ksp2Installs, Has.Count.EqualTo(1));
+            Assert.That(cfg.Ksp2Installs[0].ExePath, Is.EqualTo("ksp2 install patch"));
+            Assert.That(cfg.Ksp2Installs[0].ReleaseChannel, Is.EqualTo("channel"));
+            Assert.That(cfg.ActiveKsp2InstallId, Is.EqualTo(cfg.Ksp2Installs[0].Id));
+        });
+        // Migration must persist immediately so the file isn't re-migrated next launch.
+        file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
+    }
+
+    [Test]
+    public void Constructor_AlreadyMigratedConfig_DoesNotRunMigration()
+    {
+        // Arrange
+        Mock<IEnvironmentProvider> environmentProvider  = new();
+        Mock<IPath> path = new();
+        Mock<IDirectory> directory = new();
+        Mock<IFile> file = new();
+        Mock<IFileSystem> fileSystem = new();
+
+        environmentProvider.Setup(ep => ep.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
+            .Returns("/appdata");
+        path.Setup(p => p.Combine("/appdata", "Ksp2Redux"))
+            .Returns("/appdata/Ksp2Redux");
+        path.Setup(p => p.Combine("/appdata/Ksp2Redux", "redux-launcher-config.json"))
+            .Returns("/appdata/Ksp2Redux/redux-launcher-config.json");
+        file.Setup(f => f.ReadAllText("/appdata/Ksp2Redux/redux-launcher-config.json"))
+            .Returns(simpleLauncherConfigJsonMigrated);
+        path.Setup(p => p.GetDirectoryName("/appdata/Ksp2Redux/redux-launcher-config.json"))
+            .Returns("/appdata/Ksp2Redux");
+
+        fileSystem.SetupGet(fs => fs.Path).Returns(path.Object);
+        fileSystem.SetupGet(fs => fs.Directory).Returns(directory.Object);
+        fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
+
+        // Act
+        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object);
+
         // Assert
-        Assert.That(launcherConfigService.Config, Is.EqualTo(simpleLauncherConfig).UsingPropertiesComparer());
+        var cfg = launcherConfigService.Config;
+        Assert.That(cfg.Ksp2Installs, Has.Count.EqualTo(1));
+        Assert.That(cfg.ActiveKsp2InstallId, Is.EqualTo(Guid.Parse("11111111-1111-1111-1111-111111111111")));
+        // Already migrated => no migration save expected.
+        file.Verify(f => f.WriteAllText(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
     
     // Save
