@@ -53,6 +53,8 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty] public partial string InstallLogText { get; private set; } = string.Empty;
     [ObservableProperty] public partial bool InstallationDisabled { get; private set; } = false;
     private readonly StringBuilder _installLogBuilder = new();
+    private readonly object _installLogLock = new();
+    private bool _installLogUpdateQueued;
 
     private CancellationTokenSource? cancelCurrentOperation;
 
@@ -296,9 +298,10 @@ public partial class HomeTabViewModel : ViewModelBase
         finally
         {
             cancelCurrentOperation = null;
+            await FlushPendingLogWrites();
+            IsProgressVisible = false;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
-            IsProgressVisible = false;
         }
     }
 
@@ -344,12 +347,13 @@ public partial class HomeTabViewModel : ViewModelBase
         finally
         {
             cancelCurrentOperation = null;
+            await FlushPendingLogWrites();
+            IsProgressVisible = false;
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
-            IsProgressVisible = false;
         }
     }
-    
+
 
     private async Task RunPlanOnInstall(InstallPlan plan, Ksp2Install ksp2)
     {
@@ -388,16 +392,40 @@ public partial class HomeTabViewModel : ViewModelBase
     private void Log(string message)
     {
         Console.WriteLine(message);
-        Dispatcher.UIThread.Post(() =>
+        bool queueUpdate;
+        lock (_installLogLock)
         {
             _installLogBuilder.AppendLine(message);
-            InstallLogText = _installLogBuilder.ToString();
-        });
+            queueUpdate = !_installLogUpdateQueued;
+            if (queueUpdate) _installLogUpdateQueued = true;
+        }
+        if (queueUpdate)
+        {
+            Dispatcher.UIThread.Post(FlushInstallLogToUi, DispatcherPriority.Background);
+        }
     }
+
+    private void FlushInstallLogToUi()
+    {
+        string text;
+        lock (_installLogLock)
+        {
+            text = _installLogBuilder.ToString();
+            _installLogUpdateQueued = false;
+        }
+        InstallLogText = text;
+    }
+
+    private Task FlushPendingLogWrites() =>
+        Dispatcher.UIThread.InvokeAsync(FlushInstallLogToUi, DispatcherPriority.Background).GetTask();
 
     private void ResetInstallLog()
     {
-        _installLogBuilder.Clear();
+        lock (_installLogLock)
+        {
+            _installLogBuilder.Clear();
+            _installLogUpdateQueued = false;
+        }
         InstallLogText = string.Empty;
     }
     

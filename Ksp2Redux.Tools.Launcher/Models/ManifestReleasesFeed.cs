@@ -179,12 +179,7 @@ public class ManifestReleasesFeed
     {
         if (manifest?.patches is null) return new InstallPlan();
 
-        static string ToVersionString(GameVersion gv)
-        {
-            bool numericBuild = !string.IsNullOrEmpty(gv.CommitHash) && gv.CommitHash.All(char.IsDigit);
-            string sep = numericBuild ? "." : "-";
-            return $"{gv.VersionNumber}{sep}{gv.CommitHash}";
-        }
+        static string ToVersionString(GameVersion gv) => $"{gv.VersionNumber}.{gv.BuildNumber}";
 
         string startVersion = ToVersionString(fromGameVersion);
         string targetVersion = ToVersionString(toGameVersion);
