@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -34,6 +35,7 @@ public class UpdateService : IUpdateService
     private IFileSystem _fileSystem;
     private IEnvironmentProvider _environmentProvider;
     private IAssemblyService _assemblyService;
+    private ILauncherConfigService _launcherConfigService;
 #pragma warning disable RS0030
 #pragma warning disable IL3000
     private static bool _isSingleFile =  string.IsNullOrEmpty(Assembly.GetEntryAssembly()?.Location);
@@ -44,6 +46,7 @@ public class UpdateService : IUpdateService
     {
         [JsonPropertyName("name")] public string Name { get; set; } = "";
         [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } = "";
+        [JsonPropertyName("digest")] public string? Digest { get; set; }
     }
 
     private class GitHubRelease
@@ -61,6 +64,7 @@ public class UpdateService : IUpdateService
         _fileSystem = fileSystem;
         _environmentProvider = environmentProvider;
         _assemblyService = assemblyService;
+        _launcherConfigService = launcherConfigService;
         _version = assemblyService.GetVersion();
         var uri = new Uri(launcherConfigService.Config.LauncherRepo.TrimEnd('/'));
         var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -113,16 +117,45 @@ public class UpdateService : IUpdateService
 
             if (asset != null)
             {
-                var tempPath = _fileSystem.Path.Combine(_fileSystem.Path.GetTempPath(), asset.Name);
+                const string sha256Prefix = "sha256:";
+                if (asset.Digest == null || !asset.Digest.StartsWith(sha256Prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"No sha256 digest reported by GitHub for {asset.Name}, refusing to update.");
+                    await MessageBoxManager.GetMessageBoxStandard("Update Failed",
+                        $"The update could not be verified: GitHub did not report a SHA-256 digest for {asset.Name}.", ButtonEnum.Ok,
+                        windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                    return false;
+                }
+
+                var expectedHash = asset.Digest[sha256Prefix.Length..].Trim().ToLowerInvariant();
                 var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
-                await _fileSystem.File.WriteAllBytesAsync(tempPath, bytes);
+                var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+                if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"Checksum mismatch for {asset.Name}: expected {expectedHash}, got {actualHash}");
+                    await MessageBoxManager.GetMessageBoxStandard("Update Failed",
+                        "The downloaded update did not match its published checksum and was discarded.", ButtonEnum.Ok,
+                        windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                    return false;
+                }
+
+                var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
+                _fileSystem.Directory.CreateDirectory(updateDir);
+                foreach (var stale in _fileSystem.Directory.EnumerateFiles(updateDir))
+                {
+                    try { _fileSystem.File.Delete(stale); } catch { }
+                }
+
+                var updatePath = _fileSystem.Path.Combine(updateDir, asset.Name);
+                await _fileSystem.File.WriteAllBytesAsync(updatePath, bytes);
 
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    await Process.Start("chmod", $"+x \"{tempPath}\"").WaitForExitAsync();
+                    await Process.Start("chmod", $"+x \"{updatePath}\"").WaitForExitAsync();
                 }
 
-                TriggerRestart(tempPath);
+                TriggerRestart(updatePath);
             }
         }
 
