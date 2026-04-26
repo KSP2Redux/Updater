@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using CommandLine;
 
@@ -60,13 +61,22 @@ sealed class Program
                     var whereAmI = Path.GetFullPath(Environment.ProcessPath!);
                     File.Copy(whereAmI, exe, true);
                     Thread.Sleep(StageSettleDelay);
-                    var startInfo = new ProcessStartInfo(exe,
-                        $"--pid \"{Environment.ProcessId}\" --prev \"{whereAmI}\"")
+                    var stageArgs = $"--pid \"{Environment.ProcessId}\" --prev \"{whereAmI}\"";
+                    var startInfo = new ProcessStartInfo
                     {
-                        UseShellExecute = true,
-                        WorkingDirectory = Path.GetDirectoryName(exe),
-                        WindowStyle = ProcessWindowStyle.Normal
+                        UseShellExecute = false,
+                        WorkingDirectory = Path.GetDirectoryName(exe)
                     };
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        startInfo.FileName = exe;
+                        startInfo.Arguments = stageArgs;
+                    }
+                    else
+                    {
+                        startInfo.FileName = "setsid";
+                        startInfo.Arguments = $"-f \"{exe}\" {stageArgs}";
+                    }
                     Process.Start(startInfo);
                     Environment.Exit(0);
 #pragma warning restore RS0030

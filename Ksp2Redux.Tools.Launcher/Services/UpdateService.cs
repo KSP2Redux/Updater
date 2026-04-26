@@ -199,14 +199,24 @@ public class UpdateService : IUpdateService
     private void TriggerRestart(string newFilesPath)
     {
         var whereAmI = _environmentProvider.ProcessPath!;
-        var startInfo = new ProcessStartInfo(newFilesPath)
+        var args = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\"";
+        var startInfo = new ProcessStartInfo
         {
-            Arguments = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\"",
-            UseShellExecute = true,
-            WorkingDirectory = _fileSystem.Path.GetDirectoryName(newFilesPath),
-            WindowStyle = ProcessWindowStyle.Normal
+            UseShellExecute = false,
+            WorkingDirectory = _fileSystem.Path.GetDirectoryName(newFilesPath)
         };
-        
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            startInfo.FileName = newFilesPath;
+            startInfo.Arguments = args;
+        }
+        else
+        {
+            startInfo.FileName = "setsid";
+            startInfo.Arguments = $"-f \"{newFilesPath}\" {args}";
+        }
+
         Process.Start(startInfo);
         _environmentProvider.Exit(0);
     }
