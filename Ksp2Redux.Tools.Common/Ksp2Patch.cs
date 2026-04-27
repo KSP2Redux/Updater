@@ -300,6 +300,7 @@ public class Ksp2Patch : IDisposable
             // Extract patch & add entries
             foreach (PatchOperation operation in _manifest.operations)
             {
+                if (FileInformation.IgnoreFiles.Contains(NormalizeEntryPath(operation.fileName))) continue;
                 string entryFsName = NormalizeEntryPath(operation.fileName);
                 switch (operation.action)
                 {
@@ -337,6 +338,7 @@ public class Ksp2Patch : IDisposable
 
             foreach (PatchOperation operation in _manifest.operations)
             {
+                if (FileInformation.IgnoreFiles.Contains(NormalizeEntryPath(operation.fileName))) continue;
                 await semaphore.WaitAsync();
 
                 tasks.Add(Task.Run(async () =>

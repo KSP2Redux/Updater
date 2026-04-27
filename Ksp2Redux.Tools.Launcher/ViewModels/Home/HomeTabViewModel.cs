@@ -104,6 +104,7 @@ public partial class HomeTabViewModel : ViewModelBase
     }
 
     private bool _suppressInstallSelectionChange;
+    private bool _appliedLaunchVersionDefault;
     private void SyncSelectedInstall()
     {
         var activeId = _ksp2InstallService.ActiveEntry?.Id;
@@ -299,8 +300,20 @@ public partial class HomeTabViewModel : ViewModelBase
                 Versions.Add(releaseView);
             }
         }
-        
-        SelectedVersion = currentVersion;
+
+        GameVersionViewModel? defaultVersion = currentVersion;
+        if (!_appliedLaunchVersionDefault)
+        {
+            _appliedLaunchVersionDefault = true;
+            var latest = value.GetLatestVersion();
+            var installed = _ksp2InstallService.Ksp2?.GameVersion;
+            if (latest is not null && (installed is null || !latest.Equals(installed)))
+            {
+                defaultVersion = Versions.FirstOrDefault(v =>
+                    v.Channel == activeChannel && v.Version.Equals(latest)) ?? currentVersion;
+            }
+        }
+        SelectedVersion = defaultVersion;
     }
 
     private async Task RunPatchProcess()

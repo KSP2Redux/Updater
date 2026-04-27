@@ -19,6 +19,7 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     [ObservableProperty] public partial bool LaunchThroughSteam { get; set; }
     [ObservableProperty] public partial string SteamAppId { get; set; }
     [ObservableProperty] public partial string LaunchArguments { get; set; }
+    [ObservableProperty] public partial bool DisableGraphicsJobs { get; set; }
 
     public Ksp2InstallRowViewModel(IKsp2InstallService ksp2InstallService, Ksp2InstallEntry entry, bool isActive)
     {
@@ -31,6 +32,7 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
         LaunchThroughSteam = entry.LaunchThroughSteam;
         SteamAppId = entry.SteamAppId;
         LaunchArguments = entry.LaunchArguments;
+        DisableGraphicsJobs = entry.DisableGraphicsJobs;
     }
 
     partial void OnNameChanged(string value) => _ksp2InstallService.RenameInstall(_entry.Id, value);
@@ -67,4 +69,7 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
         _entry.LaunchArguments = normalized;
         _ksp2InstallService.NotifyInstallChanged(_entry.Id);
     }
+
+    partial void OnDisableGraphicsJobsChanged(bool value)
+        => _ksp2InstallService.UpdateInstallDisableGraphicsJobs(_entry.Id, value);
 }

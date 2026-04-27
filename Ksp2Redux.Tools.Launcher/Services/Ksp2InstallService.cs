@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -16,6 +17,11 @@ public interface IKsp2InstallService
 
     void TryLoadKsp2Install();
 
+    /// <summary>
+    /// Returns the active install the first time it's requested per session, null otherwise.
+    /// </summary>
+    Ksp2Install? ClaimActiveInstallForFirstCheckThisSession();
+
     Ksp2InstallEntry AddInstall(string exePath, string? name = null);
     void RemoveInstall(Guid id);
     void RenameInstall(Guid id, string newName);
@@ -24,11 +30,16 @@ public interface IKsp2InstallService
     void UpdateActiveLastInstalledVersion(GameVersion? version);
     void UpdateInstallReleaseChannel(Guid id, string channel);
     void UpdateInstallExePath(Guid id, string newExePath);
+    void UpdateInstallDisableGraphicsJobs(Guid id, bool value);
     void NotifyInstallChanged(Guid id);
+
+    void ApplyActiveInstallBootConfig();
 }
 
 public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService) : IKsp2InstallService
 {
+    private readonly HashSet<Guid> _checkedThisSession = new();
+
     public Ksp2Install? Ksp2 { get; private set; }
 
     public Ksp2InstallEntry? ActiveEntry =>
@@ -54,6 +65,14 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         }
     }
 
+    public Ksp2Install? ClaimActiveInstallForFirstCheckThisSession()
+    {
+        if (ActiveEntry is not { } entry) return null;
+        if (!_checkedThisSession.Add(entry.Id)) return null;
+        TryLoadKsp2Install();
+        return Ksp2;
+    }
+
     public Ksp2InstallEntry AddInstall(string exePath, string? name = null)
     {
         var entry = new Ksp2InstallEntry
@@ -77,6 +96,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (becomesActive)
         {
             TryLoadKsp2Install();
+            ApplyActiveInstallBootConfig();
             ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
         }
         return entry;
@@ -124,6 +144,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         launcherConfigService.Config.ActiveKsp2InstallId = id;
         launcherConfigService.Save();
         TryLoadKsp2Install();
+        ApplyActiveInstallBootConfig();
         ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -176,11 +197,59 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (id == launcherConfigService.Config.ActiveKsp2InstallId)
         {
             TryLoadKsp2Install();
+            ApplyActiveInstallBootConfig();
             ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
         }
         else
         {
             InstallsChanged?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    public void UpdateInstallDisableGraphicsJobs(Guid id, bool value)
+    {
+        var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
+        if (entry is null) return;
+        if (entry.DisableGraphicsJobs == value) return;
+        entry.DisableGraphicsJobs = value;
+        launcherConfigService.Save();
+        if (id == launcherConfigService.Config.ActiveKsp2InstallId)
+        {
+            ApplyActiveInstallBootConfig();
+            ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            InstallsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void ApplyActiveInstallBootConfig()
+    {
+        if (ActiveEntry is not { } entry) return;
+        if (Ksp2 is not { IsValid: true } ksp2) return;
+        var bootConfigPath = fileSystem.Path.Combine(ksp2.InstallDir, "KSP2_x64_Data", "boot.config");
+
+        const string Key = "gfx-enable-gfx-jobs";
+        var desiredLine = $"{Key}={(entry.DisableGraphicsJobs ? "0" : "1")}";
+
+        try
+        {
+            if (!fileSystem.File.Exists(bootConfigPath)) return;
+            var lines = fileSystem.File.ReadAllLines(bootConfigPath).ToList();
+            var idx = lines.FindIndex(l => l.StartsWith(Key + "=", StringComparison.Ordinal));
+            if (idx >= 0)
+            {
+                if (lines[idx] == desiredLine) return;
+                lines[idx] = desiredLine;
+            }
+            else
+            {
+                lines.Add(desiredLine);
+            }
+            fileSystem.File.WriteAllLines(bootConfigPath, lines);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }

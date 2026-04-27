@@ -12,4 +12,5 @@ public class Ksp2InstallEntry
     public bool LaunchThroughSteam { get; set; } = false;
     public string SteamAppId { get; set; } = "954850";
     public string LaunchArguments { get; set; } = "-popupwindow";
+    public bool DisableGraphicsJobs { get; set; } = false;
 }

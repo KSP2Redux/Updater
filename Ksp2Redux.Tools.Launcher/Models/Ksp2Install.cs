@@ -28,6 +28,8 @@ public class Ksp2Install
     /// </summary>
     public GameVersion? GameVersion { get; private set; }
 
+    public Exception? VersionDetectionException { get; private set; }
+
     public string InstallDir { get; }
 
     public string ExePath { get; }
@@ -66,7 +68,7 @@ public class Ksp2Install
                 isEpic ? Distribution.Epic :
                 Distribution.Portable;
 
-            GameVersion = TryGetGameVersionFromMainAssembly(InstallDir, Distribution == Distribution.Redux);
+            TryDetectGameVersionFromMainAssembly(InstallDir, Distribution == Distribution.Redux);
         }
         else
         {
@@ -74,7 +76,7 @@ public class Ksp2Install
         }
     }
 
-    private GameVersion? TryGetGameVersionFromMainAssembly(string installDir, bool isRedux)
+    private void TryDetectGameVersionFromMainAssembly(string installDir, bool isRedux)
     {
         try
         {
@@ -82,11 +84,12 @@ public class Ksp2Install
             using var module = _moduleDefinitionService.ReadModule(mainAssembly);
             var versionType = module.Types.First(t => t.Name == "VersionID");
 
-            return versionType is not null ? GameVersion.FromVersionIDType(versionType, isRedux) : null;
+            GameVersion = versionType is not null ? GameVersion.FromVersionIDType(versionType, isRedux) : null;
         }
         catch (Exception e)
         {
-            return null;
+            GameVersion = null;
+            VersionDetectionException = e;
         }
     }
 

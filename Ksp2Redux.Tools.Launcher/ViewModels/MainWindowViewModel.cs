@@ -69,9 +69,13 @@ public partial class MainWindowViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() => IsUpdateDownloading = downloading);
 
         _tabNavigatorService.CurrentTabChanged += CurrentTabChanged;
-        
+
+        _ksp2InstallService.ActiveInstallChanged += (_, _) =>
+            Dispatcher.UIThread.Post(async () => await CheckActiveInstallWarnings());
+
         _ = LoadNews().ContinueWith(LogErrors);
         ksp2InstallService.TryLoadKsp2Install();
+        ksp2InstallService.ApplyActiveInstallBootConfig();
         // ReleasesFeed =
         // [
         //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir),
@@ -141,6 +145,8 @@ public partial class MainWindowViewModel : ViewModelBase
                     windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
             }
         }
+
+        await CheckActiveInstallWarnings();
         
         // foreach (var feed in ReleasesFeed)
         // {
@@ -170,6 +176,27 @@ public partial class MainWindowViewModel : ViewModelBase
         await HomeTab.UpdateVersionsList(false);
         
         // Now schedule update checks every 10 minutes
+    }
+
+    private async Task CheckActiveInstallWarnings()
+    {
+        var ksp2 = _ksp2InstallService.ClaimActiveInstallForFirstCheckThisSession();
+        if (ksp2 is null) return;
+
+        if (!ksp2.IsValid)
+        {
+            await MessageBoxManager.GetMessageBoxStandard("Invalid EXE",
+                $"The configured KSP2 EXE path is not valid:\n{ksp2.ExePath}", ButtonEnum.Ok,
+                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+            return;
+        }
+
+        if (ksp2.VersionDetectionException is { } e)
+        {
+            await MessageBoxManager.GetMessageBoxStandard("Could not detect version",
+                $"{e.GetType().FullName}\n\n{e}", ButtonEnum.Ok,
+                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+        }
     }
 
     private async Task LoadNews()

@@ -125,6 +125,18 @@ public class ManifestReleasesFeed
             }
     }
 
+    public GameVersion? GetLatestVersion()
+    {
+        var latest = manifest?.patches?
+            .Where(p => !string.IsNullOrWhiteSpace(p.version))
+            .OrderByDescending(p => p.releasedAt)
+            .FirstOrDefault();
+        if (latest is null) return null;
+        var v = latest.ParseVersion();
+        v.Channel = CurrentChannel;
+        return v;
+    }
+
     // private InstallPlan GetBestFromPrepatchToVersion(GameVersion toGameVersion)
     // {
     //     var lowestCostSoFar = int.MaxValue;

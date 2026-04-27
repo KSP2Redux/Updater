@@ -22,11 +22,12 @@ public static class FileInformation
         Path.Combine(Ksp2X64Data, "StreamingAssets", "aa")
     ];
 
-    public static readonly HashSet<string> IgnoreFiles =
+    public static readonly HashSet<string> IgnoreFiles = new(
     [
         Path.Combine(Ksp2X64Data, "data.unity3d"),
+        Path.Combine(Ksp2X64Data, "boot.config"),
         "Ksp2.log",
         "redux.log",
         "redux.log.old",
-    ];
+    ], StringComparer.OrdinalIgnoreCase);
 }
