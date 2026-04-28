@@ -11,7 +11,7 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <LangVersion>preview</LangVersion>
-        <Version>0.0.6.0</Version>
+        <Version>0.0.6.1</Version>
     </PropertyGroup>
 
     <ItemGroup>
@@ -39,6 +39,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.3.26207.106" />
+        <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
         <PackageReference Include="Mono.Cecil" Version="0.11.6" />
         <PackageReference Include="Octokit" Version="14.0.0" />
         <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
@@ -60,6 +61,12 @@
         <DependentUpon>NewsItemView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+        <RuntimeHostConfigurationOption
+                Include="System.Globalization.AppLocalIcu"
+                Value="72.1" />
     </ItemGroup>
 
     <ItemGroup>
