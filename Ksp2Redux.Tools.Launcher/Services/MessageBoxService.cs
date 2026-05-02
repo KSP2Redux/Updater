@@ -21,6 +21,7 @@ public interface IMessageBoxService
 
 public class MessageBoxService : IMessageBoxService
 {
+#pragma warning disable RS0030
     private static Window? OwnerWindow =>
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 
@@ -44,4 +45,5 @@ public class MessageBoxService : IMessageBoxService
             ? await box.ShowWindowDialogAsync(owner)
             : await box.ShowAsync();
     }
+#pragma warning restore RS0030
 }
