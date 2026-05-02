@@ -14,6 +14,7 @@ public interface IAssemblyService
     AssemblyName GetName();
     
     Version? GetVersion();
+    Assembly? GetEntryAssembly();
 }
 
 public class ExecutingAssemblyService : IAssemblyService
@@ -28,6 +29,9 @@ public class ExecutingAssemblyService : IAssemblyService
 
     public Version? GetVersion()
         => Assembly.GetExecutingAssembly().GetName().Version;
+
+    public Assembly? GetEntryAssembly()
+        => Assembly.GetEntryAssembly();
 
 #pragma warning restore RS0030
 }

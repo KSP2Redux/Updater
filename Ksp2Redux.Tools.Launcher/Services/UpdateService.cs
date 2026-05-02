@@ -41,11 +41,8 @@ public class UpdateService : IUpdateService
     private IAssemblyService _assemblyService;
     private ILauncherConfigService _launcherConfigService;
     private IMessageBoxService _messageBoxService;
-#pragma warning disable RS0030
-#pragma warning disable IL3000
-    private static bool _isSingleFile =  string.IsNullOrEmpty(Assembly.GetEntryAssembly()?.Location);
-#pragma warning restore IL3000
-#pragma warning restore RS0030
+
+    private static bool _isSingleFile;
 
     private class GitHubReleaseAsset
     {
@@ -76,6 +73,9 @@ public class UpdateService : IUpdateService
         var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         _owner = parts[0];
         _repo = parts[1];
+#pragma warning disable IL3000
+        _isSingleFile = string.IsNullOrEmpty(_assemblyService.GetEntryAssembly()?.Location);
+#pragma warning restore IL3000
     }
 
     /// <summary>
