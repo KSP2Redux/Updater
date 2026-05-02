@@ -1,4 +1,5 @@
 ﻿using System.IO.Abstractions.TestingHelpers;
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
@@ -103,6 +104,7 @@ public class ConfigTest
     [AvaloniaTest]
     public void Config_WithFeed_PatchesInComboBox()
     {
+        // Arrange
         TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
         TestAppBuilder.FileSystem.AddDirectory("AppDataLocal/Ksp2Redux");
         MockFileData configFile = new(
@@ -183,12 +185,14 @@ public class ConfigTest
                 schemaVersion = 0 
             });
         
+        // Act
         MainWindow window = new MainWindow
         {
             DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
         };
         window.Show();
 
+        // Assert
         GameVersionViewModel expectedSelectedItem = new(new()
         {
             BuildNumber = "1",
@@ -220,5 +224,127 @@ public class ConfigTest
         Assert.That(combobox.GroupedItems, Is.Not.Null);
         Assert.That(combobox.GroupedItems, Is.Not.Empty);
         Assert.That(combobox.GroupedItems.OfType<GameVersionViewModel>(), Is.EquivalentTo(expectedItems).UsingPropertiesComparer());
+    }
+
+    [AvaloniaTest]
+    public void Config_NoConfigSteamGameStock_DetectsGameCreateConfig()
+    {
+        TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
+        TestAppBuilder.FileSystem.AddDirectory("AppDataLocal");
+
+        MockFileData libraryFoldersFile = new(
+            """
+            "libraryfolders"
+            {
+            	"0"
+            	{
+            		"path"		"C:\\Program Files (x86)\\Steam"
+            	}
+            }
+            """
+        );
+        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf", libraryFoldersFile);
+        
+        MockFileData appmanifestFile = new(
+            """
+            "AppState"
+            {
+            	"installdir"		"Kerbal Space Program 2"
+            }
+            """
+        );
+        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\appmanifest_954850.acf", appmanifestFile);
+        
+        TestAppBuilder.FileSystem.AddFileFromEmbeddedResource(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64.exe",
+            Assembly.GetExecutingAssembly(), "Ksp2Redux.Tools.Launcher.Test.MockGame.MockGame.exe");
+
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed()
+        {
+            Items = []
+        });
+        
+        TestAppBuilder.MessageBoxService.Setup(m => m.ShowMessageBoxAsOwnedAsync(
+                It.IsAny<string>(), It.IsAny<string>(), 
+                It.Is<ButtonEnum>(b => b == ButtonEnum.Ok || b == ButtonEnum.OkAbort || b == ButtonEnum.OkCancel),
+                It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()
+            ))
+            .ReturnsAsync(ButtonResult.Ok);
+        TestAppBuilder.MessageBoxService.Setup(m => m.ShowMessageBoxAsOwnedAsync(
+                It.IsAny<string>(), It.IsAny<string>(), 
+                It.Is<ButtonEnum>(b => b == ButtonEnum.YesNo || b == ButtonEnum.YesNoAbort || b == ButtonEnum.YesNoCancel),
+                It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()
+            ))
+            .ReturnsAsync(ButtonResult.Yes);
+        
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .ReturnsAsync((FeedInfo f) => new ManifestReleasesFeed.Manifest
+            {
+                channel = f.Filename.Split('-', '.')[1],
+                generatedAt = new DateTime(2020, 1, 4),
+                patches = [],
+                schemaVersion = 0 
+            });
+
+        var gameExeModule = TestHelpers.GenerateMockVersionID(
+            ("VERSION_TEXT", "0.2.2.0.32914"),
+            ("DEBUG_INFO", "BUILD_INFO")
+        );
+
+        TestAppBuilder.ModuleDefinitionService
+            .Setup(m => m.ReadModule(
+                @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Managed\Assembly-CSharp.dll"))
+            .Returns(gameExeModule.module);
+        
+        // Act
+        MainWindow window = new MainWindow
+        {
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+        };
+        window.Show();
+        //Dispatcher.UIThread.RunJobs();
+        
+        // Assert
+        GameVersionViewModel expectedSelectedItem = new(new()
+        {
+            BuildNumber = "32914",
+            VersionNumber = new Version(0, 2, 2, 0),
+            Channel = "stable",
+            CommitHash = null
+        });
+        
+        TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(
+            "KSP2 Install Found", 
+            It.IsAny<string>(),
+            ButtonEnum.YesNo,
+            It.IsAny<Icon>(),
+            It.IsAny<object>(),
+            WindowStartupLocation.CenterOwner));
+        
+        GroupedComboBox? combobox = window
+            .GetVisualDescendants()
+            .OfType<GroupedComboBox>()
+            .FirstOrDefault(x => x.Name == "VersionSelector");
+        Assert.That(combobox, Is.Not.Null);
+        
+        Assert.That(combobox.SelectedItem, Is.TypeOf<GameVersionViewModel>());
+        Assert.That((GameVersionViewModel)combobox.SelectedItem, Is.EqualTo(expectedSelectedItem).UsingPropertiesComparer());
+
+        string expectedLauncherConfigName = """
+                  "Name": "Kerbal Space Program 2",
+            """;
+        
+        string expectedLauncherConfigExePath = """
+                  "ExePath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kerbal Space Program 2\\KSP2_x64.exe",
+            """;
+        
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json"), Is.True);
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json").TextContents,
+            Contains.Substring(expectedLauncherConfigName));
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json").TextContents,
+            Contains.Substring(expectedLauncherConfigExePath));
     }
 }

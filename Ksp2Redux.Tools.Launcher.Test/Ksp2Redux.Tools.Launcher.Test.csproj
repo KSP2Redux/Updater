@@ -35,4 +35,24 @@
       <None Remove="MockExecutable.sh" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.dll" />
+      <EmbeddedResource Include="MockGame\MockGame.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.exe" />
+      <EmbeddedResource Include="MockGame\MockGame.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.pdb" />
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.deps.json" />
+      <EmbeddedResource Include="MockGame\MockGame.deps.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.runtimeconfig.json" />
+      <EmbeddedResource Include="MockGame\runtimeconfig.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+    </ItemGroup>
+
 </Project>

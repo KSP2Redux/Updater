@@ -31,9 +31,11 @@ public static class TestAppBuilder
 
     public static AppBuilder BuildAvaloniaApp()
     {
-        InitServiceProvider();
-
-        return AppBuilder.Configure(() => new App(ServiceProvider))
+        return AppBuilder.Configure(() =>
+            {
+                InitServiceProvider();  // Resets all services
+                return new App(ServiceProvider);
+            })
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace()
