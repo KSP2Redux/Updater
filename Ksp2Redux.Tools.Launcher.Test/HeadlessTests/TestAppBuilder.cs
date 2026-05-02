@@ -77,6 +77,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(ZipFileService.Object);
         serviceCollection.AddSingleton(UpdateService.Object);
         serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>(); 
+        serviceCollection.AddSingleton(MessageBoxService.Object); 
         ServiceProvider = serviceCollection.BuildServiceProvider();
     }
 }
