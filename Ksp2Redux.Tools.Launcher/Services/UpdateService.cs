@@ -40,11 +40,9 @@ public class UpdateService : IUpdateService
     private IEnvironmentProvider _environmentProvider;
     private IAssemblyService _assemblyService;
     private ILauncherConfigService _launcherConfigService;
-#pragma warning disable RS0030
-#pragma warning disable IL3000
-    private static bool _isSingleFile =  string.IsNullOrEmpty(Assembly.GetEntryAssembly()?.Location);
-#pragma warning restore IL3000
-#pragma warning restore RS0030
+    private IMessageBoxService _messageBoxService;
+
+    private static bool _isSingleFile;
 
     private class GitHubReleaseAsset
     {
@@ -60,7 +58,7 @@ public class UpdateService : IUpdateService
         [JsonPropertyName("assets")] public GitHubReleaseAsset[] Assets { get; set; } = [];
     }
 
-    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService)
+    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService)
     {
         _http = new HttpClient();
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(
@@ -68,12 +66,16 @@ public class UpdateService : IUpdateService
         _fileSystem = fileSystem;
         _environmentProvider = environmentProvider;
         _assemblyService = assemblyService;
+        _messageBoxService = messageBoxService;
         _launcherConfigService = launcherConfigService;
         _version = assemblyService.GetVersion();
         var uri = new Uri(launcherConfigService.Config.LauncherRepo.TrimEnd('/'));
         var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         _owner = parts[0];
         _repo = parts[1];
+#pragma warning disable IL3000
+        _isSingleFile = string.IsNullOrEmpty(_assemblyService.GetEntryAssembly()?.Location);
+#pragma warning restore IL3000
     }
 
     /// <summary>
@@ -103,15 +105,15 @@ public class UpdateService : IUpdateService
             if (!_isSingleFile)
             {
                 Console.WriteLine("Running in non-single-file version somehow, will not perform update");
-                await MessageBoxManager.GetMessageBoxStandard("Update Found",
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
                     "You are not running in a single file build, rebuild from the latest main to be able to install Redux.", ButtonEnum.Ok,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                    windowStartupLocation: WindowStartupLocation.CenterOwner);
                 return false;
             }
 
-            var result = await MessageBoxManager.GetMessageBoxStandard("Update Found",
+            var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
                 "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.", ButtonEnum.OkCancel,
-                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
 
             if (result != ButtonResult.Ok) return false;
 
@@ -183,9 +185,9 @@ public class UpdateService : IUpdateService
     {
         var repo = _launcherConfigService.Config.LauncherRepo.TrimEnd('/');
         var releasesUrl = $"{repo}/releases";
-        await MessageBoxManager.GetMessageBoxStandard("Update Failed!",
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
             $"Please download the latest version of the launcher from\n{releasesUrl}", ButtonEnum.Ok,
-            windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+            windowStartupLocation: WindowStartupLocation.CenterOwner);
         try
         {
             Process.Start(new ProcessStartInfo(releasesUrl) { UseShellExecute = true });

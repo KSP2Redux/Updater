@@ -20,8 +20,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Ksp2Redux.Tools.Launcher;
 
-public partial class App : Application
+public partial class App(IServiceProvider? serviceProvider = null) : Application
 {
+    private IServiceProvider? _serviceProvider = serviceProvider;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -31,37 +33,13 @@ public partial class App : Application
     {
         LoadGlobalStylesheet();
 
-        ServiceCollection serviceCollection = new();
-        serviceCollection.AddSingleton<MainWindowViewModel>();
-        serviceCollection.AddSingleton<HomeTabViewModel>();
-        serviceCollection.AddSingleton<CommunityTabViewModel>();
-        serviceCollection.AddSingleton<ModsTabViewModel>();
-        serviceCollection.AddSingleton<SettingsTabViewModel>();
-        serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
-        serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
-        serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
-        serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
-        serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
-        serviceCollection.AddSingleton<IFileSystem, FileSystem>();
-        serviceCollection.AddSingleton<ICacheService, CacheService>();
-        serviceCollection.AddSingleton<INewsService, NewsService>();
-        serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
-        serviceCollection.AddSingleton<IAssemblyService, ExecutingAssemblyService>();
-        serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
-        serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
-        serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();
-        serviceCollection.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
-        serviceCollection.AddSingleton<IZipFileService, ZipFileService>();
-        serviceCollection.AddSingleton<IUpdateService, UpdateService>();
-        serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
-        
-        ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
+        _serviceProvider ??= DefaultServiceProviderProvider.GetDefaultServiceProvider();
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new MainWindow
             {
-                DataContext = serviceProvider.GetRequiredService<MainWindowViewModel>(),
+                DataContext = _serviceProvider.GetRequiredService<MainWindowViewModel>(),
             };
         }
 
