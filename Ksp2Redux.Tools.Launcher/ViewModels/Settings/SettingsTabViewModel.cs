@@ -26,6 +26,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly ITabNavigatorService _tabNavigatorService;
     private readonly HomeTabViewModel _homeTabViewModel;
     private readonly IAssemblyService _assemblyService;
+    private readonly IMessageBoxService _messageBoxService;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -57,7 +58,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
-        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService)
+        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService, IMessageBoxService messageBoxService)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
@@ -66,6 +67,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         _ksp2InstallService = ksp2InstallService;
         _homeTabViewModel = homeTabViewModel;
         _assemblyService = assemblyService;
+        _messageBoxService = messageBoxService;
 
         _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
         _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
@@ -166,22 +168,19 @@ public partial class SettingsTabViewModel : ViewModelBase
         var activeExe = _ksp2InstallService.ActiveEntry?.ExePath;
         if (string.IsNullOrWhiteSpace(activeExe))
         {
-            await MessageBoxManager.GetMessageBoxStandard("Error!", "No active KSP2 install selected.",
-                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", "No active KSP2 install selected.",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
         var installDir = _fileSystem.Path.GetDirectoryName(activeExe);
         if (string.IsNullOrEmpty(installDir) || !_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
         {
-            await MessageBoxManager.GetMessageBoxStandard("Error!", "Redux is not installed...", windowStartupLocation:WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", "Redux is not installed...", windowStartupLocation:WindowStartupLocation.CenterOwner);
             return;
         }
 
-        var box = MessageBoxManager.GetMessageBoxStandard("Confirm", "Are you sure you want to uninstall Redux?",
+        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Confirm", "Are you sure you want to uninstall Redux?",
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
-
-
-        var result = await box.ShowAsOwnedAsync();
         if (result != ButtonResult.Yes) return;
 
         _cacheService.RecursivelyRestoreCache(installDir);
@@ -190,7 +189,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         await _homeTabViewModel.UpdateVersionsList();
 
 
-        await MessageBoxManager.GetMessageBoxStandard("Done!", "KSP2 Redux Successfully Uninstalled", windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Done!", "KSP2 Redux Successfully Uninstalled", windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
     public async Task InstallFromPatchFile()

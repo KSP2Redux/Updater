@@ -47,3 +47,6 @@ M:System.Reflection.Assembly.GetCallingAssembly; (Redux) Use IAssemblyService in
 // Usage of ZipFile
 T:System.IO.Compression.ZipFile; (Redux) Use IZipFileService instead. Add the method if it doesn't exist.
 M:System.IO.Compression.ZipFileExtensions.ExtractToDirectory(System.IO.Compression.ZipArchive,System.String,System.Boolean); (Redux) Use IZipFileService instead.
+
+// Usage of MessageBox
+T:MsBox.Avalonia.MessageBoxManager; (Redux) Use IMessageBoxService instead. Add the method if it doesn't exist.
