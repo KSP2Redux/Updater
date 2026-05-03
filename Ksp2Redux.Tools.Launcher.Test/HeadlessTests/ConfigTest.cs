@@ -164,13 +164,13 @@ public class ConfigTest
 
         ManifestReleasesFeed.Patch patch0 = new()
         {
-            releasedAt = new DateTime(2020, 1, 1),
+            releasedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             version = "1.1.1.0.0",
             checksum_sha256 = "0"
         };
         ManifestReleasesFeed.Patch patch1 = new()
         {
-            releasedAt = new DateTime(2020, 1, 2),
+            releasedAt = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc),
             version = "1.1.2.0.1",
             checksum_sha256 = "1"
         };
@@ -180,9 +180,9 @@ public class ConfigTest
             .ReturnsAsync(new ManifestReleasesFeed.Manifest
             {
                 channel = "channel-1",
-                generatedAt = new DateTime(2020, 1, 4),
+                generatedAt = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc),
                 patches = [patch0, patch1],
-                schemaVersion = 0 
+                schemaVersion = 1
             });
         
         // Act
@@ -229,75 +229,20 @@ public class ConfigTest
     [AvaloniaTest]
     public void Config_NoConfigSteamGameStock_DetectsGameCreateConfig()
     {
-        TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
-        TestAppBuilder.FileSystem.AddDirectory("AppDataLocal");
-
-        MockFileData libraryFoldersFile = new(
-            """
-            "libraryfolders"
-            {
-            	"0"
-            	{
-            		"path"		"C:\\Program Files (x86)\\Steam"
-            	}
-            }
-            """
-        );
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf", libraryFoldersFile);
-        
-        MockFileData appmanifestFile = new(
-            """
-            "AppState"
-            {
-            	"installdir"		"Kerbal Space Program 2"
-            }
-            """
-        );
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\appmanifest_954850.acf", appmanifestFile);
-        
-        TestAppBuilder.FileSystem.AddFileFromEmbeddedResource(
-            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64.exe",
-            Assembly.GetExecutingAssembly(), "Ksp2Redux.Tools.Launcher.Test.MockGame.MockGame.exe");
-
+        TestHelpers.MockKsp2StockSteamInstall();
         TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
-
-        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed()
-        {
-            Items = []
-        });
-        
-        TestAppBuilder.MessageBoxService.Setup(m => m.ShowMessageBoxAsOwnedAsync(
-                It.IsAny<string>(), It.IsAny<string>(), 
-                It.Is<ButtonEnum>(b => b == ButtonEnum.Ok || b == ButtonEnum.OkAbort || b == ButtonEnum.OkCancel),
-                It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()
-            ))
-            .ReturnsAsync(ButtonResult.Ok);
-        TestAppBuilder.MessageBoxService.Setup(m => m.ShowMessageBoxAsOwnedAsync(
-                It.IsAny<string>(), It.IsAny<string>(), 
-                It.Is<ButtonEnum>(b => b == ButtonEnum.YesNo || b == ButtonEnum.YesNoAbort || b == ButtonEnum.YesNoCancel),
-                It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()
-            ))
-            .ReturnsAsync(ButtonResult.Yes);
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed{ Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
         
         TestAppBuilder.ManifestReleasesFeedProviderService
             .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
             .ReturnsAsync((FeedInfo f) => new ManifestReleasesFeed.Manifest
             {
                 channel = f.Filename.Split('-', '.')[1],
-                generatedAt = new DateTime(2020, 1, 4),
+                generatedAt = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc),
                 patches = [],
-                schemaVersion = 0 
+                schemaVersion = 1
             });
-
-        var gameExeModule = TestHelpers.GenerateMockVersionID(
-            ("VERSION_TEXT", "0.2.2.0.32914"),
-            ("DEBUG_INFO", "BUILD_INFO")
-        );
-
-        TestAppBuilder.ModuleDefinitionService
-            .Setup(m => m.ReadModule(
-                @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Managed\Assembly-CSharp.dll"))
-            .Returns(gameExeModule.module);
         
         // Act
         MainWindow window = new MainWindow
@@ -305,7 +250,6 @@ public class ConfigTest
             DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
         };
         window.Show();
-        //Dispatcher.UIThread.RunJobs();
         
         // Assert
         GameVersionViewModel expectedSelectedItem = new(new()

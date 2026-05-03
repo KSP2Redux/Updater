@@ -1,3 +1,5 @@
+using System.IO.Abstractions;
+
 namespace Ksp2Redux.Tools.Common;
 
 public static class FileInformation
@@ -10,22 +12,22 @@ public static class FileInformation
     public const string MonoBleedingEdge = "MonoBleedingEdge";
     public const string Ksp2X64Data = "KSP2_x64_Data";
 
-    public static readonly string Managed = Path.Combine(Ksp2X64Data, "Managed");
+    public static string Managed(IFileSystem fileSystem) => fileSystem.Path.Combine(Ksp2X64Data, "Managed");
 
     public static readonly List<string> CopyFolders = [Ksp2X64Data, MonoBleedingEdge];
     public static readonly List<string> CopyFiles = [Executable, CrashHandler, UnityPlayer, WinPixEventRuntime];
 
-    public static readonly HashSet<string> IgnoreDirectories =
+    public static HashSet<string> IgnoreDirectories(IFileSystem fileSystem) =>
     [
         "PDLauncher",
         "BepInEx",
-        Path.Combine(Ksp2X64Data, "StreamingAssets", "aa")
+        fileSystem.Path.Combine(Ksp2X64Data, "StreamingAssets", "aa")
     ];
 
-    public static readonly HashSet<string> IgnoreFiles = new(
+    public static HashSet<string> IgnoreFiles(IFileSystem fileSystem) => new(
     [
-        Path.Combine(Ksp2X64Data, "data.unity3d"),
-        Path.Combine(Ksp2X64Data, "boot.config"),
+        fileSystem.Path.Combine(Ksp2X64Data, "data.unity3d"),
+        fileSystem.Path.Combine(Ksp2X64Data, "boot.config"),
         "Ksp2.log",
         "redux.log",
         "redux.log.old",
