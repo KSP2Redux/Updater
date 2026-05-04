@@ -51,18 +51,18 @@ jobs:
       run: |
         dotnet publish Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
         dotnet publish Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
-        mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Updater-win-x64.exe
-        mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Updater-linux-x64
+        mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Redux-win-x64.exe
+        mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Redux-linux-x64
 
     - name: Create Release with Auto-Notes
       if: steps.check_tag.outputs.exists == 'false'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.get_version.outputs.TAG }}
-        TITLE: "Updater v${{ steps.get_version.outputs.VERSION }}"
+        TITLE: "KSP2 Redux Updater v${{ steps.get_version.outputs.VERSION }}"
       run: |
         gh release create "$TAG" \
-          ./publish/Ksp2Updater-win-x64.exe \
-          ./publish/Ksp2Updater-linux-x64 \
+          ./publish/Ksp2Redux-win-x64.exe \
+          ./publish/Ksp2Redux-linux-x64 \
           --title "$TITLE" \
           --generate-notes
