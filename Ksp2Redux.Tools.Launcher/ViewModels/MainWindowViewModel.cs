@@ -35,6 +35,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IUpdateService _updateService;
     private readonly IKsp2DetectorService _ksp2DetectorService;
     private readonly IKsp2InstallService _ksp2InstallService;
+    private readonly IMessageBoxService _messageBoxService;
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -52,7 +53,7 @@ public partial class MainWindowViewModel : ViewModelBase
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
         INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService,
-        IKsp2DetectorService ksp2DetectorService)
+        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
@@ -62,6 +63,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _newsService = newsService;
         _manifestReleasesFeedProviderService = manifestReleasesFeedProviderService;
         _ksp2DetectorService = ksp2DetectorService;
+        _messageBoxService = messageBoxService;
         _ksp2InstallService = ksp2InstallService;
 
         _updateService = updateService;
@@ -83,12 +85,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // ];
         // ReleasesFeed = [];
 
-        _ = InitializeAsync().ContinueWith(LogErrors);
-
         HomeTab = homeTab;
         CommunityTab = communityTab;
         ModsTab = modsTab;
         SettingsTab = settingsTabViewModel;
+        
+        _ = InitializeAsync().ContinueWith(LogErrors);
 
         var timer = new DispatcherTimer
         {
@@ -116,9 +118,9 @@ public partial class MainWindowViewModel : ViewModelBase
         if (Program.PartialUpdate)
         {
             var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
-            await MessageBoxManager.GetMessageBoxStandard("Partial Update Complete",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Partial Update Complete",
                 $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
 
         // First start the updater service
@@ -129,9 +131,9 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
             {
-                var option = await MessageBoxManager.GetMessageBoxStandard("KSP2 Install Found",
+                var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Found",
                     $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                    windowStartupLocation: WindowStartupLocation.CenterOwner);
 
                 if (option == ButtonResult.Yes)
                 {
@@ -140,9 +142,9 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             else
             {
-                await MessageBoxManager.GetMessageBoxStandard("KSP2 Install Not Found!",
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Not Found!",
                     "Your KSP2 install was not detected, go to the settings tab to set it", ButtonEnum.Ok,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                    windowStartupLocation: WindowStartupLocation.CenterOwner);
             }
         }
 
@@ -185,17 +187,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!ksp2.IsValid)
         {
-            await MessageBoxManager.GetMessageBoxStandard("Invalid EXE",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Invalid EXE",
                 $"The configured KSP2 EXE path is not valid:\n{ksp2.ExePath}", ButtonEnum.Ok,
-                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
         if (ksp2.VersionDetectionException is { } e)
         {
-            await MessageBoxManager.GetMessageBoxStandard("Could not detect version",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Could not detect version",
                 $"{e.GetType().FullName}\n\n{e}", ButtonEnum.Ok,
-                windowStartupLocation: WindowStartupLocation.CenterOwner).ShowAsOwnedAsync();
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 
