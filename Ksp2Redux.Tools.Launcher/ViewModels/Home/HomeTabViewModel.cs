@@ -423,6 +423,7 @@ public partial class HomeTabViewModel : ViewModelBase
         UpdateStepsProgress(0, plan.Steps.Count);
         _installPlanService.Describe(plan, Log);
 
+        // TODO: Could this be replaced by Dispatcher.UIThread.Post?
         await Task.Run(
             () => _installPlanService.ApplyToFolder(
                 plan,

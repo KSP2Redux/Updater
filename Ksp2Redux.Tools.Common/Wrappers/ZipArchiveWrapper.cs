@@ -9,6 +9,7 @@ public interface IZipArchive : IDisposable
     IZipArchiveEntry? GetEntry(string entryName);
     IZipArchiveEntry CreateEntry(string entryName);
     void ExtractToDirectory(IFileSystem fileSystem, string destinationDirectoryName, bool overwriteFiles);
+    IZipArchiveEntry CreateEntryFromFile(string sourceFileName, string entryName);
 }
 
 #pragma warning disable RS0030
@@ -39,6 +40,9 @@ public class ZipArchiveWrapper(ZipArchive archive) : IZipArchive
             throw new InvalidOperationException("Extracting a real zip archive in a mock file system is not supported. Please use a mock zip archive instead.");
         archive.ExtractToDirectory(destinationDirectoryName, overwriteFiles);
     }
+    
+    public IZipArchiveEntry CreateEntryFromFile(string sourceFileName, string entryName)
+        => new ZipArchiveEntryWrapper(archive.CreateEntryFromFile(sourceFileName, entryName));
 
     public void Dispose()
     {

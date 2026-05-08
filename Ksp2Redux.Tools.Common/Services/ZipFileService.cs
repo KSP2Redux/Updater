@@ -6,6 +6,7 @@ namespace Ksp2Redux.Tools.Common.Service;
 public interface IZipFileService
 {
     IZipArchive OpenRead(string archiveFileName);
+    IZipArchive NewArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen);
     void ExtractToDirectory(IZipArchive source, string destinationDirectoryName, bool overwriteFiles);
 }
 
@@ -15,6 +16,9 @@ public class ZipFileService(IFileSystem fileSystem) : IZipFileService
     
     public IZipArchive OpenRead(string archiveFileName)
         => new ZipArchiveWrapper(ZipFile.OpenRead(archiveFileName));
+    
+    public IZipArchive NewArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen)
+        => new ZipArchiveWrapper(new ZipArchive(stream, mode, leaveOpen));
     
     public void ExtractToDirectory(IZipArchive source, string destinationDirectoryName, bool overwriteFiles)
         => source.ExtractToDirectory(fileSystem, destinationDirectoryName, overwriteFiles);

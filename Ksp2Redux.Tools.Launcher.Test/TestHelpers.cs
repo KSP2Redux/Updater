@@ -1,5 +1,6 @@
 ﻿using System.IO.Abstractions.TestingHelpers;
 using System.Reflection;
+using System.Text;
 using Avalonia.Controls;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.Test.HeadlessTests;
@@ -85,6 +86,8 @@ public static class TestHelpers
             .Setup(m => m.ReadModule(
                 @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Managed\Assembly-CSharp.dll"))
             .Returns(gameExeModule.module);
+        
+        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Plugins\Steamworks.NET.txt", new MockFileData(""));
     }
 
     public static void MockMessageBoxAcceptAll()
@@ -101,5 +104,16 @@ public static class TestHelpers
                 It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()
             ))
             .ReturnsAsync(ButtonResult.Yes);
+    }
+
+    public static byte[] GetDiff(string oldContent, string newContent)
+        => GetDiff(Encoding.ASCII.GetBytes(oldContent), Encoding.ASCII.GetBytes(newContent));
+    public static byte[] GetDiff(byte[] oldContent, string newContent)
+        => GetDiff(oldContent, Encoding.ASCII.GetBytes(newContent));
+    public static byte[] GetDiff(byte[] oldContent, byte[] newContent)
+    {
+        MemoryStream output = new();
+        BsDiff.BinaryPatch.Create(oldContent, newContent, output);
+        return output.ToArray();
     }
 }

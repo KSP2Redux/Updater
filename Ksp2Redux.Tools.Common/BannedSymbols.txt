@@ -49,8 +49,8 @@ T:System.IO.Compression.ZipFile; (Redux) Use IZipFileService instead. Add the me
 M:System.IO.Compression.ZipFileExtensions.ExtractToDirectory(System.IO.Compression.ZipArchive,System.String,System.Boolean); (Redux) Use IZipFileService instead.
 
 // Usage of ZipArchive and ZipArchiveEntry
-T:System.IO.Compression.ZipArchive; (Redux) Use IZipArchiveWrapper instead. Add the method if it doesn't exist.
-T:System.IO.Compression.ZipArchiveEntry; (Redux) Use IZipArchiveEntryWrapper instead. Add the method if it doesn't exist.
+T:System.IO.Compression.ZipArchive; (Redux) Use IZipArchiveWrapper or IZipFileService instead. Add the method if it doesn't exist.
+T:System.IO.Compression.ZipArchiveEntry; (Redux) Use IZipArchiveEntryWrapper or IZipFileService instead. Add the method if it doesn't exist.
 
 // Usage of MessageBox
 T:MsBox.Avalonia.MessageBoxManager; (Redux) Use IMessageBoxService instead. Add the method if it doesn't exist.

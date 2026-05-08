@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.IO.Compression;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Common.Service;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
@@ -11,7 +12,7 @@ public interface ICacheService
 {
     List<string> IgnoredDirectories { get; }
     void RecursivelyCreateCache(string directory);
-    void AddFolder(ZipArchive archive, string directory, string prefix);
+    void AddFolder(IZipArchive archive, string directory, string prefix);
     void RecursivelyRestoreCache(string directory, bool isForRepatch=false);
 }
 
@@ -40,7 +41,7 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
 
         var tempFile = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), $"uninstall-{Guid.CreateVersion7()}.zip");
         using var saveStream = fileSystem.File.Open(tempFile, FileMode.Create, FileAccess.Write);
-        using (var zipArchive = new ZipArchive(saveStream, ZipArchiveMode.Create, false))
+        using (var zipArchive = zipFileService.NewArchive(saveStream, ZipArchiveMode.Create, false))
         {
             AddFolder(zipArchive, directory, "");
         }
@@ -48,7 +49,7 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
         fileSystem.File.Move(tempFile, fileSystem.Path.Combine(directory, "uninstall.zip"));
     }
 
-    public void AddFolder(ZipArchive archive, string directory, string prefix)
+    public void AddFolder(IZipArchive archive, string directory, string prefix)
     {
         if (IgnoredDirectories.Contains(prefix))
         {
