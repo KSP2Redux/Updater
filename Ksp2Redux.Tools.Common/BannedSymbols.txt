@@ -54,3 +54,6 @@ T:System.IO.Compression.ZipArchiveEntry; (Redux) Use IZipArchiveEntryWrapper or 
 
 // Usage of MessageBox
 T:MsBox.Avalonia.MessageBoxManager; (Redux) Use IMessageBoxService instead. Add the method if it doesn't exist.
+
+// Usage of System.OperatingSystem
+T:System.OperatingSystem; (Redux) Use IOperatingSystemService instead. Add the method if it doesn't exist.

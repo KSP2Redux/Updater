@@ -82,7 +82,11 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Only allowed here because it is not important for testing (and because services are not accessible from views)
+        // this method could be moved to the ViewModel and use IOperatingSystemService instead
+#pragma warning disable RS0030
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+#pragma warning restore RS0030
         {
             var preference = (int)DwmWindowCornerPreference.Round;
             _ = DwmSetWindowAttribute(

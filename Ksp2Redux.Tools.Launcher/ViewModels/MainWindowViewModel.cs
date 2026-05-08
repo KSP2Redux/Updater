@@ -126,11 +126,23 @@ public partial class MainWindowViewModel : ViewModelBase
         // First start the updater service
         if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
         
+        // TODO: remove temp code
+        Console.WriteLine($"TEMP: After check and perform update");
+        
         // Now we want to check if any KSP2 installs are registered, and if not try and detect one
         if (_ksp2InstallService.Entries.Count == 0)
         {
+            
+            // TODO: remove temp code
+            Console.WriteLine($"TEMP: Entries count == 0");
+            
             if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
             {
+                
+                // TODO: remove temp code
+                Console.WriteLine($"TEMP: After detect");
+                
+                
                 var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Found",
                     $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
