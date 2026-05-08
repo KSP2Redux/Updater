@@ -250,6 +250,20 @@ public class DownloadTest
             .Callback((IFileSystem f, string destination) =>
             {
                 TestAppBuilder.FileSystem.AddFile(destination, fileToPatch2);
+                
+                // Around the end of the installation process, we change the VersionID in the Assembly-CSharp
+                // This is not ideal, as this is not really when the files are changed
+                // Improvements to this part of the test are welcomed, if possible
+                var gameExeModule = TestHelpers.GenerateMockVersionID(
+                    ("VERSION_TEXT", "0.2.3.1.1234"),
+                    ("CHANNEL_NAME", DefaultChannel),
+                    ("DEBUG_INFO", "_") // Should be the checksum once it is implemented
+                );
+                // We override the setup that was done in TestHelper.MockKsp2StockSteamInstall, the original should have been called already
+                TestAppBuilder.ModuleDefinitionService
+                    .Setup(m => m.ReadModule(
+                        @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Managed\Assembly-CSharp.dll"))
+                    .Returns(gameExeModule.module);
             });
         
         string dowloadLocation = @"AppDataLocal\Ksp2Redux\download-cache\patch1Rollup.patch";
@@ -260,6 +274,10 @@ public class DownloadTest
         TestAppBuilder.ZipFileService.Setup(z => z.NewArchive(It.IsAny<Stream>(), ZipArchiveMode.Create, false))
             .Returns(cacheArchive.Object);
         
+        Console.WriteLine();
+        Console.WriteLine("TEST: File system before Act:\n\t- " + string.Join("\n\t- ", TestAppBuilder.FileSystem.AllNodes));
+        Console.WriteLine();
+        
         // Act - Assert
         MainWindow window = new MainWindow
         {
@@ -268,13 +286,13 @@ public class DownloadTest
         window.Show();
         Dispatcher.UIThread.RunJobs();
         
-        GroupedComboBox? combobox = window
+        GroupedComboBox? versionSelectorCombobox = window
             .GetVisualDescendants()
             .OfType<GroupedComboBox>()
             .FirstOrDefault(x => x.Name == "VersionSelector");
-        Assert.That(combobox, Is.Not.Null);
+        Assert.That(versionSelectorCombobox, Is.Not.Null);
 
-        combobox.SelectedItem = combobox.GroupedItems
+        versionSelectorCombobox.SelectedItem = versionSelectorCombobox.GroupedItems
             .OfType<GameVersionViewModel>()
             .Single(g => g.VersionString.Contains("0.2.3.1.1234"));
         Dispatcher.UIThread.RunJobs();
@@ -287,6 +305,10 @@ public class DownloadTest
         Assert.That(installButton.IsEnabled, Is.True);
         Assert.That(installButton.IsVisible, Is.True);
         Assert.That(installButton.Command, Is.Not.Null);
+        
+        Console.WriteLine();
+        Console.WriteLine("TEST: File system before download:\n\t- " + string.Join("\n\t- ", TestAppBuilder.FileSystem.AllNodes));
+        Console.WriteLine();
         
         installButton.Focus();
         window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
@@ -305,22 +327,78 @@ public class DownloadTest
         }
         
         // Assert
-        Console.WriteLine("File system after test:\n\t- " + string.Join("\n\t- ", TestAppBuilder.FileSystem.AllNodes));
+        Console.WriteLine();
+        Console.WriteLine("TEST: File system after test:\n\t- " + string.Join("\n\t- ", TestAppBuilder.FileSystem.AllNodes));
+        Console.WriteLine();
 
-        // TODO: prepatch files to add are added with correct content
-        // TODO: prepatch files to patch have the correct content
-
-
-
-        // TODO: patch files to add are added with correct content
-        // TODO: patch files to patch have the correct content
-        // TODO: cacheArchive.CreateEntryFromFile called for every file
+        // Assert Prepatch
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToAdd.file"),
+            Is.True);
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToAdd.file").Contents,
+            Is.EqualTo(prepatchFileToAdd.Contents));
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file"),
+            Is.True);
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file").TextContents,
+            Is.EqualTo(prepatchFileToPatchContent));
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToRemove.file"),
+            Is.False);
         
-        // TODO: uninstall.zip exists
+        // Assert cacheArchive.CreateEntryFromFile called for every file before act
+        cacheArchive.Verify(c => c.CreateEntryFromFile(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64.exe", 
+            @"KSP2_x64.exe"), Times.Once);
+        cacheArchive.Verify(c => c.CreateEntryFromFile(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Plugins\Steamworks.NET.txt", 
+            @"KSP2_x64_Data\Plugins\Steamworks.NET.txt"), Times.Once);
+        cacheArchive.Verify(c => c.CreateEntryFromFile(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file", 
+            @"prepatchFileToPatch.file"), Times.Once);
+        cacheArchive.Verify(c => c.CreateEntryFromFile(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToRemove.file", 
+            @"prepatchFileToRemove.file"), Times.Once);
+        cacheArchive.Verify(c => c.CreateEntryFromFile(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file", 
+            @"fileToPatch1.file"), Times.Once);
+        cacheArchive.Verify(c => c.CreateEntryFromFile(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file", 
+            @"Folder\fileToPatch2.file"), Times.Once);
 
-        // TODO: version displayed as the current version is correct
-        // TODO: home button is Launch
-        // TODO: current install in config is the correct version
+        // Assert patch
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToAdd1.file"),
+            Is.True);
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToAdd1.file").Contents,
+            Is.EqualTo(fileToAdd1.Contents));
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToAdd2.file"),
+            Is.True);
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToAdd2.file").Contents,
+            Is.EqualTo(fileToAdd2.Contents));
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file"),
+            Is.True);
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file").TextContents,
+            Is.EqualTo(fileToPatch1Content));
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file"),
+            Is.True);
+        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file").TextContents,
+            Is.EqualTo(fileToPatch2Content));
+        
+        // Assert uninstall.zip exists
+        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\uninstall.zip"),
+            Is.True);
+        
+        // Assert version displayed as the current version is correct
+        // See above to understand how this part of the mock was set up
+        Assert.That(((GameVersionViewModel)versionSelectorCombobox.SelectedItem).VersionString, Does.Contain("0.2.3.1.1234"));
+        Assert.That(((GameVersionViewModel)versionSelectorCombobox.SelectedItem).Version.VersionNumber, Is.EqualTo(new Version(0, 2, 3, 1)));
+        Assert.That(((GameVersionViewModel)versionSelectorCombobox.SelectedItem).Version.BuildNumber, Is.EqualTo("1234"));
+        
+        // Assert home button is Launch
+        Button? mainButton = window
+            .GetVisualDescendants()
+            .OfType<Button>()
+            .Where(x => x is { IsVisible: true, IsEnabled: true })
+            .SingleOrDefault(x => x.Classes.Contains("main-button"));
+        Assert.That(mainButton, Is.Not.Null);
+        Assert.That(mainButton.Name, Is.EqualTo("LaunchButton"));
     }
     
     
