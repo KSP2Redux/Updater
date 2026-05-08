@@ -35,6 +35,7 @@ public class DownloadTest
     public async Task Download_SteamStockToReduxDefaultChannel1Rollup_DownloadsCorrectVersion()
     {
         // Arrange
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
         TestHelpers.MockKsp2StockSteamInstall();
         TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
         TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed{ Items = [] });

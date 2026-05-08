@@ -22,6 +22,7 @@ public class ConfigTest
     public void Config_WithInstall_InstallInComboBox()
     {
         // Arrange
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
         TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
         TestAppBuilder.FileSystem.AddDirectory("AppDataLocal/Ksp2Redux");
         MockFileData configFile = new(
@@ -105,6 +106,7 @@ public class ConfigTest
     public void Config_WithFeed_PatchesInComboBox()
     {
         // Arrange
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
         TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
         TestAppBuilder.FileSystem.AddDirectory("AppDataLocal/Ksp2Redux");
         MockFileData configFile = new(
@@ -229,6 +231,8 @@ public class ConfigTest
     [AvaloniaTest]
     public void Config_NoConfigSteamGameStock_DetectsGameCreateConfig()
     {
+        // Arrange
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
         TestHelpers.MockKsp2StockSteamInstall();
         TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
         TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed{ Items = [] });

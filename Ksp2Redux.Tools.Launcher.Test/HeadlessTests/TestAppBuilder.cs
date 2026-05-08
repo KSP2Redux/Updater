@@ -26,6 +26,7 @@ public static class TestAppBuilder
     public static Mock<IAssemblyService> AssemblyService { get; private set; } = null!;
     public static Mock<IUpdateService> UpdateService { get; private set; } = null!;
     public static Mock<IMessageBoxService> MessageBoxService { get; private set; } = null!;
+    public static Mock<IOperatingSystemService> OperatingSystemService { get; private set; } = null!;
 
     public static IServiceProvider ServiceProvider { get; set; } = null!;
 
@@ -53,6 +54,7 @@ public static class TestAppBuilder
         NewsProviderService = new();
         AssemblyService = new();
         MessageBoxService = new();
+        OperatingSystemService = new();
         // Fully mocked for now, but could be tested if Http, Process and RuntimeInfo are separated in separated mockable interfaces
         UpdateService = new();
 
@@ -80,6 +82,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(UpdateService.Object);
         serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>(); 
         serviceCollection.AddSingleton(MessageBoxService.Object); 
+        serviceCollection.AddSingleton(OperatingSystemService.Object); 
         ServiceProvider = serviceCollection.BuildServiceProvider();
     }
 }
