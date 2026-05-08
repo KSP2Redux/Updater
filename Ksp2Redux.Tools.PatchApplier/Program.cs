@@ -12,7 +12,7 @@ var patchFile = args[0];
 var targetDir = args[1];
 
 IFileSystem fileSystem = new FileSystem();
-IZipFileService zipFileService = new ZipFileService();
+IZipFileService zipFileService = new ZipFileService(fileSystem);
 
 using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);
 

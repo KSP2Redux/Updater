@@ -150,7 +150,8 @@ public partial class MainWindow
 
             _isCurrentlyRunningPatch = true;
             PatchLog.Text = "Beginning Patch!\n";
-            Ksp2Patch patchFile = Ksp2Patch.FromFile(new FileSystem(), new ZipFileService(), PatchFile.Text);
+            IFileSystem fileSystem = new FileSystem();
+            Ksp2Patch patchFile = Ksp2Patch.FromFile(fileSystem, new ZipFileService(fileSystem), PatchFile.Text);
             bool errored = false;
             if (CopyFiles.IsChecked == true)
             {

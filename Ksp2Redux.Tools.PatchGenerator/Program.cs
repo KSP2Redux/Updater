@@ -12,7 +12,7 @@ var result = args[2];
 var checkRemovals = args.Length > 3 && args[3] == "true";
 
 IFileSystem fileSystem = new FileSystem();
-IZipFileService zipFileService = new ZipFileService();
+IZipFileService zipFileService = new ZipFileService(fileSystem);
 
 Patch();
 Dump();
