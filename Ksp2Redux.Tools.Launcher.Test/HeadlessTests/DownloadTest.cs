@@ -29,19 +29,6 @@ public class DownloadTest
 {
     private const string DefaultChannel = "beta";
     private const string OtherChannel = "stable";
-
-    // TODO: temp
-    [SetUp]
-    public void Setup()
-    {
-        Console.WriteLine($"TEST: Settings up {TestContext.CurrentContext.Test.Name}");
-    }
-// TODO: temp
-    [TearDown]
-    public void Teardown()
-    {
-        Console.WriteLine($"TEST: Teardown {TestContext.CurrentContext.Test.Name}");
-    }
     
     [AvaloniaTest]
     public async Task Download_SteamStockToReduxDefaultChannel1Rollup_DownloadsCorrectVersion()
@@ -313,15 +300,6 @@ public class DownloadTest
             .FirstOrDefault(x => x.Name == "VersionSelector");
         Assert.That(versionSelectorCombobox, Is.Not.Null);
 
-        
-        
-        
-        // TODO: remove temp code
-        Console.WriteLine($"TEST: Available versions: \n\t- {string.Join("\n\t- ", versionSelectorCombobox.GroupedItems
-            .OfType<GameVersionViewModel>().Select(g => g.VersionString))}");
-        
-        
-        
         versionSelectorCombobox.SelectedItem = versionSelectorCombobox.GroupedItems
             .OfType<GameVersionViewModel>()
             .Single(g => g.VersionString.Contains("0.2.3.1.1234"));

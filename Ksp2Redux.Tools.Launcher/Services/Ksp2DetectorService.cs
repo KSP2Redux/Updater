@@ -46,9 +46,6 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
 
     public string? DetectKsp2InstallLocation()
     {
-        // TODO: remove temp code
-        Console.WriteLine($"TEMP: linux: {operatingSystemService.IsLinux()}");
-        
         if (operatingSystemService.IsLinux())
         {
             return DetectSteamInstall(EnumerateLinuxSteamRoots());
@@ -73,9 +70,6 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
         foreach (var steamRoot in steamRoots)
         {
             if (!fileSystem.Directory.Exists(steamRoot)) continue;
-
-            // TODO: remove temp code
-            Console.WriteLine($"TEMP: directories: {steamRoot}");
             
             foreach (var libraryPath in ReadLibraryFolders(steamRoot))
             {
