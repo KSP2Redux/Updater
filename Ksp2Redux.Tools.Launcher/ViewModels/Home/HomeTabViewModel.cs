@@ -27,6 +27,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IReleasesFeedService _releasesFeedService;
     private readonly IInstallPlanService _installPlanService;
     private readonly IUpdateService _updateService;
+    private readonly IOperatingSystemService _operatingSystemService;
     
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
@@ -65,13 +66,14 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
         _installPlanService = installPlanService;
         _updateService = updateService;
+        _operatingSystemService = operatingSystemService;
 
         NewsCollectionViewModel = new NewsCollectionViewModel(newsCollectionService.NewsCollection);
         RebuildInstallsCollection();
@@ -105,6 +107,7 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private bool _suppressInstallSelectionChange;
     private bool _appliedLaunchVersionDefault;
+
     private void SyncSelectedInstall()
     {
         var activeId = _ksp2InstallService.ActiveEntry?.Id;
@@ -224,7 +227,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        var linuxLaunchBlocked = OperatingSystem.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false);
+        var linuxLaunchBlocked = _operatingSystemService.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false);
         const string linuxLaunchBlockedTooltip = "Enable \"Launch through Steam\" in settings to launch on Linux.";
 
         if (ksp2.Distribution != Distribution.Redux)
@@ -423,6 +426,7 @@ public partial class HomeTabViewModel : ViewModelBase
         UpdateStepsProgress(0, plan.Steps.Count);
         _installPlanService.Describe(plan, Log);
 
+        // TODO: Could this be replaced by Dispatcher.UIThread.Post?
         await Task.Run(
             () => _installPlanService.ApplyToFolder(
                 plan,

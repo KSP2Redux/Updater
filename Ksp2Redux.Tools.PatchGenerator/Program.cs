@@ -3,6 +3,7 @@
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Common.Service;
+using Testably.Abstractions;
 
 Console.WriteLine(string.Join(", ",args));
 
@@ -11,8 +12,8 @@ var buildDirectory = args[1];
 var result = args[2];
 var checkRemovals = args.Length > 3 && args[3] == "true";
 
-IFileSystem fileSystem = new FileSystem();
-IZipFileService zipFileService = new ZipFileService();
+IFileSystem fileSystem = new RealFileSystem();
+IZipFileService zipFileService = new ZipFileService(fileSystem);
 
 Patch();
 Dump();

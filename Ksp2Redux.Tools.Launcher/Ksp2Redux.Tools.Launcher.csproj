@@ -39,7 +39,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.12.0-beta1.25218.8">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -47,14 +47,8 @@
         <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
         <PackageReference Include="Mono.Cecil" Version="0.11.6" />
         <PackageReference Include="Octokit" Version="14.0.0" />
-        <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
-        <PackageReference Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.1.1" />
+        <PackageReference Include="Testably.Abstractions" Version="10.2.0" />
         <PackageReference Include="Tomlyn" Version="0.19.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <!--Used by Microsoft.CodeAnalysis.BannedApiAnalyzers-->
-        <AdditionalFiles Include="BannedSymbols.txt" />
     </ItemGroup>
 
     <ItemGroup>
@@ -85,5 +79,9 @@
       <EmbeddedResource Include="Prepatches\portable-prepatch.patch" />
       <None Remove="Prepatches\steam-prepatch.patch" />
       <EmbeddedResource Include="Prepatches\steam-prepatch.patch" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="BannedSymbols.txt" />
     </ItemGroup>
 </Project>

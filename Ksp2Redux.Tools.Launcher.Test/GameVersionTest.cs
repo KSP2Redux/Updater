@@ -14,10 +14,10 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", version + "." + buildNumber),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         GameVersion result = GameVersion.FromVersionIDType(versionIDType, false);
@@ -43,11 +43,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", version + "." + buildNumber),
             ("CHANNEL_NAME", channel),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         GameVersion result = GameVersion.FromVersionIDType(versionIDType, true);
@@ -69,10 +69,10 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("CHANNEL_NAME", "stable"),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -90,11 +90,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", fullVersionText),
             ("CHANNEL_NAME", "stable"),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -112,11 +112,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", fullVersionText),
             ("CHANNEL_NAME", "stable"),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -134,11 +134,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", fullVersionText),
             ("CHANNEL_NAME", "stable"),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -151,10 +151,10 @@ public class GameVersionTest
     public void FromVersionIDType_ReduxNoChannelNameField_ThrowsInvalidOperation()
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -167,10 +167,10 @@ public class GameVersionTest
     public void FromVersionIDType_StockNoChannelNameField_StableChannel()
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         GameVersion result = GameVersion.FromVersionIDType(versionIDType, true);
@@ -184,11 +184,11 @@ public class GameVersionTest
     public void FromVersionIDType_ReduxNullChannelName_ThrowsInvalidOperation()
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("CHANNEL_NAME", null),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -204,11 +204,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("CHANNEL_NAME", channelName),
             ("DEBUG_INFO", "0000")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -224,10 +224,10 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("CHANNEL_NAME", "stable")
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -243,11 +243,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("CHANNEL_NAME", "stable"),
             ("DEBUG_INFO", null)
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -265,11 +265,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("CHANNEL_NAME", "stable"),
             ("DEBUG_INFO", debugInfo)
-        );
+        ).type;
 
         // Act
         Assert.Throws<InvalidOperationException>(() =>
@@ -286,11 +286,11 @@ public class GameVersionTest
     )
     {
         // Arrange
-        TypeDefinition versionIDType = GenerateMockVersionID(
+        TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.0.0.0.0"),
             ("CHANNEL_NAME", "_"),
             ("DEBUG_INFO", "BUILD_INFO")
-        );
+        ).type;
 
         // Act
         GameVersion result = GameVersion.FromVersionIDType(versionIDType, isRedux);
@@ -447,38 +447,5 @@ public class GameVersionTest
         
         // Arrange
         Assert.That(hash1, Is.Not.EqualTo(hash2));
-    }
-    
-    
-    
-    private static TypeDefinition GenerateMockVersionID(params List<(string name, string? value)> fields)
-    {
-        AssemblyDefinition? assembly = AssemblyDefinition.CreateAssembly(
-            new AssemblyNameDefinition("MockAssembly", new Version(1, 0, 0, 0)),
-            "MockModule", ModuleKind.Dll);
-        ModuleDefinition? module = assembly.MainModule;
-
-        TypeDefinition versionIDType = new(
-            "_", "MockVersionID",
-            TypeAttributes.Public | TypeAttributes.Class,
-            module.TypeSystem.Object);
-
-        foreach (var fieldData in fields)
-        {
-            FieldDefinition field = new(
-                fieldData.name,
-                FieldAttributes.Public |
-                FieldAttributes.Static |
-                FieldAttributes.Literal |
-                FieldAttributes.HasDefault,
-                module.TypeSystem.String)
-            {
-                Constant = fieldData.value
-            };
-            versionIDType.Fields.Add(field);
-        }
-
-        module.Types.Add(versionIDType);
-        return versionIDType;
     }
 }

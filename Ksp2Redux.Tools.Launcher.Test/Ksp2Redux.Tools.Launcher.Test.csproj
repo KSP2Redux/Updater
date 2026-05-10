@@ -21,6 +21,7 @@
         <PackageReference Include="NUnit" Version="4.5.1" />
         <PackageReference Include="NUnit.Analyzers" Version="4.7.0"/>
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0"/>
+        <PackageReference Include="Testably.Abstractions.Testing" Version="6.2.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -33,6 +34,26 @@
 
     <ItemGroup>
       <None Remove="MockExecutable.sh" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.dll" />
+      <EmbeddedResource Include="MockGame\MockGame.dll">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.exe" />
+      <EmbeddedResource Include="MockGame\MockGame.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.pdb" />
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.deps.json" />
+      <EmbeddedResource Include="MockGame\MockGame.deps.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.runtimeconfig.json" />
+      <EmbeddedResource Include="MockGame\runtimeconfig.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
     </ItemGroup>
 
 </Project>

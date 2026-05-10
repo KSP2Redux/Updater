@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Common.Service;
+using Testably.Abstractions;
 
 if (args.Length < 2)
 {
@@ -11,8 +12,8 @@ if (args.Length < 2)
 var patchFile = args[0];
 var targetDir = args[1];
 
-IFileSystem fileSystem = new FileSystem();
-IZipFileService zipFileService = new ZipFileService();
+IFileSystem fileSystem = new RealFileSystem();
+IZipFileService zipFileService = new ZipFileService(fileSystem);
 
 using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);
 

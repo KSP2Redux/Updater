@@ -130,7 +130,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_ksp2InstallService.Entries.Count == 0)
         {
             if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
-            {
+            { 
                 var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Found",
                     $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
                     windowStartupLocation: WindowStartupLocation.CenterOwner);

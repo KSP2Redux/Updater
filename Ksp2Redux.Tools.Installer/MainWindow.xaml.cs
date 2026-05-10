@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Common.Service;
 using Microsoft.Win32;
+using Testably.Abstractions;
 using Exception = System.Exception;
 
 namespace Ksp2Redux.Tools;
@@ -150,7 +151,8 @@ public partial class MainWindow
 
             _isCurrentlyRunningPatch = true;
             PatchLog.Text = "Beginning Patch!\n";
-            Ksp2Patch patchFile = Ksp2Patch.FromFile(new FileSystem(), new ZipFileService(), PatchFile.Text);
+            IFileSystem fileSystem = new RealFileSystem();
+            Ksp2Patch patchFile = Ksp2Patch.FromFile(fileSystem, new ZipFileService(fileSystem), PatchFile.Text);
             bool errored = false;
             if (CopyFiles.IsChecked == true)
             {

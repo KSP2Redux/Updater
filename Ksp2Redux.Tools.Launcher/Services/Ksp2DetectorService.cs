@@ -10,7 +10,7 @@ public interface IKsp2DetectorService
     public string? DetectKsp2InstallLocation();
 }
 
-public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider)
+public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IOperatingSystemService operatingSystemService)
     : IKsp2DetectorService
 {
     private const string Ksp2SteamAppId = "954850";
@@ -46,7 +46,7 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
 
     public string? DetectKsp2InstallLocation()
     {
-        if (OperatingSystem.IsLinux())
+        if (operatingSystemService.IsLinux())
         {
             return DetectSteamInstall(EnumerateLinuxSteamRoots());
         }
@@ -70,7 +70,7 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
         foreach (var steamRoot in steamRoots)
         {
             if (!fileSystem.Directory.Exists(steamRoot)) continue;
-
+            
             foreach (var libraryPath in ReadLibraryFolders(steamRoot))
             {
                 var steamapps = fileSystem.Path.Combine(libraryPath, "steamapps");

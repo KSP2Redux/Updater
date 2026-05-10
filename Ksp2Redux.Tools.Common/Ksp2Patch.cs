@@ -12,7 +12,7 @@ public class Ksp2Patch : IDisposable
 {
     private readonly IFileSystem _fileSystem;
     private readonly PatchManifest _manifest = new();
-    private readonly ZipArchive _archive;
+    private readonly IZipArchive _archive;
     private const string ManifestJsonFileName = "manifest.json";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -21,13 +21,13 @@ public class Ksp2Patch : IDisposable
         IncludeFields = true
     };
 
-    public Ksp2Patch(IFileSystem fileSystem, ZipArchive archive)
+    public Ksp2Patch(IFileSystem fileSystem, IZipArchive archive)
     {
         _fileSystem = fileSystem;
         this._archive = archive;
         if (archive.Mode == ZipArchiveMode.Read)
         {
-            ZipArchiveEntry manifestEntry = archive.GetEntry(ManifestJsonFileName)!;
+            IZipArchiveEntry manifestEntry = archive.GetEntry(ManifestJsonFileName)!;
             using Stream stream = manifestEntry.Open();
             _manifest = JsonSerializer.Deserialize<PatchManifest>(stream, SerializerOptions)!;
         }
@@ -36,7 +36,10 @@ public class Ksp2Patch : IDisposable
     public static Ksp2Patch Empty(IFileSystem fileSystem, Stream? saveStream = null, bool leaveOpen = false)
     {
         saveStream ??= new MemoryStream();
-        return new Ksp2Patch(fileSystem, new ZipArchive(saveStream, ZipArchiveMode.Create, leaveOpen));
+        // Only allowed to disable here because it's not used by the launcher
+#pragma warning disable RS0030
+        return new Ksp2Patch(fileSystem, new ZipArchiveWrapper(new ZipArchive(saveStream, ZipArchiveMode.Create, leaveOpen)));
+#pragma warning restore RS0030
     }
 
     public static FileSystemStream FromDiff(IFileSystem fileSystem, string saveFile, string ksp2Directory, string targetDirectory, bool checkRemovals=false)
@@ -58,7 +61,7 @@ public class Ksp2Patch : IDisposable
 
             Console.WriteLine($"Expected result size: {size}");
 
-            ZipArchiveEntry manifestEntry = patch._archive.CreateEntry(ManifestJsonFileName);
+            IZipArchiveEntry manifestEntry = patch._archive.CreateEntry(ManifestJsonFileName);
             using Stream entryStream = manifestEntry.Open();
 
             JsonSerializer.Serialize(entryStream, patch._manifest, SerializerOptions);
@@ -75,7 +78,7 @@ public class Ksp2Patch : IDisposable
         var patchDir = _fileSystem.DirectoryInfo.New(patchDirectory);
         foreach (IFileInfo file in patchDir.GetFiles())
         {
-            if (FileInformation.IgnoreFiles.Contains(_fileSystem.Path.Combine(prefix, file.Name))) continue;
+            if (FileInformation.IgnoreFiles(_fileSystem).Contains(_fileSystem.Path.Combine(prefix, file.Name))) continue;
             if (_fileSystem.File.Exists(_fileSystem.Path.Combine(originalDirectory, file.Name)))
             {
                 Console.WriteLine($"Checking {prefix}/{file.Name}");
@@ -162,7 +165,7 @@ public class Ksp2Patch : IDisposable
         foreach (IDirectoryInfo dir in patchDir.GetDirectories())
         {
             string newDir = _fileSystem.Path.Combine(originalDirectory, dir.Name);
-            if (FileInformation.IgnoreDirectories.Contains(_fileSystem.Path.Combine(prefix, dir.Name))) continue;
+            if (FileInformation.IgnoreDirectories(_fileSystem).Contains(_fileSystem.Path.Combine(prefix, dir.Name))) continue;
             sum += RecursiveDiff(patch, newDir, dir.FullName, checkRemovals, _fileSystem.Path.Combine(prefix, dir.Name));
         }
 
@@ -177,7 +180,7 @@ public class Ksp2Patch : IDisposable
     public static async Task CopyFileAsync(IFileSystem fileSystem, string sourceFile, string destinationFile)
     {
         const int bufferSize = 1024 * 1024; // 1 MiB
-        await using var source = new FileStream(
+        await using var source = fileSystem.FileStream.New(
             sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read,
             bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
 
@@ -226,10 +229,10 @@ public class Ksp2Patch : IDisposable
         Action<string>? log = null
     )
     {
-        var src = new DirectoryInfo(sourceDir);
+        var src = fileSystem.DirectoryInfo.New(sourceDir);
         if (!src.Exists) throw new DirectoryNotFoundException(sourceDir);
 
-        Directory.CreateDirectory(destinationDir);
+        fileSystem.Directory.CreateDirectory(destinationDir);
         
         foreach (var d in src.EnumerateDirectories("*", SearchOption.AllDirectories))
         {
@@ -300,30 +303,30 @@ public class Ksp2Patch : IDisposable
             // Extract patch & add entries
             foreach (PatchOperation operation in _manifest.operations)
             {
-                if (FileInformation.IgnoreFiles.Contains(NormalizeEntryPath(operation.fileName))) continue;
+                if (FileInformation.IgnoreFiles(_fileSystem).Contains(NormalizeEntryPath(operation.fileName))) continue;
                 string entryFsName = NormalizeEntryPath(operation.fileName);
                 switch (operation.action)
                 {
                     case PatchOperation.PatchAction.Patch:
                     {
-                        ZipArchiveEntry? entry = _archive.GetEntry(operation.fileName + ".bsdiff");
+                        IZipArchiveEntry? entry = _archive.GetEntry(operation.fileName + ".bsdiff");
                         if (entry != null)
                         {
                             string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName + ".bsdiff");
                             _fileSystem.Directory.CreateDirectory(_fileSystem.Path.GetDirectoryName(outPath)!);
-                            entry.ExtractToFile(outPath);
+                            entry.ExtractToFile(_fileSystem, outPath);
                         }
 
                         break;
                     }
                     case PatchOperation.PatchAction.Add:
                     {
-                        ZipArchiveEntry? entry = _archive.GetEntry(operation.fileName);
+                        IZipArchiveEntry? entry = _archive.GetEntry(operation.fileName);
                         if (entry != null)
                         {
                             string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName);
                             _fileSystem.Directory.CreateDirectory(_fileSystem.Path.GetDirectoryName(outPath)!);
-                            entry.ExtractToFile(outPath);
+                            entry.ExtractToFile(_fileSystem, outPath);
                         }
 
                         break;
@@ -338,7 +341,7 @@ public class Ksp2Patch : IDisposable
 
             foreach (PatchOperation operation in _manifest.operations)
             {
-                if (FileInformation.IgnoreFiles.Contains(NormalizeEntryPath(operation.fileName))) continue;
+                if (FileInformation.IgnoreFiles(_fileSystem).Contains(NormalizeEntryPath(operation.fileName))) continue;
                 await semaphore.WaitAsync();
 
                 tasks.Add(Task.Run(async () =>
@@ -473,13 +476,13 @@ public class Ksp2Patch : IDisposable
 
     public Stream CreateDiff(string diffPath)
     {
-        ZipArchiveEntry path = _archive.CreateEntry(diffPath + ".bsdiff");
+        IZipArchiveEntry path = _archive.CreateEntry(diffPath + ".bsdiff");
         return path.Open();
     }
 
     public Stream CreateCopy(string copyPath)
     {
-        ZipArchiveEntry path = _archive.CreateEntry(copyPath);
+        IZipArchiveEntry path = _archive.CreateEntry(copyPath);
         return path.Open();
     }
 
@@ -495,8 +498,8 @@ public class Ksp2Patch : IDisposable
         return reader.ReadToEnd();
     }
 
-    private static string NormalizeEntryPath(string path) =>
-        path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+    private string NormalizeEntryPath(string path) =>
+        path.Replace('\\', _fileSystem.Path.DirectorySeparatorChar).Replace('/', _fileSystem.Path.DirectorySeparatorChar);
 
     private static bool ValidateFileHash(Stream stream, byte[] hash)
     {

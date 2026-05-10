@@ -1,7 +1,5 @@
 ﻿using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
 using Ksp2Redux.Tools.Common.Service;
 using Ksp2Redux.Tools.Launcher.Services;
@@ -12,6 +10,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Test.HeadlessTests;
 
@@ -26,14 +25,17 @@ public static class TestAppBuilder
     public static Mock<IAssemblyService> AssemblyService { get; private set; } = null!;
     public static Mock<IUpdateService> UpdateService { get; private set; } = null!;
     public static Mock<IMessageBoxService> MessageBoxService { get; private set; } = null!;
+    public static Mock<IOperatingSystemService> OperatingSystemService { get; private set; } = null!;
 
     public static IServiceProvider ServiceProvider { get; set; } = null!;
 
     public static AppBuilder BuildAvaloniaApp()
     {
-        InitServiceProvider();
-
-        return AppBuilder.Configure(() => new App(ServiceProvider))
+        return AppBuilder.Configure(() =>
+            {
+                InitServiceProvider();  // Resets all services
+                return new App(ServiceProvider);
+            })
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace()
@@ -43,7 +45,7 @@ public static class TestAppBuilder
     
     private static void InitServiceProvider()
     {
-        FileSystem = new();
+        FileSystem = new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         ZipFileService = new();
         ManifestReleasesFeedProviderService = new();
         EnvironmentProvider = new();
@@ -51,6 +53,7 @@ public static class TestAppBuilder
         NewsProviderService = new();
         AssemblyService = new();
         MessageBoxService = new();
+        OperatingSystemService = new();
         // Fully mocked for now, but could be tested if Http, Process and RuntimeInfo are separated in separated mockable interfaces
         UpdateService = new();
 
@@ -78,6 +81,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(UpdateService.Object);
         serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>(); 
         serviceCollection.AddSingleton(MessageBoxService.Object); 
+        serviceCollection.AddSingleton(OperatingSystemService.Object); 
         ServiceProvider = serviceCollection.BuildServiceProvider();
     }
 }
