@@ -30,6 +30,19 @@ public class DownloadTest
 {
     private const string DefaultChannel = "beta";
     private const string OtherChannel = "stable";
+
+    // TODO: temp
+    [SetUp]
+    public void Setup()
+    {
+        Console.WriteLine($"TEST: Settings up {TestContext.CurrentContext.Test.Name}");
+    }
+// TODO: temp
+    [TearDown]
+    public void Teardown()
+    {
+        Console.WriteLine($"TEST: Teardown {TestContext.CurrentContext.Test.Name}");
+    }
     
     [AvaloniaTest]
     public async Task Download_SteamStockToReduxDefaultChannel1Rollup_DownloadsCorrectVersion()
