@@ -1,6 +1,4 @@
-﻿using System.IO.Abstractions.TestingHelpers;
-using System.Reflection;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
@@ -12,61 +10,46 @@ using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MsBox.Avalonia.Enums;
+using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Test.HeadlessTests;
 
 public class ConfigTest
 {
-   
-    // TODO: temp
-    [SetUp]
-    public void Setup()
-    {
-        Console.WriteLine($"TEST: Settings up {TestContext.CurrentContext.Test.Name}");
-    }
-// TODO: temp
-    [TearDown]
-    public void Teardown()
-    {
-        Console.WriteLine($"TEST: Teardown {TestContext.CurrentContext.Test.Name}");
-    }
-    
     [AvaloniaTest]
     public void Config_WithInstall_InstallInComboBox()
     {
         // Arrange
         TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
         TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
-        TestAppBuilder.FileSystem.AddDirectory("AppDataLocal/Ksp2Redux");
-        MockFileData configFile = new(
-            """
-            {
-                "Ksp2InstallPath": "",
-                "ReleaseChannel": null,
-                "LaunchThroughSteam": false,
-                "SteamAppId": "954850",
-                "LaunchArguments": "-popupwindow",
-                "LastInstalledVersion": null,
-                "Ksp2Installs": [
-                    {
-                        "Id": "11111111-1111-1111-1111-111111111111",
-                        "Name": "Kerbal Space Program 2",
-                        "ExePath": "KSP2_x64.exe",
-                        "ReleaseChannel": "beta",
-                        "LastInstalledVersion": null,
-                        "LaunchThroughSteam": false,
-                        "SteamAppId": "954850",
-                        "LaunchArguments": "-popupwindow",
-                        "DisableGraphicsJobs": false
-                    }
-                ],
-                "ActiveKsp2InstallId": "11111111-1111-1111-1111-111111111111",
-                "Feeds": [],
-                "LauncherRepo": "https://launcher_repo.com"
-            }
-            """
-        );
-        TestAppBuilder.FileSystem.AddFile("AppDataLocal/Ksp2Redux/redux-launcher-config.json", configFile);
+        TestAppBuilder.FileSystem.Directory.CreateDirectory("AppDataLocal/Ksp2Redux");
+        string configFileContent = """
+                            {
+                                "Ksp2InstallPath": "",
+                                "ReleaseChannel": null,
+                                "LaunchThroughSteam": false,
+                                "SteamAppId": "954850",
+                                "LaunchArguments": "-popupwindow",
+                                "LastInstalledVersion": null,
+                                "Ksp2Installs": [
+                                    {
+                                        "Id": "11111111-1111-1111-1111-111111111111",
+                                        "Name": "Kerbal Space Program 2",
+                                        "ExePath": "KSP2_x64.exe",
+                                        "ReleaseChannel": "beta",
+                                        "LastInstalledVersion": null,
+                                        "LaunchThroughSteam": false,
+                                        "SteamAppId": "954850",
+                                        "LaunchArguments": "-popupwindow",
+                                        "DisableGraphicsJobs": false
+                                    }
+                                ],
+                                "ActiveKsp2InstallId": "11111111-1111-1111-1111-111111111111",
+                                "Feeds": [],
+                                "LauncherRepo": "https://launcher_repo.com"
+                            }
+                            """;
+        TestAppBuilder.FileSystem.File.WriteAllText("AppDataLocal/Ksp2Redux/redux-launcher-config.json", configFileContent);
         
         TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
 
@@ -121,41 +104,39 @@ public class ConfigTest
         // Arrange
         TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
         TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
-        TestAppBuilder.FileSystem.AddDirectory("AppDataLocal/Ksp2Redux");
-        MockFileData configFile = new(
-            """
-            {
-                "Ksp2InstallPath": "",
-                "ReleaseChannel": null,
-                "LaunchThroughSteam": false,
-                "SteamAppId": "954850",
-                "LaunchArguments": "-popupwindow",
-                "LastInstalledVersion": null,
-                "Ksp2Installs": [
-                    {
-                        "Id": "11111111-1111-1111-1111-111111111111",
-                        "Name": "Kerbal Space Program 2",
-                        "ExePath": "KSP2_x64.exe",
-                        "ReleaseChannel": "channel-1",
-                        "LastInstalledVersion": null,
-                        "LaunchThroughSteam": false,
-                        "SteamAppId": "954850",
-                        "LaunchArguments": "-popupwindow",
-                        "DisableGraphicsJobs": false
-                    }
-                ],
-                "ActiveKsp2InstallId": "11111111-1111-1111-1111-111111111111",
-                "Feeds": [
-                    {
-                        "Repository": "https://feed-repo.com",
-                        "Filename": "manifest.json"
-                    }
-                ],
-                "LauncherRepo": "https://launcher_repo.com"
-            }
-            """
-        );
-        TestAppBuilder.FileSystem.AddFile("AppDataLocal/Ksp2Redux/redux-launcher-config.json", configFile);
+        TestAppBuilder.FileSystem.Directory.CreateDirectory("AppDataLocal/Ksp2Redux");
+        string configFileContent = """
+                                  {
+                                      "Ksp2InstallPath": "",
+                                      "ReleaseChannel": null,
+                                      "LaunchThroughSteam": false,
+                                      "SteamAppId": "954850",
+                                      "LaunchArguments": "-popupwindow",
+                                      "LastInstalledVersion": null,
+                                      "Ksp2Installs": [
+                                          {
+                                              "Id": "11111111-1111-1111-1111-111111111111",
+                                              "Name": "Kerbal Space Program 2",
+                                              "ExePath": "KSP2_x64.exe",
+                                              "ReleaseChannel": "channel-1",
+                                              "LastInstalledVersion": null,
+                                              "LaunchThroughSteam": false,
+                                              "SteamAppId": "954850",
+                                              "LaunchArguments": "-popupwindow",
+                                              "DisableGraphicsJobs": false
+                                          }
+                                      ],
+                                      "ActiveKsp2InstallId": "11111111-1111-1111-1111-111111111111",
+                                      "Feeds": [
+                                          {
+                                              "Repository": "https://feed-repo.com",
+                                              "Filename": "manifest.json"
+                                          }
+                                      ],
+                                      "LauncherRepo": "https://launcher_repo.com"
+                                  }
+                                  """;
+        TestAppBuilder.FileSystem.File.WriteAllText("AppDataLocal/Ksp2Redux/redux-launcher-config.json", configFileContent);
         
         TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
 
@@ -302,10 +283,10 @@ public class ConfigTest
                   "ExePath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kerbal Space Program 2\\KSP2_x64.exe",
             """;
         
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json"), Is.True);
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json").TextContents,
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json"), Is.True);
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json"),
             Contains.Substring(expectedLauncherConfigName));
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json").TextContents,
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"AppDataLocal\Ksp2Redux\redux-launcher-config.json"),
             Contains.Substring(expectedLauncherConfigExePath));
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 using System.IO.Compression;
 using System.Net;
 using System.Reflection;
@@ -62,17 +61,19 @@ public class DownloadTest
                 a.GetManifestResourceStream("Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch"))
             .Returns(prepatchStream);
         
-        MockFileData originalPrepatchFileToPatch = new("Prepatch - fileToPatch - OldContent");
-        MockFileData prepatchFileToRemove = new("Prepatch - fileToRemove - Content");
+        string originalPrepatchFileToPatchContent = "Prepatch - fileToPatch - OldContent";
+        string prepatchFileToRemoveContent = "Prepatch - fileToRemove - Content";
+
+        TestAppBuilder.FileSystem.Directory.CreateDirectory(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\");
+        TestAppBuilder.FileSystem.File.WriteAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file",
+            originalPrepatchFileToPatchContent);
+        TestAppBuilder.FileSystem.File.WriteAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToRemove.file",
+            prepatchFileToRemoveContent);
         
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file",
-            originalPrepatchFileToPatch);
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToRemove.file",
-            prepatchFileToRemove);
-        
-        MockFileData prepatchFileToAdd = new("Prepatch - fileToAdd - Content");
+        string prepatchFileToAddContent = "Prepatch - fileToAdd - Content";
         string prepatchFileToPatchContent = "Prepatch - fileToPatch - Content";
-        MockFileData prepatchFileToPatch = new(TestHelpers.GetDiff(originalPrepatchFileToPatch.Contents, prepatchFileToPatchContent));
+        byte[] prepatchFileToPatchDiffContent = TestHelpers.GetDiff(originalPrepatchFileToPatchContent, prepatchFileToPatchContent);
         
         string prepatchManifest = $$"""
           {
@@ -80,14 +81,14 @@ public class DownloadTest
               {
                 "fileName": "prepatchFileToPatch.file",
                 "action": 0,
-                "originalHash": "{{Convert.ToBase64String(sha256.ComputeHash(originalPrepatchFileToPatch.Contents))}}",
+                "originalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(originalPrepatchFileToPatchContent)))}}",
                 "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(prepatchFileToPatchContent)))}}"
               },
               {
                 "fileName": "prepatchFileToAdd.file",
                 "action": 1,
                 "originalHash": null,
-                "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(prepatchFileToAdd.Contents))}}"
+                "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(prepatchFileToAddContent)))}}"
               },
               {
                 "fileName": "prepatchFileToRemove.file",
@@ -110,7 +111,7 @@ public class DownloadTest
         prepatchFileToAddEntry.Setup(e => e.ExtractToFile(TestAppBuilder.FileSystem, It.IsAny<string>()))
             .Callback((IFileSystem f, string destination) =>
             {
-                TestAppBuilder.FileSystem.AddFile(destination, prepatchFileToAdd);
+                TestAppBuilder.FileSystem.File.WriteAllText(destination, prepatchFileToAddContent);
             });
         
         Mock<IZipArchiveEntry> prepatchFileToPatchEntry = new();
@@ -118,13 +119,13 @@ public class DownloadTest
         prepatchFileToPatchEntry.Setup(e => e.ExtractToFile(TestAppBuilder.FileSystem, It.IsAny<string>()))
             .Callback((IFileSystem f, string destination) =>
             {
-                TestAppBuilder.FileSystem.AddFile(destination, prepatchFileToPatch);
+                TestAppBuilder.FileSystem.File.WriteAllBytes(destination, prepatchFileToPatchDiffContent);
             });
         
-        TestAppBuilder.ZipFileService.Setup(z => z.OpenRead(It.Is<string>(s => s.Contains("temp"))))
+        TestAppBuilder.ZipFileService.Setup(z => z.OpenRead(It.Is<string>(s => s.Contains("temp", StringComparison.InvariantCultureIgnoreCase))))
             .Returns((string path) =>
             {
-                if (TestAppBuilder.FileSystem.FileExists(path) == false)
+                if (TestAppBuilder.FileSystem.File.Exists(path) == false)
                     Assert.Fail($"Tried to open a zip file at {path}, but this file was never added in the mock file system");
                 byte[] fileBytes = TestAppBuilder.FileSystem.File.ReadAllBytes(path);
                 byte[] streamBytes = prepatchStream.ToArray();
@@ -185,20 +186,22 @@ public class DownloadTest
             .ReturnsAsync(downloadResponse);
 
         // Arrange Patch manifest and files
-        MockFileData originalFileToPatch1 = new("fileToPatch1 - OldContent");
-        MockFileData originalFileToPatch2 = new("fileToPatch2 - OldContent");
+        string originalFileToPatch1Content = "fileToPatch1 - OldContent";
+        string originalFileToPatch2Content = "fileToPatch2 - OldContent";
 
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file",
-            originalFileToPatch1);
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file",
-            originalFileToPatch2);
+        TestAppBuilder.FileSystem.File.WriteAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file",
+            originalFileToPatch1Content);
+        TestAppBuilder.FileSystem.Directory.CreateDirectory(
+            @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder");
+        TestAppBuilder.FileSystem.File.WriteAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file",
+            originalFileToPatch2Content);
         
-        MockFileData fileToAdd1 = new("fileToAdd1 - Content");
+        string fileToAdd1Content = "fileToAdd1 - Content";
         string fileToPatch1Content = "fileToPatch1 - Content";
-        MockFileData fileToPatch1 = new(TestHelpers.GetDiff(originalFileToPatch1.Contents, fileToPatch1Content));
-        MockFileData fileToAdd2 = new("fileToAdd2 - Content");
+        byte[] fileToPatch1DiffContent = TestHelpers.GetDiff(originalFileToPatch1Content, fileToPatch1Content);
+        string fileToAdd2Content = "fileToAdd2 - Content";
         string fileToPatch2Content = "fileToPatch2 - Content";
-        MockFileData fileToPatch2 = new(TestHelpers.GetDiff(originalFileToPatch2.Contents, fileToPatch2Content));
+        byte[] fileToPatch2DiffContent = TestHelpers.GetDiff(originalFileToPatch2Content, fileToPatch2Content);
         
         string patchManifest = $$"""
             {
@@ -207,24 +210,24 @@ public class DownloadTest
                   "fileName": "fileToAdd1.file",
                   "action": 1,
                   "originalHash": null,
-                  "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(fileToAdd1.Contents))}}"
+                  "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(fileToAdd1Content)))}}"
                 },
                 {
                   "fileName": "fileToPatch1.file",
                   "action": 0,
-                  "originalHash": "{{Convert.ToBase64String(sha256.ComputeHash(originalFileToPatch1.Contents))}}",
+                  "originalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(originalFileToPatch1Content)))}}",
                   "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(fileToPatch1Content)))}}"
                 },
                 {
                   "fileName": "Folder\\fileToAdd2.file",
                   "action": 1,
                   "originalHash": null,
-                  "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(fileToAdd2.Contents))}}"
+                  "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(fileToAdd2Content)))}}"
                 },
                 {
                   "fileName": "Folder\\fileToPatch2.file",
                   "action": 0,
-                  "originalHash": "{{Convert.ToBase64String(sha256.ComputeHash(originalFileToPatch2.Contents))}}",
+                  "originalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(originalFileToPatch2Content)))}}",
                   "finalHash": "{{Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(fileToPatch2Content)))}}"
                 }
               ]
@@ -242,28 +245,32 @@ public class DownloadTest
         zipFileToAdd1Entry.Setup(e => e.ExtractToFile(TestAppBuilder.FileSystem, It.IsAny<string>()))
             .Callback((IFileSystem f, string destination) =>
             {
-                TestAppBuilder.FileSystem.AddFile(destination, fileToAdd1);
+                Console.WriteLine($"TEST: Creating file: {destination}");
+                TestAppBuilder.FileSystem.File.WriteAllText(destination, fileToAdd1Content);
             });
         Mock<IZipArchiveEntry> zipFileToPatch1Entry = new();
         zippedPatch.Setup(u => u.GetEntry("fileToPatch1.file.bsdiff")).Returns(zipFileToPatch1Entry.Object);
         zipFileToPatch1Entry.Setup(e => e.ExtractToFile(TestAppBuilder.FileSystem, It.IsAny<string>()))
             .Callback((IFileSystem f, string destination) =>
             {
-                TestAppBuilder.FileSystem.AddFile(destination, fileToPatch1);
+                Console.WriteLine($"TEST: Creating file: {destination}");
+                TestAppBuilder.FileSystem.File.WriteAllBytes(destination, fileToPatch1DiffContent);
             });
         Mock<IZipArchiveEntry> zipFileToAdd2Entry = new();
         zippedPatch.Setup(u => u.GetEntry(@"Folder\fileToAdd2.file")).Returns(zipFileToAdd2Entry.Object);
         zipFileToAdd2Entry.Setup(e => e.ExtractToFile(TestAppBuilder.FileSystem, It.IsAny<string>()))
             .Callback((IFileSystem f, string destination) =>
             {
-                TestAppBuilder.FileSystem.AddFile(destination, fileToAdd2);
+                Console.WriteLine($"TEST: Creating file: {destination}");
+                TestAppBuilder.FileSystem.File.WriteAllText(destination, fileToAdd2Content);
             });
         Mock<IZipArchiveEntry> zipFileToPatch2Entry = new();
         zippedPatch.Setup(u => u.GetEntry(@"Folder\fileToPatch2.file.bsdiff")).Returns(zipFileToPatch2Entry.Object);
         zipFileToPatch2Entry.Setup(e => e.ExtractToFile(TestAppBuilder.FileSystem, It.IsAny<string>()))
             .Callback((IFileSystem f, string destination) =>
             {
-                TestAppBuilder.FileSystem.AddFile(destination, fileToPatch2);
+                Console.WriteLine($"TEST: Creating file: {destination}");
+                TestAppBuilder.FileSystem.File.WriteAllBytes(destination, fileToPatch2DiffContent);
                 
                 // Around the end of the installation process, we change the VersionID in the Assembly-CSharp
                 // This is not ideal, as this is not really when the files are changed
@@ -280,7 +287,7 @@ public class DownloadTest
                     .Returns(gameExeModule.module);
             });
         
-        string dowloadLocation = @"AppDataLocal\Ksp2Redux\download-cache\patch1Rollup.patch";
+        string dowloadLocation = @"C:\AppDataLocal\Ksp2Redux\download-cache\patch1Rollup.patch";
         TestAppBuilder.ZipFileService.Setup(z => z.OpenRead(dowloadLocation))
             .Returns(zippedPatch.Object);
         
@@ -289,7 +296,7 @@ public class DownloadTest
             .Returns(cacheArchive.Object);
         
         Console.WriteLine();
-        Console.WriteLine("TEST: File system before Act:\n\t- " + string.Join("\n\t- ", TestAppBuilder.FileSystem.AllNodes));
+        Console.WriteLine("TEST: File system before Act:\n" + TestHelpers.DescribeFoldersAndFiles(@"C:\"));
         Console.WriteLine();
         
         // Act - Assert
@@ -330,7 +337,7 @@ public class DownloadTest
         Assert.That(installButton.Command, Is.Not.Null);
         
         Console.WriteLine();
-        Console.WriteLine("TEST: File system before download:\n\t- " + string.Join("\n\t- ", TestAppBuilder.FileSystem.AllNodes));
+        Console.WriteLine("TEST: File system before download:\n" + TestHelpers.DescribeFoldersAndFiles(@"C:\"));
         Console.WriteLine();
         
         installButton.Focus();
@@ -351,19 +358,19 @@ public class DownloadTest
         
         // Assert
         Console.WriteLine();
-        Console.WriteLine("TEST: File system after test:\n\t- " + string.Join("\n\t- ", TestAppBuilder.FileSystem.AllNodes));
+        Console.WriteLine("TEST: File system after test:\n" + TestHelpers.DescribeFoldersAndFiles(@"C:\"));
         Console.WriteLine();
 
         // Assert Prepatch
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToAdd.file"),
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToAdd.file"),
             Is.True);
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToAdd.file").Contents,
-            Is.EqualTo(prepatchFileToAdd.Contents));
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file"),
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToAdd.file"),
+            Is.EqualTo(prepatchFileToAddContent));
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file"),
             Is.True);
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file").TextContents,
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToPatch.file"),
             Is.EqualTo(prepatchFileToPatchContent));
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToRemove.file"),
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\prepatchFileToRemove.file"),
             Is.False);
         
         // Assert cacheArchive.CreateEntryFromFile called for every file before act
@@ -387,25 +394,25 @@ public class DownloadTest
             @"Folder\fileToPatch2.file"), Times.Once);
 
         // Assert patch
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToAdd1.file"),
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToAdd1.file"),
             Is.True);
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToAdd1.file").Contents,
-            Is.EqualTo(fileToAdd1.Contents));
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToAdd2.file"),
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToAdd1.file"),
+            Is.EqualTo(fileToAdd1Content));
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToAdd2.file"),
             Is.True);
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToAdd2.file").Contents,
-            Is.EqualTo(fileToAdd2.Contents));
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file"),
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToAdd2.file"),
+            Is.EqualTo(fileToAdd2Content));
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file"),
             Is.True);
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file").TextContents,
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\fileToPatch1.file"),
             Is.EqualTo(fileToPatch1Content));
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file"),
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file"),
             Is.True);
-        Assert.That(TestAppBuilder.FileSystem.GetFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file").TextContents,
+        Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\Folder\fileToPatch2.file"),
             Is.EqualTo(fileToPatch2Content));
         
         // Assert uninstall.zip exists
-        Assert.That(TestAppBuilder.FileSystem.FileExists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\uninstall.zip"),
+        Assert.That(TestAppBuilder.FileSystem.File.Exists(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\uninstall.zip"),
             Is.True);
         
         // Assert version displayed as the current version is correct

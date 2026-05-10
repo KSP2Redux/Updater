@@ -8,6 +8,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Microsoft.Extensions.DependencyInjection;
+using Testably.Abstractions;
 
 namespace Ksp2Redux.Tools.Launcher;
 
@@ -26,7 +27,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
-        serviceCollection.AddSingleton<IFileSystem, FileSystem>();
+        serviceCollection.AddSingleton<IFileSystem, RealFileSystem>();
         serviceCollection.AddSingleton<ICacheService, CacheService>();
         serviceCollection.AddSingleton<INewsService, NewsService>();
         serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);

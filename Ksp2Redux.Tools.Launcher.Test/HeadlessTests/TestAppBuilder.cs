@@ -1,7 +1,5 @@
 ﻿using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
 using Ksp2Redux.Tools.Common.Service;
 using Ksp2Redux.Tools.Launcher.Services;
@@ -12,6 +10,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Test.HeadlessTests;
 
@@ -46,7 +45,7 @@ public static class TestAppBuilder
     
     private static void InitServiceProvider()
     {
-        FileSystem = new();
+        FileSystem = new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         ZipFileService = new();
         ManifestReleasesFeedProviderService = new();
         EnvironmentProvider = new();

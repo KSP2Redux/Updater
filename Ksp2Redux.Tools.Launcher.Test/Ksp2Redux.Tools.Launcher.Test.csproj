@@ -21,6 +21,7 @@
         <PackageReference Include="NUnit" Version="4.5.1" />
         <PackageReference Include="NUnit.Analyzers" Version="4.7.0"/>
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0"/>
+        <PackageReference Include="Testably.Abstractions.Testing" Version="6.2.0" />
     </ItemGroup>
 
     <ItemGroup>

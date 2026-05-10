@@ -1,8 +1,6 @@
-﻿using System.IO.Abstractions.TestingHelpers;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
 using Avalonia.Controls;
-using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.Test.HeadlessTests;
 using Mono.Cecil;
 using Moq;
@@ -47,35 +45,41 @@ public static class TestHelpers
 
     public static void MockKsp2StockSteamInstall()
     {
-        TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, "AppDataLocal");
-        TestAppBuilder.FileSystem.AddDirectory("AppDataLocal");
+        TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.LocalApplicationData, @"C:\AppDataLocal");
+        TestAppBuilder.FileSystem.Directory.CreateDirectory(@"C:\AppDataLocal");
+        TestAppBuilder.FileSystem.Directory.CreateDirectory(TestAppBuilder.FileSystem.Path.GetTempPath());
 
-        MockFileData libraryFoldersFile = new(
-            """
-            "libraryfolders"
-            {
-            	"0"
-            	{
-            		"path"		"C:\\Program Files (x86)\\Steam"
-            	}
-            }
-            """
-        );
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf", libraryFoldersFile);
+        string libraryFoldersFileContent = """
+                                          "libraryfolders"
+                                          {
+                                          	"0"
+                                          	{
+                                          		"path"		"C:\\Program Files (x86)\\Steam"
+                                          	}
+                                          }
+                                          """;
+        TestAppBuilder.FileSystem.Directory.CreateDirectory(@"C:\Program Files (x86)\Steam\steamapps");
+        TestAppBuilder.FileSystem.File.WriteAllText(@"C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf", libraryFoldersFileContent);
         
-        MockFileData appmanifestFile = new(
-            """
-            "AppState"
-            {
-            	"installdir"		"Kerbal Space Program 2"
-            }
-            """
-        );
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\appmanifest_954850.acf", appmanifestFile);
+        string appmanifestFileContent = """
+                                        "AppState"
+                                        {
+                                        	"installdir"		"Kerbal Space Program 2"
+                                        }
+                                        """;
+        TestAppBuilder.FileSystem.File.WriteAllText(@"C:\Program Files (x86)\Steam\steamapps\appmanifest_954850.acf", appmanifestFileContent);
+
+        using Stream? embeddedResourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Ksp2Redux.Tools.Launcher.Test.MockGame.MockGame.exe");
         
-        TestAppBuilder.FileSystem.AddFileFromEmbeddedResource(
+        if(embeddedResourceStream == null)
+            Assert.Fail("Embedded resource not found");
+        
+        using StreamReader reader  = new(embeddedResourceStream!);
+        
+        TestAppBuilder.FileSystem.Directory.CreateDirectory(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2");
+        TestAppBuilder.FileSystem.File.WriteAllText(
             @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64.exe",
-            Assembly.GetExecutingAssembly(), "Ksp2Redux.Tools.Launcher.Test.MockGame.MockGame.exe");
+            reader.ReadToEnd());
         
         var gameExeModule = TestHelpers.GenerateMockVersionID(
             ("VERSION_TEXT", "0.2.2.0.32914"),
@@ -87,7 +91,9 @@ public static class TestHelpers
                 @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Managed\Assembly-CSharp.dll"))
             .Returns(gameExeModule.module);
         
-        TestAppBuilder.FileSystem.AddFile(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Plugins\Steamworks.NET.txt", new MockFileData(""));
+        TestAppBuilder.FileSystem.Directory.CreateDirectory(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Plugins");
+        TestAppBuilder.FileSystem.File.WriteAllText(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64_Data\Plugins\Steamworks.NET.txt", 
+            "");
     }
 
     public static void MockMessageBoxAcceptAll()
@@ -115,5 +121,11 @@ public static class TestHelpers
         MemoryStream output = new();
         BsDiff.BinaryPatch.Create(oldContent, newContent, output);
         return output.ToArray();
+    }
+
+    public static string DescribeFoldersAndFiles(string root)
+    {
+        return "\t- " + string.Join("\n\t- ",
+            TestAppBuilder.FileSystem.Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories));
     }
 }

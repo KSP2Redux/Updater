@@ -1,5 +1,6 @@
 ﻿using System.IO.Abstractions;
 using System.IO.Compression;
+using Testably.Abstractions;
 
 namespace Ksp2Redux.Tools.Common;
 
@@ -36,7 +37,7 @@ public class ZipArchiveWrapper(ZipArchive archive) : IZipArchive
     public void ExtractToDirectory(IFileSystem fileSystem, string destinationDirectoryName, bool overwriteFiles)
     {
         // FileSystem is an argument only for this check, to prevent unwanted interaction with the real file system
-        if (fileSystem is not FileSystem)
+        if (fileSystem is not RealFileSystem)
             throw new InvalidOperationException("Extracting a real zip archive in a mock file system is not supported. Please use a mock zip archive instead.");
         archive.ExtractToDirectory(destinationDirectoryName, overwriteFiles);
     }
@@ -69,7 +70,7 @@ public class ZipArchiveEntryWrapper(ZipArchiveEntry entry) : IZipArchiveEntry
     public void ExtractToFile(IFileSystem fileSystem, string destinationFileName)
     {
         // FileSystem is an argument only for this check, to prevent unwanted interaction with the real file system
-        if (fileSystem is not FileSystem)
+        if (fileSystem is not RealFileSystem)
             throw new InvalidOperationException("Extracting a real zip archive in a mock file system is not supported. Please use a mock zip archive instead.");
         entry.ExtractToFile(destinationFileName);
     }
