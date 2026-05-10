@@ -12,9 +12,12 @@
             LATEST NEWS
         </TextBlock>
         <Border Grid.Row="1" Grid.Column="0" Background="#802D2D2D" CornerRadius="12"
+                ClipToBounds="True"
                 Margin="0,0,0,0"
                 VerticalAlignment="Stretch">
-            <ScrollViewer Width="240" Height="340" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Width="240" Height="340"
+                          ClipToBounds="True"
+                          VerticalScrollBarVisibility="Auto">
                 <ItemsControl Margin="20,16, 20,16" ItemsSource="{Binding NewsCollection}"
                               Background="Transparent">
                     <ItemsControl.ItemsPanel>
