@@ -11,6 +11,12 @@ public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGro
                                        ? ""
                                        : $"-{gameVersion.Channel.ToLower()}")}";
 
+    public string ReleaseDateString => gameVersion.ReleasedAt is { } d
+        ? d.ToLocalTime().ToString("yyyy-MM-dd")
+        : string.Empty;
+
+    public bool HasReleaseDate => gameVersion.ReleasedAt is not null;
+
     public bool IsSelectable => true;
 
     public GameVersion Version => gameVersion;

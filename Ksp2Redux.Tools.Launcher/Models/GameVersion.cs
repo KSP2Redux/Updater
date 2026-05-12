@@ -10,6 +10,7 @@ public class GameVersion : IEquatable<GameVersion>
     public required Version VersionNumber { get; set; }
     public required string BuildNumber { get; set; }
     public string? CommitHash { get; set; }
+    public DateTime? ReleasedAt { get; set; }
 
     /// <summary>
     /// Read version data VersionID class constants in Assembly-CSharp.dll

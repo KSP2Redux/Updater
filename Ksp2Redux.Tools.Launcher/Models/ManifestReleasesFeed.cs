@@ -121,6 +121,7 @@ public class ManifestReleasesFeed
             {
                 var pversion = release.ParseVersion();
                 pversion.Channel = CurrentChannel;
+                pversion.ReleasedAt = release.releasedAt;
                 yield return pversion;
             }
     }
@@ -134,6 +135,7 @@ public class ManifestReleasesFeed
         if (latest is null) return null;
         var v = latest.ParseVersion();
         v.Channel = CurrentChannel;
+        v.ReleasedAt = latest.releasedAt;
         return v;
     }
 

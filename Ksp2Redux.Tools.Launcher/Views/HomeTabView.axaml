@@ -10,8 +10,15 @@
              x:DataType="home:HomeTabViewModel">
 	<UserControl.DataTemplates>
 		<DataTemplate DataType="home:GameVersionViewModel">
-			<TextBlock Text="{Binding VersionString}"
-                       Margin="4,2,0,0"/>
+			<StackPanel Orientation="Horizontal" Margin="4,2,0,0">
+				<TextBlock Text="{Binding VersionString}" VerticalAlignment="Center"/>
+				<TextBlock Text="{Binding ReleaseDateString}"
+				           IsVisible="{Binding HasReleaseDate}"
+				           Foreground="#888888"
+				           FontSize="10"
+				           VerticalAlignment="Center"
+				           Margin="6,1,0,0"/>
+			</StackPanel>
 		</DataTemplate>
 	</UserControl.DataTemplates>
 
