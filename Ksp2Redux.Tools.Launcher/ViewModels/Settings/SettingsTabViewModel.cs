@@ -77,10 +77,25 @@ public partial class SettingsTabViewModel : ViewModelBase
     private void RebuildInstalls()
     {
         var activeId = _ksp2InstallService.ActiveEntry?.Id;
-        Installs.Clear();
-        foreach (var entry in _ksp2InstallService.Entries)
+        var entries = _ksp2InstallService.Entries;
+
+        // Keep existing row VMs when IDs match, otherwise focus is lost on bound TextBoxes.
+        var structuralChange = Installs.Count != entries.Count;
+        if (!structuralChange)
         {
-            Installs.Add(new Ksp2InstallRowViewModel(_ksp2InstallService, entry, entry.Id == activeId));
+            for (var i = 0; i < entries.Count; i++)
+            {
+                if (Installs[i].Id != entries[i].Id) { structuralChange = true; break; }
+            }
+        }
+
+        if (structuralChange)
+        {
+            Installs.Clear();
+            foreach (var entry in entries)
+            {
+                Installs.Add(new Ksp2InstallRowViewModel(_ksp2InstallService, entry, entry.Id == activeId));
+            }
         }
         SyncSelectedInstall();
     }
