@@ -65,6 +65,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton<SettingsTabViewModel>();
         serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
+        serviceCollection.AddSingleton<ILogService, LogService>();
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();

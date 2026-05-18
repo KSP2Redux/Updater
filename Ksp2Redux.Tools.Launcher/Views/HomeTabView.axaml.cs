@@ -61,14 +61,8 @@ public partial class HomeTabView : UserControl
 
     private async void TriggerInstall(object? sender, RoutedEventArgs e)
     {
-        try
-        {
-            await Model!.UpdateLauncher();
-        }
-        catch (Exception exception)
-        {
-            Console.WriteLine(exception);
-        }
+        if (Model is null) return;
+        await Model.UpdateLauncher();
     }
 
     private void InstallLogTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)

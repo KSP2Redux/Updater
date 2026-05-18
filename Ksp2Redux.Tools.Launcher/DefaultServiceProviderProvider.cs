@@ -24,6 +24,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<SettingsTabViewModel>();
         serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
+        serviceCollection.AddSingleton<ILogService, LogService>();
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();

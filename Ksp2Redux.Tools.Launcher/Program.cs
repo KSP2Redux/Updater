@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using CommandLine;
+using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher;
 
@@ -83,7 +84,7 @@ sealed class Program
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Step 2 of update failed: {e}");
+                    LogService.WriteEarly($"Step 2 of update failed: {e}");
                     PartialUpdate = true;
                 }
             }
@@ -99,7 +100,7 @@ sealed class Program
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Step 3 of update failed: {e}");
+                    LogService.WriteEarly($"Step 3 of update failed: {e}");
                     PartialUpdate = true;
                 }
             }

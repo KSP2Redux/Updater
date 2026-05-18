@@ -36,6 +36,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IKsp2DetectorService _ksp2DetectorService;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly ILogService _log;
 
     [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
 
@@ -53,7 +54,7 @@ public partial class MainWindowViewModel : ViewModelBase
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
         INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService,
-        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService)
+        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, ILogService log)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
@@ -65,6 +66,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _ksp2DetectorService = ksp2DetectorService;
         _messageBoxService = messageBoxService;
         _ksp2InstallService = ksp2InstallService;
+        _log = log;
 
         _updateService = updateService;
         _updateService.DownloadingChanged += downloading =>
@@ -109,14 +111,16 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (antecedent.IsFaulted)
         {
-            Console.WriteLine(antecedent.Exception);
+            _log.Error("Background task faulted.", antecedent.Exception);
         }
     }
 
     private async Task InitializeAsync()
     {
+        _log.Info("MainWindow initializing.");
         if (Program.PartialUpdate)
         {
+            _log.Warn("Partial update detected from a prior launch.");
             var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Partial Update Complete",
                 $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.",
@@ -125,12 +129,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // First start the updater service
         if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
-        
+
         // Now we want to check if any KSP2 installs are registered, and if not try and detect one
         if (_ksp2InstallService.Entries.Count == 0)
         {
+            _log.Info("No KSP2 installs registered, attempting auto-detection.");
             if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
-            { 
+            {
+                _log.Info($"Detected KSP2 install at {installLocation}, prompting user to add.");
                 var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Found",
                     $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
@@ -138,10 +144,16 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (option == ButtonResult.Yes)
                 {
                     _ksp2InstallService.AddInstall(installLocation);
+                    _log.Info($"User added detected KSP2 install at {installLocation}.");
+                }
+                else
+                {
+                    _log.Info("User declined to add detected KSP2 install.");
                 }
             }
             else
             {
+                _log.Warn("KSP2 install was not auto-detected.");
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Not Found!",
                     "Your KSP2 install was not detected, go to the settings tab to set it", ButtonEnum.Ok,
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
@@ -149,34 +161,36 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         await CheckActiveInstallWarnings();
-        
+
         // foreach (var feed in ReleasesFeed)
         // {
         //     await feed.Value.UpdateManifest();
         // }
         var releaseDownloadCacheDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
         _fileSystem.Directory.CreateDirectory(releaseDownloadCacheDir);
+        _log.Info($"Loading {_launcherConfigService.Config.Feeds.Count} release feed(s) into {releaseDownloadCacheDir}.");
         foreach (var feed in _launcherConfigService.Config.Feeds)
         {
-            Console.WriteLine($"Adding feed: {feed.Repository} / {feed.Filename}");
+            _log.Info($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
-                _fileSystem, _manifestReleasesFeedProviderService, releaseDownloadCacheDir, feed);
-            Console.WriteLine("Updating feed manifest");
+                _fileSystem, _manifestReleasesFeedProviderService, _log, releaseDownloadCacheDir, feed);
+            _log.Info($"Updating manifest for feed: {feed.Repository} / {feed.Filename}");
             try
             {
                 await newFeed.UpdateManifest();
-                Console.WriteLine($"Done adding feed: {feed.Repository} / {feed.Filename}");
+                _log.Info($"Done adding feed: {feed.Repository} / {feed.Filename}, channel={newFeed.CurrentChannel}");
                 _releasesFeedService.AddOrSet(newFeed.CurrentChannel, newFeed);
                 SettingsTab.ValidChannels.Add(newFeed.CurrentChannel);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                _log.Error($"Failed to add feed {feed.Repository} / {feed.Filename}.", e);
             }
         }
         SettingsTab.SetLoaded();
         await HomeTab.UpdateVersionsList(false);
-        
+        _log.Info("MainWindow initialization complete.");
+
         // Now schedule update checks every 10 minutes
     }
 

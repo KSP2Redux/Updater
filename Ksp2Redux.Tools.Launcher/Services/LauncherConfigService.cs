@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Text.Json;
@@ -18,47 +17,57 @@ public class LauncherConfigService : ILauncherConfigService
 {
     private readonly IFileSystem _fileSystem;
     private readonly IEnvironmentProvider _environmentProvider;
-    
+    private readonly ILogService _log;
+
     public LauncherConfig Config { get; set; }
     private readonly JsonSerializerOptions StorageOptions = new() { WriteIndented = true };
-    
-    private const string ReduxLauncherConfigFolder = "Ksp2Redux";
+
     private const string LauncherConfigJson = "redux-launcher-config.json";
 
-    public LauncherConfigService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider)
+    public LauncherConfigService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider, ILogService log)
     {
         _fileSystem = fileSystem;
         _environmentProvider = environmentProvider;
+        _log = log;
         GetOrCreateCurrentConfig(_fileSystem);
     }
 
     private void GetOrCreateCurrentConfig(IFileSystem fileSystem)
     {
-        _fileSystem.Directory.CreateDirectory(GetLocalStorageDirectory());
+        var storageDir = GetLocalStorageDirectory();
+        _fileSystem.Directory.CreateDirectory(storageDir);
         var configFilePath = GetConfigFilePath();
+        _log.Info($"Loading launcher config from {configFilePath}");
 
         LauncherConfig? config = null;
 
         try
         {
             config = JsonSerializer.Deserialize<LauncherConfig>(fileSystem.File.ReadAllText(configFilePath));
+            if (config is null)
+            {
+                _log.Warn($"Config file deserialized to null at {configFilePath}. A fresh config will be created.");
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            Debug.Write("Can't load configuration.  Creating a new one.");
+            _log.Warn($"Could not read or deserialize launcher config at {configFilePath} ({ex.GetType().Name}: {ex.Message}). A fresh config will be created.");
         }
 
         if (config is null)
         {
             Config = new(configFilePath);
             Save();
+            _log.Info("Fresh launcher config written to disk.");
         }
         else
         {
             Config = config;
             Config.StoragePath = configFilePath;
+            _log.Info($"Launcher config loaded. Installs={Config.Ksp2Installs.Count}, Feeds={Config.Feeds.Count}, ActiveInstall={Config.ActiveKsp2InstallId}");
             if (MigrateLegacySingleInstall())
             {
+                _log.Info("Launcher config migrated from legacy single-install schema.");
                 Save();
             }
         }
@@ -113,7 +122,16 @@ public class LauncherConfigService : ILauncherConfigService
     {
         var directory = _fileSystem.Path.GetDirectoryName(Config.StoragePath);
         _fileSystem.Directory.CreateDirectory(directory!);
-        _fileSystem.File.WriteAllText(Config.StoragePath, JsonSerializer.Serialize(Config, StorageOptions));
+        try
+        {
+            _fileSystem.File.WriteAllText(Config.StoragePath, JsonSerializer.Serialize(Config, StorageOptions));
+            _log.Info($"Launcher config saved to {Config.StoragePath}");
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to save launcher config to {Config.StoragePath}", ex);
+            throw;
+        }
     }
 
     private string GetConfigFilePath()
@@ -123,7 +141,6 @@ public class LauncherConfigService : ILauncherConfigService
 
     public string GetLocalStorageDirectory()
     {
-        var appdataPath = _environmentProvider.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return _fileSystem.Path.Combine(appdataPath, ReduxLauncherConfigFolder);
+        return LocalStoragePaths.GetLocalStorageDirectory(_fileSystem, _environmentProvider);
     }
 }

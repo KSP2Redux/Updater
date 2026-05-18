@@ -28,6 +28,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IInstallPlanService _installPlanService;
     private readonly IUpdateService _updateService;
     private readonly IOperatingSystemService _operatingSystemService;
+    private readonly ILogService _log;
     
     public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
 
@@ -66,7 +67,7 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, ILogService log)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
@@ -74,6 +75,7 @@ public partial class HomeTabViewModel : ViewModelBase
         _installPlanService = installPlanService;
         _updateService = updateService;
         _operatingSystemService = operatingSystemService;
+        _log = log;
 
         NewsCollectionViewModel = new NewsCollectionViewModel(newsCollectionService.NewsCollection);
         RebuildInstallsCollection();
@@ -458,7 +460,7 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void Log(string message)
     {
-        Console.WriteLine(message);
+        _log.Info(message);
         bool queueUpdate;
         lock (_installLogLock)
         {
@@ -503,6 +505,13 @@ public partial class HomeTabViewModel : ViewModelBase
 
     public async Task UpdateLauncher()
     {
-        await _updateService.CheckAndPerformUpdateAsync();
+        try
+        {
+            await _updateService.CheckAndPerformUpdateAsync();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Manual launcher update failed.", ex);
+        }
     }
 }

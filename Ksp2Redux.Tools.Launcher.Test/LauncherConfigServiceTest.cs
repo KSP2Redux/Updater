@@ -90,7 +90,7 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
         // Act Assert
-        Assert.Throws<Exception>(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object));
+        Assert.Throws<Exception>(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object));
         directory.Verify(d => d.CreateDirectory("incorrect combined path"), Times.Never,
             "Tried to create a directory for the config when appdata didn't exist");
         file.Verify(d => d.ReadAllText("incorrect combined path"), Times.Never, 
@@ -129,7 +129,7 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
         // Act Assert
-        Assert.Throws<Exception>(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object));
+        Assert.Throws<Exception>(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object));
         directory.Verify(d => d.CreateDirectory("incorrect combined path"), Times.Never,
             "Tried to create a directory for the config when appdata didn't exist");
         file.Verify(d => d.ReadAllText("incorrect combined path"), Times.Never, 
@@ -162,7 +162,7 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
         // Act
-        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object);
+        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object);
         
         // Assert
         file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
@@ -195,7 +195,7 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
         // Act
-        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object);
+        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object);
         
         // Assert
         file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
@@ -228,7 +228,7 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
         // Act
-        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object);
+        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object);
         
         // Assert
         file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
@@ -261,7 +261,7 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
 
         // Act
-        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object);
+        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object);
 
         // Assert: legacy single-install was migrated to the new schema.
         var cfg = launcherConfigService.Config;
@@ -304,7 +304,7 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
 
         // Act
-        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object);
+        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object);
 
         // Assert
         var cfg = launcherConfigService.Config;
@@ -345,7 +345,7 @@ public class LauncherConfigServiceTest
         LauncherConfigService launcherConfigService = null!;
         try
         {
-            launcherConfigService = new(fileSystem.Object, environmentProvider.Object);
+            launcherConfigService = new(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object);
         }
         catch(Exception e)
         {
@@ -398,7 +398,7 @@ public class LauncherConfigServiceTest
         LauncherConfigService launcherConfigService = null!;
         try
         {
-            launcherConfigService = new(fileSystem.Object, environmentProvider.Object);
+            launcherConfigService = new(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object);
         }
         catch(Exception e)
         {

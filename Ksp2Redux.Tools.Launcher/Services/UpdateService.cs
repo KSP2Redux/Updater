@@ -41,6 +41,7 @@ public class UpdateService : IUpdateService
     private IAssemblyService _assemblyService;
     private ILauncherConfigService _launcherConfigService;
     private IMessageBoxService _messageBoxService;
+    private ILogService _log;
 
     private static bool _isSingleFile;
 
@@ -58,7 +59,7 @@ public class UpdateService : IUpdateService
         [JsonPropertyName("assets")] public GitHubReleaseAsset[] Assets { get; set; } = [];
     }
 
-    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService)
+    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log)
     {
         _http = new HttpClient();
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(
@@ -68,6 +69,7 @@ public class UpdateService : IUpdateService
         _assemblyService = assemblyService;
         _messageBoxService = messageBoxService;
         _launcherConfigService = launcherConfigService;
+        _log = log;
         _version = assemblyService.GetVersion();
         var uri = new Uri(launcherConfigService.Config.LauncherRepo.TrimEnd('/'));
         var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -76,6 +78,7 @@ public class UpdateService : IUpdateService
 #pragma warning disable IL3000
         _isSingleFile = string.IsNullOrEmpty(_assemblyService.GetEntryAssembly()?.Location);
 #pragma warning restore IL3000
+        _log.Info($"UpdateService initialized. Repo={_owner}/{_repo}, Version={_version}, SingleFile={_isSingleFile}");
     }
 
     /// <summary>
@@ -84,11 +87,22 @@ public class UpdateService : IUpdateService
     /// <returns>A boolean whether to allow updating redux versions after this</returns>
     public async Task<bool> CheckAndPerformUpdateAsync()
     {
-        Console.WriteLine("Checking for updates.");
-        var releases = await _http.GetFromJsonAsync<GitHubRelease[]>(
-            $"https://api.github.com/repos/{_owner}/{_repo}/releases") ?? [];
+        var releasesUrl = $"https://api.github.com/repos/{_owner}/{_repo}/releases";
+        _log.Info($"Checking for launcher updates from {releasesUrl} (current version {_version}).");
 
-        var latestRelease = releases.Where(r => r.TagName.StartsWith("updater-v") && !r.Prerelease)
+        GitHubRelease[] releases;
+        try
+        {
+            releases = await _http.GetFromJsonAsync<GitHubRelease[]>(releasesUrl) ?? [];
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to fetch releases from {releasesUrl}. Skipping update check.", ex);
+            return true;
+        }
+        _log.Info($"GitHub returned {releases.Length} release(s).");
+
+        var matchingReleases = releases.Where(r => r.TagName.StartsWith("updater-v") && !r.Prerelease)
             .Select(r =>
             {
                 var versionPart = r.TagName.Replace("updater-v", "");
@@ -96,15 +110,24 @@ public class UpdateService : IUpdateService
             })
             .Where(v => v != null)
             .OrderByDescending(v => v!.Version)
-            .FirstOrDefault();
+            .ToList();
 
-        if (latestRelease != null && latestRelease.Version > _version)
+        if (matchingReleases.Count == 0)
         {
-            Console.WriteLine($"Update found, v{latestRelease.Version}");
+            _log.Warn("No releases matching the 'updater-v' tag prefix were found. Nothing to update to.");
+            return true;
+        }
+
+        var latestRelease = matchingReleases.FirstOrDefault();
+        _log.Info($"Latest available updater release: v{latestRelease!.Version} (current: {_version}).");
+
+        if (latestRelease.Version > _version)
+        {
+            _log.Info($"Update available: v{latestRelease.Version}.");
 
             if (!_isSingleFile)
             {
-                Console.WriteLine("Running in non-single-file version somehow, will not perform update");
+                _log.Warn("Running in non-single-file build, refusing to self-update.");
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
                     "You are not running in a single file build, rebuild from the latest main to be able to install Redux.", ButtonEnum.Ok,
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
@@ -121,12 +144,17 @@ public class UpdateService : IUpdateService
             var asset = latestRelease.Release.Assets
                 .FirstOrDefault(a => a.Name.Contains(platformKeyword, StringComparison.OrdinalIgnoreCase));
 
-            if (asset != null)
+            if (asset == null)
             {
+                _log.Warn($"No asset matched platform keyword '{platformKeyword}' in release v{latestRelease.Version}. Available assets: {string.Join(", ", latestRelease.Release.Assets.Select(a => a.Name))}");
+            }
+            else
+            {
+                _log.Info($"Selected update asset: {asset.Name}.");
                 const string sha256Prefix = "sha256:";
                 if (asset.Digest == null || !asset.Digest.StartsWith(sha256Prefix, StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine($"No sha256 digest reported by GitHub for {asset.Name}, refusing to update.");
+                    _log.Error($"No sha256 digest reported by GitHub for {asset.Name}, refusing to update.");
                     await ShowUpdateFailedAsync();
                     return false;
                 }
@@ -137,15 +165,17 @@ public class UpdateService : IUpdateService
                 var restartTriggered = false;
                 try
                 {
+                    _log.Info($"Downloading {asset.Name} from {asset.BrowserDownloadUrl}.");
                     var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
                     var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
                     if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
                     {
-                        Console.WriteLine($"Checksum mismatch for {asset.Name}: expected {expectedHash}, got {actualHash}");
+                        _log.Error($"Checksum mismatch for {asset.Name}: expected {expectedHash}, got {actualHash}");
                         await ShowUpdateFailedAsync();
                         return false;
                     }
+                    _log.Info($"Downloaded {bytes.Length} bytes for {asset.Name}, checksum verified.");
 
                     var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
                     _fileSystem.Directory.CreateDirectory(updateDir);
@@ -156,6 +186,7 @@ public class UpdateService : IUpdateService
 
                     var updatePath = _fileSystem.Path.Combine(updateDir, asset.Name);
                     await _fileSystem.File.WriteAllBytesAsync(updatePath, bytes);
+                    _log.Info($"Wrote update binary to {updatePath}. Triggering restart.");
 
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
@@ -167,7 +198,7 @@ public class UpdateService : IUpdateService
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Update download/install failed: {e}");
+                    _log.Error($"Update download/install failed for {asset.Name}.", e);
                     await ShowUpdateFailedAsync();
                     return false;
                 }
@@ -176,6 +207,10 @@ public class UpdateService : IUpdateService
                     if (!restartTriggered) DownloadingChanged?.Invoke(false);
                 }
             }
+        }
+        else
+        {
+            _log.Info("Launcher is already up to date.");
         }
 
         return true;
@@ -194,7 +229,7 @@ public class UpdateService : IUpdateService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed to open releases page: {e}");
+            _log.Error($"Failed to open releases page {releasesUrl}.", e);
         }
     }
 

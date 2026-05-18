@@ -16,7 +16,7 @@ public interface IManifestReleasesFeedProviderService
     Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ManifestReleasesFeed.Patch patch, CancellationToken ct);
 }
 
-public class ManifestReleasesFeedProviderService(IAssemblyService assemblyService) : IManifestReleasesFeedProviderService
+public class ManifestReleasesFeedProviderService(IAssemblyService assemblyService, ILogService log) : IManifestReleasesFeedProviderService
 {
     private readonly Dictionary<FeedInfo, GitHubClient> _clients = new();
     private readonly HttpClient _downloadClient = new();
@@ -56,19 +56,49 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
 
         if (!string.IsNullOrWhiteSpace(feed.Token))
         {
-            var bytes = await GetOrCreateClient(feed).Repository.Content
-                .GetRawContentByRef(owner, name, feed.Filename, "main");
-            return System.Text.Json.JsonSerializer.Deserialize<ManifestReleasesFeed.Manifest>(bytes);
+            log.Info($"Fetching manifest via authenticated GitHub API: {owner}/{name}/{feed.Filename}@main");
+            try
+            {
+                var bytes = await GetOrCreateClient(feed).Repository.Content
+                    .GetRawContentByRef(owner, name, feed.Filename, "main");
+                log.Info($"Authenticated manifest fetch returned {bytes.Length} bytes for {owner}/{name}/{feed.Filename}.");
+                var manifest = System.Text.Json.JsonSerializer.Deserialize<ManifestReleasesFeed.Manifest>(bytes);
+                if (manifest == null)
+                {
+                    log.Warn($"Authenticated manifest at {owner}/{name}/{feed.Filename} deserialized to null.");
+                }
+                return manifest;
+            }
+            catch (Exception ex)
+            {
+                log.Error($"Authenticated manifest fetch failed for {owner}/{name}/{feed.Filename}.", ex);
+                throw;
+            }
         }
 
         var rawUrl = $"https://raw.githubusercontent.com/{owner}/{name}/main/{feed.Filename}";
+        log.Info($"Fetching manifest via raw URL: {rawUrl}");
         var request = new HttpRequestMessage(HttpMethod.Get, rawUrl);
         request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
             new System.Net.Http.Headers.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString())));
-        using var response = await _downloadClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync();
-        return await System.Text.Json.JsonSerializer.DeserializeAsync<ManifestReleasesFeed.Manifest>(stream);
+        try
+        {
+            using var response = await _downloadClient.SendAsync(request);
+            log.Info($"Manifest fetch {rawUrl} -> HTTP {(int)response.StatusCode} {response.StatusCode}, ContentLength={response.Content.Headers.ContentLength}.");
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            var manifest = await System.Text.Json.JsonSerializer.DeserializeAsync<ManifestReleasesFeed.Manifest>(stream);
+            if (manifest == null)
+            {
+                log.Warn($"Manifest at {rawUrl} deserialized to null.");
+            }
+            return manifest;
+        }
+        catch (Exception ex)
+        {
+            log.Error($"Manifest fetch failed for {rawUrl}.", ex);
+            throw;
+        }
     }
 
     public async Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ManifestReleasesFeed.Patch patch, CancellationToken ct)
@@ -78,11 +108,22 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
 
         if (hasToken && TryParseBrowserDownloadUrl(patch.url, out var parsed))
         {
-            var release = await GetOrCreateClient(feed).Repository.Release
-                .Get(parsed.Owner, parsed.Repo, parsed.Tag);
-            var asset = release.Assets.FirstOrDefault(a => string.Equals(a.Name, parsed.Name, StringComparison.Ordinal));
-            if (asset != null) url = asset.Url;
+            log.Info($"Resolving authenticated asset URL via Octokit for {parsed.Owner}/{parsed.Repo} tag={parsed.Tag} name={parsed.Name}.");
+            try
+            {
+                var release = await GetOrCreateClient(feed).Repository.Release
+                    .Get(parsed.Owner, parsed.Repo, parsed.Tag);
+                var asset = release.Assets.FirstOrDefault(a => string.Equals(a.Name, parsed.Name, StringComparison.Ordinal));
+                if (asset != null) url = asset.Url;
+                else log.Warn($"No matching asset '{parsed.Name}' found in release {parsed.Owner}/{parsed.Repo}@{parsed.Tag}. Falling back to public download URL.");
+            }
+            catch (Exception ex)
+            {
+                log.Error($"Authenticated asset URL resolution failed for {parsed.Owner}/{parsed.Repo}@{parsed.Tag}. Falling back to public download URL.", ex);
+            }
         }
+
+        log.Info($"Downloading patch v{patch.version} ({patch.size} bytes) from {url}.");
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
@@ -93,9 +134,18 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
         }
 
-        var response = await _downloadClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
-        return response;
+        try
+        {
+            var response = await _downloadClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            log.Info($"Patch download {url} -> HTTP {(int)response.StatusCode} {response.StatusCode}, ContentLength={response.Content.Headers.ContentLength}.");
+            response.EnsureSuccessStatusCode();
+            return response;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.Error($"Patch download failed for {url}.", ex);
+            throw;
+        }
     }
 
     private static bool TryParseBrowserDownloadUrl(string url, out (string Owner, string Repo, string Tag, string Name) parsed)

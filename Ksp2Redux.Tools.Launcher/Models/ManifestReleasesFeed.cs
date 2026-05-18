@@ -20,6 +20,7 @@ public class ManifestReleasesFeed
 {
     private readonly IFileSystem _fileSystem;
     private readonly IManifestReleasesFeedProviderService _manifestReleasesFeedProviderService;
+    private readonly ILogService _log;
 
     private readonly string _downloadStorageDir;
     private readonly FeedInfo _feed;
@@ -29,10 +30,11 @@ public class ManifestReleasesFeed
     public String CurrentChannel { get; private set; }
 
     public ManifestReleasesFeed(IFileSystem fileSystem, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService,
-        string downloadStorageDir, FeedInfo feed)
+        ILogService log, string downloadStorageDir, FeedInfo feed)
     {
         _fileSystem = fileSystem;
         _manifestReleasesFeedProviderService = manifestReleasesFeedProviderService;
+        _log = log;
         _downloadStorageDir = downloadStorageDir;
         _feed = feed;
     }
@@ -95,14 +97,29 @@ public class ManifestReleasesFeed
 
     public async Task UpdateManifest()
     {
+        _log.Info($"Updating manifest for feed {_feed.Repository} / {_feed.Filename}.");
         try
         {
             manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
+            if (manifest is null)
+            {
+                _log.Warn($"Manifest for {_feed.Repository} / {_feed.Filename} was null. Marking channel as invalid.");
+                manifest = new Manifest
+                {
+                    schemaVersion = 0,
+                    patches = [],
+                    channel = "invalid",
+                    generatedAt = DateTime.MinValue,
+                };
+                CurrentChannel = "invalid";
+                return;
+            }
             CurrentChannel = manifest.channel;
+            _log.Info($"Manifest loaded for {_feed.Repository} / {_feed.Filename}. Channel={CurrentChannel}, Patches={manifest.patches?.Count ?? 0}, GeneratedAt={manifest.generatedAt:O}.");
         }
         catch (Exception e)
         {
-            Console.WriteLine("Could not download manifest");
+            _log.Error($"Could not download or parse manifest for {_feed.Repository} / {_feed.Filename}. Marking channel as invalid.", e);
             manifest = new Manifest
             {
                 schemaVersion = 0,
