@@ -12,7 +12,7 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <LangVersion>preview</LangVersion>
-        <Version>0.0.7.1</Version>
+        <Version>0.0.7.2</Version>
         <AssemblyTitle>KSP2 Redux</AssemblyTitle>
         <Product>KSP2 Redux</Product>
         <Company>KSP2 Redux</Company>

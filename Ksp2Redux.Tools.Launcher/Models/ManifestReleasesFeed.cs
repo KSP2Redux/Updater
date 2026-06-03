@@ -45,7 +45,7 @@ public class ManifestReleasesFeed
         public Requires requires { get; set; }
         public string url { get; set; }
         public string checksum_sha256 { get; set; }
-        public int size { get; set; }
+        public long size { get; set; }
         public DateTime releasedAt { get; set; }
 
         public GameVersion ParseVersion()
@@ -241,14 +241,14 @@ public class ManifestReleasesFeed
                     if (patch.requires.version == from)
                     {
                         bestPlan = new InstallPlan();
-                        bestPlan.ApplyPatchFile((log, progress,ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {from}");
+                        bestPlan.ApplyPatchFile((log, progress,ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {from}", patch.size);
                         break;
                     }
-                    
+
                     if (patch.requires.IsBasePatch)
                     {
                         var testPlan = new InstallPlan();
-                        testPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from prepatch");
+                        testPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from prepatch", patch.size);
                         testPlan.Prepatch();
                         testPlan.RevertToStock();
                         if (bestPlan == null || bestPlan.Cost > testPlan.Cost) bestPlan = testPlan;
@@ -256,7 +256,7 @@ public class ManifestReleasesFeed
                     else
                     {
                         var newInitialPlan = new InstallPlan();
-                        newInitialPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {patch.requires.version}");
+                        newInitialPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {patch.requires.version}", patch.size);
                         var testPlan = GetPlan(from, patch.requires.version!, newInitialPlan);
                         if (testPlan != null && (bestPlan == null || bestPlan.Cost > testPlan.Cost)) bestPlan = testPlan;
                     }
