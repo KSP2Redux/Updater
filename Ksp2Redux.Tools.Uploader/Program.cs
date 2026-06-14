@@ -10,10 +10,16 @@ using Tomlyn;
 
 var manifest = args[0];
 
-var uploadManifest = Toml.ToModel<UploadManifest>(File.ReadAllText(manifest), manifest, new TomlModelOptions
+var uploadManifest = TomlSerializer.Deserialize<UploadManifest>(File.ReadAllText(manifest), new TomlSerializerOptions
 {
-    ConvertPropertyName = x => x,
+    SourceName = manifest
 });
+
+if (uploadManifest == null)
+{
+    Console.WriteLine("Failed to parse manifest");
+    return;
+}
 
 var repoSplit = uploadManifest.Repository.Split('/');
 var repoOwner = repoSplit[0];
@@ -116,6 +122,12 @@ var feedFile = existingFeed[0]!;
 var feedSha = feedFile.Sha;
 
 var feedJson = JsonSerializer.Deserialize<JsonManifest>(feedFile.Content);
+
+if (feedJson == null)
+{
+    Console.WriteLine("Failed to parse feed");
+    return;
+}
 
 feedJson.Patches = patchesToPrepend.Concat(feedJson.Patches).ToArray();
 feedJson.GeneratedAt = DateTime.UtcNow;
