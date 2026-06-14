@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -12,11 +13,7 @@ public partial class CommunityTabView : UserControl
 {
     public CommunityTabViewModel ViewModel => (CommunityTabViewModel)DataContext!;
 
-    public CommunityTabView()
-    {
-        InitializeComponent();
-        Html.BaseStylesheet = App.NewsStylesheet;
-    }
+    public CommunityTabView() => AvaloniaXamlLoader.Load(this);
 
     private void LaunchUri(Uri uri)
     {

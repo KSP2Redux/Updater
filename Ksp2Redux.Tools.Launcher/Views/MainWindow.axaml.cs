@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
@@ -11,7 +12,7 @@ public partial class MainWindow : Window
 {
     public MainWindow()
     {
-        InitializeComponent();
+        AvaloniaXamlLoader.Load(this);
         Opened += (_, _) =>
         {
             DisableWindowResize();

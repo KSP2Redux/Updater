@@ -15,6 +15,7 @@ namespace Ksp2Redux.Tools.Launcher.Controls
     {
         private readonly ObservableCollection<object> _groupedItems = [];
         private bool _isRebuilding;
+        private ComboBox? InnerComboBoxControl => this.FindControl<ComboBox>("InnerComboBox");
 
         /// <summary>
         /// The flattened list of headers and items
@@ -65,7 +66,7 @@ namespace Ksp2Redux.Tools.Launcher.Controls
 
         public GroupedComboBox()
         {
-            InitializeComponent();
+            AvaloniaXamlLoader.Load(this);
 
             GroupKeySelector ??= _ => string.Empty;
         }
@@ -118,7 +119,10 @@ namespace Ksp2Redux.Tools.Launcher.Controls
                 _isRebuilding = false;
                 if (SelectedItem != null && _groupedItems.Contains(SelectedItem))
                 {
-                    InnerComboBox.SelectedItem = SelectedItem;
+                    if (InnerComboBoxControl is { } innerComboBox)
+                    {
+                        innerComboBox.SelectedItem = SelectedItem;
+                    }
                 }
             }
         }

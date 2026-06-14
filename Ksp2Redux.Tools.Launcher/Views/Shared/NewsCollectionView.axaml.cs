@@ -6,8 +6,5 @@ namespace Ksp2Redux.Tools.Launcher.Views.Shared;
 
 public partial class NewsCollectionView : UserControl
 {
-    public NewsCollectionView()
-    {
-        InitializeComponent();
-    }
+    public NewsCollectionView() => AvaloniaXamlLoader.Load(this);
 }

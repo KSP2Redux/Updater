@@ -6,8 +6,5 @@ namespace Ksp2Redux.Tools.Launcher.Views;
 
 public partial class ModsTabView : UserControl
 {
-    public ModsTabView()
-    {
-        InitializeComponent();
-    }
+    public ModsTabView() => AvaloniaXamlLoader.Load(this);
 }
