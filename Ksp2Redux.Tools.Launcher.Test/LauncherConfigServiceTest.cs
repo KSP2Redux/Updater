@@ -90,7 +90,9 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
         // Act Assert
-        Assert.Throws<Exception>(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object));
+        Assert.That(
+            () => new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object),
+            Throws.Exception);
         directory.Verify(d => d.CreateDirectory("incorrect combined path"), Times.Never,
             "Tried to create a directory for the config when appdata didn't exist");
         file.Verify(d => d.ReadAllText("incorrect combined path"), Times.Never, 
@@ -129,7 +131,9 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
         // Act Assert
-        Assert.Throws<Exception>(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object));
+        Assert.That(
+            () => new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<ILogService>().Object),
+            Throws.Exception);
         directory.Verify(d => d.CreateDirectory("incorrect combined path"), Times.Never,
             "Tried to create a directory for the config when appdata didn't exist");
         file.Verify(d => d.ReadAllText("incorrect combined path"), Times.Never, 
@@ -358,7 +362,7 @@ public class LauncherConfigServiceTest
         };
         
         // Act Assert
-        Assert.Throws<Exception>(() => launcherConfigService.Save());
+        Assert.That(() => launcherConfigService.Save(), Throws.Exception);
         directory.Verify(d => d.CreateDirectory(It.IsNotIn("/appdata/Ksp2Redux")), Times.Never, 
             "Tried creating a directory when IPath.GetDirectoryName returned null");
         file.Verify(f => f.WriteAllText(It.IsAny<string>(), It.IsAny<string>()), Times.Never,
