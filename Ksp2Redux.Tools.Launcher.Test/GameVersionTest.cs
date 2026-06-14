@@ -173,7 +173,7 @@ public class GameVersionTest
         ).type;
 
         // Act
-        GameVersion result = GameVersion.FromVersionIDType(versionIDType, true);
+        GameVersion result = GameVersion.FromVersionIDType(versionIDType, false);
         
         // Assert
         Assert.That(result, Is.Not.Null);
