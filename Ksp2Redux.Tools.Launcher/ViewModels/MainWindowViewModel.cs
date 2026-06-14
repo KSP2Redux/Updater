@@ -38,16 +38,16 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
 
-    [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
+    [ObservableProperty] private InstallState _currentInstallState;
 
-    [ObservableProperty] public partial bool IsUpdateDownloading { get; set; }
+    [ObservableProperty] private bool _isUpdateDownloading;
 
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
 
-    [ObservableProperty] public partial int CurrentTab { get; set; }
+    [ObservableProperty] private int _currentTab;
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,

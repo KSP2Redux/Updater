@@ -35,9 +35,9 @@ public partial class HomeTabViewModel : ViewModelBase
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
     public ObservableCollection<Ksp2InstallChoiceViewModel> Installs { get; } = [];
 
-    [ObservableProperty] public partial GameVersionViewModel? SelectedVersion { get; set; }
-    [ObservableProperty] public partial Ksp2InstallChoiceViewModel? SelectedInstall { get; set; }
-    [ObservableProperty] public partial bool IsInstallSwitcherEnabled { get; private set; }
+    [ObservableProperty] private GameVersionViewModel? _selectedVersion;
+    [ObservableProperty] private Ksp2InstallChoiceViewModel? _selectedInstall;
+    [ObservableProperty] private bool _isInstallSwitcherEnabled;
 
     public enum MainButtonState
     {
@@ -46,22 +46,22 @@ public partial class HomeTabViewModel : ViewModelBase
         Update,
         Cancel,
     }
-    [ObservableProperty] public partial MainButtonState MainButtonShown { get; private set; }
-    [ObservableProperty] public partial bool MainButtonEnabled { get; private set; }
-    [ObservableProperty] public partial string MainButtonTooltip { get; private set; } = "Loading...";
-    [ObservableProperty] public partial bool IsProgressVisible { get; private set; } = false;
-    [ObservableProperty] public partial float DownloadProgressMb { get; private set; } = 250;
-    [ObservableProperty] public partial float DownloadProgressTotalMb { get; private set; } = 450;
-    [ObservableProperty] public partial float InstallProgressSteps { get; private set; } = 1;
-    [ObservableProperty] public partial float InstallProgressTotalSteps { get; private set; } = 3;
-    [ObservableProperty] public partial bool IsInstallLogVisible { get; private set; } = false;
-    [ObservableProperty] public partial string InstallLogText { get; private set; } = string.Empty;
-    [ObservableProperty] public partial bool InstallationDisabled { get; private set; } = false;
+    [ObservableProperty] private MainButtonState _mainButtonShown;
+    [ObservableProperty] private bool _mainButtonEnabled;
+    [ObservableProperty] private string _mainButtonTooltip = "Loading...";
+    [ObservableProperty] private bool _isProgressVisible;
+    [ObservableProperty] private float _downloadProgressMb = 250;
+    [ObservableProperty] private float _downloadProgressTotalMb = 450;
+    [ObservableProperty] private float _installProgressSteps = 1;
+    [ObservableProperty] private float _installProgressTotalSteps = 3;
+    [ObservableProperty] private bool _isInstallLogVisible;
+    [ObservableProperty] private string _installLogText = string.Empty;
+    [ObservableProperty] private bool _installationDisabled;
+    
     private readonly StringBuilder _installLogBuilder = new();
-    private readonly object _installLogLock = new();
+    private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
-
-    private CancellationTokenSource? cancelCurrentOperation;
+    private CancellationTokenSource? _cancelCurrentOperation;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
@@ -186,7 +186,7 @@ public partial class HomeTabViewModel : ViewModelBase
     [RelayCommand]
     public void CancelCurrentMainButtonAction()
     {
-        cancelCurrentOperation?.Cancel();
+        _cancelCurrentOperation?.Cancel();
     }
 
     private void ReactToPropertyChanges(object? sender, PropertyChangedEventArgs? e)
@@ -346,7 +346,7 @@ public partial class HomeTabViewModel : ViewModelBase
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
         MainButtonTooltip = "Cancel installation";
-        cancelCurrentOperation = new CancellationTokenSource();
+        _cancelCurrentOperation = new CancellationTokenSource();
 
         Log("Creating install plan");
             
@@ -365,7 +365,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         finally
         {
-            cancelCurrentOperation = null;
+            _cancelCurrentOperation = null;
             await FlushPendingLogWrites();
             IsProgressVisible = false;
             _ksp2InstallService.TryLoadKsp2Install();
@@ -399,7 +399,7 @@ public partial class HomeTabViewModel : ViewModelBase
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
         MainButtonTooltip = "Cancel installation";
-        cancelCurrentOperation = new CancellationTokenSource();
+        _cancelCurrentOperation = new CancellationTokenSource();
         
         try
         {
@@ -414,7 +414,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         finally
         {
-            cancelCurrentOperation = null;
+            _cancelCurrentOperation = null;
             await FlushPendingLogWrites();
             IsProgressVisible = false;
             _ksp2InstallService.TryLoadKsp2Install();
@@ -436,8 +436,8 @@ public partial class HomeTabViewModel : ViewModelBase
                 Log,
                 UpdateDownloadProgress,
                 UpdateStepsProgress,
-                cancelCurrentOperation!.Token),
-            cancelCurrentOperation!.Token);
+                _cancelCurrentOperation!.Token),
+            _cancelCurrentOperation!.Token);
 
         void UpdateStepsProgress(int current, int max)
         {
