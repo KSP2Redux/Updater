@@ -3,7 +3,6 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
-using Ksp2Redux.Tools.Launcher.Views;
 
 namespace Ksp2Redux.Tools.Launcher.Views.Shared;
 

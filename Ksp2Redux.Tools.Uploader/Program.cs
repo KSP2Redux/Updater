@@ -1,9 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Ksp2Redux.Tools.Uploader;
 using Octokit;
 using Tomlyn;

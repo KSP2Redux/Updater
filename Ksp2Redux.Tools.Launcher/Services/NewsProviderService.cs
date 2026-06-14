@@ -1,7 +1,4 @@
-﻿using System.Net.Http;
-using System.ServiceModel.Syndication;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Threading.Tasks;
 using CodeHollow.FeedReader;
 
 namespace Ksp2Redux.Tools.Launcher.Services;

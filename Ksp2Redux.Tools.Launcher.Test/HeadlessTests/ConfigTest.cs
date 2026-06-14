@@ -10,7 +10,6 @@ using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MsBox.Avalonia.Enums;
-using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Test.HeadlessTests;
 
