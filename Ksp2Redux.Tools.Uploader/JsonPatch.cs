@@ -7,6 +7,9 @@ public class JsonPatch
     [JsonPropertyName("version")]
     public string Version { get; set; }
     
+    [JsonPropertyName("label"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string? Label { get; set; }
+    
     [JsonPropertyName("requires")]
     public JsonRequires Requires { get; set; }
     

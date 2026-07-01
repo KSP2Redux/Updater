@@ -77,6 +77,7 @@ foreach (var patch in uploadManifest.Patches)
     var jsonPatch = new JsonPatch
     {
         Version = uploadManifest.Version,
+        Label = uploadManifest.Label,
         ReleasedAt = DateTime.UtcNow,
         ChecksumSha256 = GetChecksum(patch.File),
         Size = new FileInfo(patch.File).Length,

@@ -7,6 +7,8 @@ public class UploadManifest
     public string File { get; set; }
     public string Token { get; set; }
     public string Version { get; set; }
+    
+    public string? Label { get; set; }
     public string? Changelog { get; set; }
     public List<PatchManifest> Patches { get; set; }
 }
