@@ -89,6 +89,14 @@ public partial class HomeTabViewModel : ViewModelBase
                 SyncSelectedInstall();
                 await UpdateVersionsList(false);
             });
+
+        // Periodically re-pull the release feeds so newly published versions appear without a restart.
+        var feedRefreshTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMinutes(5)
+        };
+        feedRefreshTimer.Tick += (_, _) => RefreshFeedsCommand.Execute(null);
+        feedRefreshTimer.Start();
     }
 
     private void RebuildInstallsCollection()
@@ -130,6 +138,30 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             await feed.Value.UpdateManifest();
         }
+    }
+
+    // Single refresh entry point shared by the periodic timer and, later, a manual button / F5.
+    // The generated RefreshFeedsCommand is an AsyncRelayCommand, so a tick that lands while a
+    // refresh is already running is ignored, and a UI control can bind its IsRunning flag.
+    [RelayCommand]
+    public async Task RefreshFeeds()
+    {
+        // Leave the versions list and main button alone while an install or update is running,
+        // otherwise a background refresh would clobber the Cancel button mid operation.
+        if (_cancelCurrentOperation is not null) return;
+
+        // RebuildVersionsCollection resets SelectedVersion to a default, which would pull the
+        // user's choice out from under them on every periodic refresh. Capture and restore it.
+        var previous = SelectedVersion;
+        await UpdateAsync();
+        RebuildVersionsCollection();
+        if (previous is not null)
+        {
+            var match = Versions.FirstOrDefault(v =>
+                v.Channel == previous.Channel && v.Version.Equals(previous.Version));
+            if (match is not null) SelectedVersion = match;
+        }
+        UpdateMainButtonState();
     }
 
     [RelayCommand]

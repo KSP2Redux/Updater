@@ -18,7 +18,7 @@
 
     <ComboBox
         Name="InnerComboBox"
-        Width="250"
+        HorizontalAlignment="Stretch"
         ItemsSource="{Binding GroupedItems, ElementName=Root}"
         SelectedItem="{Binding SelectedItem, ElementName=Root, Mode=OneWay}"
         SelectionChanged="OnInnerSelectionChanged">

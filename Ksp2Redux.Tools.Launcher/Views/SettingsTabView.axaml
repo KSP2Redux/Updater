@@ -60,7 +60,7 @@
 				<ComboBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch"
 				          Name="ReleaseChannelSelector"
 				          IsVisible="{Binding HasSelectedInstall}"
-				          MaxDropDownHeight="100"
+				          MaxDropDownHeight="200"
 				          SelectedValue="{Binding SelectedInstall.ReleaseChannel, Mode=TwoWay}"
 				          ItemsSource="{Binding ValidChannels}" />
 
