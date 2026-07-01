@@ -6,10 +6,12 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGroupedComboBoxItem
 {
     public string Channel = gameVersion.Channel;
-    public string VersionString => $"v{gameVersion.VersionNumber}.{gameVersion.BuildNumber}" +
-                                   $"{(gameVersion.Channel == "stable"
-                                       ? ""
-                                       : $"-{gameVersion.Channel.ToLower()}")}";
+    public string VersionString => !string.IsNullOrWhiteSpace(gameVersion.Label)
+        ? gameVersion.Label
+        : $"v{gameVersion.VersionNumber}.{gameVersion.BuildNumber}" +
+          $"{(gameVersion.Channel == "stable"
+              ? ""
+              : $"-{gameVersion.Channel.ToLower()}")}";
 
     public string ReleaseDateString => gameVersion.ReleasedAt is { } d
         ? d.ToLocalTime().ToString("yyyy-MM-dd")

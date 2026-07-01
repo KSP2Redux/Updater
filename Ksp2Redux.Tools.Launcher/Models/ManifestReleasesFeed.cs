@@ -42,6 +42,7 @@ public class ManifestReleasesFeed
     public class Patch
     {
         public string version { get; set; }
+        public string? label { get; set; }
         public Requires requires { get; set; }
         public string url { get; set; }
         public string checksum_sha256 { get; set; }
@@ -139,6 +140,7 @@ public class ManifestReleasesFeed
                 var pversion = release.ParseVersion();
                 pversion.Channel = CurrentChannel;
                 pversion.ReleasedAt = release.releasedAt;
+                pversion.Label = release.label;
                 yield return pversion;
             }
     }
@@ -153,6 +155,7 @@ public class ManifestReleasesFeed
         var v = latest.ParseVersion();
         v.Channel = CurrentChannel;
         v.ReleasedAt = latest.releasedAt;
+        v.Label = latest.label;
         return v;
     }
 
