@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.IO.Abstractions;
 using System.Text.Json;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -121,7 +120,10 @@ public class LauncherConfigService : ILauncherConfigService
     public void Save()
     {
         var directory = _fileSystem.Path.GetDirectoryName(Config.StoragePath);
-        _fileSystem.Directory.CreateDirectory(directory!);
+        if (string.IsNullOrWhiteSpace(directory))
+            throw new InvalidOperationException($"Could not determine config directory from storage path '{Config.StoragePath}'.");
+
+        _fileSystem.Directory.CreateDirectory(directory);
         try
         {
             _fileSystem.File.WriteAllText(Config.StoragePath, JsonSerializer.Serialize(Config, StorageOptions));

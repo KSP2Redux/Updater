@@ -5,13 +5,11 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Services;

@@ -6,7 +6,7 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class GameVersion : IEquatable<GameVersion>
 {
-    public string Channel { get; set; }
+    public string Channel { get; set; } = "stable";
     public required Version VersionNumber { get; set; }
     public required string BuildNumber { get; set; }
     public string? CommitHash { get; set; }
@@ -23,34 +23,49 @@ public class GameVersion : IEquatable<GameVersion>
         string buildNumber;
         string commitHash;
 
-        string GetFieldValueAsString(string fieldName)
+        string GetRequiredFieldValueAsString(string fieldName)
         {
-            var buffer = versionType.Fields.First(f => f.Name == fieldName).Constant;
-            return buffer.ToString()!;
+            var field = versionType.Fields.FirstOrDefault(f => f.Name == fieldName);
+            if (field?.Constant is not { } value)
+                throw new InvalidOperationException($"VersionID field '{fieldName}' is missing or null.");
+
+            var text = value.ToString();
+            if (string.IsNullOrWhiteSpace(text))
+                throw new InvalidOperationException($"VersionID field '{fieldName}' is empty.");
+
+            return text;
         }
 
         // VERSION_TEXT is common between redux and stock.
         // Stock: "0.2.2.0.32914"
-        var versionText = GetFieldValueAsString("VERSION_TEXT");
-        if (!string.IsNullOrWhiteSpace(versionText))
+        var versionText = GetRequiredFieldValueAsString("VERSION_TEXT");
+        var tokens = versionText.Split('.');
+        if (tokens.Length != 5)
         {
-            var tokens = versionText.Split('.');
+            throw new InvalidOperationException($"VERSION_TEXT must contain five dot-separated tokens: '{versionText}'.");
+        }
+
+        try
+        {
             version = Version.Parse(string.Join('.', tokens[0..4]));
-            buildNumber = tokens[4];
         }
-        else
+        catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
         {
-            version = new();
-            buildNumber = string.Empty;
+            throw new InvalidOperationException($"VERSION_TEXT has an invalid version number: '{versionText}'.", ex);
         }
-        if(IsRedux)
-            if (GetFieldValueAsString("CHANNEL_NAME") is { } channelName)
-                channel = channelName;
-        
+
+        buildNumber = tokens[4];
+        if (string.IsNullOrWhiteSpace(buildNumber))
+            throw new InvalidOperationException($"VERSION_TEXT has an invalid build number: '{versionText}'.");
+
+        if (IsRedux)
+            channel = GetRequiredFieldValueAsString("CHANNEL_NAME");
+
         // try get redux commit hash
-        if (GetFieldValueAsString("DEBUG_INFO") is { } possibleHash && possibleHash != "BUILD_INFO")
+        var possibleHash = GetRequiredFieldValueAsString("DEBUG_INFO");
+        if (possibleHash != "BUILD_INFO")
         {
-            commitHash = $"{channel.ToLower()}+{possibleHash}";
+            commitHash = $"{channel.ToLowerInvariant()}+{possibleHash}";
         }
         else
         {

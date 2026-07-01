@@ -12,14 +12,14 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
 
     public Guid Id => _entry.Id;
 
-    [ObservableProperty] public partial string Name { get; set; }
-    [ObservableProperty] public partial string ExePath { get; set; }
-    [ObservableProperty] public partial string ReleaseChannel { get; set; }
-    [ObservableProperty] public partial bool IsActive { get; set; }
-    [ObservableProperty] public partial bool LaunchThroughSteam { get; set; }
-    [ObservableProperty] public partial string SteamAppId { get; set; }
-    [ObservableProperty] public partial string LaunchArguments { get; set; }
-    [ObservableProperty] public partial bool DisableGraphicsJobs { get; set; }
+    [ObservableProperty] private string _name;
+    [ObservableProperty] private string _exePath;
+    [ObservableProperty] private string _releaseChannel;
+    [ObservableProperty] private bool _isActive;
+    [ObservableProperty] private bool _launchThroughSteam;
+    [ObservableProperty] private string _steamAppId;
+    [ObservableProperty] private string _launchArguments;
+    [ObservableProperty] private bool _disableGraphicsJobs;
 
     public Ksp2InstallRowViewModel(IKsp2InstallService ksp2InstallService, Ksp2InstallEntry entry, bool isActive)
     {

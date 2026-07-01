@@ -11,7 +11,9 @@ internal static class LocalStoragePaths
     public static string GetLocalStorageDirectory(IFileSystem fileSystem, IEnvironmentProvider environmentProvider)
     {
         var appdataPath = environmentProvider.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return fileSystem.Path.Combine(appdataPath, ReduxFolder);
+        return string.IsNullOrWhiteSpace(appdataPath) 
+            ? throw new InvalidOperationException("Local application data folder path is unavailable.") 
+            : fileSystem.Path.Combine(appdataPath, ReduxFolder);
     }
 
     public static string GetLogsDirectory(IFileSystem fileSystem, IEnvironmentProvider environmentProvider)

@@ -1,6 +1,7 @@
 ﻿using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using System.ComponentModel;
 
@@ -9,10 +10,15 @@ namespace Ksp2Redux.Tools.Launcher.Views;
 public partial class HomeTabView : UserControl
 {
     private HomeTabViewModel? Model => DataContext as HomeTabViewModel;
+    private Button? LaunchButtonControl => this.FindControl<Button>("LaunchButton");
+    private Button? UpdateButtonControl => this.FindControl<Button>("UpdateButton");
+    private Button? CancelButtonControl => this.FindControl<Button>("CancelButton");
+    private Button? InstallButtonControl => this.FindControl<Button>("InstallButton");
+    private TextBox? InstallLogTextBoxControl => this.FindControl<TextBox>("InstallLogTextBox");
 
     public HomeTabView()
     {
-        InitializeComponent();
+        AvaloniaXamlLoader.Load(this);
         Loaded += RefreshAll;
     }
 
@@ -36,23 +42,31 @@ public partial class HomeTabView : UserControl
 
     private void ShowButton(HomeTabViewModel.MainButtonState which)
     {
-        LaunchButton.IsVisible = false;
-        UpdateButton.IsVisible = false;
-        CancelButton.IsVisible = false;
-        InstallButton.IsVisible = false;
+        if (LaunchButtonControl is not { } launchButton ||
+            UpdateButtonControl is not { } updateButton ||
+            CancelButtonControl is not { } cancelButton ||
+            InstallButtonControl is not { } installButton)
+        {
+            return;
+        }
+
+        launchButton.IsVisible = false;
+        updateButton.IsVisible = false;
+        cancelButton.IsVisible = false;
+        installButton.IsVisible = false;
         switch (which)
         {
             case HomeTabViewModel.MainButtonState.Launch:
-                LaunchButton.IsVisible = true;
+                launchButton.IsVisible = true;
                 break;
             case HomeTabViewModel.MainButtonState.Install:
-                InstallButton.IsVisible = true;
+                installButton.IsVisible = true;
                 break;
             case HomeTabViewModel.MainButtonState.Update:
-                UpdateButton.IsVisible = true;
+                updateButton.IsVisible = true;
                 break;
             case HomeTabViewModel.MainButtonState.Cancel:
-                CancelButton.IsVisible = true;
+                cancelButton.IsVisible = true;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(which), which, null);
@@ -67,7 +81,8 @@ public partial class HomeTabView : UserControl
 
     private void InstallLogTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)
     {
-        var lastLineIndex = Math.Max(0, InstallLogTextBox.GetLineCount() - 1);
-        InstallLogTextBox.ScrollToLine(lastLineIndex);
+        if (InstallLogTextBoxControl is not { } installLogTextBox) return;
+        var lastLineIndex = Math.Max(0, installLogTextBox.GetLineCount() - 1);
+        installLogTextBox.ScrollToLine(lastLineIndex);
     }
 }

@@ -10,7 +10,6 @@ using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MsBox.Avalonia.Enums;
-using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Test.HeadlessTests;
 
@@ -195,6 +194,7 @@ public class ConfigTest
             VersionNumber = new Version(1, 1, 2, 0),
             Channel = "channel-1",
             CommitHash = "1",
+            ReleasedAt = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc),
         });
         List<GameVersionViewModel> expectedItems =
         [
@@ -205,6 +205,7 @@ public class ConfigTest
                 VersionNumber = new Version(1, 1, 1, 0),
                 Channel = "channel-1",
                 CommitHash = "0",
+                ReleasedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             }),
         ];
         

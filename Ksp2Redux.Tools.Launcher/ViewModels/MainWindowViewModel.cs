@@ -1,22 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
-using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels;
@@ -38,16 +32,16 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
 
-    [ObservableProperty] public partial InstallState CurrentInstallState { get; set; }
+    [ObservableProperty] private InstallState _currentInstallState;
 
-    [ObservableProperty] public partial bool IsUpdateDownloading { get; set; }
+    [ObservableProperty] private bool _isUpdateDownloading;
 
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
 
-    [ObservableProperty] public partial int CurrentTab { get; set; }
+    [ObservableProperty] private int _currentTab;
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,

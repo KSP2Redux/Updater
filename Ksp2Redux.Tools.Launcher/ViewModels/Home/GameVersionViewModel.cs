@@ -1,4 +1,5 @@
-﻿using Ksp2Redux.Tools.Launcher.Controls;
+﻿using System.Text;
+using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -8,13 +9,20 @@ public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGro
     public string Channel = gameVersion.Channel;
     public string VersionString => !string.IsNullOrWhiteSpace(gameVersion.Label)
         ? gameVersion.Label
-        : $"v{gameVersion.VersionNumber}.{gameVersion.BuildNumber}" +
-          $"{(gameVersion.Channel == "stable"
-              ? ""
-              : $"-{gameVersion.Channel.ToLower()}")}";
+        : new StringBuilder()
+            .Append('v')
+            .Append(gameVersion.VersionNumber)
+            .Append('.')
+            .Append(gameVersion.BuildNumber)
+            .Append(gameVersion.Channel == "stable"
+                ? string.Empty
+                : new StringBuilder()
+                    .Append('-')
+                    .Append(gameVersion.Channel.ToLower()).ToString())
+            .ToString();
 
-    public string ReleaseDateString => gameVersion.ReleasedAt is { } d
-        ? d.ToLocalTime().ToString("yyyy-MM-dd")
+    public string ReleaseDateString => gameVersion.ReleasedAt is { } dateTime
+        ? dateTime.ToLocalTime().ToString("yyyy-MM-dd")
         : string.Empty;
 
     public bool HasReleaseDate => gameVersion.ReleasedAt is not null;

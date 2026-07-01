@@ -1,16 +1,12 @@
 ﻿using System.IO.Abstractions;
 using System.IO.Compression;
 using System.Net;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;

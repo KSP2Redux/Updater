@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -24,31 +24,31 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="12.0.1" />
-        <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
+        <PackageReference Include="Avalonia" Version="12.0.4" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
         <PackageReference Include="Avalonia.HtmlRenderer" Version="12.0.0" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
-        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.4" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.4" />
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.2" />
         <PackageReference Include="CodeHollow.FeedReader" Version="1.2.6" />
         <PackageReference Include="CommandLineParser" Version="2.9.1" />
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
         <PackageReference Include="EnvironmentAbstractions" Version="5.0.0" />
         <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.12.0-beta1.25218.8">
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.3.26207.106" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
         <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
         <PackageReference Include="Mono.Cecil" Version="0.11.6" />
         <PackageReference Include="Octokit" Version="14.0.0" />
         <PackageReference Include="Testably.Abstractions" Version="10.2.0" />
-        <PackageReference Include="Tomlyn" Version="0.19.0" />
+        <PackageReference Include="Tomlyn" Version="2.6.0" />
     </ItemGroup>
 
     <ItemGroup>

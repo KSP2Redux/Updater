@@ -4,14 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
