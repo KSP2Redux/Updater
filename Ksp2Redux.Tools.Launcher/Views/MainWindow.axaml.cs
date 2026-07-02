@@ -49,6 +49,11 @@ public partial class MainWindow : Window
 
         const int GWL_STYLE = -16;
         const int WS_THICKFRAME = 0x00040000;
+        const uint SWP_NOMOVE = 0x0002;
+        const uint SWP_NOSIZE = 0x0001;
+        const uint SWP_NOZORDER = 0x0004;
+        const uint SWP_NOACTIVATE = 0x0010;
+        const uint SWP_FRAMECHANGED = 0x0020;
 
         nint hwnd = handle.Handle;
         int style = GetWindowLong(hwnd, GWL_STYLE);
@@ -57,6 +62,11 @@ public partial class MainWindow : Window
         style &= ~WS_THICKFRAME;
 
         SetWindowLong(hwnd, GWL_STYLE, style);
+
+        // SetWindowLong alone doesn't make Windows recompute the frame; without this,
+        // it can keep using metrics cached under the old WS_THICKFRAME style.
+        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     }
 
     private void SetCustomWndProc()
@@ -122,6 +132,9 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
