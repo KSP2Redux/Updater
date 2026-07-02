@@ -13,7 +13,7 @@ public class InstallPlan
     // DownloadSize is the size in bytes of the file that will be fetched by Argument, or 0 if the step performs no download.
     public record struct Step(InstallPlanAction Action, Func<Action<string>, Action<long, long>, CancellationToken, Task<string>>? Argument = null, string ArgumentDescription = "Undescribed", bool DeleteAfter = false, long DownloadSize = 0);
 
-    public List<Step> Steps = [];
+    public List<Step> Steps { get; init; } = [];
 
     public void Uninstall()
     {

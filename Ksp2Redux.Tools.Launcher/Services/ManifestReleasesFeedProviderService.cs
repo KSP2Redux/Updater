@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Models;
 using Octokit;
 
@@ -12,8 +13,8 @@ namespace Ksp2Redux.Tools.Launcher.Services;
 
 public interface IManifestReleasesFeedProviderService
 {
-    Task<ManifestReleasesFeed.Manifest?> GetManifest(FeedInfo feed);
-    Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ManifestReleasesFeed.Patch patch, CancellationToken ct);
+    Task<ReleaseManifest?> GetManifest(FeedInfo feed);
+    Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct);
 }
 
 public class ManifestReleasesFeedProviderService(IAssemblyService assemblyService, ILogService log) : IManifestReleasesFeedProviderService
@@ -50,7 +51,7 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
         return (parts[0], parts[1]);
     }
 
-    public async Task<ManifestReleasesFeed.Manifest?> GetManifest(FeedInfo feed)
+    public async Task<ReleaseManifest?> GetManifest(FeedInfo feed)
     {
         var (owner, name) = ParseRepository(feed.Repository);
 
@@ -62,7 +63,7 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
                 var bytes = await GetOrCreateClient(feed).Repository.Content
                     .GetRawContentByRef(owner, name, feed.Filename, "main");
                 log.Info($"Authenticated manifest fetch returned {bytes.Length} bytes for {owner}/{name}/{feed.Filename}.");
-                var manifest = System.Text.Json.JsonSerializer.Deserialize<ManifestReleasesFeed.Manifest>(bytes);
+                var manifest = System.Text.Json.JsonSerializer.Deserialize<ReleaseManifest>(bytes);
                 if (manifest == null)
                 {
                     log.Warn($"Authenticated manifest at {owner}/{name}/{feed.Filename} deserialized to null.");
@@ -87,7 +88,7 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
             log.Info($"Manifest fetch {rawUrl} -> HTTP {(int)response.StatusCode} {response.StatusCode}, ContentLength={response.Content.Headers.ContentLength}.");
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync();
-            var manifest = await System.Text.Json.JsonSerializer.DeserializeAsync<ManifestReleasesFeed.Manifest>(stream);
+            var manifest = await System.Text.Json.JsonSerializer.DeserializeAsync<ReleaseManifest>(stream);
             if (manifest == null)
             {
                 log.Warn($"Manifest at {rawUrl} deserialized to null.");
@@ -101,12 +102,12 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
         }
     }
 
-    public async Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ManifestReleasesFeed.Patch patch, CancellationToken ct)
+    public async Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct)
     {
-        var url = patch.url;
+        var url = patch.Url;
         var hasToken = !string.IsNullOrWhiteSpace(feed.Token);
 
-        if (hasToken && TryParseBrowserDownloadUrl(patch.url, out var parsed))
+        if (hasToken && TryParseBrowserDownloadUrl(patch.Url, out var parsed))
         {
             log.Info($"Resolving authenticated asset URL via Octokit for {parsed.Owner}/{parsed.Repo} tag={parsed.Tag} name={parsed.Name}.");
             try
@@ -123,7 +124,7 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
             }
         }
 
-        log.Info($"Downloading patch v{patch.version} ({patch.size} bytes) from {url}.");
+        log.Info($"Downloading patch v{patch.Version} ({patch.Size} bytes) from {url}.");
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.UserAgent.Add(new ProductInfoHeaderValue(

@@ -2,6 +2,7 @@
 
 using System.Security.Cryptography;
 using System.Text.Json;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Uploader;
 using Octokit;
 using Tomlyn;
@@ -38,7 +39,7 @@ if (isDeleteOnly && string.IsNullOrWhiteSpace(uploadManifest.Label))
     Environment.Exit(1);
 }
 
-List<JsonPatch> patchesToPrepend = [];
+List<ReleasePatch> patchesToPrepend = [];
 
 if (!isDeleteOnly)
 {
@@ -76,7 +77,7 @@ if (!isDeleteOnly)
 
     var existingAssets = (await github.Repository.Release.GetAllAssets(repoOwner, repoName, createdRelease.Id)).ToList();
 
-    var extensionsToReplace = uploadManifest.Patches
+    var extensionsToReplace = uploadManifest.Patches!
         .Select(p => Path.GetExtension(p.File))
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -87,21 +88,8 @@ if (!isDeleteOnly)
     }
 
 
-    foreach (var patch in uploadManifest.Patches)
+    foreach (var patch in uploadManifest.Patches ?? [])
     {
-        var jsonPatch = new JsonPatch
-        {
-            Version = uploadManifest.Version,
-            Label = uploadManifest.Label,
-            ReleasedAt = DateTime.UtcNow,
-            ChecksumSha256 = GetChecksum(patch.File),
-            Size = new FileInfo(patch.File).Length,
-            Requires = new JsonRequires
-            {
-                Version = patch.PreviousVersion,
-            }
-        };
-
         var fileName = Path.GetFileName(patch.File);
 
         await using var stream = File.OpenRead(patch.File);
@@ -115,9 +103,21 @@ if (!isDeleteOnly)
 
         var asset = await github.Repository.Release.UploadAsset(createdRelease, upload);
 
-        jsonPatch.Url = asset.BrowserDownloadUrl;
+        var releasePatch = new ReleasePatch
+        {
+            Version = uploadManifest.Version,
+            Label = uploadManifest.Label,
+            ReleasedAt = DateTime.UtcNow,
+            ChecksumSha256 = GetChecksum(patch.File),
+            Size = new FileInfo(patch.File).Length,
+            Requires = new PatchRequirement
+            {
+                Version = patch.PreviousVersion,
+            },
+            Url = asset.BrowserDownloadUrl,
+        };
 
-        patchesToPrepend.Add(jsonPatch);
+        patchesToPrepend.Add(releasePatch);
 
         Console.WriteLine($"Uploaded release asset at: {asset.Url}");
     }
@@ -136,7 +136,7 @@ var existingFeed =
 var feedFile = existingFeed[0]!;
 var feedSha = feedFile.Sha;
 
-var feedJson = JsonSerializer.Deserialize<JsonManifest>(feedFile.Content);
+var feedJson = JsonSerializer.Deserialize<ReleaseManifest>(feedFile.Content);
 
 if (feedJson == null)
 {
@@ -172,10 +172,10 @@ if (!string.IsNullOrWhiteSpace(uploadManifest.Label))
 
     feedJson.Patches = feedJson.Patches
         .Where(p => !string.Equals(p.Label, uploadManifest.Label, StringComparison.Ordinal))
-        .ToArray();
+        .ToList();
 }
 
-feedJson.Patches = patchesToPrepend.Concat(feedJson.Patches).ToArray();
+feedJson.Patches = patchesToPrepend.Concat(feedJson.Patches).ToList();
 feedJson.GeneratedAt = DateTime.UtcNow;
 
 var newFeedContent = JsonSerializer.Serialize(feedJson, new JsonSerializerOptions()

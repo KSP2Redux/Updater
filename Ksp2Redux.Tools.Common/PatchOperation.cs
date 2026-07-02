@@ -1,11 +1,20 @@
-﻿namespace Ksp2Redux.Tools.Common;
+using System.Text.Json.Serialization;
 
-public class PatchOperation
+namespace Ksp2Redux.Tools.Common;
+
+public sealed record PatchOperation
 {
-    public required string fileName;
-    public required PatchAction action;
-    public byte[]? originalHash;
-    public byte[]? finalHash;
+    [JsonPropertyName("fileName")]
+    public required string FileName { get; init; }
+
+    [JsonPropertyName("action")]
+    public required PatchAction Action { get; init; }
+
+    [JsonPropertyName("originalHash")]
+    public byte[]? OriginalHash { get; init; }
+
+    [JsonPropertyName("finalHash")]
+    public byte[]? FinalHash { get; init; }
 
     public enum PatchAction
     {

@@ -1,6 +1,9 @@
-﻿namespace Ksp2Redux.Tools.Common;
+using System.Text.Json.Serialization;
 
-public class PatchManifest
+namespace Ksp2Redux.Tools.Common;
+
+public sealed record PatchManifest
 {
-    public List<PatchOperation> operations = [];
+    [JsonPropertyName("operations")]
+    public List<PatchOperation> Operations { get; init; } = [];
 }

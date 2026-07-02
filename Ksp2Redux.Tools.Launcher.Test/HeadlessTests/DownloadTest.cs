@@ -122,35 +122,35 @@ public class DownloadTest
         // Arrange Patch1
         byte[] patch1RollupZipBytes = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A];
 
-        ManifestReleasesFeed.Patch patch1Rollup = new()
+        ReleasePatch patch1Rollup = new()
         {
-            checksum_sha256 = Convert.ToBase64String(sha256.ComputeHash(patch1RollupZipBytes)),
-            releasedAt = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            requires = new() { version = null },
-            size = 10,
-            url = "https://github.com/patch1Rollup.patch",
-            version = "0.2.3.1.1234",
+            ChecksumSha256 = Convert.ToBase64String(SHA256.HashData(patch1RollupZipBytes)),
+            ReleasedAt = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Requires = new PatchRequirement { Version = null },
+            Size = 10,
+            Url = "https://github.com/patch1Rollup.patch",
+            Version = "0.2.3.1.1234",
         };
-        
+
         TestAppBuilder.ManifestReleasesFeedProviderService
             .Setup(m => m.GetManifest(
                 It.Is<FeedInfo>(f => f.Filename.Contains(DefaultChannel))))
-            .ReturnsAsync(new ManifestReleasesFeed.Manifest
+            .ReturnsAsync(new ReleaseManifest
             {
-                channel = DefaultChannel,
-                generatedAt = new DateTime(2020, 1, 4),
-                patches = [patch1Rollup],
-                schemaVersion = 1
+                Channel = DefaultChannel,
+                GeneratedAt = new DateTime(2020, 1, 4),
+                Patches = [patch1Rollup],
+                SchemaVersion = 1
             });
         TestAppBuilder.ManifestReleasesFeedProviderService
             .Setup(m => m.GetManifest(
                 It.Is<FeedInfo>(f => f.Filename.Contains(DefaultChannel) == false)))
-            .ReturnsAsync((FeedInfo f) => new ManifestReleasesFeed.Manifest
+            .ReturnsAsync((FeedInfo f) => new ReleaseManifest
             {
-                channel = f.Filename.Split('-', '.')[1],
-                generatedAt = new DateTime(2020, 1, 4),
-                patches = [],
-                schemaVersion = 1
+                Channel = f.Filename.Split('-', '.')[1],
+                GeneratedAt = new DateTime(2020, 1, 4),
+                Patches = [],
+                SchemaVersion = 1
             });
         
         // Arrange Patch download
