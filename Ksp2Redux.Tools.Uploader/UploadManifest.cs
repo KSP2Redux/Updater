@@ -1,14 +1,14 @@
 ﻿namespace Ksp2Redux.Tools.Uploader;
 
-public class UploadManifest
+public sealed record UploadManifest
 {
-    public string Repository { get; set; }
-    public string Branch { get; set; }
-    public string File { get; set; }
-    public string Token { get; set; }
-    public string Version { get; set; }
-    
-    public string? Label { get; set; }
-    public string? Changelog { get; set; }
-    public List<PatchManifest> Patches { get; set; }
+    public required string Repository { get; init; }
+    public required string Branch { get; init; }
+    public required string File { get; init; }
+    public required string Token { get; init; }
+    public required string Version { get; init; }
+
+    public string? Label { get; init; }
+    public string? Changelog { get; init; }
+    public List<PatchUploadEntry>? Patches { get; init; }
 }
