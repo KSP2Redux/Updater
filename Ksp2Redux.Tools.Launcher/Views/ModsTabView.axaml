@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -6,5 +6,19 @@
              x:DataType="mods:ModsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.ModsTabView">
-    Coming soon... :3
+    <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+            Background="#A02D2D2D" CornerRadius="12" Padding="40,28">
+        <StackPanel Spacing="8">
+            <TextBlock Text="COMING SOON"
+                       FontFamily="{StaticResource JetBrainsMonoLight}"
+                       FontSize="32"
+                       Foreground="White"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="Mod support is on the roadmap :3"
+                       FontFamily="{StaticResource JetBrainsMonoRegular}"
+                       FontSize="14"
+                       Foreground="#CCCCCC"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Border>
 </UserControl>
