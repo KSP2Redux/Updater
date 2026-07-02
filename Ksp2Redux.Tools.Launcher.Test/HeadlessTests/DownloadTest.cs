@@ -124,9 +124,9 @@ public class DownloadTest
 
         ReleasePatch patch1Rollup = new()
         {
-            ChecksumSha256 = Convert.ToBase64String(sha256.ComputeHash(patch1RollupZipBytes)),
+            ChecksumSha256 = Convert.ToBase64String(SHA256.HashData(patch1RollupZipBytes)),
             ReleasedAt = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            Requires = new() { Version = null },
+            Requires = new PatchRequirement { Version = null },
             Size = 10,
             Url = "https://github.com/patch1Rollup.patch",
             Version = "0.2.3.1.1234",

@@ -18,6 +18,7 @@ IZipFileService zipFileService = new ZipFileService(fileSystem);
 Patch();
 Dump();
 
+return;
 
 void Patch()
 {
