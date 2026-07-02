@@ -89,7 +89,7 @@
     </Window.Styles>
 
     <Border BorderBrush="#dc1501" BorderThickness="2" CornerRadius="10" VerticalAlignment="Stretch">
-        <Border Margin="2" CornerRadius="8" ClipToBounds="True">
+        <Border Background="#ff000000" CornerRadius="8" ClipToBounds="True">
             <Grid RowDefinitions="Auto,*">
                 <Border Grid.RowSpan="2">
                     <Border.Background>
