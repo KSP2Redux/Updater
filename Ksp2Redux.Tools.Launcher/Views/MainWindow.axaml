@@ -21,6 +21,10 @@
         <vm:MainWindowViewModel />
     </Design.DataContext>
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Escape" Command="{Binding CommunityTab.DeselectNewsCommand}" />
+    </Window.KeyBindings>
+
     <!-- ReSharper disable Xaml.RedundantResource -->
     <Window.Resources>
         <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#df1501" />

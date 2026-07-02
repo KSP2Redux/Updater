@@ -1,4 +1,5 @@
-﻿using Ksp2Redux.Tools.Launcher.Services;
+﻿using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -29,5 +30,11 @@ public partial class CommunityTabViewModel(INewsItemCollectionService newsCollec
     public void SetSelectedNewsId(int newsId)
     {
         SelectedNewsId = newsId;
+    }
+
+    [RelayCommand]
+    private void DeselectNews()
+    {
+        SelectedNewsId = -1;
     }
 }
