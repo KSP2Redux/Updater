@@ -2,6 +2,7 @@
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
+using Ksp2Redux.Tools.Common;
 using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;
@@ -157,27 +158,33 @@ public class ConfigTest
             ))
             .ReturnsAsync(ButtonResult.Yes);
 
-        ManifestReleasesFeed.Patch patch0 = new()
+        ReleasePatch patch0 = new()
         {
-            releasedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            version = "1.1.1.0.0",
-            checksum_sha256 = "0"
+            ReleasedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Version = "1.1.1.0.0",
+            ChecksumSha256 = "0",
+            Url = "https://example.com/patch0.patch",
+            Size = 0,
+            Requires = new PatchRequirement(),
         };
-        ManifestReleasesFeed.Patch patch1 = new()
+        ReleasePatch patch1 = new()
         {
-            releasedAt = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc),
-            version = "1.1.2.0.1",
-            checksum_sha256 = "1"
+            ReleasedAt = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+            Version = "1.1.2.0.1",
+            ChecksumSha256 = "1",
+            Url = "https://example.com/patch1.patch",
+            Size = 0,
+            Requires = new PatchRequirement(),
         };
-        
+
         TestAppBuilder.ManifestReleasesFeedProviderService
             .Setup(m => m.GetManifest(It.Is<FeedInfo>(f => f.Filename == "manifest.json")))
-            .ReturnsAsync(new ManifestReleasesFeed.Manifest
+            .ReturnsAsync(new ReleaseManifest
             {
-                channel = "channel-1",
-                generatedAt = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc),
-                patches = [patch0, patch1],
-                schemaVersion = 1
+                Channel = "channel-1",
+                GeneratedAt = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc),
+                Patches = [patch0, patch1],
+                SchemaVersion = 1
             });
         
         // Act
@@ -235,12 +242,12 @@ public class ConfigTest
         
         TestAppBuilder.ManifestReleasesFeedProviderService
             .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
-            .ReturnsAsync((FeedInfo f) => new ManifestReleasesFeed.Manifest
+            .ReturnsAsync((FeedInfo f) => new ReleaseManifest
             {
-                channel = f.Filename.Split('-', '.')[1],
-                generatedAt = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc),
-                patches = [],
-                schemaVersion = 1
+                Channel = f.Filename.Split('-', '.')[1],
+                GeneratedAt = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc),
+                Patches = [],
+                SchemaVersion = 1
             });
         
         // Act
