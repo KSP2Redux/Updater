@@ -15,7 +15,7 @@
                 ClipToBounds="True"
                 Margin="0,0,0,0"
                 VerticalAlignment="Stretch">
-            <ScrollViewer Width="240" Height="340"
+            <ScrollViewer Width="260" Height="340"
                           ClipToBounds="True"
                           VerticalScrollBarVisibility="Auto">
                 <ItemsControl Margin="20,16, 20,16" ItemsSource="{Binding NewsCollection}"

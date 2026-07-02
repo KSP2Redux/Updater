@@ -52,7 +52,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+    <Grid ColumnDefinitions="260,*" Margin="6,0,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <StackPanel Spacing="8">
             <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto">
                 <shared:NewsCollectionView Grid.RowSpan="2" DataContext="{Binding NewsCollectionViewModel}"/>
@@ -95,7 +95,7 @@
                 </Button>
             </StackPanel>
         </StackPanel>
-        <Border Grid.Column="1" Margin="12, 8, 12, 0" BorderThickness="2" BorderBrush="#803E3E3E" Background="#2D2D2D" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
+        <Border Grid.Column="1" Margin="12, 8, 4, 0" BorderThickness="2" BorderBrush="#803E3E3E" Background="#2D2D2D" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
             <DockPanel Name="NewsDock" Margin="8" DataContext="{Binding SelectedNews}" LastChildFill="True">
                 <Grid Name="NewsHeader" DockPanel.Dock="Top" ColumnDefinitions="*, Auto">
                     <TextBlock Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
@@ -113,9 +113,11 @@
                         </Canvas>
                     </Button>
                 </Grid>
-                <HtmlPanel Name="Html"
-                           BaseStylesheet="{x:Static launcher:App.NewsStylesheet}"
-                           Text="{Binding Content}"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <HtmlPanel Name="Html"
+                               BaseStylesheet="{x:Static launcher:App.NewsStylesheet}"
+                               Text="{Binding Content}"/>
+                </ScrollViewer>
             </DockPanel>
         </Border>
     </Grid>

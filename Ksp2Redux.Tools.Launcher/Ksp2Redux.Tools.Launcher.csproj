@@ -12,7 +12,7 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <LangVersion>preview</LangVersion>
-        <Version>0.0.8.1</Version>
+        <Version>0.0.9.0</Version>
         <AssemblyTitle>KSP2 Redux</AssemblyTitle>
         <Product>KSP2 Redux</Product>
         <Company>KSP2 Redux</Company>
@@ -24,12 +24,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="12.0.4" />
-        <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
+        <PackageReference Include="Avalonia" Version="12.0.5" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
         <PackageReference Include="Avalonia.HtmlRenderer" Version="12.0.0" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.4" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.4" />
-        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.2" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.5" />
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
         <PackageReference Include="CodeHollow.FeedReader" Version="1.2.6" />
         <PackageReference Include="CommandLineParser" Version="2.9.1" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -39,7 +39,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -48,7 +48,7 @@
         <PackageReference Include="Mono.Cecil" Version="0.11.6" />
         <PackageReference Include="Octokit" Version="14.0.0" />
         <PackageReference Include="Testably.Abstractions" Version="10.2.0" />
-        <PackageReference Include="Tomlyn" Version="2.6.0" />
+        <PackageReference Include="Tomlyn" Version="2.10.1" />
     </ItemGroup>
 
     <ItemGroup>
