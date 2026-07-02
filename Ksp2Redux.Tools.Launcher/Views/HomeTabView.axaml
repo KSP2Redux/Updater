@@ -133,11 +133,11 @@
 
 	</UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="260,*" Margin="6,0,0,0">
         <shared:NewsCollectionView Grid.RowSpan="2" DataContext="{Binding NewsCollectionViewModel}"/>
 
-		<StackPanel Grid.Row="2" Grid.Column="0" Orientation="Vertical" Margin="8,20,8,10">
-			<ComboBox Name="InstallSelector" Width="250"
+		<StackPanel Grid.Row="2" Grid.Column="0" Orientation="Vertical" Margin="0,20,0,10">
+			<ComboBox Name="InstallSelector"
 			          FontFamily="{StaticResource JetBrainsMonoRegular}"
 			          HorizontalAlignment="Stretch" Margin="0,0,0,6"
 			          Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
@@ -150,7 +150,7 @@
 					</DataTemplate>
 				</ComboBox.ItemTemplate>
 			</ComboBox>
-			<Grid Width="250" HorizontalAlignment="Left" ColumnDefinitions="*,Auto">
+			<Grid HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
 				<controls:GroupedComboBox
 					Grid.Column="0"
 					Name="VersionSelector"
@@ -183,36 +183,36 @@
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="240" Height="70">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
-				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+			<Canvas Width="260" Height="76">
+				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
 				<TextBlock FontFamily="{StaticResource LedCounter7}">INSTALL</TextBlock>
 			</Canvas>
 		</Button>
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="UpdateButton" Command="{Binding UpdateRedux}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="240" Height="70">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
-				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+			<Canvas Width="260" Height="76">
+				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
 				<TextBlock FontFamily="{StaticResource LedCounter7}">UPDATE</TextBlock>
 			</Canvas>
 		</Button>
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" ClickMode="Press" Command="{Binding CancelCurrentMainButtonAction}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="240" Height="70">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
-				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+			<Canvas Width="260" Height="76">
+				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
 				<TextBlock FontFamily="{StaticResource LedCounter7}">CANCEL</TextBlock>
 			</Canvas>
 		</Button>
 		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="LaunchButton" Command="{Binding LaunchGame}"
 				IsEnabled="{Binding MainButtonEnabled}"
 				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="240" Height="70">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="240" />
-				<Border Classes="main-button-tint" Width="240" Height="70" CornerRadius="8" />
+			<Canvas Width="260" Height="76">
+				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
 				<TextBlock FontFamily="{StaticResource LedCounter7}">LAUNCH</TextBlock>
 			</Canvas>
 		</Button>
