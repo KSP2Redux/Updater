@@ -18,7 +18,6 @@ public class Ksp2Patch : IDisposable
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true,
-        IncludeFields = true
     };
 
     public Ksp2Patch(IFileSystem fileSystem, IZipArchive archive)
@@ -105,12 +104,12 @@ public class Ksp2Patch : IDisposable
                 Console.WriteLine($"Original SHA256: {FormatHash(oldSHA.Hash!)}");
                 Console.WriteLine($"New SHA256: {FormatHash(newSHA.Hash!)}");
 
-                _manifest.operations.Add(new PatchOperation
+                _manifest.Operations.Add(new PatchOperation
                 {
-                    action = PatchOperation.PatchAction.Patch,
-                    fileName = _fileSystem.Path.Combine(prefix, file.Name),
-                    originalHash = oldSHA.Hash!,
-                    finalHash = newSHA.Hash!,
+                    Action = PatchOperation.PatchAction.Patch,
+                    FileName = _fileSystem.Path.Combine(prefix, file.Name),
+                    OriginalHash = oldSHA.Hash!,
+                    FinalHash = newSHA.Hash!,
                 });
             }
             else
@@ -124,11 +123,11 @@ public class Ksp2Patch : IDisposable
                 input.Position = 0;
                 using var newSHA = SHA256.Create();
                 newSHA.ComputeHash(input);
-                _manifest.operations.Add(new PatchOperation
+                _manifest.Operations.Add(new PatchOperation
                 {
-                    action = PatchOperation.PatchAction.Add,
-                    fileName = _fileSystem.Path.Combine(prefix, file.Name),
-                    finalHash = newSHA.Hash!,
+                    Action = PatchOperation.PatchAction.Add,
+                    FileName = _fileSystem.Path.Combine(prefix, file.Name),
+                    FinalHash = newSHA.Hash!,
                 });
             }
         }
@@ -141,10 +140,10 @@ public class Ksp2Patch : IDisposable
             {
                 if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(patchDirectory, file.Name)))
                 {
-                    _manifest.operations.Add(new PatchOperation
+                    _manifest.Operations.Add(new PatchOperation
                     {
-                        fileName = _fileSystem.Path.Combine(prefix, file.Name),
-                        action = PatchOperation.PatchAction.Remove
+                        FileName = _fileSystem.Path.Combine(prefix, file.Name),
+                        Action = PatchOperation.PatchAction.Remove
                     });
                 }
             }
@@ -153,10 +152,10 @@ public class Ksp2Patch : IDisposable
             {
                 if (!_fileSystem.Directory.Exists(_fileSystem.Path.Combine(patchDirectory, dir.Name)))
                 {
-                    _manifest.operations.Add(new PatchOperation
+                    _manifest.Operations.Add(new PatchOperation
                     {
-                        fileName = _fileSystem.Path.Combine(prefix, dir.Name),
-                        action = PatchOperation.PatchAction.Remove
+                        FileName = _fileSystem.Path.Combine(prefix, dir.Name),
+                        Action = PatchOperation.PatchAction.Remove
                     });
                 }
             }
@@ -301,15 +300,15 @@ public class Ksp2Patch : IDisposable
         try
         {
             // Extract patch & add entries
-            foreach (PatchOperation operation in _manifest.operations)
+            foreach (PatchOperation operation in _manifest.Operations)
             {
-                if (FileInformation.IgnoreFiles(_fileSystem).Contains(NormalizeEntryPath(operation.fileName))) continue;
-                string entryFsName = NormalizeEntryPath(operation.fileName);
-                switch (operation.action)
+                if (FileInformation.IgnoreFiles(_fileSystem).Contains(NormalizeEntryPath(operation.FileName))) continue;
+                string entryFsName = NormalizeEntryPath(operation.FileName);
+                switch (operation.Action)
                 {
                     case PatchOperation.PatchAction.Patch:
                     {
-                        IZipArchiveEntry? entry = _archive.GetEntry(operation.fileName + ".bsdiff");
+                        IZipArchiveEntry? entry = _archive.GetEntry(operation.FileName + ".bsdiff");
                         if (entry != null)
                         {
                             string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName + ".bsdiff");
@@ -321,7 +320,7 @@ public class Ksp2Patch : IDisposable
                     }
                     case PatchOperation.PatchAction.Add:
                     {
-                        IZipArchiveEntry? entry = _archive.GetEntry(operation.fileName);
+                        IZipArchiveEntry? entry = _archive.GetEntry(operation.FileName);
                         if (entry != null)
                         {
                             string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName);
@@ -339,20 +338,20 @@ public class Ksp2Patch : IDisposable
             using var semaphore = new SemaphoreSlim(maxConcurrency);
             var tasks = new List<Task>();
 
-            foreach (PatchOperation operation in _manifest.operations)
+            foreach (PatchOperation operation in _manifest.Operations)
             {
-                if (FileInformation.IgnoreFiles(_fileSystem).Contains(NormalizeEntryPath(operation.fileName))) continue;
+                if (FileInformation.IgnoreFiles(_fileSystem).Contains(NormalizeEntryPath(operation.FileName))) continue;
                 await semaphore.WaitAsync();
 
                 tasks.Add(Task.Run(async () =>
                 {
                     try
                     {
-                        string trueName = NormalizeEntryPath(operation.fileName);
+                        string trueName = NormalizeEntryPath(operation.FileName);
                         string targetPath = _fileSystem.Path.Combine(targetDirectory, trueName);
                         string sourcePath = _fileSystem.Path.Combine(sourceDirectory, trueName);
                         string tempPath = targetPath + ".temp";
-                        if (operation.action == PatchOperation.PatchAction.Patch)
+                        if (operation.Action == PatchOperation.PatchAction.Patch)
                         {
                             log?.Invoke($"Applying binary patch to {trueName}");
                             IDirectoryInfo? parent = _fileSystem.FileInfo.New(targetPath).Directory;
@@ -375,11 +374,11 @@ public class Ksp2Patch : IDisposable
                                     FileAccess.ReadWrite
                                 );
 
-                                if (!await ValidateFileHashAsync(originalFile, operation.originalHash!))
+                                if (!await ValidateFileHashAsync(originalFile, operation.OriginalHash!))
                                 {
                                     throw new InvalidDataException(
                                         $"File {originalFile.Name} does not match expected hash " +
-                                        $"{FormatHash(operation.originalHash!)}. Cannot apply patch! Check that the " +
+                                        $"{FormatHash(operation.OriginalHash!)}. Cannot apply patch! Check that the " +
                                         $"Redux patch you are applying is for the version of the game (Steam, portable " +
                                         $"zip, or Epic) you are patching."
                                     );
@@ -401,11 +400,11 @@ public class Ksp2Patch : IDisposable
                                     throw;
                                 }
 
-                                if (!await ValidateFileHashAsync(targetFile, operation.finalHash!))
+                                if (!await ValidateFileHashAsync(targetFile, operation.FinalHash!))
                                 {
                                     throw new InvalidDataException(
                                         $"File {targetFile.Name} does not match expected hash " +
-                                        $"{FormatHash(operation.finalHash!)}."
+                                        $"{FormatHash(operation.FinalHash!)}."
                                     );
                                 }
                             }
@@ -413,7 +412,7 @@ public class Ksp2Patch : IDisposable
                             // Delete the original file if we are not caching it
                             _fileSystem.File.Delete(tempPath);
                         }
-                        else if (operation.action == PatchOperation.PatchAction.Remove)
+                        else if (operation.Action == PatchOperation.PatchAction.Remove)
                         {
                             log?.Invoke($"Deleting {trueName}");
 
@@ -443,11 +442,11 @@ public class Ksp2Patch : IDisposable
                             await using FileSystemStream entryStream = _fileSystem.File.OpenRead(patchPath);
                             await entryStream.CopyToAsync(targetFile);
 
-                            if (!await ValidateFileHashAsync(targetFile, operation.finalHash!))
+                            if (!await ValidateFileHashAsync(targetFile, operation.FinalHash!))
                             {
                                 throw new InvalidDataException(
                                     $"File {targetFile.Name} does not match expected hash " +
-                                    $"{FormatHash(operation.finalHash!)}."
+                                    $"{FormatHash(operation.FinalHash!)}."
                                 );
                             }
                         }
@@ -538,5 +537,5 @@ public class Ksp2Patch : IDisposable
     }
 
     public override string ToString()
-        => $"Ksp2Patch: Operations:{_manifest.operations.Count}";
+        => $"Ksp2Patch: Operations:{_manifest.Operations.Count}";
 }
