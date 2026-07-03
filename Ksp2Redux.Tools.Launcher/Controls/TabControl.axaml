@@ -32,14 +32,12 @@
                 HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
                 VerticalAlignment="{TemplateBinding VerticalAlignment}">
           <DockPanel LastChildFill="True">
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" ColumnSpacing="30">
-              <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/logo.png" Width="260" Grid.Column="0" Margin="16,0,0,0"/>
-              <ItemsPresenter Name="PART_ItemsPresenter"
-                              VerticalAlignment="Center"
-                              HorizontalAlignment="Center"
-                              ItemsPanel="{TemplateBinding ItemsPanel}"
-                              Grid.Column="1" />
-            </Grid>
+            <ItemsPresenter Name="PART_ItemsPresenter"
+                            DockPanel.Dock="Top"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Margin="0,16,0,0"
+                            ItemsPanel="{TemplateBinding ItemsPanel}" />
             <ContentPresenter Name="PART_SelectedContentHost"
                               Margin="{TemplateBinding Padding}"
                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"

@@ -11,7 +11,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
-using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
@@ -25,8 +24,6 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IOperatingSystemService _operatingSystemService;
     private readonly ILogService _log;
     
-    public NewsCollectionViewModel NewsCollectionViewModel { get; set; }
-
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
     public ObservableCollection<Ksp2InstallChoiceViewModel> Installs { get; } = [];
 
@@ -61,7 +58,7 @@ public partial class HomeTabViewModel : ViewModelBase
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
-    public HomeTabViewModel(IKsp2InstallService ksp2InstallService, INewsItemCollectionService newsCollectionService,
+    public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
         ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, ILogService log)
     {
         _ksp2InstallService = ksp2InstallService;
@@ -72,7 +69,6 @@ public partial class HomeTabViewModel : ViewModelBase
         _operatingSystemService = operatingSystemService;
         _log = log;
 
-        NewsCollectionViewModel = new NewsCollectionViewModel(newsCollectionService.NewsCollection);
         RebuildInstallsCollection();
         RebuildVersionsCollection();
         PropertyChanged += ReactToPropertyChanges;

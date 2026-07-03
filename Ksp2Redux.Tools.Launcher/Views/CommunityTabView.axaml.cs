@@ -17,31 +17,6 @@ public partial class CommunityTabView : UserControl
         TopLevel.GetTopLevel(this)!.Launcher.LaunchUriAsync(uri);
     }
 
-    private void DiscordLink_OnClick(object? sender, RoutedEventArgs e)
-    {
-        LaunchUri(new Uri("https://discord.gg/8yq8d5VGQR"));
-    }
-
-    private void ForumsLink_OnClick(object? sender, RoutedEventArgs e)
-    {
-        LaunchUri(new Uri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux"));
-    }
-
-    private void WikiLink_OnClick(object? sender, RoutedEventArgs e)
-    {
-        LaunchUri(new Uri("https://kerbal.wiki"));
-    }
-
-    private void YoutubeLink_OnClick(object? sender, RoutedEventArgs e)
-    {
-        LaunchUri(new Uri("https://www.youtube.com/@RendezvousEntertainmentModding"));
-    }
-
-    private void GithubLink_OnClick(object? sender, RoutedEventArgs e)
-    {
-        LaunchUri(new Uri("https://github.com/KSP2Redux"));
-    }
-    
     private void NewsLink_OnClick(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedNews.Link is null)

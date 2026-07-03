@@ -1,0 +1,251 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Ksp2Redux.Tools.Launcher.ViewModels"
+             xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
+             xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
+             xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.Views.Shared"
+             mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="700"
+             x:Class="Ksp2Redux.Tools.Launcher.Views.SidebarView"
+             x:DataType="vm:MainWindowViewModel">
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="F5" Command="{Binding HomeTab.RefreshFeedsCommand}" />
+    </UserControl.KeyBindings>
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="home:GameVersionViewModel">
+            <StackPanel Orientation="Horizontal" Margin="4,2,0,0">
+                <TextBlock Text="{Binding VersionString}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ReleaseDateString}"
+                           IsVisible="{Binding HasReleaseDate}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="10"
+                           VerticalAlignment="Center"
+                           Margin="6,1,0,0"/>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <UserControl.Styles>
+        <Style Selector="ComboBoxItem">
+            <Style Selector="^:selected /template/ ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource BrandRedBrush}"/>
+            </Style>
+            <Style Selector="^:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource BrandRedHoverBrush}"/>
+            </Style>
+            <Style Selector="^:pressed /template/ ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource BrandRedPressedBrush}"/>
+            </Style>
+        </Style>
+
+        <Style Selector="Button.main-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="32" />
+            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+
+            <Style Selector="^ Border.main-button-tint">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="^ TextBlock">
+                <Setter Property="Margin" Value="24,16,0,0" />
+                <Setter Property="Foreground" Value="#3b3b3b" />
+            </Style>
+            <Style Selector="^:pointerover">
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^ Border.main-button-tint">
+                    <Setter Property="Background" Value="{StaticResource OverlayHoverBrush}" />
+                </Style>
+            </Style>
+            <Style Selector="^:pressed">
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^ Border.main-button-tint">
+                    <Setter Property="Background" Value="{StaticResource OverlayPressedBrush}" />
+                </Style>
+            </Style>
+            <Style Selector="^:disabled">
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                </Style>
+                <Style Selector="^ Border.main-button-tint">
+                    <Setter Property="Background" Value="{StaticResource ScrimStrongBrush}" />
+                </Style>
+            </Style>
+
+            <Style Selector="^ ToolTip">
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="Black" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoLight}" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="MaxWidth" Value="320" />
+            </Style>
+        </Style>
+
+        <Style Selector="Button.refresh-button">
+            <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource SuccessHoverBrush}" />
+                <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            </Style>
+            <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource SuccessPressedBrush}" />
+                <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            </Style>
+            <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="#3a3a3a" />
+                <Setter Property="Opacity" Value="0.6" />
+            </Style>
+        </Style>
+
+        <Style Selector="Button.sidebar-link > Canvas">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+        </Style>
+        <Style Selector="Button.sidebar-link Image">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+        </Style>
+        <Style Selector="Button.sidebar-link Border.button-tint">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Width="260" RowDefinitions="Auto,*,Auto,Auto,Auto">
+        <Image Grid.Row="0" Source="avares://Ksp2Redux.Tools.Launcher/Assets/logo.png" Width="260" Margin="0,0,0,8"/>
+
+        <shared:NewsCollectionView Grid.Row="1" DataContext="{Binding NewsCollectionViewModel}"/>
+
+        <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,10,0,6"
+                    DataContext="{Binding HomeTab}" x:DataType="home:HomeTabViewModel">
+            <ComboBox Name="InstallSelector"
+                      FontFamily="{StaticResource JetBrainsMonoRegular}"
+                      HorizontalAlignment="Stretch" Margin="0,0,0,6"
+                      Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
+                      IsEnabled="{Binding IsInstallSwitcherEnabled}"
+                      ItemsSource="{Binding Installs}"
+                      SelectedItem="{Binding SelectedInstall, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate DataType="home:Ksp2InstallChoiceViewModel">
+                        <TextBlock Text="{Binding Name}" Margin="4,2,0,0" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Grid HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
+                <controls:GroupedComboBox
+                    Grid.Column="0"
+                    Name="VersionSelector"
+                    FontFamily="{StaticResource JetBrainsMonoRegular}"
+                    HorizontalAlignment="Stretch"
+                    Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
+                    ItemsSource="{Binding Versions}"
+                    GroupKeySelector="{Binding GameVersionGroupKeySelector}"
+                    SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
+                    <controls:GroupedComboBox.Styles>
+                        <Style Selector="ComboBoxItem">
+                            <Setter Property="IsEnabled"
+                                    Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+                            <Setter Property="IsHitTestVisible"
+                                    Value="{Binding Converter={StaticResource SelectableConverter}}"/>
+                        </Style>
+                    </controls:GroupedComboBox.Styles>
+                </controls:GroupedComboBox>
+                <Button Grid.Column="1"
+                    Classes="refresh-button"
+                    Name="RefreshVersionsButton"
+                    Command="{Binding RefreshFeedsCommand}"
+                    Content="⟳"
+                    ToolTip.Tip="Refresh versions (F5)"
+                    Width="32"
+                    VerticalAlignment="Stretch"
+                    Margin="6,0,0,0" />
+            </Grid>
+        </StackPanel>
+
+        <Panel Grid.Row="3" DataContext="{Binding HomeTab}" x:DataType="home:HomeTabViewModel">
+            <Button Classes="main-button" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
+                    IsEnabled="{Binding MainButtonEnabled}"
+                    ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
+                <Canvas Width="260" Height="76">
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <TextBlock FontFamily="{StaticResource LedCounter7}">INSTALL</TextBlock>
+                </Canvas>
+            </Button>
+            <Button Classes="main-button" IsVisible="False" Name="UpdateButton" Command="{Binding UpdateRedux}"
+                    IsEnabled="{Binding MainButtonEnabled}"
+                    ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
+                <Canvas Width="260" Height="76">
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <TextBlock FontFamily="{StaticResource LedCounter7}">UPDATE</TextBlock>
+                </Canvas>
+            </Button>
+            <Button Classes="main-button" IsVisible="False" Name="CancelButton" ClickMode="Press" Command="{Binding CancelCurrentMainButtonAction}"
+                    IsEnabled="{Binding MainButtonEnabled}"
+                    ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
+                <Canvas Width="260" Height="76">
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <TextBlock FontFamily="{StaticResource LedCounter7}">CANCEL</TextBlock>
+                </Canvas>
+            </Button>
+            <Button Classes="main-button" IsVisible="False" Name="LaunchButton" Command="{Binding LaunchGame}"
+                    IsEnabled="{Binding MainButtonEnabled}"
+                    ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
+                <Canvas Width="260" Height="76">
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <TextBlock FontFamily="{StaticResource LedCounter7}">LAUNCH</TextBlock>
+                </Canvas>
+            </Button>
+        </Panel>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom" Margin="0,14,0,0">
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
+                <Canvas>
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Border Classes="button-tint" />
+                </Canvas>
+            </Button>
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
+                <Canvas>
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Border Classes="button-tint" />
+                </Canvas>
+            </Button>
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Wiki" Click="WikiLink_OnClick">
+                <Canvas>
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-wiki.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Border Classes="button-tint" />
+                </Canvas>
+            </Button>
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="YouTube" Click="YoutubeLink_OnClick">
+                <Canvas>
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Border Classes="button-tint" />
+                </Canvas>
+            </Button>
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="GitHub" Click="GithubLink_OnClick">
+                <Canvas>
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Border Classes="button-tint" />
+                </Canvas>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

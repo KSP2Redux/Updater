@@ -27,7 +27,7 @@
 
     <!-- ReSharper disable Xaml.RedundantResource -->
     <Window.Resources>
-        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#df1501" />
+        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{StaticResource BrandRedColor}" />
     </Window.Resources>
     <!-- ReSharper restore Xaml.RedundantResource -->
 
@@ -55,13 +55,13 @@
                     <Setter Property="Background" Value="Transparent" />
                 </Style>
                 <Style Selector="^:pointerover Border.titlebar-button-surface">
-                    <Setter Property="Background" Value="#50ffffff" />
+                    <Setter Property="Background" Value="{StaticResource OverlayHighlightBrush}" />
                 </Style>
                 <Style Selector="^#CloseButton Border.titlebar-button-surface">
                     <Setter Property="Background" Value="Transparent" />
                 </Style>
                 <Style Selector="^#CloseButton:pointerover Border.titlebar-button-surface">
-                    <Setter Property="Background" Value="#dc1501" />
+                    <Setter Property="Background" Value="{StaticResource BrandRedBrush}" />
                 </Style>
             </Style>
         </Style>
@@ -92,8 +92,8 @@
         </Style>
     </Window.Styles>
 
-    <Border BorderBrush="#dc1501" BorderThickness="2" CornerRadius="10" VerticalAlignment="Stretch">
-        <Border Background="#ff000000" CornerRadius="8" ClipToBounds="True">
+    <Border BorderBrush="{StaticResource BrandRedBrush}" BorderThickness="2" CornerRadius="10" VerticalAlignment="Stretch">
+        <Border Background="Black" CornerRadius="8" ClipToBounds="True">
             <Grid RowDefinitions="Auto,*">
                 <Border Grid.RowSpan="2">
                     <Border.Background>
@@ -110,7 +110,7 @@
                     </Border.Background>
                 </Border>
                 <Border Name="TitleBar">
-                    <Grid Height="32" Background="#ff000000" PointerPressed="TitleBar_PointerPressed"
+                    <Grid Height="32" Background="Black" PointerPressed="TitleBar_PointerPressed"
                           ColumnDefinitions="*,32,32">
                         <Button Classes="titlebar-button"
                                 Grid.Column="1"
@@ -154,37 +154,43 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Padding="24,0,24,24">
-                    <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
-                        <TabItem Name="HomeTab" Header="Home">
-                            <views:HomeTabView DataContext="{Binding HomeTab}"/>
-                        </TabItem>
-                        <TabItem Name="CommunityTab" Header="Community">
-                            <views:CommunityTabView DataContext="{Binding CommunityTab}"/>
-                        </TabItem>
-                        <TabItem Name="ModsTab" Header="Mods">
-                            <views:ModsTabView DataContext="{Binding ModsTab}"/>
-                        </TabItem>
-                        <TabItem Name="SettingsTab">
-                            <TabItem.Header>
-                                <Grid Margin="2,6,2,8">
-                                    <Canvas Width="16" Height="16">
-                                        <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
-                                            <Rectangle.OpacityMask>
-                                                <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/settings-icon.png"></ImageBrush>
-                                            </Rectangle.OpacityMask>
-                                        </Rectangle>
-                                    </Canvas>
-                                </Grid>
-                            </TabItem.Header>
-                            <views:SettingsTabView DataContext="{Binding SettingsTab}" />
-                        </TabItem>
-                    </TabControl>
-                </Border>
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0" Padding="24,16,24,12">
+                        <views:SidebarView />
+                    </Border>
 
-                <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="#cc000000">
+                    <Border Grid.Column="1" Padding="0,0,24,24">
+                        <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
+                            <TabItem Name="HomeTab" Header="Home">
+                                <views:HomeTabView DataContext="{Binding HomeTab}"/>
+                            </TabItem>
+                            <TabItem Name="CommunityTab" Header="Community">
+                                <views:CommunityTabView DataContext="{Binding CommunityTab}"/>
+                            </TabItem>
+                            <TabItem Name="ModsTab" Header="Mods">
+                                <views:ModsTabView DataContext="{Binding ModsTab}"/>
+                            </TabItem>
+                            <TabItem Name="SettingsTab">
+                                <TabItem.Header>
+                                    <Grid Margin="2,6,2,8">
+                                        <Canvas Width="16" Height="16">
+                                            <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+                                                <Rectangle.OpacityMask>
+                                                    <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/settings-icon.png"></ImageBrush>
+                                                </Rectangle.OpacityMask>
+                                            </Rectangle>
+                                        </Canvas>
+                                    </Grid>
+                                </TabItem.Header>
+                                <views:SettingsTabView DataContext="{Binding SettingsTab}" />
+                            </TabItem>
+                        </TabControl>
+                    </Border>
+                </Grid>
+
+                <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="{StaticResource ScrimMediumBrush}">
                     <TextBlock Text="Update Downloading..."
-                               Foreground="White" FontSize="32"
+                               Foreground="{StaticResource TextPrimaryBrush}" FontSize="32"
                                FontFamily="{StaticResource JetBrainsMonoLight}"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
