@@ -1,0 +1,63 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Standardized color palette for the launcher UI. Prefer these over hardcoded hex
+        values in views so the look of the app can be retuned from one place.
+    -->
+
+    <!-- Brand -->
+    <Color x:Key="BrandRedColor">#DC1501</Color>
+    <Color x:Key="BrandOrangeColor">#FC7600</Color>
+    <SolidColorBrush x:Key="BrandRedBrush" Color="{StaticResource BrandRedColor}" />
+    <SolidColorBrush x:Key="BrandRedHoverBrush" Color="{StaticResource BrandRedColor}" Opacity="0.63" />
+    <SolidColorBrush x:Key="BrandRedPressedBrush" Color="{StaticResource BrandRedColor}" Opacity="0.75" />
+
+    <!-- Semantic: success / positive actions (e.g. refresh) -->
+    <Color x:Key="SuccessColor">#2EA043</Color>
+    <Color x:Key="SuccessHoverColor">#3FB950</Color>
+    <Color x:Key="SuccessPressedColor">#268A3B</Color>
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="SuccessHoverBrush" Color="{StaticResource SuccessHoverColor}" />
+    <SolidColorBrush x:Key="SuccessPressedBrush" Color="{StaticResource SuccessPressedColor}" />
+
+    <!-- Semantic: danger / destructive actions -->
+    <Color x:Key="DangerColor">#B33A3A</Color>
+    <Color x:Key="DangerHoverColor">#D44A4A</Color>
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="{StaticResource DangerHoverColor}" />
+
+    <!-- Accent: informational/selection highlight, kept distinct from brand red so
+         "this is clickable/selected" doesn't visually read as a primary action -->
+    <Color x:Key="AccentInfoColor">#0066BB</Color>
+    <SolidColorBrush x:Key="AccentInfoHoverBrush" Color="{StaticResource AccentInfoColor}" Opacity="0.5" />
+
+    <!-- Neutral buttons -->
+    <Color x:Key="NeutralButtonColor">#666666</Color>
+    <Color x:Key="NeutralButtonHoverColor">#333333</Color>
+    <SolidColorBrush x:Key="NeutralButtonBrush" Color="{StaticResource NeutralButtonColor}" Opacity="0.4" />
+    <SolidColorBrush x:Key="NeutralButtonHoverBrush" Color="{StaticResource NeutralButtonHoverColor}" />
+
+    <!-- Surfaces: panels/cards that sit on top of the background art -->
+    <Color x:Key="SurfacePanelColor">#2D2D2D</Color>
+    <SolidColorBrush x:Key="SurfacePanelBrush" Color="{StaticResource SurfacePanelColor}" />
+    <SolidColorBrush x:Key="SurfacePanelTranslucentBrush" Color="{StaticResource SurfacePanelColor}" Opacity="0.5" />
+    <SolidColorBrush x:Key="SurfacePanelStrongBrush" Color="{StaticResource SurfacePanelColor}" Opacity="0.63" />
+    <Color x:Key="SurfacePanelBorderColor">#3E3E3E</Color>
+    <SolidColorBrush x:Key="SurfacePanelBorderBrush" Color="{StaticResource SurfacePanelBorderColor}" Opacity="0.5" />
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="White" />
+    <Color x:Key="TextSecondaryColor">#888888</Color>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <Color x:Key="TextMutedColor">#CCCCCC</Color>
+    <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
+    <SolidColorBrush x:Key="TextFaintBrush" Color="White" Opacity="0.5" />
+
+    <!-- Overlays / scrims: dimming layers over background art or content -->
+    <SolidColorBrush x:Key="OverlayHoverBrush" Color="Black" Opacity="0.13" />
+    <SolidColorBrush x:Key="OverlayPressedBrush" Color="Black" Opacity="0.25" />
+    <SolidColorBrush x:Key="OverlayHighlightBrush" Color="White" Opacity="0.31" />
+    <SolidColorBrush x:Key="ScrimSoftBrush" Color="Black" Opacity="0.5" />
+    <SolidColorBrush x:Key="ScrimMediumBrush" Color="Black" Opacity="0.8" />
+    <SolidColorBrush x:Key="ScrimStrongBrush" Color="Black" Opacity="0.9" />
+</ResourceDictionary>

@@ -16,6 +16,7 @@
             <FontFamily x:Key="JetBrainsMonoBold">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Bold</FontFamily>
 
             <ResourceDictionary.MergedDictionaries>
+                <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Colors.axaml" />
                 <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabControl.axaml" />
                 <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabItem.axaml" />
             </ResourceDictionary.MergedDictionaries>
