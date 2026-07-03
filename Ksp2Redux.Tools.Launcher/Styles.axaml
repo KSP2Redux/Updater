@@ -7,22 +7,64 @@
     </Design.PreviewWith>
 
     <Style Selector="Button">
-        <Setter Property="Background" Value="#66666666"></Setter>
+        <Setter Property="Background" Value="{StaticResource NeutralButtonBrush}"></Setter>
         <Setter Property="BorderThickness" Value="0"></Setter>
         <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
         <Style Selector="^:pointerover">
-            <Setter Property="Background" Value="#ff333333"></Setter>
+            <Setter Property="Background" Value="{StaticResource NeutralButtonHoverBrush}"></Setter>
         </Style>
     </Style>
-    
+
     <Style Selector="Button.danger">
-        <Setter Property="Background" Value="#B33A3A" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Style Selector="^:pointerover">
-            <Setter Property="Background" Value="#D44A4A" />
+            <Setter Property="Background" Value="{StaticResource DangerHoverBrush}" />
         </Style>
     </Style>
-    
+
+    <Style Selector="Button.link-button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="ToolTip.ShowDelay" Value="0" />
+        <Setter Property="ToolTip.Placement" Value="AnchorAndGravity" />
+        <Setter Property="ToolTip.VerticalOffset" Value="30" />
+
+        <Style Selector="^ > Canvas">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+        </Style>
+
+        <Style Selector="^ Image">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Canvas.Left" Value="0" />
+            <Setter Property="Canvas.Top" Value="0" />
+        </Style>
+
+        <Style Selector="^ Border.button-tint">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="^:pointerover">
+            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="^ Border.button-tint">
+                <Setter Property="Background" Value="{StaticResource OverlayHoverBrush}" />
+            </Style>
+        </Style>
+        <Style Selector="^:pressed">
+            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="^ Border.button-tint">
+                <Setter Property="Background" Value="{StaticResource OverlayPressedBrush}" />
+            </Style>
+        </Style>
+    </Style>
+
     <Style Selector="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
     </Style>

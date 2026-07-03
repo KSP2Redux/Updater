@@ -8,8 +8,13 @@
              x:Class="Ksp2Redux.Tools.Launcher.Views.SettingsTabView"
              VerticalAlignment="Stretch">
 
-	<Grid ColumnDefinitions="0.7*,0.3*" VerticalAlignment="Stretch">
-		<Grid Grid.Column="0" Margin="20" RowDefinitions="Auto,Auto,Auto">
+	<Grid VerticalAlignment="Stretch">
+		<Border Margin="24,8,24,8"
+		        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+		        Background="{StaticResource SurfacePanelBrush}"
+		        BorderBrush="{StaticResource SurfacePanelBorderBrush}"
+		        BorderThickness="2" CornerRadius="12">
+		<Grid Margin="20" RowDefinitions="Auto,Auto,Auto">
 			<TextBlock Grid.Row="0" FontFamily="{StaticResource JetBrainsMonoLight}"
 			           FontSize="24" TextAlignment="Left" Margin="0,8,0,4">
 				SETTINGS
@@ -109,9 +114,10 @@
 
 			<TextBlock Grid.Row="2"
 			           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
-			           Foreground="#80FFFFFF"
+			           Foreground="{StaticResource TextFaintBrush}"
 			           HorizontalAlignment="Right" Margin="0,12,0,0"
 			           Text="{Binding LauncherVersion, StringFormat='Launcher v{0}'}" />
 		</Grid>
+		</Border>
 	</Grid>
 </UserControl>

@@ -3,99 +3,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:community="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Community"
-             xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.Views.Shared"
              xmlns:launcher="clr-namespace:Ksp2Redux.Tools.Launcher"
              mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="530"
              x:Class="Ksp2Redux.Tools.Launcher.Views.CommunityTabView"
              x:DataType="community:CommunityTabViewModel">
-    <UserControl.Styles>
-        <Style Selector="Button.link-button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="ToolTip.ShowDelay" Value="0" />
-            <Setter Property="ToolTip.Placement" Value="AnchorAndGravity" />
-            <Setter Property="ToolTip.VerticalOffset" Value="30" />
-
-            <Style Selector="^ > Canvas">
-                <Setter Property="Width" Value="30" />
-                <Setter Property="Height" Value="30" />
-            </Style>
-
-            <Style Selector="^ Image">
-                <Setter Property="Width" Value="30" />
-                <Setter Property="Height" Value="30" />
-                <Setter Property="Canvas.Left" Value="0" />
-                <Setter Property="Canvas.Top" Value="0" />
-            </Style>
-
-            <Style Selector="^ Border.button-tint">
-                <Setter Property="Width" Value="30" />
-                <Setter Property="Height" Value="30" />
-                <Setter Property="Background" Value="Transparent" />
-            </Style>
-
-            <Style Selector="^:pointerover">
-                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="Transparent" />
-                </Style>
-                <Style Selector="^ Border.button-tint">
-                    <Setter Property="Background" Value="#20000000" />
-                </Style>
-            </Style>
-            <Style Selector="^:pressed">
-                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="Transparent" />
-                </Style>
-                <Style Selector="^ Border.button-tint">
-                    <Setter Property="Background" Value="#40000000" />
-                </Style>
-            </Style>
-        </Style>
-    </UserControl.Styles>
-
-    <Grid ColumnDefinitions="260,*" Margin="6,0,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <StackPanel Spacing="8">
-            <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto">
-                <shared:NewsCollectionView Grid.RowSpan="2" DataContext="{Binding NewsCollectionViewModel}"/>
-            </Grid>
-            <StackPanel Orientation="Horizontal">
-                <Button Classes="link-button" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
-                    <Canvas>
-                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0"
-                               Canvas.Top="0" />
-                        <Border Classes="button-tint" />
-                    </Canvas>
-                </Button>
-                <Button Classes="link-button" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
-                    <Canvas>
-                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0"
-                               Canvas.Top="0" />
-                        <Border Classes="button-tint" />
-                    </Canvas>
-                </Button>
-                <Button Classes="link-button" ToolTip.Tip="KSP2 Wiki" Click="WikiLink_OnClick">
-                    <Canvas>
-                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-wiki.png" Canvas.Left="0"
-                               Canvas.Top="0" />
-                        <Border Classes="button-tint" />
-                    </Canvas>
-                </Button>
-                <Button Classes="link-button" ToolTip.Tip="YouTube" Click="YoutubeLink_OnClick">
-                    <Canvas>
-                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0"
-                               Canvas.Top="0" />
-                        <Border Classes="button-tint" />
-                    </Canvas>
-                </Button>
-                <Button Classes="link-button" ToolTip.Tip="GitHub" Click="GithubLink_OnClick">
-                    <Canvas>
-                        <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0"
-                               Canvas.Top="0" />
-                        <Border Classes="button-tint" />
-                    </Canvas>
-                </Button>
-            </StackPanel>
-        </StackPanel>
-        <Border Grid.Column="1" Margin="12, 8, 4, 0" BorderThickness="2" BorderBrush="#803E3E3E" Background="#2D2D2D" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Border Margin="24,8,24,8" BorderThickness="2" BorderBrush="{StaticResource SurfacePanelBorderBrush}" Background="{StaticResource SurfacePanelBrush}" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
             <DockPanel Name="NewsDock" Margin="8" DataContext="{Binding SelectedNews}" LastChildFill="True">
                 <Grid Name="NewsHeader" DockPanel.Dock="Top" ColumnDefinitions="*, Auto">
                     <TextBlock Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
