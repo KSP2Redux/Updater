@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -17,7 +18,12 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    public const int HomeTabId = 0;
+    public const int CommunityTabId = 1;
+    public const int ModsTabId = 2;
     public const int SettingsTabId = 3;
+
+    private int _lastNonSettingsTab = HomeTabId;
 
     private readonly INewsItemCollectionService _newsCollectionService;
     private readonly ILauncherConfigService _launcherConfigService;
@@ -220,10 +226,61 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _newsCollectionService.Add(new Shared.NewsItemViewModel(_newsService, news));
         }
+
+        MaybeAutoSelectLatestCommunityNews();
     }
 
     private void CurrentTabChanged(object? sender, ITabNavigatorService.CurrentTabChangedEventArgs e)
     {
         CurrentTab = e.CurrentTab;
+    }
+
+    partial void OnCurrentTabChanging(int oldValue, int newValue)
+    {
+        if (oldValue != SettingsTabId)
+        {
+            _lastNonSettingsTab = oldValue;
+        }
+    }
+
+    partial void OnCurrentTabChanged(int value)
+    {
+        if (value == CommunityTabId)
+        {
+            MaybeAutoSelectLatestCommunityNews();
+        }
+    }
+
+    // Opening Community with nothing selected yet is a dead end for the user, so jump
+    // straight to the latest post instead of making them click into the list first.
+    private void MaybeAutoSelectLatestCommunityNews()
+    {
+        if (CurrentTab != CommunityTabId || CommunityTab.NewsVisible) return;
+        if (NewsCollectionViewModel.NewsCollection.Count == 0) return;
+
+        CommunityTab.SetSelectedNewsId(NewsCollectionViewModel.NewsCollection[0].NewsId);
+    }
+
+    [RelayCommand]
+    private void HandleEscape()
+    {
+        switch (CurrentTab)
+        {
+            case CommunityTabId when CommunityTab.NewsVisible:
+                CommunityTab.DeselectNewsCommand.Execute(null);
+                break;
+            case HomeTabId when HomeTab.IsInstallLogVisible:
+                HomeTab.IsInstallLogVisible = false;
+                break;
+            case SettingsTabId:
+                CurrentTab = _lastNonSettingsTab;
+                break;
+        }
+    }
+
+    [RelayCommand]
+    private void GoToTab(string tabId)
+    {
+        CurrentTab = int.Parse(tabId);
     }
 }

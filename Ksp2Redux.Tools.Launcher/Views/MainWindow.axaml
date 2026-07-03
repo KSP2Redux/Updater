@@ -22,7 +22,11 @@
     </Design.DataContext>
 
     <Window.KeyBindings>
-        <KeyBinding Gesture="Escape" Command="{Binding CommunityTab.DeselectNewsCommand}" />
+        <KeyBinding Gesture="Escape" Command="{Binding HandleEscapeCommand}" />
+        <KeyBinding Gesture="Ctrl+D1" Command="{Binding GoToTabCommand}" CommandParameter="0" />
+        <KeyBinding Gesture="Ctrl+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="Ctrl+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="Ctrl+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
     </Window.KeyBindings>
 
     <!-- ReSharper disable Xaml.RedundantResource -->
