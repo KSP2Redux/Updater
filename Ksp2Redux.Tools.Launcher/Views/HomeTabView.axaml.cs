@@ -10,6 +10,7 @@ public partial class HomeTabView : UserControl
 {
     private HomeTabViewModel? Model => DataContext as HomeTabViewModel;
     private TextBox? InstallLogTextBoxControl => this.FindControl<TextBox>("InstallLogTextBox");
+    public Border? GlassPanelBorder => this.FindControl<Border>("GlassPanel");
 
     public HomeTabView()
     {

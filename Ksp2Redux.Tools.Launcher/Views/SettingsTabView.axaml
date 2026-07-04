@@ -9,11 +9,12 @@
              VerticalAlignment="Stretch">
 
 	<Grid VerticalAlignment="Stretch">
-		<Border Margin="24,8,24,8"
+		<Border x:Name="GlassPanel" Margin="24,8,24,8"
 		        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-		        Background="{StaticResource SurfacePanelBrush}"
-		        BorderBrush="{StaticResource SurfacePanelBorderBrush}"
-		        BorderThickness="2" CornerRadius="12">
+		        Background="{StaticResource GlassSurfaceBrush}"
+		        BorderBrush="{StaticResource GlassSurfaceBorderBrush}"
+		        BoxShadow="{StaticResource GlassPanelShadow}"
+		        BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}">
 		<Grid Margin="20" RowDefinitions="Auto,Auto,Auto">
 			<TextBlock Grid.Row="0" FontFamily="{StaticResource JetBrainsMonoLight}"
 			           FontSize="24" TextAlignment="Left" Margin="0,8,0,4">

@@ -51,6 +51,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private int _currentTab;
 
+    // Drives the blurred backdrop behind whichever glass panel (Home log, Community
+    // article, Settings, Mods) is currently on screen. Home and Community don't always
+    // have one showing, so this has to react to their own visibility state too, not just
+    // which tab is selected.
+    [ObservableProperty] private bool _isContentPanelVisible;
+
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
@@ -94,7 +100,23 @@ public partial class MainWindowViewModel : ViewModelBase
         ModsTab = modsTab;
         SettingsTab = settingsTabViewModel;
         NewsCollectionViewModel = new Shared.NewsCollectionViewModel(newsCollectionService.NewsCollection);
-        
+
+        HomeTab.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(HomeTabViewModel.IsInstallLogVisible))
+            {
+                UpdateContentPanelVisible();
+            }
+        };
+        CommunityTab.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CommunityTabViewModel.NewsVisible))
+            {
+                UpdateContentPanelVisible();
+            }
+        };
+        UpdateContentPanelVisible();
+
         _ = InitializeAsync().ContinueWith(LogErrors);
 
         var timer = new DispatcherTimer
@@ -249,6 +271,20 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             MaybeAutoSelectLatestCommunityNews();
         }
+
+        UpdateContentPanelVisible();
+    }
+
+    private void UpdateContentPanelVisible()
+    {
+        IsContentPanelVisible = CurrentTab switch
+        {
+            HomeTabId => HomeTab.IsInstallLogVisible,
+            CommunityTabId => CommunityTab.NewsVisible,
+            ModsTabId => true,
+            SettingsTabId => true,
+            _ => false,
+        };
     }
 
     // Opening Community with nothing selected yet is a dead end for the user, so jump

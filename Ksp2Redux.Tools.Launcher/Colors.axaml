@@ -45,6 +45,17 @@
     <Color x:Key="SurfacePanelBorderColor">#3E3E3E</Color>
     <SolidColorBrush x:Key="SurfacePanelBorderBrush" Color="{StaticResource SurfacePanelBorderColor}" Opacity="0.5" />
 
+    <!-- Glass: translucent panels that sit over a blurred background backdrop (see
+         MainWindow.axaml's ContentBackdropBlur/SidebarBackdropBlur). Kept separate from
+         the plain Surface tokens above since those are still used on opaque contexts
+         (e.g. ComboBoxes) where a blur backdrop doesn't apply. -->
+    <Color x:Key="GlassSurfaceColor">#1B1B1B</Color>
+    <SolidColorBrush x:Key="GlassSurfaceBrush" Color="{StaticResource GlassSurfaceColor}" Opacity="0.55" />
+    <SolidColorBrush x:Key="GlassSurfaceBorderBrush" Color="White" Opacity="0.1" />
+
+    <!-- Elevation: drop shadow shared by every glass panel -->
+    <BoxShadows x:Key="GlassPanelShadow">0 8 24 0 #66000000</BoxShadows>
+
     <!-- Text -->
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="White" />
     <Color x:Key="TextSecondaryColor">#888888</Color>

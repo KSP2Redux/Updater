@@ -51,8 +51,9 @@
 	</UserControl.Styles>
 
     <Grid>
-		<Border BorderThickness="2" CornerRadius="12"
-				BorderBrush="{StaticResource SurfacePanelBorderBrush}" Background="{StaticResource SurfacePanelBrush}"
+		<Border x:Name="GlassPanel" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
+				BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
+				BoxShadow="{StaticResource GlassPanelShadow}"
 				HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="24,8,24,8"
 				IsVisible="{Binding IsInstallLogVisible}">
 			<Grid RowDefinitions="*,Auto">

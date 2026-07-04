@@ -1,10 +1,12 @@
 using System;
 using System.Runtime.InteropServices;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Platform;
+using Ksp2Redux.Tools.Launcher.ViewModels;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
@@ -12,14 +14,84 @@ public partial class MainWindow : Window
 {
     public MainWindow()
     {
-        AvaloniaXamlLoader.Load(this);
+        // Must call the generated InitializeComponent, not just AvaloniaXamlLoader.Load
+        // directly: InitializeComponent also runs the NameScope.Find<T> calls that
+        // populate every Name="..." field (ContentBackdropBlur, MainTabControl, Sidebar,
+        // etc.). Loading the XAML without it still renders the UI fine, but leaves those
+        // fields permanently null, so any code referencing them (e.g. the backdrop-blur
+        // clip calculations below) silently no-ops.
+        InitializeComponent();
         Opened += (_, _) =>
         {
             DisableWindowResize();
             ApplyNativeRoundedCorners();
             SetCustomWndProc();
+            RefreshBackdropClips();
         };
+
+        // Which panel is "active" changes on every tab switch and every time Home's log
+        // or Community's article shows/hides, none of which fire a single one-shot event
+        // we can hook. Recomputing on every layout pass keeps it in sync regardless of
+        // what caused the layout change.
+        LayoutUpdated += (_, _) => RefreshBackdropClips();
     }
+
+    private void RefreshBackdropClips()
+    {
+        UpdateContentBackdropClip();
+        UpdateSidebarBackdropClip();
+    }
+
+    private void UpdateContentBackdropClip()
+    {
+        if (ContentBackdropBlur is null) return;
+
+        // Deriving the panel's rect from MainTabControl.Bounds minus an assumed margin
+        // used to drift out of sync with reality: the Fluent TabControl template adds
+        // its own TabItemMargin padding (and the header row's height) on top of that,
+        // so the computed clip ended up larger than the panel's actual rendered bounds
+        // and the blur bled past its border. Reading the active panel's own Bounds
+        // directly sidesteps needing to know any of that.
+        var panel = GetActiveGlassPanel();
+        if (panel is null || panel.Bounds.Width <= 0 || panel.Bounds.Height <= 0) return;
+
+        var transform = panel.TransformToVisual(ContentBackdropBlur);
+        if (transform is null) return;
+
+        var topLeft = transform.Value.Transform(new Point(0, 0));
+        var rect = new Rect(topLeft, panel.Bounds.Size);
+
+        ContentBackdropBlur.Clip = new RectangleGeometry(rect, RadiusLarge, RadiusLarge);
+    }
+
+    private Border? GetActiveGlassPanel() => MainTabControl?.SelectedIndex switch
+    {
+        MainWindowViewModel.HomeTabId => this.FindControl<HomeTabView>("HomeView")?.GlassPanelBorder,
+        MainWindowViewModel.CommunityTabId => this.FindControl<CommunityTabView>("CommunityView")?.GlassPanelBorder,
+        MainWindowViewModel.ModsTabId => this.FindControl<ModsTabView>("ModsView")?.GlassPanelBorder,
+        MainWindowViewModel.SettingsTabId => this.FindControl<SettingsTabView>("SettingsView")?.GlassPanelBorder,
+        _ => null,
+    };
+
+    private void UpdateSidebarBackdropClip()
+    {
+        if (SidebarBackdropBlur is null) return;
+        var newsPanel = Sidebar?.NewsPanelBorder;
+        if (newsPanel is null || newsPanel.Bounds.Width <= 0 || newsPanel.Bounds.Height <= 0) return;
+
+        var transform = newsPanel.TransformToVisual(SidebarBackdropBlur);
+        if (transform is null) return;
+
+        var topLeft = transform.Value.Transform(new Point(0, 0));
+        var rect = new Rect(topLeft, newsPanel.Bounds.Size);
+
+        SidebarBackdropBlur.Clip = new RectangleGeometry(rect, RadiusLarge, RadiusLarge);
+    }
+
+    private double RadiusLarge =>
+        this.TryFindResource("RadiusLarge", out var radiusValue) && radiusValue is CornerRadius cornerRadius
+            ? cornerRadius.TopLeft
+            : 12;
 
     private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {

@@ -6,9 +6,11 @@
              x:DataType="mods:ModsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.ModsTabView">
-    <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-            Background="{StaticResource SurfacePanelStrongBrush}" CornerRadius="12" Padding="40,28">
-        <StackPanel Spacing="8">
+    <Border x:Name="GlassPanel" Margin="24,8,24,8" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
+            BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
+            BoxShadow="{StaticResource GlassPanelShadow}"
+            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock Text="COMING SOON"
                        FontFamily="{StaticResource JetBrainsMonoLight}"
                        FontSize="32"

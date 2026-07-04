@@ -15,6 +15,9 @@ public partial class SidebarView : UserControl
     private Button? UpdateButtonControl => this.FindControl<Button>("UpdateButton");
     private Button? CancelButtonControl => this.FindControl<Button>("CancelButton");
     private Button? InstallButtonControl => this.FindControl<Button>("InstallButton");
+    private Shared.NewsCollectionView? NewsCollectionControl => this.FindControl<Shared.NewsCollectionView>("NewsCollection");
+
+    public Border? NewsPanelBorder => NewsCollectionControl?.NewsPanelBorder;
 
     public SidebarView()
     {

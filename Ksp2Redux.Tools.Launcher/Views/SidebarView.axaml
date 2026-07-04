@@ -51,7 +51,7 @@
             </Style>
             <Style Selector="^ TextBlock">
                 <Setter Property="Margin" Value="24,16,0,0" />
-                <Setter Property="Foreground" Value="#3b3b3b" />
+                <Setter Property="Foreground" Value="{StaticResource MainButtonTextBrush}" />
             </Style>
             <Style Selector="^:pointerover">
                 <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
@@ -90,7 +90,7 @@
         <Style Selector="Button.refresh-button">
             <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="FontSize" Value="16" />
@@ -105,7 +105,7 @@
                 <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
             </Style>
             <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="#3a3a3a" />
+                <Setter Property="Background" Value="{StaticResource DisabledSurfaceBrush}" />
                 <Setter Property="Opacity" Value="0.6" />
             </Style>
         </Style>
@@ -127,14 +127,15 @@
     <Grid Width="260" RowDefinitions="Auto,*,Auto,Auto,Auto">
         <Image Grid.Row="0" Source="avares://Ksp2Redux.Tools.Launcher/Assets/logo.png" Width="260" Margin="0,0,0,8"/>
 
-        <shared:NewsCollectionView Grid.Row="1" DataContext="{Binding NewsCollectionViewModel}"/>
+        <shared:NewsCollectionView x:Name="NewsCollection" Grid.Row="1" DataContext="{Binding NewsCollectionViewModel}"/>
 
         <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,10,0,6"
-                    DataContext="{Binding HomeTab}" x:DataType="home:HomeTabViewModel">
+                    DataContext="{Binding HomeTab}">
+          <StackPanel x:DataType="home:HomeTabViewModel">
             <ComboBox Name="InstallSelector"
                       FontFamily="{StaticResource JetBrainsMonoRegular}"
                       HorizontalAlignment="Stretch" Margin="0,0,0,6"
-                      Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
+                      Background="{StaticResource InputSurfaceBrush}" CornerRadius="{StaticResource RadiusMedium}" BorderBrush="Transparent" FontSize="11"
                       IsEnabled="{Binding IsInstallSwitcherEnabled}"
                       ItemsSource="{Binding Installs}"
                       SelectedItem="{Binding SelectedInstall, Mode=TwoWay}">
@@ -150,7 +151,7 @@
                     Name="VersionSelector"
                     FontFamily="{StaticResource JetBrainsMonoRegular}"
                     HorizontalAlignment="Stretch"
-                    Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
+                    Background="{StaticResource InputSurfaceBrush}" CornerRadius="{StaticResource RadiusMedium}" BorderBrush="Transparent" FontSize="11"
                     ItemsSource="{Binding Versions}"
                     GroupKeySelector="{Binding GameVersionGroupKeySelector}"
                     SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
@@ -173,15 +174,17 @@
                     VerticalAlignment="Stretch"
                     Margin="6,0,0,0" />
             </Grid>
+          </StackPanel>
         </StackPanel>
 
-        <Panel Grid.Row="3" DataContext="{Binding HomeTab}" x:DataType="home:HomeTabViewModel">
+        <Panel Grid.Row="3" DataContext="{Binding HomeTab}">
+          <Panel x:DataType="home:HomeTabViewModel">
             <Button Classes="main-button" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
                     IsEnabled="{Binding MainButtonEnabled}"
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">INSTALL</TextBlock>
                 </Canvas>
             </Button>
@@ -190,7 +193,7 @@
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">UPDATE</TextBlock>
                 </Canvas>
             </Button>
@@ -199,50 +202,50 @@
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">CANCEL</TextBlock>
                 </Canvas>
             </Button>
             <Button Classes="main-button" IsVisible="False" Name="LaunchButton" Command="{Binding LaunchGame}"
-                    IsEnabled="{Binding MainButtonEnabled}"
-                    ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
+                    IsEnabled="{Binding MainButtonEnabled}">
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
+                    <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">LAUNCH</TextBlock>
                 </Canvas>
             </Button>
+          </Panel>
         </Panel>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center"
                     VerticalAlignment="Bottom" Margin="0,14,0,0">
             <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Wiki" Click="WikiLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-wiki.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-wiki.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="YouTube" Click="YoutubeLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="GitHub" Click="GithubLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0" Canvas.Top="0" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>

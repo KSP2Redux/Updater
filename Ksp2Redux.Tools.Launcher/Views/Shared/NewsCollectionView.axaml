@@ -6,16 +6,21 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Shared.NewsCollectionView"
              x:DataType="shared:NewsCollectionViewModel">
-    <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto">
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
         <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="{StaticResource JetBrainsMonoLight}"
                    FontSize="24" TextAlignment="Center" Margin="0,16,0,8">
             LATEST NEWS
         </TextBlock>
-        <Border Grid.Row="1" Grid.Column="0" Background="{StaticResource SurfacePanelTranslucentBrush}" CornerRadius="12"
+        <Border x:Name="NewsPanel" Grid.Row="1" Grid.Column="0"
+                Background="{StaticResource GlassSurfaceBrush}"
+                BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="2"
+                BoxShadow="{StaticResource GlassPanelShadow}"
+                CornerRadius="{StaticResource RadiusLarge}"
                 ClipToBounds="True"
                 Margin="0,0,0,0"
+                HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
-            <ScrollViewer Width="260"
+            <ScrollViewer HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
                           ClipToBounds="True"
                           VerticalScrollBarVisibility="Auto">

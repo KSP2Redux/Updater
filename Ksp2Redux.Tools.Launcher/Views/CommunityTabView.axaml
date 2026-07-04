@@ -8,7 +8,7 @@
              x:Class="Ksp2Redux.Tools.Launcher.Views.CommunityTabView"
              x:DataType="community:CommunityTabViewModel">
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <Border Margin="24,8,24,8" BorderThickness="2" BorderBrush="{StaticResource SurfacePanelBorderBrush}" Background="{StaticResource SurfacePanelBrush}" CornerRadius="12" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
+        <Border x:Name="GlassPanel" Margin="24,8,24,8" BorderThickness="2" BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}" BoxShadow="{StaticResource GlassPanelShadow}" CornerRadius="{StaticResource RadiusLarge}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
             <DockPanel Name="NewsDock" Margin="8" DataContext="{Binding SelectedNews}" LastChildFill="True">
                 <Grid Name="NewsHeader" DockPanel.Dock="Top" ColumnDefinitions="*, Auto">
                     <TextBlock Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"

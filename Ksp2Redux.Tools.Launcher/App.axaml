@@ -34,6 +34,7 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://Ksp2Redux.Tools.Launcher/Radii.axaml" />
 
         <Style Selector="ComboBoxItem.group-header">
             <Setter Property="IsEnabled" Value="False"/>

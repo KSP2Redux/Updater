@@ -9,6 +9,7 @@ namespace Ksp2Redux.Tools.Launcher.Views;
 public partial class CommunityTabView : UserControl
 {
     public CommunityTabViewModel ViewModel => (CommunityTabViewModel)DataContext!;
+    public Border? GlassPanelBorder => this.FindControl<Border>("GlassPanel");
 
     public CommunityTabView() => AvaloniaXamlLoader.Load(this);
 

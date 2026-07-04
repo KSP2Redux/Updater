@@ -1,0 +1,20 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Styles.Resources>
+        <ResourceDictionary>
+            <!--
+                Standardized corner-radius scale, two tiers: Large for panels/cards/the
+                window frame, Medium for buttons, dropdowns, and other small interactive
+                controls. Also overrides FluentTheme's own ControlCornerRadius (default 3)
+                and OverlayCornerRadius (default 5) so every default-styled control
+                (plain Button, ComboBox, TextBox, CheckBox, flyouts, tooltips) picks up
+                the Medium tier automatically instead of needing a per-instance override.
+            -->
+            <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+            <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
+
+            <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+            <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+        </ResourceDictionary>
+    </Styles.Resources>
+</Styles>
