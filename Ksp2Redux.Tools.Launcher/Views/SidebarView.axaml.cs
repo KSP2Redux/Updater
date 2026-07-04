@@ -76,19 +76,29 @@ public partial class SidebarView : UserControl
         TopLevel.GetTopLevel(this)!.Launcher.LaunchUriAsync(uri);
     }
 
+    private void WebsiteLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri(new Uri("https://ksp2redux.org"));
+    }
+
     private void DiscordLink_OnClick(object? sender, RoutedEventArgs e)
     {
         LaunchUri(new Uri("https://discord.gg/8yq8d5VGQR"));
     }
 
+    private void TikTokLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri(new Uri("https://tiktok.com/@ksp2redux"));
+    }
+
+    private void RedditLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri(new Uri("https://reddit.com/r/KSP2Redux"));
+    }
+
     private void ForumsLink_OnClick(object? sender, RoutedEventArgs e)
     {
         LaunchUri(new Uri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux"));
-    }
-
-    private void WikiLink_OnClick(object? sender, RoutedEventArgs e)
-    {
-        LaunchUri(new Uri("https://kerbal.wiki"));
     }
 
     private void YoutubeLink_OnClick(object? sender, RoutedEventArgs e)
