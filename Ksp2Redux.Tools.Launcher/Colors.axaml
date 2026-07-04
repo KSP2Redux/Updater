@@ -26,16 +26,22 @@
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
     <SolidColorBrush x:Key="DangerHoverBrush" Color="{StaticResource DangerHoverColor}" />
 
-    <!-- Accent: informational/selection highlight, kept distinct from brand red so
-         "this is clickable/selected" doesn't visually read as a primary action -->
-    <Color x:Key="AccentInfoColor">#0066BB</Color>
-    <SolidColorBrush x:Key="AccentInfoHoverBrush" Color="{StaticResource AccentInfoColor}" Opacity="0.5" />
-
     <!-- Neutral buttons -->
     <Color x:Key="NeutralButtonColor">#666666</Color>
     <Color x:Key="NeutralButtonHoverColor">#333333</Color>
     <SolidColorBrush x:Key="NeutralButtonBrush" Color="{StaticResource NeutralButtonColor}" Opacity="0.4" />
     <SolidColorBrush x:Key="NeutralButtonHoverBrush" Color="{StaticResource NeutralButtonHoverColor}" />
+
+    <!-- Disabled state, e.g. the sidebar refresh button while a fetch is in flight -->
+    <SolidColorBrush x:Key="DisabledSurfaceBrush" Color="#3A3A3A" />
+
+    <!-- Dark text drawn directly on top of the bright LED-style Install/Update/Cancel/
+         Launch button art in the sidebar, where a light foreground wouldn't read -->
+    <SolidColorBrush x:Key="MainButtonTextBrush" Color="#3B3B3B" />
+
+    <!-- Subtle translucent fill for inputs sitting on dark/busy backgrounds (sidebar
+         dropdowns) -->
+    <SolidColorBrush x:Key="InputSurfaceBrush" Color="White" Opacity="0.07" />
 
     <!-- Surfaces: panels/cards that sit on top of the background art -->
     <Color x:Key="SurfacePanelColor">#2D2D2D</Color>
