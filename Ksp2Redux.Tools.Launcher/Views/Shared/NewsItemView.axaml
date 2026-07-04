@@ -8,10 +8,11 @@
              x:DataType="shared:NewsItemViewModel">
     <UserControl.Styles>
         <Style Selector="Border">
-            <Setter Property="Background" Value="#00ffffff" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
             <Setter Property="Cursor" Value="Hand"/>
             <Style Selector="^:pointerover">
-                <Setter Property="Background" Value="#800066bb" />
+                <Setter Property="Background" Value="{StaticResource BrandRedHoverBrush}" />
             </Style>
         </Style>
     </UserControl.Styles>

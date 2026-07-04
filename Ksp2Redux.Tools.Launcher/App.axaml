@@ -16,6 +16,7 @@
             <FontFamily x:Key="JetBrainsMonoBold">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Bold</FontFamily>
 
             <ResourceDictionary.MergedDictionaries>
+                <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Colors.axaml" />
                 <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabControl.axaml" />
                 <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabItem.axaml" />
             </ResourceDictionary.MergedDictionaries>
@@ -32,7 +33,17 @@
     </Application.Resources>
 
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <!--
+                    Fluent's default accent (used for checked CheckBoxes/RadioButtons,
+                    focus rings, etc.) is a Windows blue. Point it at our brand red
+                    instead so those controls match the rest of the app.
+                -->
+                <ColorPaletteResources x:Key="Dark" Accent="{StaticResource BrandRedColor}" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+        <StyleInclude Source="avares://Ksp2Redux.Tools.Launcher/Radii.axaml" />
 
         <Style Selector="ComboBoxItem.group-header">
             <Setter Property="IsEnabled" Value="False"/>

@@ -5,5 +5,7 @@ namespace Ksp2Redux.Tools.Launcher.Views;
 
 public partial class ModsTabView : UserControl
 {
+    public Border? GlassPanelBorder => this.FindControl<Border>("GlassPanel");
+
     public ModsTabView() => AvaloniaXamlLoader.Load(this);
 }

@@ -1,0 +1,35 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Styles.Resources>
+        <ResourceDictionary>
+            <!--
+                Standardized corner-radius scale, two tiers: Large for panels/cards/the
+                window frame, Medium for buttons, dropdowns, and other small interactive
+                controls. Also overrides FluentTheme's own ControlCornerRadius (default 3)
+                and OverlayCornerRadius (default 5) so every default-styled control
+                (plain Button, ComboBox, TextBox, CheckBox, flyouts, tooltips) picks up
+                the Medium tier automatically instead of needing a per-instance override.
+            -->
+            <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+            <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
+
+            <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+            <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+
+            <!--
+                ComboBox dropdown popups default to a flat, opaque Fluent panel that
+                doesn't match the translucent "glass" cards used everywhere else. Give
+                it the same dark-glass tint and border. Kept more opaque than the panel
+                GlassSurfaceBrush (0.55) since a popup has no blurred backdrop behind it
+                to soften whatever's underneath, so 0.55 read as muddy over list text.
+            -->
+            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{StaticResource GlassSurfaceColor}" Opacity="0.92" />
+            <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="GlassSurfaceBorderBrush" />
+            <Thickness x:Key="ComboBoxDropdownBorderThickness">2</Thickness>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <Style Selector="ComboBox /template/ Border#PopupBorder">
+        <Setter Property="BoxShadow" Value="{StaticResource GlassPanelShadow}" />
+    </Style>
+</Styles>

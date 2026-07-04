@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -17,8 +18,13 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    public const int HomeTabId = 0;
+    public const int CommunityTabId = 1;
+    public const int ModsTabId = 2;
     public const int SettingsTabId = 3;
-    
+
+    private int _lastNonSettingsTab = HomeTabId;
+
     private readonly INewsItemCollectionService _newsCollectionService;
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IReleasesFeedService _releasesFeedService;
@@ -41,7 +47,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public ModsTabViewModel ModsTab { get; }
     public SettingsTabViewModel SettingsTab { get; }
 
+    public Shared.NewsCollectionViewModel NewsCollectionViewModel { get; }
+
     [ObservableProperty] private int _currentTab;
+
+    // Drives the blurred backdrop behind whichever glass panel (Home log, Community
+    // article, Settings, Mods) is currently on screen. Home and Community don't always
+    // have one showing, so this has to react to their own visibility state too, not just
+    // which tab is selected.
+    [ObservableProperty] private bool _isContentPanelVisible;
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
@@ -85,7 +99,24 @@ public partial class MainWindowViewModel : ViewModelBase
         CommunityTab = communityTab;
         ModsTab = modsTab;
         SettingsTab = settingsTabViewModel;
-        
+        NewsCollectionViewModel = new Shared.NewsCollectionViewModel(newsCollectionService.NewsCollection);
+
+        HomeTab.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(HomeTabViewModel.IsInstallLogVisible))
+            {
+                UpdateContentPanelVisible();
+            }
+        };
+        CommunityTab.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CommunityTabViewModel.NewsVisible))
+            {
+                UpdateContentPanelVisible();
+            }
+        };
+        UpdateContentPanelVisible();
+
         _ = InitializeAsync().ContinueWith(LogErrors);
 
         var timer = new DispatcherTimer
@@ -217,10 +248,75 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _newsCollectionService.Add(new Shared.NewsItemViewModel(_newsService, news));
         }
+
+        MaybeAutoSelectLatestCommunityNews();
     }
-    
+
     private void CurrentTabChanged(object? sender, ITabNavigatorService.CurrentTabChangedEventArgs e)
     {
         CurrentTab = e.CurrentTab;
+    }
+
+    partial void OnCurrentTabChanging(int oldValue, int newValue)
+    {
+        if (oldValue != SettingsTabId)
+        {
+            _lastNonSettingsTab = oldValue;
+        }
+    }
+
+    partial void OnCurrentTabChanged(int value)
+    {
+        if (value == CommunityTabId)
+        {
+            MaybeAutoSelectLatestCommunityNews();
+        }
+
+        UpdateContentPanelVisible();
+    }
+
+    private void UpdateContentPanelVisible()
+    {
+        IsContentPanelVisible = CurrentTab switch
+        {
+            HomeTabId => HomeTab.IsInstallLogVisible,
+            CommunityTabId => CommunityTab.NewsVisible,
+            ModsTabId => true,
+            SettingsTabId => true,
+            _ => false,
+        };
+    }
+
+    // Opening Community with nothing selected yet is a dead end for the user, so jump
+    // straight to the latest post instead of making them click into the list first.
+    private void MaybeAutoSelectLatestCommunityNews()
+    {
+        if (CurrentTab != CommunityTabId || CommunityTab.NewsVisible) return;
+        if (NewsCollectionViewModel.NewsCollection.Count == 0) return;
+
+        CommunityTab.SetSelectedNewsId(NewsCollectionViewModel.NewsCollection[0].NewsId);
+    }
+
+    [RelayCommand]
+    private void HandleEscape()
+    {
+        switch (CurrentTab)
+        {
+            case CommunityTabId when CommunityTab.NewsVisible:
+                CommunityTab.DeselectNewsCommand.Execute(null);
+                break;
+            case HomeTabId when HomeTab.IsInstallLogVisible:
+                HomeTab.IsInstallLogVisible = false;
+                break;
+            case SettingsTabId:
+                CurrentTab = _lastNonSettingsTab;
+                break;
+        }
+    }
+
+    [RelayCommand]
+    private void GoToTab(string tabId)
+    {
+        CurrentTab = int.Parse(tabId);
     }
 }

@@ -14,4 +14,7 @@ pre, code {
 
 a {
     word-break: break-word;
+    /* Matches Colors.axaml's BrandRedColor. Plain CSS can't reference Avalonia
+       resources, so keep this in sync by hand if that token ever changes. */
+    color: #DC1501;
 }

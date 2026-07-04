@@ -3,28 +3,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
-             xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
-             xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.Views.Shared"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.HomeTabView"
              x:DataType="home:HomeTabViewModel">
-	<UserControl.KeyBindings>
-		<KeyBinding Gesture="F5" Command="{Binding RefreshFeedsCommand}" />
-	</UserControl.KeyBindings>
-	<UserControl.DataTemplates>
-		<DataTemplate DataType="home:GameVersionViewModel">
-			<StackPanel Orientation="Horizontal" Margin="4,2,0,0">
-				<TextBlock Text="{Binding VersionString}" VerticalAlignment="Center"/>
-				<TextBlock Text="{Binding ReleaseDateString}"
-				           IsVisible="{Binding HasReleaseDate}"
-				           Foreground="#888888"
-				           FontSize="10"
-				           VerticalAlignment="Center"
-				           Margin="6,1,0,0"/>
-			</StackPanel>
-		</DataTemplate>
-	</UserControl.DataTemplates>
-
 	<UserControl.Styles>
 		<Style Selector="ProgressBar">
 			<Setter Property="Margin" Value="8"/>
@@ -33,12 +14,12 @@
 			<Setter Property="Foreground">
 				<Setter.Value>
 					<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-						<GradientStop Offset="0" Color="#dc1501"/>
-						<GradientStop Offset="100" Color="#fc7600"/>
+						<GradientStop Offset="0" Color="{StaticResource BrandRedColor}"/>
+						<GradientStop Offset="100" Color="{StaticResource BrandOrangeColor}"/>
 					</LinearGradientBrush>
 				</Setter.Value>
 			</Setter>
-			<Setter Property="Background" Value="#80000000"/>
+			<Setter Property="Background" Value="{StaticResource ScrimSoftBrush}"/>
 			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"/>
 			<Setter Property="FontSize" Value="12"/>
 		</Style>
@@ -48,217 +29,73 @@
 			<Setter Property="TextAlignment" Value="Right"/>
 		</Style>
 
-		<Style Selector="ComboBoxItem">
-			<Style Selector="^:selected /template/ ContentPresenter">
-				<Setter Property="Background" Value="#dc1501"/>
-			</Style>
-			<Style Selector="^:pointerover /template/ ContentPresenter">
-				<Setter Property="Background" Value="#a0dc1501"/>
-			</Style>
-			<Style Selector="^:pressed /template/ ContentPresenter">
-				<Setter Property="Background" Value="#c0dc1501"/>
-			</Style>
-		</Style>
-
-		<Style Selector="Button.main-button">
+		<!--
+			This is a read-only log viewer dressed up as a TextBox for its scrolling/selection
+			behavior, not an actual input field, so it shouldn't visually react to focus/hover/
+			press the way a real input does. Pin the Fluent theme's internal border part to one
+			consistent (transparent) look in every state instead of the default focused/
+			pointerover/pressed variations (which otherwise include an accent-blue focus ring).
+		-->
+		<Style Selector="TextBox#InstallLogTextBox /template/ Border#PART_BorderElement">
 			<Setter Property="Background" Value="Transparent" />
-			<Setter Property="Padding" Value="0" />
-			<Setter Property="FontSize" Value="32" />
-			<Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
-			<Setter Property="HorizontalAlignment" Value="Center" />
-
-			<Style Selector="^ Border.main-button-tint">
-				<Setter Property="Background" Value="Transparent" />
-			</Style>
-			<Style Selector="^ TextBlock">
-				<Setter Property="Margin" Value="24,16,0,0" />
-				<Setter Property="Foreground" Value="#3b3b3b" />
-			</Style>
-			<Style Selector="^:pointerover">
-				<Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-					<Setter Property="Background" Value="Transparent" />
-				</Style>
-				<Style Selector="^ Border.main-button-tint">
-					<Setter Property="Background" Value="#20000000" />
-				</Style>
-			</Style>
-			<Style Selector="^:pressed">
-				<Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-					<Setter Property="Background" Value="Transparent" />
-				</Style>
-				<Style Selector="^ Border.main-button-tint">
-					<Setter Property="Background" Value="#40000000" />
-				</Style>
-			</Style>
-			<Style Selector="^:disabled">
-				<Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-				</Style>
-				<Style Selector="^ Border.main-button-tint">
-					<Setter Property="Background" Value="#d0121212" />
-				</Style>
-			</Style>
-
-			<Style Selector="^ ToolTip">
-				<Setter Property="Foreground" Value="White" />
-				<Setter Property="Background" Value="Black" />
-				<Setter Property="FontSize" Value="12" />
-				<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoLight}" />
-				<Setter Property="Padding" Value="8,4" />
-				<Setter Property="MaxWidth" Value="320" />
-			</Style>
-		</Style>
-
-		<Style Selector="Button.refresh-button">
-			<Setter Property="Background" Value="#2ea043" />
-			<Setter Property="Foreground" Value="White" />
-			<Setter Property="CornerRadius" Value="6" />
+			<Setter Property="BorderBrush" Value="Transparent" />
 			<Setter Property="BorderThickness" Value="0" />
-			<Setter Property="Padding" Value="0" />
-			<Setter Property="FontSize" Value="16" />
-			<Setter Property="HorizontalContentAlignment" Value="Center" />
-			<Setter Property="VerticalContentAlignment" Value="Center" />
-			<Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-				<Setter Property="Background" Value="#3fb950" />
-				<Setter Property="TextElement.Foreground" Value="White" />
-			</Style>
-			<Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
-				<Setter Property="Background" Value="#268a3b" />
-				<Setter Property="TextElement.Foreground" Value="White" />
-			</Style>
-			<Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
-				<Setter Property="Background" Value="#3a3a3a" />
-				<Setter Property="Opacity" Value="0.6" />
-			</Style>
 		</Style>
-
+		<Style Selector="TextBox#InstallLogTextBox:focus /template/ Border#PART_BorderElement,
+		                 TextBox#InstallLogTextBox:pointerover /template/ Border#PART_BorderElement,
+		                 TextBox#InstallLogTextBox:focus-within /template/ Border#PART_BorderElement">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderBrush" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+		</Style>
 	</UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="260,*" Margin="6,0,0,0">
-        <shared:NewsCollectionView Grid.RowSpan="2" DataContext="{Binding NewsCollectionViewModel}"/>
-
-		<StackPanel Grid.Row="2" Grid.Column="0" Orientation="Vertical" Margin="0,20,0,10">
-			<ComboBox Name="InstallSelector"
-			          FontFamily="{StaticResource JetBrainsMonoRegular}"
-			          HorizontalAlignment="Stretch" Margin="0,0,0,6"
-			          Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
-			          IsEnabled="{Binding IsInstallSwitcherEnabled}"
-			          ItemsSource="{Binding Installs}"
-			          SelectedItem="{Binding SelectedInstall, Mode=TwoWay}">
-				<ComboBox.ItemTemplate>
-					<DataTemplate DataType="home:Ksp2InstallChoiceViewModel">
-						<TextBlock Text="{Binding Name}" Margin="4,2,0,0" />
-					</DataTemplate>
-				</ComboBox.ItemTemplate>
-			</ComboBox>
-			<Grid HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
-				<controls:GroupedComboBox
-					Grid.Column="0"
-					Name="VersionSelector"
-					FontFamily="{StaticResource JetBrainsMonoRegular}"
-					HorizontalAlignment="Stretch"
-					Background="#12FFFFFF" CornerRadius="6" BorderBrush="Transparent" FontSize="11"
-					ItemsSource="{Binding Versions}"
-					GroupKeySelector="{Binding GameVersionGroupKeySelector}"
-					SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
-					<controls:GroupedComboBox.Styles>
-						<Style Selector="ComboBoxItem">
-							<Setter Property="IsEnabled"
-									Value="{Binding Converter={StaticResource SelectableConverter}}"/>
-							<Setter Property="IsHitTestVisible"
-									Value="{Binding Converter={StaticResource SelectableConverter}}"/>
-						</Style>
-					</controls:GroupedComboBox.Styles>
-				</controls:GroupedComboBox>
-				<Button Grid.Column="1"
-					Classes="refresh-button"
-					Name="RefreshVersionsButton"
-					Command="{Binding RefreshFeedsCommand}"
-					Content="⟳"
-					ToolTip.Tip="Refresh versions (F5)"
-					Width="32"
-					VerticalAlignment="Stretch"
-					Margin="6,0,0,0" />
-			</Grid>
-		</StackPanel>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
-				IsEnabled="{Binding MainButtonEnabled}"
-				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="260" Height="76">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
-				<TextBlock FontFamily="{StaticResource LedCounter7}">INSTALL</TextBlock>
-			</Canvas>
-		</Button>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="UpdateButton" Command="{Binding UpdateRedux}"
-				IsEnabled="{Binding MainButtonEnabled}"
-				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="260" Height="76">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
-				<TextBlock FontFamily="{StaticResource LedCounter7}">UPDATE</TextBlock>
-			</Canvas>
-		</Button>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="CancelButton" ClickMode="Press" Command="{Binding CancelCurrentMainButtonAction}"
-				IsEnabled="{Binding MainButtonEnabled}"
-				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="260" Height="76">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
-				<TextBlock FontFamily="{StaticResource LedCounter7}">CANCEL</TextBlock>
-			</Canvas>
-		</Button>
-		<Button Classes="main-button" Grid.Row="3" Grid.Column="0" IsVisible="False" Name="LaunchButton" Command="{Binding LaunchGame}"
-				IsEnabled="{Binding MainButtonEnabled}"
-				ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
-			<Canvas Width="260" Height="76">
-				<Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
-				<Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="8" />
-				<TextBlock FontFamily="{StaticResource LedCounter7}">LAUNCH</TextBlock>
-			</Canvas>
-		</Button>
-
-		<Border BorderThickness="1" CornerRadius="8" BorderBrush="WhiteSmoke" Background="#7A000000"
-				Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Margin="0 5" Height="340"
+    <Grid>
+		<Border x:Name="GlassPanel" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
+				BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
+				BoxShadow="{StaticResource GlassPanelShadow}"
+				HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="24,8,24,8"
 				IsVisible="{Binding IsInstallLogVisible}">
-			<TextBox x:Name="InstallLogTextBox"
-                     Margin="16,8"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     IsReadOnly="True"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     TextChanged="InstallLogTextBox_OnTextChanged"
-                     Text="{Binding InstallLogText}" />
+			<Grid RowDefinitions="*,Auto">
+				<TextBox x:Name="InstallLogTextBox"
+	                     Grid.Row="0"
+	                     Margin="16,8"
+	                     Background="Transparent"
+	                     BorderThickness="0"
+	                     IsReadOnly="True"
+	                     AcceptsReturn="True"
+	                     TextWrapping="Wrap"
+	                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+	                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+	                     TextChanged="InstallLogTextBox_OnTextChanged"
+	                     Text="{Binding InstallLogText}" />
+
+				<Grid Grid.Row="1" Margin="16,0,16,16"
+	                  ColumnDefinitions="Auto,*" RowDefinitions="*,*"
+					  IsVisible="{Binding IsProgressVisible}">
+					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0">
+						Downloaded:
+					</TextBlock>
+					<ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0"
+								 Value="{Binding DownloadProgressMb}" Maximum="{Binding DownloadProgressTotalMb}"
+	                             ProgressTextFormat="{}{0:F1}/{3:F1} MB ({1:0}%)" />
+					<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0">
+						Installed:
+					</TextBlock>
+					<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0"
+								 Value="{Binding InstallProgressSteps}" Maximum="{Binding InstallProgressTotalSteps}"
+	                             ProgressTextFormat="{}{0}/{3} steps ({1:0}%)" />
+				</Grid>
+			</Grid>
 		</Border>
 
-		<Grid Margin="48,0,0,0" Grid.Row="2" Grid.Column="1" Grid.RowSpan="2"
-              VerticalAlignment="Bottom"
-              ColumnDefinitions="Auto,*" RowDefinitions="*,*"
-			  IsVisible="{Binding IsProgressVisible}">
-			<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0">
-				Downloaded:
-			</TextBlock>
-			<ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0"
-						 Value="{Binding DownloadProgressMb}" Maximum="{Binding DownloadProgressTotalMb}"
-                         ProgressTextFormat="{}{0:F1}/{3:F1} MB ({1:0}%)" />
-			<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0">
-				Installed:
-			</TextBlock>
-			<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0"
-						 Value="{Binding InstallProgressSteps}" Maximum="{Binding InstallProgressTotalSteps}"
-                         ProgressTextFormat="{}{0}/{3} steps ({1:0}%)" />
-		</Grid>
-        
-        <Border Grid.Row="0" Grid.RowSpan="4" Grid.Column="0" Grid.ColumnSpan="2"
-                VerticalAlignment="Bottom"
-                Background="#CC000000"
+        <Border VerticalAlignment="Bottom"
+                Background="{StaticResource ScrimMediumBrush}"
                 Padding="8,2"
                 IsVisible="{Binding InstallationDisabled}">
 	        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
 		        <TextBlock Grid.Column="0"
-		                   Foreground="#dc1501"
+		                   Foreground="{StaticResource BrandRedBrush}"
 		                   FontFamily="{StaticResource JetBrainsMonoRegular}"
 		                   FontSize="11"
 		                   VerticalAlignment="Center"
