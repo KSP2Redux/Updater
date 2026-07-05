@@ -78,11 +78,19 @@ public class Ksp2Patch : IDisposable
         foreach (IFileInfo file in patchDir.GetFiles())
         {
             if (FileInformation.IgnoreFiles(_fileSystem).Contains(_fileSystem.Path.Combine(prefix, file.Name))) continue;
+
+            // Snapshot the source file's size/timestamp before reading it, so a change made to the
+            // source tree while this (potentially long-running) diff is in progress is caught as a
+            // loud failure here rather than silently producing a patch that fails its own hash check.
+            var sizeAtSnapshot = file.Length;
+            var lastWriteAtSnapshot = file.LastWriteTimeUtc;
+
             if (_fileSystem.File.Exists(_fileSystem.Path.Combine(originalDirectory, file.Name)))
             {
                 Console.WriteLine($"Checking {prefix}/{file.Name}");
                 byte[] oldBytes = _fileSystem.File.ReadAllBytes(_fileSystem.Path.Combine(originalDirectory, file.Name));
                 byte[] newBytes = _fileSystem.File.ReadAllBytes(file.FullName);
+                AssertFileUnchangedSinceSnapshot(file, sizeAtSnapshot, lastWriteAtSnapshot, prefix);
                 if (oldBytes.SequenceEqual(newBytes))
                 {
                     continue;
@@ -123,6 +131,7 @@ public class Ksp2Patch : IDisposable
                 input.Position = 0;
                 using var newSHA = SHA256.Create();
                 newSHA.ComputeHash(input);
+                AssertFileUnchangedSinceSnapshot(file, sizeAtSnapshot, lastWriteAtSnapshot, prefix);
                 _manifest.Operations.Add(new PatchOperation
                 {
                     Action = PatchOperation.PatchAction.Add,
@@ -169,6 +178,17 @@ public class Ksp2Patch : IDisposable
         }
 
         return sum;
+    }
+
+    private void AssertFileUnchangedSinceSnapshot(IFileInfo file, long sizeAtSnapshot, DateTime lastWriteAtSnapshot, string prefix)
+    {
+        var current = _fileSystem.FileInfo.New(file.FullName);
+        if (current.Length != sizeAtSnapshot || current.LastWriteTimeUtc != lastWriteAtSnapshot)
+        {
+            throw new InvalidOperationException(
+                $"{_fileSystem.Path.Combine(prefix, file.Name)} changed while the patch was being generated. " +
+                "The source directory must stay stable for the whole diff - re-run the generator once nothing else is writing to it.");
+        }
     }
 
     public static Ksp2Patch FromFile(IFileSystem fileSystem, IZipFileService zipFileService, string path)

@@ -60,7 +60,7 @@ public class UpdateService : IUpdateService
 
     public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log)
     {
-        _http = new HttpClient();
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(
             new ProductHeaderValue("Ksp2Redux.Tools.Launcher", assemblyService.GetName().Version?.ToString() ?? "0.0.0")));
         _fileSystem = fileSystem;
@@ -210,7 +210,12 @@ public class UpdateService : IUpdateService
 
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
-                        await Process.Start("chmod", $"+x \"{updatePath}\"").WaitForExitAsync();
+                        using var chmod = Process.Start("chmod", $"+x \"{updatePath}\"")!;
+                        await chmod.WaitForExitAsync();
+                        if (chmod.ExitCode != 0)
+                        {
+                            throw new InvalidOperationException($"chmod +x on {updatePath} exited with code {chmod.ExitCode}.");
+                        }
                     }
 
                     TriggerRestart(updatePath);

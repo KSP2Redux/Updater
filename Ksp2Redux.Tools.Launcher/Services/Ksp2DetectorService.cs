@@ -10,7 +10,7 @@ public interface IKsp2DetectorService
     public string? DetectKsp2InstallLocation();
 }
 
-public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IOperatingSystemService operatingSystemService)
+public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IOperatingSystemService operatingSystemService, ILogService log)
     : IKsp2DetectorService
 {
     private const string Ksp2SteamAppId = "954850";
@@ -120,18 +120,29 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
         {
             content = fileSystem.File.ReadAllText(libraryFoldersVdf);
         }
-        catch
+        catch (Exception ex)
         {
+            log.Warn($"Found {libraryFoldersVdf} but couldn't read it: {ex.Message}. Additional Steam libraries won't be checked.");
             yield break;
         }
 
+        var matchCount = 0;
         foreach (Match match in LibraryPathRegex.Matches(content))
         {
             var path = match.Groups["path"].Value.Replace(@"\\", @"\");
             if (!string.IsNullOrWhiteSpace(path))
             {
+                matchCount++;
                 yield return path;
             }
+        }
+
+        // A zero-match result here is indistinguishable from "just no extra libraries configured" to
+        // the user - but it can also mean Steam had this file mid-write when we read it, which would
+        // otherwise look identical to "KSP2 isn't installed" once detection comes up empty.
+        if (matchCount == 0)
+        {
+            log.Warn($"{libraryFoldersVdf} exists but no library paths were parsed out of it. If KSP2 isn't detected, this file may have been read mid-write.");
         }
     }
 
@@ -142,13 +153,19 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
         {
             content = fileSystem.File.ReadAllText(manifestPath);
         }
-        catch
+        catch (Exception ex)
         {
+            log.Warn($"Found {manifestPath} but couldn't read it: {ex.Message}.");
             return null;
         }
 
         var match = InstallDirRegex.Match(content);
-        return match.Success ? match.Groups["installdir"].Value : null;
+        if (!match.Success)
+        {
+            log.Warn($"{manifestPath} exists but its installdir couldn't be parsed out of it. If KSP2 isn't detected, this file may have been read mid-write.");
+            return null;
+        }
+        return match.Groups["installdir"].Value;
     }
 
     private static readonly Regex LibraryPathRegex = new(

@@ -217,7 +217,17 @@ public partial class HomeTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task LaunchGame()
     {
-        if (_ksp2InstallService.Ksp2 is null) return;
+        // Re-validate right before using it rather than trusting whatever was cached at the last
+        // refresh - the install could have been moved, had its drive ejected, or been deleted in
+        // the meantime if the app was left idle.
+        _ksp2InstallService.TryLoadKsp2Install();
+        if (_ksp2InstallService.Ksp2 is not { IsValid: true })
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                "KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
         var activeEntry = _ksp2InstallService.ActiveEntry;
         if (activeEntry is null) return;
 
