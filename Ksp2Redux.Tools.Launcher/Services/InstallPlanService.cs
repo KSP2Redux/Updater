@@ -2,6 +2,7 @@
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
@@ -141,9 +142,14 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile))   // Test: Convert to factory, add interface for patch
+                    try
                     {
+                        using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);   // Test: Convert to factory, add interface for patch
                         await patch.AsyncApply(environmentProvider, install, install, log, log);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        RollbackOrRethrow(install, log, ex);
                     }
 
                     delete_patch:
@@ -154,9 +160,14 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 case InstallPlanAction.ApplyPatchFile:
                 {
                     var patchPath = await step.Argument!(log, downloadProgress, ct);
-                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath))
+                    try
                     {
+                        using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath);
                         await patch.AsyncApply(environmentProvider, install, install, log, log);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        RollbackOrRethrow(install, log, ex);
                     }
                     if (step.DeleteAfter && fileSystem.File.Exists(patchPath))
                     {
@@ -172,6 +183,50 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             stepsProgress(++i, installPlan.Steps.Count);
             await Task.Delay(250, ct);
         }
+    }
+
+    /// <summary>
+    /// Called when a Prepatch/ApplyPatchFile step throws partway through. If a known-good snapshot
+    /// (uninstall.zip) exists, restores it so a corrupt patch or a mid-write failure (e.g. disk full)
+    /// doesn't leave the install half-patched, then throws <see cref="InstallFailedException"/> describing
+    /// what happened. Note this restores the whole install to the last snapshot, which may discard other
+    /// patches already applied earlier in the same plan - still strictly better than a half-patched install.
+    /// If there is no snapshot to restore (nothing has been written to the install dir yet), rethrows the
+    /// original exception unchanged.
+    /// </summary>
+    private void RollbackOrRethrow(string install, Action<string> log, Exception original)
+    {
+        if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
+        {
+            ExceptionDispatchInfo.Capture(original).Throw();
+            return; // unreachable, keeps the compiler happy
+        }
+
+        log($"Install step failed ({original.Message}). Rolling back to the last known-good state...");
+
+        Exception? rollbackFailure = null;
+        try
+        {
+            cacheService.RecursivelyRestoreCache(install, true);
+        }
+        catch (Exception rollbackEx)
+        {
+            rollbackFailure = rollbackEx;
+        }
+
+        if (rollbackFailure is null)
+        {
+            log("Rolled back successfully.");
+            throw new InstallFailedException(
+                $"Installation failed and was automatically rolled back to the previous state. Original error: {original.Message}",
+                original, rolledBack: true);
+        }
+
+        log($"Rollback also failed: {rollbackFailure.Message}");
+        throw new InstallFailedException(
+            $"Installation failed ({original.Message}) and the automatic rollback also failed ({rollbackFailure.Message}). " +
+            "The install may be in a broken state - try Uninstall or Revert to Stock from Settings.",
+            original, rolledBack: false);
     }
 
     private void EnsureEnoughDiskSpace(InstallPlan installPlan, string install, Action<string> log)

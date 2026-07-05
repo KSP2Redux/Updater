@@ -384,6 +384,10 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             Log("Installation cancelled");
         }
+        catch (InstallFailedException e)
+        {
+            Log(e.Message);
+        }
         catch (Exception e)
         {
             Log($"Error updating Redux: {e.Message}");
@@ -436,6 +440,10 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             Log("Installation cancelled");
+        }
+        catch (InstallFailedException e)
+        {
+            Log(e.Message);
         }
         catch (Exception e)
         {
