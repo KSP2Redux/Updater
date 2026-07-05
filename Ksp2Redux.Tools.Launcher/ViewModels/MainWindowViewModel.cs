@@ -153,6 +153,9 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public Task LaunchExternalLinkAsync(TopLevel? topLevel, string url)
+        => ExternalLinkLauncher.LaunchAsync(topLevel, url, _messageBoxService, _log);
+
     // Startup initialization failing is more severe than a background task like the news feed
     // failing to load (which just leaves a list empty) - if this throws, feeds/install detection/
     // the update check may not have run at all, so tell the user instead of failing silently.
@@ -278,7 +281,7 @@ public partial class MainWindowViewModel : ViewModelBase
         List<News> newsList = await _newsService.FindAllNews();
         foreach (News news in newsList)
         {
-            _newsCollectionService.Add(new Shared.NewsItemViewModel(_newsService, news));
+            _newsCollectionService.Add(new Shared.NewsItemViewModel(news));
         }
 
         MaybeAutoSelectLatestCommunityNews();

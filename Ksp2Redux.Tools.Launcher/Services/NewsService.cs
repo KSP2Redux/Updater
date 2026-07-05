@@ -10,20 +10,17 @@ namespace Ksp2Redux.Tools.Launcher.Services;
 public interface INewsService
 {
     Task<List<News>> FindAllNews();
-    News GetNews(int id);
-    int GetNewsId(News? news);
+    News? GetNews(string? id);
     Task FetchNews();
 }
 
-public class NewsService(INewsProviderService newsProviderService) : INewsService
+public class NewsService(INewsProviderService newsProviderService, ILogService log) : INewsService
 {
     private List<News> _newsList = new();
-    
+
     public async Task<List<News>> FindAllNews() => await Task.Run(() => _newsList.OrderByDescending(n => n.Date).ToList());
 
-    public News GetNews(int id) => id == -1 ? new News() : _newsList[id];
-    
-    public int GetNewsId(News? news) => news == null ? -1 : _newsList.IndexOf(news);
+    public News? GetNews(string? id) => id is null ? null : _newsList.FirstOrDefault(n => n.Id == id);
 
     public async Task FetchNews()
     {
@@ -35,14 +32,25 @@ public class NewsService(INewsProviderService newsProviderService) : INewsServic
 
     private void LoadNewsFromFeed(Feed rssNewsContent)
     {
-        _newsList = rssNewsContent.Items.Select(item => new News
+        var newsList = new List<News>();
+        foreach (var item in rssNewsContent.Items)
+        {
+            if (item.PublishingDate is not { } date)
             {
+                log.Warn($"Skipping RSS item \"{item.Title}\" - missing or unparseable publish date.");
+                continue;
+            }
+
+            newsList.Add(new News
+            {
+                Id = string.IsNullOrWhiteSpace(item.Link) ? Guid.NewGuid().ToString() : item.Link,
                 Title = item.Title,
                 Author = item.Author,
                 Content = item.Content,
                 Link = item.Link,
-                Date = (DateTime)item.PublishingDate!
-            }
-        ).OrderBy(n => n.Date).ToList();
+                Date = date,
+            });
+        }
+        _newsList = newsList.OrderBy(n => n.Date).ToList();
     }
 }

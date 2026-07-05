@@ -1,5 +1,4 @@
-﻿using System;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -13,16 +12,8 @@ public partial class CommunityTabView : UserControl
 
     public CommunityTabView() => AvaloniaXamlLoader.Load(this);
 
-    private void LaunchUri(Uri uri)
+    private async void NewsLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        TopLevel.GetTopLevel(this)!.Launcher.LaunchUriAsync(uri);
-    }
-
-    private void NewsLink_OnClick(object? sender, RoutedEventArgs e)
-    {
-        if (ViewModel.SelectedNews.Link is null)
-            return;
-        
-        LaunchUri(new Uri(ViewModel.SelectedNews.Link));
+        await ViewModel.LaunchExternalLinkAsync(TopLevel.GetTopLevel(this), ViewModel.SelectedNews.Link);
     }
 }
