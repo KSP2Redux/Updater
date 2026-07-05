@@ -125,7 +125,7 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         if(updateChannels)
             await UpdateAsync();
-        RebuildVersionsCollection();
+        RebuildVersionsCollectionPreservingSelection();
         UpdateMainButtonState();
     }
     private async Task UpdateAsync()
@@ -146,10 +146,18 @@ public partial class HomeTabViewModel : ViewModelBase
         // otherwise a background refresh would clobber the Cancel button mid operation.
         if (_cancelCurrentOperation is not null) return;
 
-        // RebuildVersionsCollection resets SelectedVersion to a default, which would pull the
-        // user's choice out from under them on every periodic refresh. Capture and restore it.
-        var previous = SelectedVersion;
         await UpdateAsync();
+        RebuildVersionsCollectionPreservingSelection();
+        UpdateMainButtonState();
+    }
+
+    // RebuildVersionsCollection resets SelectedVersion to a default, which would pull the user's
+    // choice out from under them any time the list gets rebuilt - a periodic feed refresh, or an
+    // unrelated settings change to the active install (which also fires ActiveInstallChanged).
+    // Capture and restore it around the rebuild instead.
+    private void RebuildVersionsCollectionPreservingSelection()
+    {
+        var previous = SelectedVersion;
         RebuildVersionsCollection();
         if (previous is not null)
         {
@@ -157,7 +165,6 @@ public partial class HomeTabViewModel : ViewModelBase
                 v.Channel == previous.Channel && v.Version.Equals(previous.Version));
             if (match is not null) SelectedVersion = match;
         }
-        UpdateMainButtonState();
     }
 
     [RelayCommand]
