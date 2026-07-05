@@ -60,6 +60,19 @@ public class LogServiceTest
     }
 
     [Test]
+    public void Info_TagsEachLineWithProcessId_SoAPastedFragmentIsSelfDescribing()
+    {
+        var (fs, env) = BuildEnv();
+        using var log = new LogService(fs, env);
+
+        log.Info("hello world");
+        log.Dispose();
+
+        var contents = fs.File.ReadAllText(log.CurrentLogFilePath!);
+        Assert.That(contents, Does.Contain($"[pid={env.ProcessId}]"));
+    }
+
+    [Test]
     public void Error_WritesExceptionDetailsToLogFile()
     {
         var (fs, env) = BuildEnv();

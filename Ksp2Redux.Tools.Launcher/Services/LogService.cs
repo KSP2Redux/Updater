@@ -134,9 +134,11 @@ public sealed class LogService : ILogService, IDisposable
             ? ""
             : _fileSystem.Path.GetFileNameWithoutExtension(source);
 
+        // Tag every line with the process id so a fragment pasted out of a bug report can still be
+        // matched back to which run (and which header, further up the file) it came from.
         var prefix = string.IsNullOrEmpty(sourceName)
-            ? $"[{DateTime.Now:yyyy-MM-ddTHH:mm:ss.fff}] [{levelName}]"
-            : $"[{DateTime.Now:yyyy-MM-ddTHH:mm:ss.fff}] [{levelName}] [{sourceName}.{member}]";
+            ? $"[{DateTime.Now:yyyy-MM-ddTHH:mm:ss.fff}] [pid={_processId}] [{levelName}]"
+            : $"[{DateTime.Now:yyyy-MM-ddTHH:mm:ss.fff}] [pid={_processId}] [{levelName}] [{sourceName}.{member}]";
 
         var line = $"{prefix} {message}";
 
@@ -148,7 +150,7 @@ public sealed class LogService : ILogService, IDisposable
                     _fileSystem.FileInfo.New(CurrentLogFilePath).Length >= _maxLogFileSizeBytes)
                 {
                     _sizeCapReached = true;
-                    _writer?.WriteLine($"[{DateTime.Now:yyyy-MM-ddTHH:mm:ss.fff}] [WARN] Log file reached {_maxLogFileSizeBytes} bytes, no further lines will be written to disk this session.");
+                    _writer?.WriteLine($"[{DateTime.Now:yyyy-MM-ddTHH:mm:ss.fff}] [pid={_processId}] [WARN] Log file reached {_maxLogFileSizeBytes} bytes, no further lines will be written to disk this session.");
                 }
                 if (!_sizeCapReached)
                 {
