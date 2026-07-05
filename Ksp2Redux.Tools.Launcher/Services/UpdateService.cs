@@ -42,6 +42,7 @@ public class UpdateService : IUpdateService
     private ILogService _log;
 
     private static bool _isSingleFile;
+    private bool _checkInProgress;
 
     private class GitHubReleaseAsset
     {
@@ -84,6 +85,27 @@ public class UpdateService : IUpdateService
     /// </summary>
     /// <returns>A boolean whether to allow updating redux versions after this</returns>
     public async Task<bool> CheckAndPerformUpdateAsync()
+    {
+        // Called on a 10-minute timer as well as at startup and from a manual button. If a check
+        // (and its "Update Found" dialog) is still awaiting a response, skip instead of stacking
+        // another dialog on top - left running overnight this used to pile up dozens of them.
+        if (_checkInProgress)
+        {
+            _log.Info("An update check is already in progress, skipping this one.");
+            return true;
+        }
+        _checkInProgress = true;
+        try
+        {
+            return await CheckAndPerformUpdateCoreAsync();
+        }
+        finally
+        {
+            _checkInProgress = false;
+        }
+    }
+
+    private async Task<bool> CheckAndPerformUpdateCoreAsync()
     {
         var releasesUrl = $"https://api.github.com/repos/{_owner}/{_repo}/releases";
         _log.Info($"Checking for launcher updates from {releasesUrl} (current version {_version}).");
