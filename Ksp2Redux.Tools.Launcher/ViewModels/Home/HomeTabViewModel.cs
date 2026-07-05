@@ -230,22 +230,45 @@ public partial class HomeTabViewModel : ViewModelBase
                 FileName = $"steam://rungameid/{appId}",
                 UseShellExecute = true,
             };
-            Process.Start(startInfo);
+            try
+            {
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                _log.Error("Failed to launch through Steam.", ex);
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                    $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.",
+                    ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+            }
             return;
         }
 
         MainButtonEnabled = false;
-        using Process process = new();
-        process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
-        process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
-        var launchArgs = activeEntry.LaunchArguments;
-        if (!string.IsNullOrWhiteSpace(launchArgs))
+        try
         {
-            process.StartInfo.Arguments = launchArgs;
+            using Process process = new();
+            process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
+            process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
+            var launchArgs = activeEntry.LaunchArguments;
+            if (!string.IsNullOrWhiteSpace(launchArgs))
+            {
+                process.StartInfo.Arguments = launchArgs;
+            }
+            process.Start();
+            await process.WaitForExitAsync();
         }
-        process.Start();
-        await process.WaitForExitAsync();
-        MainButtonEnabled = true;
+        catch (Exception ex)
+        {
+            _log.Error("Failed to launch KSP2.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        finally
+        {
+            MainButtonEnabled = true;
+        }
     }
 
     [RelayCommand]

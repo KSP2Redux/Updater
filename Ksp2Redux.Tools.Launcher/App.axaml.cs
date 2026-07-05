@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -23,7 +24,24 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        _serviceProvider ??= DefaultServiceProviderProvider.GetDefaultServiceProvider();
+        // Building the DI container touches disk (config load), so it can fail before the logger or
+        // any exception handler exists. Without this, a broken first run just silently vanishes with
+        // nothing to go on - "launcher won't open" bug reports with zero log evidence.
+        try
+        {
+            _serviceProvider ??= DefaultServiceProviderProvider.GetDefaultServiceProvider();
+        }
+        catch (Exception ex)
+        {
+            LogService.WriteEarly($"Fatal startup failure while initializing services: {ex}");
+            ShowFatalStartupError(ex);
+            // IEnvironmentProvider isn't available - the container that would provide it is exactly
+            // what just failed to build.
+#pragma warning disable RS0030
+            Environment.Exit(1);
+#pragma warning restore RS0030
+            return;
+        }
 
         var log = _serviceProvider.GetRequiredService<ILogService>();
         log.Info($"Launcher starting. Log file: {log.CurrentLogFilePath ?? "(console only)"}");
@@ -46,6 +64,28 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // Deliberately bypasses Avalonia/MsBox.Avalonia entirely - the framework may not be usable yet at
+    // this point, since this only runs when building the DI container (and therefore most of the app's
+    // own services) already failed. A plain native message box has no dependency on any of that.
+    private static void ShowFatalStartupError(Exception ex)
+    {
+        var message = $"KSP2 Redux failed to start:\n\n{ex.Message}\n\n" +
+                      "A bootstrap.log with more detail was written to your logs folder.";
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                NativeMessageBox.ShowError(message, "KSP2 Redux - Startup Failed");
+                return;
+            }
+            catch (Exception showEx)
+            {
+                LogService.WriteEarly($"Could not show native startup-error dialog: {showEx}");
+            }
+        }
+        Console.Error.WriteLine(message);
     }
 
     private static void HookGlobalExceptionHandlers(ILogService log)

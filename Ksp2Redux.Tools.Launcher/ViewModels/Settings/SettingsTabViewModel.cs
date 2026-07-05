@@ -25,6 +25,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly HomeTabViewModel _homeTabViewModel;
     private readonly IAssemblyService _assemblyService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly ILogService _log;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -61,7 +62,8 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
-        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService, IMessageBoxService messageBoxService)
+        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
+        IMessageBoxService messageBoxService, ILogService log)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
@@ -71,6 +73,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         _homeTabViewModel = homeTabViewModel;
         _assemblyService = assemblyService;
         _messageBoxService = messageBoxService;
+        _log = log;
 
         _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
         _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
@@ -134,7 +137,18 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task AddInstall()
     {
-        var chosenPath = await DoOpenFilePickerAsync();
+        IStorageFile? chosenPath;
+        try
+        {
+            chosenPath = await DoOpenFilePickerAsync();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the file picker for adding an install.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
         if (chosenPath is null) return;
 
         var path = chosenPath.Path.LocalPath;
@@ -159,7 +173,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
             desktop.MainWindow?.StorageProvider is not { } provider)
-            throw new NullReferenceException("Missing StorageProvider instance.");
+            throw new InvalidOperationException("Could not access the file picker (no active window).");
 
         IStorageFolder? startFolder = null;
         var lastKnownPath = _ksp2InstallService.ActiveEntry?.ExePath;
@@ -201,7 +215,18 @@ public partial class SettingsTabViewModel : ViewModelBase
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes) return;
 
-        _cacheService.RecursivelyRestoreCache(installDir);
+        try
+        {
+            _cacheService.RecursivelyRestoreCache(installDir);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to uninstall Redux from {installDir}.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't uninstall Redux: {ex.Message}",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
 
         _ksp2InstallService.TryLoadKsp2Install();
         await _homeTabViewModel.UpdateVersionsList();
@@ -212,7 +237,18 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public async Task InstallFromPatchFile()
     {
-        var chosenPath = await DoOpenPatchFilePickerAsync();
+        IStorageFile? chosenPath;
+        try
+        {
+            chosenPath = await DoOpenPatchFilePickerAsync();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the file picker for a patch file.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
 
         if (chosenPath is null) return;
 
@@ -226,7 +262,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
             desktop.MainWindow?.StorageProvider is not { } provider)
-            throw new NullReferenceException("Missing StorageProvider instance.");
+            throw new InvalidOperationException("Could not access the file picker (no active window).");
         var startFolder = await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Downloads);
 
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()

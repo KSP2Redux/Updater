@@ -129,9 +129,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
         timer.Tick += async (sender, args) =>
         {
-            if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+            try
+            {
+                if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+            }
+            catch (Exception ex)
+            {
+                // This is an async void-shaped event handler (DispatcherTimer.Tick), so an unhandled
+                // exception here would crash the whole app on a background tick unrelated to anything
+                // the user just did.
+                _log.Error("Periodic update check failed unexpectedly.", ex);
+            }
         };
-        
+
         timer.Start();
     }
 
