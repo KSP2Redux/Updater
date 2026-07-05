@@ -119,9 +119,15 @@ public class LogServiceTest
         var (fs, env) = BuildEnv();
         var log = new LogService(fs, env, maxLogFileSizeBytes: 200);
 
-        // Push the file past the tiny test cap, then keep writing.
+        // Push the file past the tiny test cap. Depending on how long the header's OS-description
+        // line happens to be on the host running the test, the cap might already be exceeded before
+        // this call (in which case the "reached cap" warning is written here and this line is
+        // skipped) or only after it (in which case this line is written and the warning is
+        // deferred to the next call) - so a second call is needed to guarantee the warning has
+        // been written before taking the "settled" size snapshot below.
         log.Info(new string('x', 250));
-        var sizeAfterCapHit = fs.FileInfo.New(log.CurrentLogFilePath!).Length;
+        log.Info("may or may not reach disk depending on header length, don't assert on it");
+        var sizeAfterCapAndWarning = fs.FileInfo.New(log.CurrentLogFilePath!).Length;
 
         log.Info("this line must not reach disk");
         log.Info("neither must this one");
@@ -131,9 +137,10 @@ public class LogServiceTest
         var contents = fs.File.ReadAllText(log.CurrentLogFilePath!);
         Assert.Multiple(() =>
         {
-            Assert.That(sizeAfterMoreWrites, Is.EqualTo(sizeAfterCapHit), "No further lines should be written once the cap is reached.");
+            Assert.That(sizeAfterMoreWrites, Is.EqualTo(sizeAfterCapAndWarning), "No further lines should be written once the cap is reached.");
             Assert.That(contents, Does.Contain("Log file reached"));
             Assert.That(contents, Does.Not.Contain("this line must not reach disk"));
+            Assert.That(contents, Does.Not.Contain("neither must this one"));
         });
     }
 
