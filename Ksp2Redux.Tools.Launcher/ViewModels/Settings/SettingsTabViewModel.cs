@@ -48,6 +48,9 @@ public partial class SettingsTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool VerboseLogging { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsAddingInstall { get; set; }
+
     public string LauncherVersion => _assemblyService.GetVersion()?.ToString(4) ?? "?";
 
     private bool _suppressActiveSync;
@@ -123,7 +126,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             Installs.Clear();
             foreach (var entry in entries)
             {
-                Installs.Add(new Ksp2InstallRowViewModel(_ksp2InstallService, entry, entry.Id == activeId));
+                Installs.Add(new Ksp2InstallRowViewModel(_fileSystem, _ksp2InstallService, entry, entry.Id == activeId));
             }
         }
         SyncSelectedInstall();
@@ -160,36 +163,52 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task AddInstall()
     {
-        IStorageFile? chosenPath;
+        if (IsAddingInstall) return;
+        IsAddingInstall = true;
         try
         {
-            chosenPath = await DoOpenFilePickerAsync();
-        }
-        catch (Exception ex)
-        {
-            _log.Error("Failed to open the file picker for adding an install.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
-            return;
-        }
-        if (chosenPath is null) return;
+            IStorageFile? chosenPath;
+            try
+            {
+                chosenPath = await DoOpenFilePickerAsync();
+            }
+            catch (Exception ex)
+            {
+                _log.Error("Failed to open the file picker for adding an install.", ex);
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                    $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+                return;
+            }
+            if (chosenPath is null) return;
 
-        var path = chosenPath.Path.LocalPath;
-        var existing = _ksp2InstallService.Entries.FirstOrDefault(e =>
-            string.Equals(e.ExePath, path, StringComparison.OrdinalIgnoreCase));
-        if (existing is not null)
-        {
-            _ksp2InstallService.SetActiveInstall(existing.Id);
-            return;
+            var path = chosenPath.Path.LocalPath;
+            var existing = _ksp2InstallService.Entries.FirstOrDefault(e =>
+                string.Equals(e.ExePath, path, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                _ksp2InstallService.SetActiveInstall(existing.Id);
+                return;
+            }
+            _ksp2InstallService.AddInstall(path);
         }
-        _ksp2InstallService.AddInstall(path);
+        finally
+        {
+            IsAddingInstall = false;
+        }
     }
 
     [RelayCommand]
-    public void RemoveSelectedInstall()
+    public async Task RemoveSelectedInstall()
     {
         if (Installs.Count <= 1) return;
-        if (SelectedInstall is { } row) _ksp2InstallService.RemoveInstall(row.Id);
+        if (SelectedInstall is not { } row) return;
+
+        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Confirm",
+            $"Are you sure you want to remove \"{row.Name}\"? Its name, launch arguments, and Steam settings will be lost.",
+            ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        if (result != ButtonResult.Yes) return;
+
+        _ksp2InstallService.RemoveInstall(row.Id);
     }
 
     public async Task<IStorageFile?> DoOpenFilePickerAsync()

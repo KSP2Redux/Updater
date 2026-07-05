@@ -1,4 +1,6 @@
 using System;
+using System.IO.Abstractions;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
@@ -7,6 +9,7 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
 public partial class Ksp2InstallRowViewModel : ViewModelBase
 {
+    private readonly IFileSystem _fileSystem;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly Ksp2InstallEntry _entry;
 
@@ -17,6 +20,9 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string ExePath { get; set; }
+
+    [ObservableProperty]
+    public partial string? ExePathError { get; set; }
 
     [ObservableProperty]
     public partial string ReleaseChannel { get; set; }
@@ -31,13 +37,17 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     public partial string SteamAppId { get; set; }
 
     [ObservableProperty]
+    public partial string? SteamAppIdError { get; set; }
+
+    [ObservableProperty]
     public partial string LaunchArguments { get; set; }
 
     [ObservableProperty]
     public partial bool DisableGraphicsJobs { get; set; }
 
-    public Ksp2InstallRowViewModel(IKsp2InstallService ksp2InstallService, Ksp2InstallEntry entry, bool isActive)
+    public Ksp2InstallRowViewModel(IFileSystem fileSystem, IKsp2InstallService ksp2InstallService, Ksp2InstallEntry entry, bool isActive)
     {
+        _fileSystem = fileSystem;
         _ksp2InstallService = ksp2InstallService;
         _entry = entry;
         Name = entry.Name;
@@ -48,10 +58,17 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
         SteamAppId = entry.SteamAppId;
         LaunchArguments = entry.LaunchArguments;
         DisableGraphicsJobs = entry.DisableGraphicsJobs;
+
+        ExePathError = ValidateExePath(ExePath);
+        SteamAppIdError = ValidateSteamAppId(SteamAppId);
     }
 
     partial void OnNameChanged(string value) => _ksp2InstallService.RenameInstall(_entry.Id, value);
-    partial void OnExePathChanged(string value) => _ksp2InstallService.UpdateInstallExePath(_entry.Id, value);
+    partial void OnExePathChanged(string value)
+    {
+        ExePathError = ValidateExePath(value);
+        _ksp2InstallService.UpdateInstallExePath(_entry.Id, value);
+    }
     partial void OnReleaseChannelChanged(string value)
     {
         if (string.IsNullOrEmpty(value)) return;
@@ -72,6 +89,7 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     partial void OnSteamAppIdChanged(string value)
     {
         var normalized = value?.Trim() ?? "";
+        SteamAppIdError = ValidateSteamAppId(normalized);
         if (_entry.SteamAppId == normalized) return;
         _entry.SteamAppId = normalized;
         _ksp2InstallService.NotifyInstallChanged(_entry.Id);
@@ -87,4 +105,18 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
 
     partial void OnDisableGraphicsJobsChanged(bool value)
         => _ksp2InstallService.UpdateInstallDisableGraphicsJobs(_entry.Id, value);
+
+    private string? ValidateExePath(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "An install path is required.";
+        if (_fileSystem.Path.GetFileName(value) != Ksp2Install.KSP2_EXE_NAME) return $"Path must point to {Ksp2Install.KSP2_EXE_NAME}.";
+        if (!_fileSystem.File.Exists(value)) return "That file doesn't exist.";
+        return null;
+    }
+
+    private static string? ValidateSteamAppId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return value.All(char.IsAsciiDigit) ? null : "Steam App ID must be numeric.";
+    }
 }
