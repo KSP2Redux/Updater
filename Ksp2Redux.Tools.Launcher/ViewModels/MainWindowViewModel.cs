@@ -120,7 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         UpdateContentPanelVisible();
 
-        _ = InitializeAsync().ContinueWith(LogErrors);
+        _ = InitializeAsync().ContinueWith(HandleInitializeFailure);
 
         var timer = new DispatcherTimer
         {
@@ -141,6 +141,21 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _log.Error("Background task faulted.", antecedent.Exception);
         }
+    }
+
+    // Startup initialization failing is more severe than a background task like the news feed
+    // failing to load (which just leaves a list empty) - if this throws, feeds/install detection/
+    // the update check may not have run at all, so tell the user instead of failing silently.
+    private void HandleInitializeFailure(Task antecedent)
+    {
+        if (!antecedent.IsFaulted) return;
+        _log.Error("Startup initialization failed.", antecedent.Exception);
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Startup Error",
+                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        });
     }
 
     private async Task InitializeAsync()

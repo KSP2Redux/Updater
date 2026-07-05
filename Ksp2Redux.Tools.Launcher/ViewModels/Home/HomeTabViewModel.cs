@@ -6,11 +6,13 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
@@ -22,6 +24,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IInstallPlanService _installPlanService;
     private readonly IUpdateService _updateService;
     private readonly IOperatingSystemService _operatingSystemService;
+    private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
     
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
@@ -88,7 +91,7 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, ILogService log)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, ILogService log)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
@@ -96,6 +99,7 @@ public partial class HomeTabViewModel : ViewModelBase
         _installPlanService = installPlanService;
         _updateService = updateService;
         _operatingSystemService = operatingSystemService;
+        _messageBoxService = messageBoxService;
         _log = log;
 
         RebuildInstallsCollection();
@@ -589,6 +593,9 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error("Manual launcher update failed.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
+                $"Something went wrong while checking for launcher updates: {ex.Message}\nPlease try again later.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 }
