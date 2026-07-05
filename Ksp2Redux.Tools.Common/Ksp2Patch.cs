@@ -311,7 +311,7 @@ public class Ksp2Patch : IDisposable
                         IZipArchiveEntry? entry = _archive.GetEntry(operation.FileName + ".bsdiff");
                         if (entry != null)
                         {
-                            string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName + ".bsdiff");
+                            string outPath = ResolveContainedPath(tempPatchDir, entryFsName + ".bsdiff");
                             _fileSystem.Directory.CreateDirectory(_fileSystem.Path.GetDirectoryName(outPath)!);
                             entry.ExtractToFile(_fileSystem, outPath);
                         }
@@ -323,7 +323,7 @@ public class Ksp2Patch : IDisposable
                         IZipArchiveEntry? entry = _archive.GetEntry(operation.FileName);
                         if (entry != null)
                         {
-                            string outPath = _fileSystem.Path.Combine(tempPatchDir, entryFsName);
+                            string outPath = ResolveContainedPath(tempPatchDir, entryFsName);
                             _fileSystem.Directory.CreateDirectory(_fileSystem.Path.GetDirectoryName(outPath)!);
                             entry.ExtractToFile(_fileSystem, outPath);
                         }
@@ -348,9 +348,25 @@ public class Ksp2Patch : IDisposable
                     try
                     {
                         string trueName = NormalizeEntryPath(operation.FileName);
-                        string targetPath = _fileSystem.Path.Combine(targetDirectory, trueName);
-                        string sourcePath = _fileSystem.Path.Combine(sourceDirectory, trueName);
+                        string targetPath = ResolveContainedPath(targetDirectory, trueName);
+                        string sourcePath = ResolveContainedPath(sourceDirectory, trueName);
                         string tempPath = targetPath + ".temp";
+
+                        // Each file write below is already atomic (verify-then-swap), so if a previous
+                        // attempt at this same plan got partway through before failing elsewhere, this
+                        // file may already be sitting in its correct final state. Retrying the whole
+                        // plan shouldn't mean redownloading/reapplying files that are already done.
+                        if (operation.Action is PatchOperation.PatchAction.Patch or PatchOperation.PatchAction.Add &&
+                            operation.FinalHash is not null && _fileSystem.File.Exists(targetPath))
+                        {
+                            await using FileSystemStream existingFile = _fileSystem.File.OpenRead(targetPath);
+                            if (await ValidateFileHashAsync(existingFile, operation.FinalHash))
+                            {
+                                log?.Invoke($"{trueName} already matches the expected result, skipping.");
+                                return;
+                            }
+                        }
+
                         if (operation.Action == PatchOperation.PatchAction.Patch)
                         {
                             log?.Invoke($"Applying binary patch to {trueName}");
@@ -364,51 +380,68 @@ public class Ksp2Patch : IDisposable
                                 );
                             }
                             log?.Invoke($"Creating temporary file for {trueName}");
-                            await CopyFileAsync(_fileSystem, sourcePath, tempPath);
+                            await RetryOnFileLockAsync(
+                                () => CopyFileAsync(_fileSystem, sourcePath, tempPath), trueName, log);
 
-                            await using (FileSystemStream originalFile = _fileSystem.File.OpenRead(tempPath))
+                            // Write the patched result to a co-located swap file and verify it fully
+                            // before ever touching the real target file, instead of truncating the
+                            // target up front - a crash or disk-full mid-write must never leave the
+                            // live game file half-written.
+                            string swapPath = targetPath + ".newtemp";
+                            try
                             {
-                                await using FileSystemStream targetFile = _fileSystem.File.Open(
-                                    targetPath,
-                                    FileMode.Create,
-                                    FileAccess.ReadWrite
-                                );
-
-                                if (!await ValidateFileHashAsync(originalFile, operation.OriginalHash!))
+                                await using (FileSystemStream originalFile = _fileSystem.File.OpenRead(tempPath))
                                 {
-                                    throw new InvalidDataException(
-                                        $"File {originalFile.Name} does not match expected hash " +
-                                        $"{FormatHash(operation.OriginalHash!)}. Cannot apply patch! Check that the " +
-                                        $"Redux patch you are applying is for the version of the game (Steam, portable " +
-                                        $"zip, or Epic) you are patching."
-                                    );
-                                }
-
-
-                                try
-                                {
-                                    string patchPath = _fileSystem.Path.Combine(tempPatchDir, trueName + ".bsdiff");
-                                    BinaryPatch.Apply(originalFile, () =>
+                                    if (!await ValidateFileHashAsync(originalFile, operation.OriginalHash!))
                                     {
-                                        var memory = new MemoryStream(_fileSystem.File.ReadAllBytes(patchPath));
-                                        return memory;
-                                    }, targetFile);
-                                }
-                                catch (Exception e)
-                                {
-                                    error?.Invoke(e.Message);
-                                    throw;
+                                        throw new InvalidDataException(
+                                            $"File {originalFile.Name} does not match expected hash " +
+                                            $"{FormatHash(operation.OriginalHash!)}. Cannot apply patch! Check that the " +
+                                            $"Redux patch you are applying is for the version of the game (Steam, portable " +
+                                            $"zip, or Epic) you are patching."
+                                        );
+                                    }
+
+                                    await using (FileSystemStream swapFile = _fileSystem.File.Open(
+                                                     swapPath, FileMode.Create, FileAccess.ReadWrite))
+                                    {
+                                        try
+                                        {
+                                            string patchPath = _fileSystem.Path.Combine(tempPatchDir, trueName + ".bsdiff");
+                                            BinaryPatch.Apply(originalFile, () =>
+                                            {
+                                                var memory = new MemoryStream(_fileSystem.File.ReadAllBytes(patchPath));
+                                                return memory;
+                                            }, swapFile);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            error?.Invoke(e.Message);
+                                            throw;
+                                        }
+
+                                        if (!await ValidateFileHashAsync(swapFile, operation.FinalHash!))
+                                        {
+                                            throw new InvalidDataException(
+                                                $"Patched result for {trueName} does not match expected hash " +
+                                                $"{FormatHash(operation.FinalHash!)}."
+                                            );
+                                        }
+                                    }
                                 }
 
-                                if (!await ValidateFileHashAsync(targetFile, operation.FinalHash!))
-                                {
-                                    throw new InvalidDataException(
-                                        $"File {targetFile.Name} does not match expected hash " +
-                                        $"{FormatHash(operation.FinalHash!)}."
-                                    );
-                                }
+                                // Only now, with a fully verified replacement sitting beside it, do we
+                                // touch the real file - a single atomic rename instead of an in-place write.
+                                await RetryOnFileLockAsync(
+                                    () => { _fileSystem.File.Move(swapPath, targetPath, true); return Task.CompletedTask; },
+                                    trueName, log);
                             }
-                            
+                            finally
+                            {
+                                try { if (_fileSystem.File.Exists(swapPath)) _fileSystem.File.Delete(swapPath); }
+                                catch { /* best-effort cleanup */ }
+                            }
+
                             // Delete the original file if we are not caching it
                             _fileSystem.File.Delete(tempPath);
                         }
@@ -427,27 +460,42 @@ public class Ksp2Patch : IDisposable
                         }
                         else // Add
                         {
-
                             log?.Invoke($"Copying {trueName} from patch");
 
                             IDirectoryInfo? parent = _fileSystem.FileInfo.New(targetPath).Directory;
                             _fileSystem.Directory.CreateDirectory(parent!.FullName);
 
-                            await using FileSystemStream targetFile = _fileSystem.File.Open(
-                                targetPath,
-                                FileMode.Create,
-                                FileAccess.ReadWrite
-                            );
-                            string patchPath = _fileSystem.Path.Combine(tempPatchDir, trueName);
-                            await using FileSystemStream entryStream = _fileSystem.File.OpenRead(patchPath);
-                            await entryStream.CopyToAsync(targetFile);
-
-                            if (!await ValidateFileHashAsync(targetFile, operation.FinalHash!))
+                            // Stage and verify beside the target, then atomically swap it in - the
+                            // extracted file already sits complete in tempPatchDir, but that may be on
+                            // a different volume, so copy it in next to the target first to make the
+                            // final swap a same-volume rename rather than a cross-volume copy.
+                            string swapPath = targetPath + ".newtemp";
+                            try
                             {
-                                throw new InvalidDataException(
-                                    $"File {targetFile.Name} does not match expected hash " +
-                                    $"{FormatHash(operation.FinalHash!)}."
-                                );
+                                string patchPath = _fileSystem.Path.Combine(tempPatchDir, trueName);
+                                await using (FileSystemStream swapFile = _fileSystem.File.Open(
+                                                 swapPath, FileMode.Create, FileAccess.ReadWrite))
+                                {
+                                    await using FileSystemStream entryStream = _fileSystem.File.OpenRead(patchPath);
+                                    await entryStream.CopyToAsync(swapFile);
+
+                                    if (!await ValidateFileHashAsync(swapFile, operation.FinalHash!))
+                                    {
+                                        throw new InvalidDataException(
+                                            $"File {trueName} does not match expected hash " +
+                                            $"{FormatHash(operation.FinalHash!)}."
+                                        );
+                                    }
+                                }
+
+                                await RetryOnFileLockAsync(
+                                    () => { _fileSystem.File.Move(swapPath, targetPath, true); return Task.CompletedTask; },
+                                    trueName, log);
+                            }
+                            finally
+                            {
+                                try { if (_fileSystem.File.Exists(swapPath)) _fileSystem.File.Delete(swapPath); }
+                                catch { /* best-effort cleanup */ }
                             }
                         }
                     }
@@ -497,8 +545,56 @@ public class Ksp2Patch : IDisposable
         return reader.ReadToEnd();
     }
 
+    /// <summary>
+    /// Retries an operation a few times with a short, increasing delay when it fails with an
+    /// IOException - antivirus mid-scan or the game itself still holding a handle on a file being
+    /// patched is common and almost always resolves within a second or two on its own. Without this,
+    /// a purely transient lock forces the same expensive whole-install rollback as a real failure.
+    /// </summary>
+    private static async Task RetryOnFileLockAsync(Func<Task> action, string fileDescription, Action<string>? log)
+    {
+        const int maxAttempts = 5;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                await action();
+                return;
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                log?.Invoke($"{fileDescription} appears to be in use (attempt {attempt}/{maxAttempts}), retrying shortly...");
+                await Task.Delay(TimeSpan.FromMilliseconds(300 * attempt));
+            }
+        }
+    }
+
     private string NormalizeEntryPath(string path) =>
         path.Replace('\\', _fileSystem.Path.DirectorySeparatorChar).Replace('/', _fileSystem.Path.DirectorySeparatorChar);
+
+    /// <summary>
+    /// Combines <paramref name="baseDirectory"/> with a patch entry's (already-normalized) relative
+    /// path and asserts the result actually stays under that directory. Only the archive's own
+    /// whole-file checksum is verified upstream (ManifestReleasesFeed) - nothing otherwise stops a
+    /// corrupted or tampered manifest.json from naming an entry like "../../../Windows/System32/x"
+    /// and writing or deleting files outside the install directory entirely.
+    /// </summary>
+    private string ResolveContainedPath(string baseDirectory, string relativePath)
+    {
+        string fullBase = _fileSystem.Path.GetFullPath(baseDirectory);
+        string fullCombined = _fileSystem.Path.GetFullPath(_fileSystem.Path.Combine(fullBase, relativePath));
+
+        bool isContained = fullCombined.Equals(fullBase, StringComparison.OrdinalIgnoreCase) ||
+                            fullCombined.StartsWith(fullBase + _fileSystem.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        if (!isContained)
+        {
+            throw new InvalidDataException(
+                $"Patch entry '{relativePath}' resolves outside of '{fullBase}'. Refusing to apply - " +
+                "this patch may be corrupted or tampered with.");
+        }
+
+        return fullCombined;
+    }
 
     private static bool ValidateFileHash(Stream stream, byte[] hash)
     {
