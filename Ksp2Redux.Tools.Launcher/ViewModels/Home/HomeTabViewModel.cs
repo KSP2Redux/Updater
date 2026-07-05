@@ -380,6 +380,10 @@ public partial class HomeTabViewModel : ViewModelBase
             await RunPlanOnInstall(plan, ksp2);
             Log("KSP2 Redux Successfully Installed");
         }
+        catch (OperationCanceledException)
+        {
+            Log("Installation cancelled");
+        }
         catch (Exception e)
         {
             Log($"Error updating Redux: {e.Message}");
@@ -428,6 +432,10 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             await RunPlanOnInstall(plan, ksp2);
             Log("KSP2 Redux Successfully Installed");
+        }
+        catch (OperationCanceledException)
+        {
+            Log("Installation cancelled");
         }
         catch (Exception e)
         {
