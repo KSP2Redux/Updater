@@ -113,11 +113,20 @@
 				</Grid>
 			</Grid>
 
-			<TextBlock Grid.Row="2"
-			           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
-			           Foreground="{StaticResource TextFaintBrush}"
-			           HorizontalAlignment="Right" Margin="0,12,0,0"
-			           Text="{Binding LauncherVersion, StringFormat='Launcher v{0}'}" />
+			<Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="10" Margin="0,12,0,0">
+				<Button Grid.Column="0" FontSize="11" Padding="8,4" Click="OpenLogsFolderClick">Open Logs Folder</Button>
+				<Button Grid.Column="1" FontSize="11" Padding="8,4" Click="CopyDiagnosticInfoClick">Copy Diagnostic Info</Button>
+				<CheckBox Grid.Column="2" FontSize="11" VerticalAlignment="Center"
+				          IsChecked="{Binding VerboseLogging, Mode=TwoWay}"
+				          ToolTip.Tip="Write more detailed information to the log file. Useful when troubleshooting an issue.">
+					Verbose logging
+				</CheckBox>
+				<TextBlock Grid.Column="3"
+				           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
+				           Foreground="{StaticResource TextFaintBrush}"
+				           HorizontalAlignment="Right" VerticalAlignment="Center"
+				           Text="{Binding LauncherVersion, StringFormat='Launcher v{0}'}" />
+			</Grid>
 		</Grid>
 		</Border>
 	</Grid>

@@ -262,9 +262,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (ksp2.VersionDetectionException is { } e)
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Could not detect version",
-                $"{e.GetType().FullName}\n\n{e}", ButtonEnum.Ok,
-                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            _log.Error("Could not detect the installed KSP2 version.", e);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Detect Game Version",
+                "KSP2 Redux couldn't figure out which version of the game is installed. " +
+                "This can happen if the game files are missing, corrupted, or from an unsupported source.\n\n" +
+                "You can still try launching or installing, but update checks may be unreliable. " +
+                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 

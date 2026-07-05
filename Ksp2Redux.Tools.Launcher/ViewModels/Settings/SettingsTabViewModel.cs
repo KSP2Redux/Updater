@@ -3,8 +3,11 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -25,6 +28,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly HomeTabViewModel _homeTabViewModel;
     private readonly IAssemblyService _assemblyService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly IEnvironmentProvider _environmentProvider;
     private readonly ILogService _log;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
@@ -40,6 +44,9 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool CanRemoveSelectedInstall { get; set; }
+
+    [ObservableProperty]
+    public partial bool VerboseLogging { get; set; }
 
     public string LauncherVersion => _assemblyService.GetVersion()?.ToString(4) ?? "?";
 
@@ -63,7 +70,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
-        IMessageBoxService messageBoxService, ILogService log)
+        IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
@@ -73,11 +80,27 @@ public partial class SettingsTabViewModel : ViewModelBase
         _homeTabViewModel = homeTabViewModel;
         _assemblyService = assemblyService;
         _messageBoxService = messageBoxService;
+        _environmentProvider = environmentProvider;
         _log = log;
 
         _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
         _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
         RebuildInstalls();
+
+        _suppressVerboseLoggingSave = true;
+        try { VerboseLogging = _launcherConfigService.Config.VerboseLogging; }
+        finally { _suppressVerboseLoggingSave = false; }
+        _log.MinimumLevel = VerboseLogging ? LogLevel.Debug : LogLevel.Info;
+    }
+
+    private bool _suppressVerboseLoggingSave;
+
+    partial void OnVerboseLoggingChanged(bool value)
+    {
+        _log.MinimumLevel = value ? LogLevel.Debug : LogLevel.Info;
+        if (_suppressVerboseLoggingSave) return;
+        _launcherConfigService.Config.VerboseLogging = value;
+        _launcherConfigService.Save();
     }
 
     private void RebuildInstalls()
@@ -274,5 +297,68 @@ public partial class SettingsTabViewModel : ViewModelBase
         });
 
         return files?.Count >= 1 ? files[0] : null;
+    }
+
+    public async Task OpenLogsFolder()
+    {
+        try
+        {
+            var logsDir = LocalStoragePaths.GetLogsDirectory(_fileSystem, _environmentProvider);
+            _fileSystem.Directory.CreateDirectory(logsDir);
+            Process.Start(new ProcessStartInfo(logsDir) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the logs folder.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't open the logs folder: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+    }
+
+    /// <summary>
+    /// Everything a bug report needs in one paste-ready block: launcher version, active install
+    /// details, OS, and the tail of the current log file - so a support conversation doesn't have to
+    /// start with four separate questions before diagnosis can even begin.
+    /// </summary>
+    public string BuildDiagnosticInfo()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"KSP2 Redux Launcher v{LauncherVersion}");
+        sb.AppendLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+
+        if (_ksp2InstallService.ActiveEntry is { } entry)
+        {
+            sb.AppendLine($"Active install: {entry.Name} (channel={entry.ReleaseChannel}, launchThroughSteam={entry.LaunchThroughSteam})");
+            sb.AppendLine($"Exe path: {entry.ExePath}");
+            var ksp2 = _ksp2InstallService.Ksp2;
+            sb.AppendLine(ksp2 is { IsValid: true }
+                ? $"Detected: {ksp2.Distribution}, version {ksp2.GameVersion}"
+                : "Detected: (not currently detected as valid)");
+        }
+        else
+        {
+            sb.AppendLine("Active install: (none configured)");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("--- Recent log ---");
+        try
+        {
+            if (_log.CurrentLogFilePath is { } logPath && _fileSystem.File.Exists(logPath))
+            {
+                var lines = _fileSystem.File.ReadAllLines(logPath);
+                sb.AppendLine(string.Join(_environmentProvider.NewLine, lines.TakeLast(100)));
+            }
+            else
+            {
+                sb.AppendLine("(no log file available)");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"(could not read log file: {ex.Message})");
+        }
+
+        return sb.ToString();
     }
 }

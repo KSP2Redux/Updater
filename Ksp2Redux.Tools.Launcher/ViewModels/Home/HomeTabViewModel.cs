@@ -451,12 +451,11 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         catch (InstallFailedException e)
         {
-            Log(e.Message);
+            LogError(e.Message, e);
         }
         catch (Exception e)
         {
-            Log($"Error updating Redux: {e.Message}");
-            Log($"Stack Trace: {e.StackTrace}");
+            LogError($"Error updating Redux: {e.Message}", e);
             Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
         }
         finally
@@ -508,12 +507,11 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         catch (InstallFailedException e)
         {
-            Log(e.Message);
+            LogError(e.Message, e);
         }
         catch (Exception e)
         {
-            Log($"Error updating Redux: {e.Message}");
-            Log($"Stack Trace: {e.StackTrace}");
+            LogError($"Error updating Redux: {e.Message}", e);
             Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
         }
         finally
@@ -565,6 +563,20 @@ public partial class HomeTabViewModel : ViewModelBase
     private void Log(string message)
     {
         _log.Info(message);
+        AppendToInstallLog(message);
+    }
+
+    // Real install/patch failures used to go through Log(), which always writes at Info - grepping a
+    // user's log file for "ERROR" to find out what went wrong turned up nothing, since the failure and
+    // its stack trace were filed alongside routine progress lines.
+    private void LogError(string message, Exception? exception = null)
+    {
+        _log.Error(message, exception);
+        AppendToInstallLog(message);
+    }
+
+    private void AppendToInstallLog(string message)
+    {
         bool queueUpdate;
         lock (_installLogLock)
         {

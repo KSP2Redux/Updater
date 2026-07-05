@@ -101,6 +101,61 @@ public class LogServiceTest
     }
 
     [Test]
+    public void Write_LogFileExceedsSizeCap_StopsWritingFurtherLinesToDisk()
+    {
+        var (fs, env) = BuildEnv();
+        var log = new LogService(fs, env, maxLogFileSizeBytes: 200);
+
+        // Push the file past the tiny test cap, then keep writing.
+        log.Info(new string('x', 250));
+        var sizeAfterCapHit = fs.FileInfo.New(log.CurrentLogFilePath!).Length;
+
+        log.Info("this line must not reach disk");
+        log.Info("neither must this one");
+
+        var sizeAfterMoreWrites = fs.FileInfo.New(log.CurrentLogFilePath!).Length;
+        log.Dispose();
+        var contents = fs.File.ReadAllText(log.CurrentLogFilePath!);
+        Assert.Multiple(() =>
+        {
+            Assert.That(sizeAfterMoreWrites, Is.EqualTo(sizeAfterCapHit), "No further lines should be written once the cap is reached.");
+            Assert.That(contents, Does.Contain("Log file reached"));
+            Assert.That(contents, Does.Not.Contain("this line must not reach disk"));
+        });
+    }
+
+    [Test]
+    public void Debug_BelowDefaultMinimumLevel_IsNotWrittenToLogFile()
+    {
+        var (fs, env) = BuildEnv();
+        using var log = new LogService(fs, env);
+
+        log.Debug("verbose detail");
+        log.Info("normal message");
+        log.Dispose();
+
+        var contents = fs.File.ReadAllText(log.CurrentLogFilePath!);
+        Assert.Multiple(() =>
+        {
+            Assert.That(contents, Does.Not.Contain("verbose detail"));
+            Assert.That(contents, Does.Contain("normal message"));
+        });
+    }
+
+    [Test]
+    public void Debug_MinimumLevelLoweredToDebug_IsWrittenToLogFile()
+    {
+        var (fs, env) = BuildEnv();
+        using var log = new LogService(fs, env) { MinimumLevel = LogLevel.Debug };
+
+        log.Debug("verbose detail");
+        log.Dispose();
+
+        var contents = fs.File.ReadAllText(log.CurrentLogFilePath!);
+        Assert.That(contents, Does.Contain("verbose detail"));
+    }
+
+    [Test]
     public void Constructor_WhenFileOpenFails_FallsBackToConsoleOnly()
     {
         var env = new MockEnvironmentProvider();
