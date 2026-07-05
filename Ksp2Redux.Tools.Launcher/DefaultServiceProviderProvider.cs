@@ -42,6 +42,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
         serviceCollection.AddSingleton<IMessageBoxService, MessageBoxService>();
         serviceCollection.AddSingleton<IOperatingSystemService, OperatingSystemService>();
+        serviceCollection.AddSingleton<IDiskSpaceService, DiskSpaceService>();
         return serviceCollection.BuildServiceProvider();
     }
 }
