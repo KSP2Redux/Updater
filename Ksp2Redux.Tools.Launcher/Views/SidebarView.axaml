@@ -180,8 +180,7 @@
         <Panel Grid.Row="3" DataContext="{Binding HomeTab}">
           <Panel x:DataType="home:HomeTabViewModel">
             <Button Classes="main-button" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
-                    IsEnabled="{Binding MainButtonEnabled}"
-                    ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
+                    IsEnabled="{Binding MainButtonEnabled}">
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
