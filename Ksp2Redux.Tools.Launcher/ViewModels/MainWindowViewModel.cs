@@ -38,10 +38,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
 
-    [ObservableProperty] private InstallState _currentInstallState;
+    [ObservableProperty]
+    public partial InstallState CurrentInstallState { get; set; }
 
-    [ObservableProperty] private bool _isUpdateDownloading;
-
+    [ObservableProperty]
+    public partial bool IsUpdateDownloading { get; set; }
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
@@ -49,13 +50,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public Shared.NewsCollectionViewModel NewsCollectionViewModel { get; }
 
-    [ObservableProperty] private int _currentTab;
+    [ObservableProperty]
+    public partial int CurrentTab { get; set; }
 
     // Drives the blurred backdrop behind whichever glass panel (Home log, Community
     // article, Settings, Mods) is currently on screen. Home and Community don't always
     // have one showing, so this has to react to their own visibility state too, not just
     // which tab is selected.
-    [ObservableProperty] private bool _isContentPanelVisible;
+    [ObservableProperty]
+    public partial bool IsContentPanelVisible { get; set; }
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,

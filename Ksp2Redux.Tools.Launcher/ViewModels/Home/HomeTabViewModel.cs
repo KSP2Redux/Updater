@@ -27,9 +27,17 @@ public partial class HomeTabViewModel : ViewModelBase
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
     public ObservableCollection<Ksp2InstallChoiceViewModel> Installs { get; } = [];
 
-    [ObservableProperty] private GameVersionViewModel? _selectedVersion;
-    [ObservableProperty] private Ksp2InstallChoiceViewModel? _selectedInstall;
-    [ObservableProperty] private bool _isInstallSwitcherEnabled;
+    [ObservableProperty]
+    public partial GameVersionViewModel? SelectedVersion { get; set; }
+
+    [ObservableProperty]
+    public partial Ksp2InstallChoiceViewModel? SelectedInstall { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsInstallSwitcherEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial bool FeedRefreshFailed { get; set; }
 
     public enum MainButtonState
     {
@@ -38,18 +46,39 @@ public partial class HomeTabViewModel : ViewModelBase
         Update,
         Cancel,
     }
-    [ObservableProperty] private MainButtonState _mainButtonShown;
-    [ObservableProperty] private bool _mainButtonEnabled;
-    [ObservableProperty] private string _mainButtonTooltip = "Loading...";
-    [ObservableProperty] private bool _isProgressVisible;
-    [ObservableProperty] private float _downloadProgressMb = 250;
-    [ObservableProperty] private float _downloadProgressTotalMb = 450;
-    [ObservableProperty] private float _installProgressSteps = 1;
-    [ObservableProperty] private float _installProgressTotalSteps = 3;
-    [ObservableProperty] private bool _isInstallLogVisible;
-    [ObservableProperty] private string _installLogText = string.Empty;
-    [ObservableProperty] private bool _installationDisabled;
-    
+    [ObservableProperty]
+    public partial MainButtonState MainButtonShown { get; set; }
+
+    [ObservableProperty]
+    public partial bool MainButtonEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial string MainButtonTooltip { get; set; } = "Loading...";
+
+    [ObservableProperty]
+    public partial bool IsProgressVisible { get; set; }
+
+    [ObservableProperty]
+    public partial float DownloadProgressMb { get; set; } = 250;
+
+    [ObservableProperty]
+    public partial float DownloadProgressTotalMb { get; set; } = 450;
+
+    [ObservableProperty]
+    public partial float InstallProgressSteps { get; set; } = 1;
+
+    [ObservableProperty]
+    public partial float InstallProgressTotalSteps { get; set; } = 3;
+
+    [ObservableProperty]
+    public partial bool IsInstallLogVisible { get; set; }
+
+    [ObservableProperty]
+    public partial string InstallLogText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool InstallationDisabled { get; set; }
+
     private readonly StringBuilder _installLogBuilder = new();
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
@@ -130,10 +159,12 @@ public partial class HomeTabViewModel : ViewModelBase
     }
     private async Task UpdateAsync()
     {
+        var allSucceeded = true;
         foreach (var feed in _releasesFeedService.ReleasesFeed)
         {
-            await feed.Value.UpdateManifest();
+            if (!await feed.Value.UpdateManifest()) allSucceeded = false;
         }
+        FeedRefreshFailed = !allSucceeded;
     }
 
     // Single refresh entry point shared by the periodic timer and, later, a manual button / F5.

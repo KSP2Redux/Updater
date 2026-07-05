@@ -35,7 +35,8 @@ public class ManifestReleasesFeed
         _feed = feed;
     }
 
-    public async Task UpdateManifest()
+    /// <returns>false if the fetch failed and the channel was marked invalid, true otherwise.</returns>
+    public async Task<bool> UpdateManifest()
     {
         _log.Info($"Updating manifest for feed {_feed.Repository} / {_feed.Filename}.");
         try
@@ -52,10 +53,11 @@ public class ManifestReleasesFeed
                     GeneratedAt = DateTime.MinValue,
                 };
                 CurrentChannel = "invalid";
-                return;
+                return false;
             }
             CurrentChannel = _manifest.Channel;
             _log.Info($"Manifest loaded for {_feed.Repository} / {_feed.Filename}. Channel={CurrentChannel}, Patches={_manifest.Patches?.Count ?? 0}, GeneratedAt={_manifest.GeneratedAt:O}.");
+            return true;
         }
         catch (Exception e)
         {
@@ -68,6 +70,7 @@ public class ManifestReleasesFeed
                 GeneratedAt = DateTime.MinValue,
             };
             CurrentChannel = "invalid";
+            return false;
         }
     }
 
