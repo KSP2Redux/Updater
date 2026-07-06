@@ -26,7 +26,7 @@ public partial class NewsItemView : UserControl
         var communityTab = mainWindow.FindControl<TabItem>("CommunityTab");
         if (mainTabControl is null || communityTab is null) return;
 
-        mainWindowViewModel.CommunityTab.SetSelectedNewsId(ViewModel?.NewsId ?? -1);
+        mainWindowViewModel.CommunityTab.SetSelectedNewsId(ViewModel?.NewsId);
         mainTabControl.SelectedItem = communityTab;
     }
 }

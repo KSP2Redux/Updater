@@ -103,13 +103,21 @@ if (!isDeleteOnly)
 
         var asset = await github.Repository.Release.UploadAsset(createdRelease, upload);
 
+        var localSize = new FileInfo(patch.File).Length;
+        if (asset.Size != localSize)
+        {
+            throw new InvalidOperationException(
+                $"Uploaded asset '{fileName}' reports size {asset.Size} bytes on GitHub, but the local file is {localSize} bytes. " +
+                "The upload may have been truncated or corrupted - not publishing this release.");
+        }
+
         var releasePatch = new ReleasePatch
         {
             Version = uploadManifest.Version,
             Label = uploadManifest.Label,
             ReleasedAt = DateTime.UtcNow,
             ChecksumSha256 = GetChecksum(patch.File),
-            Size = new FileInfo(patch.File).Length,
+            Size = localSize,
             Requires = new PatchRequirement
             {
                 Version = patch.PreviousVersion,

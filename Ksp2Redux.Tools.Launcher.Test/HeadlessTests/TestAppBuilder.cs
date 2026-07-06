@@ -26,6 +26,7 @@ public static class TestAppBuilder
     public static Mock<IUpdateService> UpdateService { get; private set; } = null!;
     public static Mock<IMessageBoxService> MessageBoxService { get; private set; } = null!;
     public static Mock<IOperatingSystemService> OperatingSystemService { get; private set; } = null!;
+    public static Mock<IDiskSpaceService> DiskSpaceService { get; private set; } = null!;
 
     public static IServiceProvider ServiceProvider { get; set; } = null!;
 
@@ -56,6 +57,8 @@ public static class TestAppBuilder
         OperatingSystemService = new();
         // Fully mocked for now, but could be tested if Http, Process and RuntimeInfo are separated in separated mockable interfaces
         UpdateService = new();
+        DiskSpaceService = new();
+        DiskSpaceService.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
 
         ServiceCollection serviceCollection = new();
         serviceCollection.AddSingleton<MainWindowViewModel>();
@@ -82,7 +85,8 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(UpdateService.Object);
         serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>(); 
         serviceCollection.AddSingleton(MessageBoxService.Object); 
-        serviceCollection.AddSingleton(OperatingSystemService.Object); 
+        serviceCollection.AddSingleton(OperatingSystemService.Object);
+        serviceCollection.AddSingleton(DiskSpaceService.Object);
         ServiceProvider = serviceCollection.BuildServiceProvider();
     }
 }

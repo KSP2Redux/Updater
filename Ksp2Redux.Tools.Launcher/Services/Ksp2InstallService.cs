@@ -36,9 +36,9 @@ public interface IKsp2InstallService
     void ApplyActiveInstallBootConfig();
 }
 
-public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService) : IKsp2InstallService
+public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, ILogService logService) : IKsp2InstallService
 {
-    private readonly HashSet<Guid> _checkedThisSession = new();
+    private readonly HashSet<Guid> _checkedThisSession = [];
 
     public Ksp2Install? Ksp2 { get; private set; }
 
@@ -249,7 +249,13 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
             }
             fileSystem.File.WriteAllLines(bootConfigPath, lines);
         }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        catch (IOException ex)
+        {
+            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
+        }
     }
 }

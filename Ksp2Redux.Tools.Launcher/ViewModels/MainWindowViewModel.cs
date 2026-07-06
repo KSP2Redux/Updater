@@ -38,10 +38,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
 
-    [ObservableProperty] private InstallState _currentInstallState;
+    [ObservableProperty]
+    public partial InstallState CurrentInstallState { get; set; }
 
-    [ObservableProperty] private bool _isUpdateDownloading;
-
+    [ObservableProperty]
+    public partial bool IsUpdateDownloading { get; set; }
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
@@ -49,13 +50,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public Shared.NewsCollectionViewModel NewsCollectionViewModel { get; }
 
-    [ObservableProperty] private int _currentTab;
+    [ObservableProperty]
+    public partial int CurrentTab { get; set; }
 
     // Drives the blurred backdrop behind whichever glass panel (Home log, Community
     // article, Settings, Mods) is currently on screen. Home and Community don't always
     // have one showing, so this has to react to their own visibility state too, not just
     // which tab is selected.
-    [ObservableProperty] private bool _isContentPanelVisible;
+    [ObservableProperty]
+    public partial bool IsContentPanelVisible { get; set; }
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
@@ -117,7 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         UpdateContentPanelVisible();
 
-        _ = InitializeAsync().ContinueWith(LogErrors);
+        _ = InitializeAsync().ContinueWith(HandleInitializeFailure);
 
         var timer = new DispatcherTimer
         {
@@ -126,9 +129,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
         timer.Tick += async (sender, args) =>
         {
-            if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+            try
+            {
+                if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+            }
+            catch (Exception ex)
+            {
+                // This is an async void-shaped event handler (DispatcherTimer.Tick), so an unhandled
+                // exception here would crash the whole app on a background tick unrelated to anything
+                // the user just did.
+                _log.Error("Periodic update check failed unexpectedly.", ex);
+            }
         };
-        
+
         timer.Start();
     }
 
@@ -138,6 +151,24 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _log.Error("Background task faulted.", antecedent.Exception);
         }
+    }
+
+    public Task LaunchExternalLinkAsync(TopLevel? topLevel, string url)
+        => ExternalLinkLauncher.LaunchAsync(topLevel, url, _messageBoxService, _log);
+
+    // Startup initialization failing is more severe than a background task like the news feed
+    // failing to load (which just leaves a list empty) - if this throws, feeds/install detection/
+    // the update check may not have run at all, so tell the user instead of failing silently.
+    private void HandleInitializeFailure(Task antecedent)
+    {
+        if (!antecedent.IsFaulted) return;
+        _log.Error("Startup initialization failed.", antecedent.Exception);
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Startup Error",
+                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        });
     }
 
     private async Task InitializeAsync()
@@ -234,9 +265,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (ksp2.VersionDetectionException is { } e)
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Could not detect version",
-                $"{e.GetType().FullName}\n\n{e}", ButtonEnum.Ok,
-                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            _log.Error("Could not detect the installed KSP2 version.", e);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Detect Game Version",
+                "KSP2 Redux couldn't figure out which version of the game is installed. " +
+                "This can happen if the game files are missing, corrupted, or from an unsupported source.\n\n" +
+                "You can still try launching or installing, but update checks may be unreliable. " +
+                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 
@@ -246,7 +281,7 @@ public partial class MainWindowViewModel : ViewModelBase
         List<News> newsList = await _newsService.FindAllNews();
         foreach (News news in newsList)
         {
-            _newsCollectionService.Add(new Shared.NewsItemViewModel(_newsService, news));
+            _newsCollectionService.Add(new Shared.NewsItemViewModel(news));
         }
 
         MaybeAutoSelectLatestCommunityNews();

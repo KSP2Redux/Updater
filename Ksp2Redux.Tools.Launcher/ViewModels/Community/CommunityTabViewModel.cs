@@ -1,12 +1,17 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿using System.Threading.Tasks;
+using Avalonia.Controls;
+using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Community;
 
-public partial class CommunityTabViewModel(INewsService newsService) : ViewModelBase
+public partial class CommunityTabViewModel(INewsService newsService, IMessageBoxService messageBoxService, ILogService log) : ViewModelBase
 {
-    private int SelectedNewsId
+    public Task LaunchExternalLinkAsync(TopLevel? topLevel, string? url)
+        => ExternalLinkLauncher.LaunchAsync(topLevel, url, messageBoxService, log);
+
+    private string? SelectedNewsId
     {
         get;
         set
@@ -19,13 +24,15 @@ public partial class CommunityTabViewModel(INewsService newsService) : ViewModel
                 OnPropertyChanged(nameof(NewsVisible));
             }
         }
-    } = -1;
+    }
 
-    public NewsItemViewModel SelectedNews => new(newsService, newsService.GetNews(SelectedNewsId));
-    
-    public bool NewsVisible => SelectedNewsId != -1;
-    
-    public void SetSelectedNewsId(int newsId)
+    // Falls back to an empty News record if the selected post no longer exists (e.g. the feed was
+    // refetched and dropped it) instead of throwing or showing stale content.
+    public NewsItemViewModel SelectedNews => new(newsService.GetNews(SelectedNewsId) ?? new());
+
+    public bool NewsVisible => SelectedNewsId is not null;
+
+    public void SetSelectedNewsId(string? newsId)
     {
         SelectedNewsId = newsId;
     }
@@ -33,6 +40,6 @@ public partial class CommunityTabViewModel(INewsService newsService) : ViewModel
     [RelayCommand]
     private void DeselectNews()
     {
-        SelectedNewsId = -1;
+        SelectedNewsId = null;
     }
 }

@@ -56,11 +56,33 @@ public class UpdateService : IUpdateService
         [JsonPropertyName("tag_name")] public string TagName { get; set; } = "";
         [JsonPropertyName("prerelease")] public bool Prerelease { get; set; }
         [JsonPropertyName("assets")] public GitHubReleaseAsset[] Assets { get; set; } = [];
+        [JsonPropertyName("body")] public string? Body { get; set; }
+    }
+
+    // Release notes are commonly edited on GitHub after the build was already tagged and uploaded,
+    // so this is built fresh from whatever the release currently says rather than anything baked in
+    // at build time. Pure and dependency-free so it's unit-testable without standing up the whole service.
+    public static string BuildUpdateFoundMessage(Version newVersion, string? releaseNotes)
+    {
+        const string actionMessage = "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.";
+        const int maxNotesLength = 500;
+
+        if (string.IsNullOrWhiteSpace(releaseNotes))
+        {
+            return $"What's new in v{newVersion}:\n(No release notes provided.)\n\n{actionMessage}";
+        }
+
+        var trimmed = releaseNotes.Trim();
+        var shown = trimmed.Length > maxNotesLength
+            ? trimmed[..maxNotesLength].TrimEnd() + "..."
+            : trimmed;
+
+        return $"What's new in v{newVersion}:\n{shown}\n\n{actionMessage}";
     }
 
     public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log)
     {
-        _http = new HttpClient();
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(
             new ProductHeaderValue("Ksp2Redux.Tools.Launcher", assemblyService.GetName().Version?.ToString() ?? "0.0.0")));
         _fileSystem = fileSystem;
@@ -155,7 +177,7 @@ public class UpdateService : IUpdateService
             }
 
             var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
-                "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.", ButtonEnum.OkCancel,
+                BuildUpdateFoundMessage(latestRelease.Version, latestRelease.Release.Body), ButtonEnum.OkCancel,
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
 
             if (result != ButtonResult.Ok) return false;
@@ -210,7 +232,12 @@ public class UpdateService : IUpdateService
 
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
-                        await Process.Start("chmod", $"+x \"{updatePath}\"").WaitForExitAsync();
+                        using var chmod = Process.Start("chmod", $"+x \"{updatePath}\"")!;
+                        await chmod.WaitForExitAsync();
+                        if (chmod.ExitCode != 0)
+                        {
+                            throw new InvalidOperationException($"chmod +x on {updatePath} exited with code {chmod.ExitCode}.");
+                        }
                     }
 
                     TriggerRestart(updatePath);

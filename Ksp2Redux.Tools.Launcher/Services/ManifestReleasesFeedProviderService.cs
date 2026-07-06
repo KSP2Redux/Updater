@@ -20,7 +20,9 @@ public interface IManifestReleasesFeedProviderService
 public class ManifestReleasesFeedProviderService(IAssemblyService assemblyService, ILogService log) : IManifestReleasesFeedProviderService
 {
     private readonly Dictionary<FeedInfo, GitHubClient> _clients = new();
-    private readonly HttpClient _downloadClient = new();
+    // ResponseHeadersRead means this only bounds getting the response headers for a patch download,
+    // not the body copy that follows - safe to keep short even for large patch files.
+    private readonly HttpClient _downloadClient = new() { Timeout = TimeSpan.FromSeconds(30) };
 
     private GitHubClient GetOrCreateClient(FeedInfo feed)
     {

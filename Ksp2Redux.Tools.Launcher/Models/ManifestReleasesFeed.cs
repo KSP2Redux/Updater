@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
@@ -34,40 +35,46 @@ public class ManifestReleasesFeed
         _feed = feed;
     }
 
-    public async Task UpdateManifest()
+    /// <returns>false if the fetch failed, true otherwise. On failure, a previously-loaded manifest
+    /// (and CurrentChannel) is left untouched rather than replaced, so callers showing a "using the
+    /// last known list" message after a failed refresh are telling the truth. Only falls back to an
+    /// empty "invalid" placeholder if there was never a successful fetch to fall back to.</returns>
+    public async Task<bool> UpdateManifest()
     {
         _log.Info($"Updating manifest for feed {_feed.Repository} / {_feed.Filename}.");
         try
         {
-            _manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
-            if (_manifest is null)
+            var manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
+            if (manifest is null)
             {
-                _log.Warn($"Manifest for {_feed.Repository} / {_feed.Filename} was null. Marking channel as invalid.");
-                _manifest = new ReleaseManifest
-                {
-                    SchemaVersion = 0,
-                    Patches = [],
-                    Channel = "invalid",
-                    GeneratedAt = DateTime.MinValue,
-                };
-                CurrentChannel = "invalid";
-                return;
+                _log.Warn($"Manifest for {_feed.Repository} / {_feed.Filename} was null. Keeping the last known list, if any.");
+                FallBackToInvalidIfNeverLoaded();
+                return false;
             }
+            _manifest = manifest;
             CurrentChannel = _manifest.Channel;
             _log.Info($"Manifest loaded for {_feed.Repository} / {_feed.Filename}. Channel={CurrentChannel}, Patches={_manifest.Patches?.Count ?? 0}, GeneratedAt={_manifest.GeneratedAt:O}.");
+            return true;
         }
         catch (Exception e)
         {
-            _log.Error($"Could not download or parse manifest for {_feed.Repository} / {_feed.Filename}. Marking channel as invalid.", e);
-            _manifest = new ReleaseManifest
-            {
-                SchemaVersion = 0,
-                Patches = [],
-                Channel = "invalid",
-                GeneratedAt = DateTime.MinValue,
-            };
-            CurrentChannel = "invalid";
+            _log.Error($"Could not download or parse manifest for {_feed.Repository} / {_feed.Filename}. Keeping the last known list, if any.", e);
+            FallBackToInvalidIfNeverLoaded();
+            return false;
         }
+    }
+
+    private void FallBackToInvalidIfNeverLoaded()
+    {
+        if (_manifest is not null) return;
+        _manifest = new ReleaseManifest
+        {
+            SchemaVersion = 0,
+            Patches = [],
+            Channel = "invalid",
+            GeneratedAt = DateTime.MinValue,
+        };
+        CurrentChannel = "invalid";
     }
 
     public IEnumerable<GameVersion> GetAllVersions()
@@ -170,30 +177,43 @@ public class ManifestReleasesFeed
         log($"Downloading {fileName}");
         reportDownloadProgress(0, patch.Size);
 
-        if (!_fileSystem.File.Exists(patchDownloadTo) || _fileSystem.FileInfo.New(patchDownloadTo).Length != patch.Size)
+        bool cacheIsUsable = _fileSystem.File.Exists(patchDownloadTo) &&
+                              _fileSystem.FileInfo.New(patchDownloadTo).Length == patch.Size &&
+                              await MatchesChecksum(patchDownloadTo, patch, ct);
+
+        if (!cacheIsUsable)
         {
             using var downloadResponse = await _manifestReleasesFeedProviderService.DownloadPatchAsync(_feed, patch, ct);
             long contentLength = downloadResponse.Content.Headers.ContentLength ?? patch.Size;
 
-            using var downloadStream = await downloadResponse.Content.ReadAsStreamAsync(ct);
-            using var fileStream = _fileSystem.FileStream.New(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None,
-                bufferSize: 64 * 1024, useAsync: true);
-
-            var buffer = new byte[64 * 1024];
-            long totalBytesRead = 0;
-            int bytesRead;
-            var updateTimer = Stopwatch.StartNew();
-
-            while ((bytesRead = await downloadStream.ReadAsync(buffer, ct)) > 0)
+            await using (var downloadStream = await downloadResponse.Content.ReadAsStreamAsync(ct))
+            await using (var fileStream = _fileSystem.FileStream.New(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None,
+                             bufferSize: 64 * 1024, useAsync: true))
             {
-                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
-                totalBytesRead += bytesRead;
+                var buffer = new byte[64 * 1024];
+                long totalBytesRead = 0;
+                int bytesRead;
+                var updateTimer = Stopwatch.StartNew();
 
-                if (updateTimer.ElapsedMilliseconds > 100)
+                while ((bytesRead = await downloadStream.ReadAsync(buffer, ct)) > 0)
                 {
-                    reportDownloadProgress(totalBytesRead, contentLength);
-                    updateTimer.Restart();
+                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+                    totalBytesRead += bytesRead;
+
+                    if (updateTimer.ElapsedMilliseconds > 100)
+                    {
+                        reportDownloadProgress(totalBytesRead, contentLength);
+                        updateTimer.Restart();
+                    }
                 }
+            }
+
+            if (!await MatchesChecksum(patchDownloadTo, patch, ct))
+            {
+                _log.Error($"Downloaded {fileName} failed checksum verification. Deleting corrupt download.");
+                _fileSystem.File.Delete(patchDownloadTo);
+                throw new InvalidOperationException(
+                    $"Downloaded patch {fileName} did not match its expected checksum. The download may be corrupt or incomplete - please try again.");
             }
         }
         else
@@ -203,5 +223,19 @@ public class ManifestReleasesFeed
 
         log("Download complete.");
         return patchDownloadTo;
+    }
+
+    private async Task<bool> MatchesChecksum(string filePath, ReleasePatch patch, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(patch.ChecksumSha256))
+        {
+            _log.Error($"No checksum available for patch at {patch.Url}, refusing to trust it.");
+            return false;
+        }
+
+        await using var stream = _fileSystem.File.OpenRead(filePath);
+        var hash = await SHA256.HashDataAsync(stream, ct);
+        var actual = Convert.ToHexString(hash);
+        return string.Equals(actual, patch.ChecksumSha256, StringComparison.OrdinalIgnoreCase);
     }
 }

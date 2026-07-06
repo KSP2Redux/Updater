@@ -40,15 +40,25 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
         }
 
         var tempFile = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), $"uninstall-{Guid.CreateVersion7()}.zip");
-        using (var saveStream = fileSystem.File.Open(tempFile, FileMode.Create, FileAccess.Write))
+        try
         {
-            using (var zipArchive = zipFileService.NewArchive(saveStream, ZipArchiveMode.Create, false))
+            using (var saveStream = fileSystem.File.Open(tempFile, FileMode.Create, FileAccess.Write))
             {
-                AddFolder(zipArchive, directory, "");
-            }   
+                using (var zipArchive = zipFileService.NewArchive(saveStream, ZipArchiveMode.Create, false))
+                {
+                    AddFolder(zipArchive, directory, "");
+                }
+            }
+
+            fileSystem.File.Move(tempFile, fileSystem.Path.Combine(directory, "uninstall.zip"));
         }
-        
-        fileSystem.File.Move(tempFile, fileSystem.Path.Combine(directory, "uninstall.zip"));
+        catch
+        {
+            // A partial snapshot (locked file, full disk) would otherwise sit in the temp folder
+            // forever, silently eating disk space across repeated failed attempts.
+            try { if (fileSystem.File.Exists(tempFile)) fileSystem.File.Delete(tempFile); } catch { }
+            throw;
+        }
     }
 
     public void AddFolder(IZipArchive archive, string directory, string prefix)
@@ -75,7 +85,7 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
     {
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
-            throw new Exception("Original stock files were deleted, uninstallation is impossible");
+            throw new CacheRestoreException(directory, "uninstall.zip");
         }
 
         if (isForRepatch)
