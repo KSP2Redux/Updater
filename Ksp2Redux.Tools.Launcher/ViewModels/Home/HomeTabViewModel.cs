@@ -55,8 +55,12 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool MainButtonEnabled { get; set; }
 
+    // Null/empty means "no tooltip" - the enabled states below intentionally clear this, since
+    // a tooltip that just repeats the button's own label (e.g. "Install Ksp2Redux" on an already
+    // labeled INSTALL button) is redundant clutter. It's only worth showing when it explains why
+    // the button is disabled, which the label alone can't do.
     [ObservableProperty]
-    public partial string MainButtonTooltip { get; set; } = "Loading...";
+    public partial string? MainButtonTooltip { get; set; } = "Loading...";
 
     [ObservableProperty]
     public partial bool IsProgressVisible { get; set; }
@@ -297,13 +301,15 @@ public partial class HomeTabViewModel : ViewModelBase
         var linuxLaunchBlocked = _operatingSystemService.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false);
         const string linuxLaunchBlockedTooltip = "Enable \"Launch through Steam\" in settings to launch on Linux.";
 
+        const string installationDisabledTooltip = "The launcher needs to update itself before you can install or update Redux.";
+
         if (ksp2.Distribution != Distribution.Redux)
         {
             MainButtonEnabled = true;
+            MainButtonTooltip = null;
             if (selectedVersion.Version.Equals(ksp2.GameVersion) || selectedVersion.Channel == "installed")
             {
                 MainButtonShown = MainButtonState.Launch;
-                MainButtonTooltip = "Launch Stock KSP2";
                 if (linuxLaunchBlocked)
                 {
                     MainButtonEnabled = false;
@@ -314,7 +320,7 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 MainButtonEnabled = !InstallationDisabled;
                 MainButtonShown = MainButtonState.Install;
-                MainButtonTooltip = "Install Ksp2Redux";
+                if (InstallationDisabled) MainButtonTooltip = installationDisabledTooltip;
             }
             return;
         }
@@ -323,7 +329,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = true;
             MainButtonShown = MainButtonState.Launch;
-            MainButtonTooltip = "Launch Ksp2Redux";
+            MainButtonTooltip = null;
             if (linuxLaunchBlocked)
             {
                 MainButtonEnabled = false;
@@ -334,7 +340,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = !InstallationDisabled;
             MainButtonShown = MainButtonState.Update;
-            MainButtonTooltip = "Update Ksp2Redux";
+            MainButtonTooltip = InstallationDisabled ? installationDisabledTooltip : null;
         }
     }
 
@@ -410,7 +416,7 @@ public partial class HomeTabViewModel : ViewModelBase
         // Set up process cancellation trigger.
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
-        MainButtonTooltip = "Cancel installation";
+        MainButtonTooltip = null;
         _cancelCurrentOperation = new CancellationTokenSource();
 
         Log("Creating install plan");
@@ -471,7 +477,7 @@ public partial class HomeTabViewModel : ViewModelBase
         
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
-        MainButtonTooltip = "Cancel installation";
+        MainButtonTooltip = null;
         _cancelCurrentOperation = new CancellationTokenSource();
         
         try

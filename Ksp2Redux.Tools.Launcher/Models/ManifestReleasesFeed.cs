@@ -35,43 +35,46 @@ public class ManifestReleasesFeed
         _feed = feed;
     }
 
-    /// <returns>false if the fetch failed and the channel was marked invalid, true otherwise.</returns>
+    /// <returns>false if the fetch failed, true otherwise. On failure, a previously-loaded manifest
+    /// (and CurrentChannel) is left untouched rather than replaced, so callers showing a "using the
+    /// last known list" message after a failed refresh are telling the truth. Only falls back to an
+    /// empty "invalid" placeholder if there was never a successful fetch to fall back to.</returns>
     public async Task<bool> UpdateManifest()
     {
         _log.Info($"Updating manifest for feed {_feed.Repository} / {_feed.Filename}.");
         try
         {
-            _manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
-            if (_manifest is null)
+            var manifest = await _manifestReleasesFeedProviderService.GetManifest(_feed);
+            if (manifest is null)
             {
-                _log.Warn($"Manifest for {_feed.Repository} / {_feed.Filename} was null. Marking channel as invalid.");
-                _manifest = new ReleaseManifest
-                {
-                    SchemaVersion = 0,
-                    Patches = [],
-                    Channel = "invalid",
-                    GeneratedAt = DateTime.MinValue,
-                };
-                CurrentChannel = "invalid";
+                _log.Warn($"Manifest for {_feed.Repository} / {_feed.Filename} was null. Keeping the last known list, if any.");
+                FallBackToInvalidIfNeverLoaded();
                 return false;
             }
+            _manifest = manifest;
             CurrentChannel = _manifest.Channel;
             _log.Info($"Manifest loaded for {_feed.Repository} / {_feed.Filename}. Channel={CurrentChannel}, Patches={_manifest.Patches?.Count ?? 0}, GeneratedAt={_manifest.GeneratedAt:O}.");
             return true;
         }
         catch (Exception e)
         {
-            _log.Error($"Could not download or parse manifest for {_feed.Repository} / {_feed.Filename}. Marking channel as invalid.", e);
-            _manifest = new ReleaseManifest
-            {
-                SchemaVersion = 0,
-                Patches = [],
-                Channel = "invalid",
-                GeneratedAt = DateTime.MinValue,
-            };
-            CurrentChannel = "invalid";
+            _log.Error($"Could not download or parse manifest for {_feed.Repository} / {_feed.Filename}. Keeping the last known list, if any.", e);
+            FallBackToInvalidIfNeverLoaded();
             return false;
         }
+    }
+
+    private void FallBackToInvalidIfNeverLoaded()
+    {
+        if (_manifest is not null) return;
+        _manifest = new ReleaseManifest
+        {
+            SchemaVersion = 0,
+            Patches = [],
+            Channel = "invalid",
+            GeneratedAt = DateTime.MinValue,
+        };
+        CurrentChannel = "invalid";
     }
 
     public IEnumerable<GameVersion> GetAllVersions()
