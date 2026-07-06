@@ -16,7 +16,7 @@ public class GameVersion : IEquatable<GameVersion>
     /// <summary>
     /// Read version data VersionID class constants in Assembly-CSharp.dll
     /// </summary>
-    public static GameVersion FromVersionIDType(TypeDefinition versionType, bool IsRedux)
+    public static GameVersion FromVersionIDType(TypeDefinition versionType, bool isRedux)
     {
         string channel = "stable";
         Version version;
@@ -58,7 +58,7 @@ public class GameVersion : IEquatable<GameVersion>
         if (string.IsNullOrWhiteSpace(buildNumber))
             throw new InvalidOperationException($"VERSION_TEXT has an invalid build number: '{versionText}'.");
 
-        if (IsRedux)
+        if (isRedux)
             channel = GetRequiredFieldValueAsString("CHANNEL_NAME");
 
         // try get redux commit hash

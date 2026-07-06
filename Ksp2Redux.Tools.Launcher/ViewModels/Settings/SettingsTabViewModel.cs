@@ -3,8 +3,11 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -25,6 +28,8 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly HomeTabViewModel _homeTabViewModel;
     private readonly IAssemblyService _assemblyService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly IEnvironmentProvider _environmentProvider;
+    private readonly ILogService _log;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -39,6 +44,12 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool CanRemoveSelectedInstall { get; set; }
+
+    [ObservableProperty]
+    public partial bool VerboseLogging { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsAddingInstall { get; set; }
 
     public string LauncherVersion => _assemblyService.GetVersion()?.ToString(4) ?? "?";
 
@@ -61,7 +72,8 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
-        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService, IMessageBoxService messageBoxService)
+        ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
+        IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log)
     {
         _fileSystem = fileSystem;
         _cacheService = cacheService;
@@ -71,10 +83,27 @@ public partial class SettingsTabViewModel : ViewModelBase
         _homeTabViewModel = homeTabViewModel;
         _assemblyService = assemblyService;
         _messageBoxService = messageBoxService;
+        _environmentProvider = environmentProvider;
+        _log = log;
 
         _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
         _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
         RebuildInstalls();
+
+        _suppressVerboseLoggingSave = true;
+        try { VerboseLogging = _launcherConfigService.Config.VerboseLogging; }
+        finally { _suppressVerboseLoggingSave = false; }
+        _log.MinimumLevel = VerboseLogging ? LogLevel.Debug : LogLevel.Info;
+    }
+
+    private bool _suppressVerboseLoggingSave;
+
+    partial void OnVerboseLoggingChanged(bool value)
+    {
+        _log.MinimumLevel = value ? LogLevel.Debug : LogLevel.Info;
+        if (_suppressVerboseLoggingSave) return;
+        _launcherConfigService.Config.VerboseLogging = value;
+        _launcherConfigService.Save();
     }
 
     private void RebuildInstalls()
@@ -97,7 +126,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             Installs.Clear();
             foreach (var entry in entries)
             {
-                Installs.Add(new Ksp2InstallRowViewModel(_ksp2InstallService, entry, entry.Id == activeId));
+                Installs.Add(new Ksp2InstallRowViewModel(_fileSystem, _ksp2InstallService, entry, entry.Id == activeId));
             }
         }
         SyncSelectedInstall();
@@ -134,32 +163,59 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task AddInstall()
     {
-        var chosenPath = await DoOpenFilePickerAsync();
-        if (chosenPath is null) return;
-
-        var path = chosenPath.Path.LocalPath;
-        var existing = _ksp2InstallService.Entries.FirstOrDefault(e =>
-            string.Equals(e.ExePath, path, StringComparison.OrdinalIgnoreCase));
-        if (existing is not null)
+        if (IsAddingInstall) return;
+        IsAddingInstall = true;
+        try
         {
-            _ksp2InstallService.SetActiveInstall(existing.Id);
-            return;
+            IStorageFile? chosenPath;
+            try
+            {
+                chosenPath = await DoOpenFilePickerAsync();
+            }
+            catch (Exception ex)
+            {
+                _log.Error("Failed to open the file picker for adding an install.", ex);
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                    $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+                return;
+            }
+            if (chosenPath is null) return;
+
+            var path = chosenPath.Path.LocalPath;
+            var existing = _ksp2InstallService.Entries.FirstOrDefault(e =>
+                string.Equals(e.ExePath, path, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                _ksp2InstallService.SetActiveInstall(existing.Id);
+                return;
+            }
+            _ksp2InstallService.AddInstall(path);
         }
-        _ksp2InstallService.AddInstall(path);
+        finally
+        {
+            IsAddingInstall = false;
+        }
     }
 
     [RelayCommand]
-    public void RemoveSelectedInstall()
+    public async Task RemoveSelectedInstall()
     {
         if (Installs.Count <= 1) return;
-        if (SelectedInstall is { } row) _ksp2InstallService.RemoveInstall(row.Id);
+        if (SelectedInstall is not { } row) return;
+
+        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Confirm",
+            $"Are you sure you want to remove \"{row.Name}\"? Its name, launch arguments, and Steam settings will be lost.",
+            ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        if (result != ButtonResult.Yes) return;
+
+        _ksp2InstallService.RemoveInstall(row.Id);
     }
 
     public async Task<IStorageFile?> DoOpenFilePickerAsync()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
             desktop.MainWindow?.StorageProvider is not { } provider)
-            throw new NullReferenceException("Missing StorageProvider instance.");
+            throw new InvalidOperationException("Could not access the file picker (no active window).");
 
         IStorageFolder? startFolder = null;
         var lastKnownPath = _ksp2InstallService.ActiveEntry?.ExePath;
@@ -201,7 +257,18 @@ public partial class SettingsTabViewModel : ViewModelBase
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes) return;
 
-        _cacheService.RecursivelyRestoreCache(installDir);
+        try
+        {
+            _cacheService.RecursivelyRestoreCache(installDir);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to uninstall Redux from {installDir}.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't uninstall Redux: {ex.Message}",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
 
         _ksp2InstallService.TryLoadKsp2Install();
         await _homeTabViewModel.UpdateVersionsList();
@@ -212,7 +279,18 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public async Task InstallFromPatchFile()
     {
-        var chosenPath = await DoOpenPatchFilePickerAsync();
+        IStorageFile? chosenPath;
+        try
+        {
+            chosenPath = await DoOpenPatchFilePickerAsync();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the file picker for a patch file.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
 
         if (chosenPath is null) return;
 
@@ -226,7 +304,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
             desktop.MainWindow?.StorageProvider is not { } provider)
-            throw new NullReferenceException("Missing StorageProvider instance.");
+            throw new InvalidOperationException("Could not access the file picker (no active window).");
         var startFolder = await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Downloads);
 
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
@@ -238,5 +316,68 @@ public partial class SettingsTabViewModel : ViewModelBase
         });
 
         return files?.Count >= 1 ? files[0] : null;
+    }
+
+    public async Task OpenLogsFolder()
+    {
+        try
+        {
+            var logsDir = LocalStoragePaths.GetLogsDirectory(_fileSystem, _environmentProvider);
+            _fileSystem.Directory.CreateDirectory(logsDir);
+            Process.Start(new ProcessStartInfo(logsDir) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the logs folder.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't open the logs folder: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+    }
+
+    /// <summary>
+    /// Everything a bug report needs in one paste-ready block: launcher version, active install
+    /// details, OS, and the tail of the current log file - so a support conversation doesn't have to
+    /// start with four separate questions before diagnosis can even begin.
+    /// </summary>
+    public string BuildDiagnosticInfo()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"KSP2 Redux Launcher v{LauncherVersion}");
+        sb.AppendLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+
+        if (_ksp2InstallService.ActiveEntry is { } entry)
+        {
+            sb.AppendLine($"Active install: {entry.Name} (channel={entry.ReleaseChannel}, launchThroughSteam={entry.LaunchThroughSteam})");
+            sb.AppendLine($"Exe path: {entry.ExePath}");
+            var ksp2 = _ksp2InstallService.Ksp2;
+            sb.AppendLine(ksp2 is { IsValid: true }
+                ? $"Detected: {ksp2.Distribution}, version {ksp2.GameVersion}"
+                : "Detected: (not currently detected as valid)");
+        }
+        else
+        {
+            sb.AppendLine("Active install: (none configured)");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("--- Recent log ---");
+        try
+        {
+            if (_log.CurrentLogFilePath is { } logPath && _fileSystem.File.Exists(logPath))
+            {
+                var lines = _fileSystem.File.ReadAllLines(logPath);
+                sb.AppendLine(string.Join(_environmentProvider.NewLine, lines.TakeLast(100)));
+            }
+            else
+            {
+                sb.AppendLine("(no log file available)");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"(could not read log file: {ex.Message})");
+        }
+
+        return sb.ToString();
     }
 }

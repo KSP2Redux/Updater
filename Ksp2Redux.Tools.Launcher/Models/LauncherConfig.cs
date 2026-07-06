@@ -29,6 +29,11 @@ public class LauncherConfig
 
     public string LauncherRepo { get; set; } = "https://github.com/KSP2Redux/Updater";
 
+    /// <summary>
+    /// When enabled, lowers the log file's minimum level to Debug for more detailed troubleshooting output.
+    /// </summary>
+    public bool VerboseLogging { get; set; } = false;
+
     [JsonIgnore]
     public string StoragePath { get; set; }
 

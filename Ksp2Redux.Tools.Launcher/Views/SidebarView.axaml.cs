@@ -11,6 +11,7 @@ namespace Ksp2Redux.Tools.Launcher.Views;
 public partial class SidebarView : UserControl
 {
     private HomeTabViewModel? Model => (DataContext as MainWindowViewModel)?.HomeTab;
+    private MainWindowViewModel? MainViewModel => DataContext as MainWindowViewModel;
     private Button? LaunchButtonControl => this.FindControl<Button>("LaunchButton");
     private Button? UpdateButtonControl => this.FindControl<Button>("UpdateButton");
     private Button? CancelButtonControl => this.FindControl<Button>("CancelButton");
@@ -71,43 +72,44 @@ public partial class SidebarView : UserControl
         }
     }
 
-    private void LaunchUri(Uri uri)
+    private async void LaunchUri(string url)
     {
-        TopLevel.GetTopLevel(this)!.Launcher.LaunchUriAsync(uri);
+        if (MainViewModel is not { } model) return;
+        await model.LaunchExternalLinkAsync(TopLevel.GetTopLevel(this), url);
     }
 
     private void WebsiteLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri(new Uri("https://ksp2redux.org"));
+        LaunchUri("https://ksp2redux.org");
     }
 
     private void DiscordLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri(new Uri("https://discord.gg/8yq8d5VGQR"));
+        LaunchUri("https://discord.gg/8yq8d5VGQR");
     }
 
     private void TikTokLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri(new Uri("https://tiktok.com/@ksp2redux"));
+        LaunchUri("https://tiktok.com/@ksp2redux");
     }
 
     private void RedditLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri(new Uri("https://reddit.com/r/KSP2Redux"));
+        LaunchUri("https://reddit.com/r/KSP2Redux");
     }
 
     private void ForumsLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri(new Uri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux"));
+        LaunchUri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux");
     }
 
     private void YoutubeLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri(new Uri("https://www.youtube.com/@RendezvousEntertainmentModding"));
+        LaunchUri("https://www.youtube.com/@RendezvousEntertainmentModding");
     }
 
     private void GithubLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri(new Uri("https://github.com/KSP2Redux"));
+        LaunchUri("https://github.com/KSP2Redux");
     }
 }

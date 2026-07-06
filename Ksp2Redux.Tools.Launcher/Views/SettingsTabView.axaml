@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:settings="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Settings"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              x:DataType="settings:SettingsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.SettingsTabView"
@@ -23,7 +24,7 @@
 
 			<Grid Grid.Row="1"
 			      ColumnDefinitions="Auto,*"
-			      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+			      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
 			      ColumnSpacing="10" RowSpacing="6">
 
 				<TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">Editing install</TextBlock>
@@ -39,7 +40,8 @@
 				</ComboBox>
 
 				<StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
-					<Button Command="{Binding AddInstallCommand}" ToolTip.Tip="Add a KSP2 install">Add</Button>
+					<Button Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
+					        ToolTip.Tip="Add a KSP2 install">Add</Button>
 					<Button Classes="danger"
 					        Command="{Binding RemoveSelectedInstallCommand}"
 					        IsEnabled="{Binding CanRemoveSelectedInstall}"
@@ -61,49 +63,57 @@
 				         PlaceholderText="C:\Steam\SteamGames\KSP2\KSP2_x64.exe"
 				         FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11" />
 
-				<TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"
+				<TextBlock Grid.Row="4" Grid.Column="1" FontSize="11" Foreground="{StaticResource DangerBrush}"
+				           IsVisible="{Binding SelectedInstall.ExePathError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
+				           Text="{Binding SelectedInstall.ExePathError}" TextWrapping="Wrap" />
+
+				<TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center"
 				           IsVisible="{Binding HasSelectedInstall}">Release channel</TextBlock>
-				<ComboBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch"
+				<ComboBox Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch"
 				          Name="ReleaseChannelSelector"
 				          IsVisible="{Binding HasSelectedInstall}"
 				          MaxDropDownHeight="200"
 				          SelectedValue="{Binding SelectedInstall.ReleaseChannel, Mode=TwoWay}"
 				          ItemsSource="{Binding ValidChannels}" />
 
-				<TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center"
+				<TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center"
 				           IsVisible="{Binding HasSelectedInstall}">Launch through Steam</TextBlock>
-				<CheckBox Grid.Row="5" Grid.Column="1" HorizontalAlignment="Left"
+				<CheckBox Grid.Row="6" Grid.Column="1" HorizontalAlignment="Left"
 				          IsVisible="{Binding HasSelectedInstall}"
 				          IsChecked="{Binding SelectedInstall.LaunchThroughSteam, Mode=TwoWay}" />
 
-				<TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center"
+				<TextBlock Grid.Row="7" Grid.Column="0" VerticalAlignment="Center"
 				           IsVisible="{Binding HasSelectedInstall}"
 				           ToolTip.Tip="Override to launch a Steam 'Add a Non-Steam Game' shortcut for KSP2. Leave as 954850 for the normal Steam release.">Steam app id</TextBlock>
-				<TextBox Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch"
+				<TextBox Grid.Row="7" Grid.Column="1" HorizontalAlignment="Stretch"
 				         IsVisible="{Binding HasSelectedInstall}"
 				         PlaceholderText="954850"
 				         Text="{Binding SelectedInstall.SteamAppId, Mode=TwoWay}"
 				         IsEnabled="{Binding SelectedInstall.LaunchThroughSteam}" />
 
-				<TextBlock Grid.Row="7" Grid.Column="0" VerticalAlignment="Center"
+				<TextBlock Grid.Row="8" Grid.Column="1" FontSize="11" Foreground="{StaticResource DangerBrush}"
+				           IsVisible="{Binding SelectedInstall.SteamAppIdError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
+				           Text="{Binding SelectedInstall.SteamAppIdError}" TextWrapping="Wrap" />
+
+				<TextBlock Grid.Row="9" Grid.Column="0" VerticalAlignment="Center"
 				           IsVisible="{Binding HasSelectedInstall}"
 				           ToolTip.Tip="Arguments passed to KSP2_x64.exe on launch. Ignored when 'Launch through Steam' is enabled.">Launch arguments</TextBlock>
-				<TextBox Grid.Row="7" Grid.Column="1" HorizontalAlignment="Stretch"
+				<TextBox Grid.Row="9" Grid.Column="1" HorizontalAlignment="Stretch"
 				         IsVisible="{Binding HasSelectedInstall}"
 				         Text="{Binding SelectedInstall.LaunchArguments, Mode=TwoWay}"
 				         IsEnabled="{Binding !SelectedInstall.LaunchThroughSteam}" />
 
-				<TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center"
+				<TextBlock Grid.Row="10" Grid.Column="0" VerticalAlignment="Center"
 				           IsVisible="{Binding HasSelectedInstall}"
 				           ToolTip.Tip="Sets gfx-enable-gfx-jobs=0 in boot.config. Workaround for crashes on some hardware.">Disable graphics jobs</TextBlock>
-				<CheckBox Grid.Row="8" Grid.Column="1" HorizontalAlignment="Left"
+				<CheckBox Grid.Row="10" Grid.Column="1" HorizontalAlignment="Left"
 				          IsVisible="{Binding HasSelectedInstall}"
 				          IsChecked="{Binding SelectedInstall.DisableGraphicsJobs, Mode=TwoWay}" />
 
-				<Separator Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 4 0 4"
+				<Separator Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 4 0 4"
 				           IsVisible="{Binding HasSelectedInstall}" />
 
-				<Grid Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2"
+				<Grid Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="2"
 				      ColumnDefinitions="*,*" ColumnSpacing="10"
 				      IsVisible="{Binding HasSelectedInstall}">
 					<Button Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
@@ -113,11 +123,20 @@
 				</Grid>
 			</Grid>
 
-			<TextBlock Grid.Row="2"
-			           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
-			           Foreground="{StaticResource TextFaintBrush}"
-			           HorizontalAlignment="Right" Margin="0,12,0,0"
-			           Text="{Binding LauncherVersion, StringFormat='Launcher v{0}'}" />
+			<Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="10" Margin="0,12,0,0">
+				<Button Grid.Column="0" FontSize="11" Padding="8,4" Click="OpenLogsFolderClick">Open Logs Folder</Button>
+				<Button Grid.Column="1" FontSize="11" Padding="8,4" Click="CopyDiagnosticInfoClick">Copy Diagnostic Info</Button>
+				<CheckBox Grid.Column="2" FontSize="11" VerticalAlignment="Center"
+				          IsChecked="{Binding VerboseLogging, Mode=TwoWay}"
+				          ToolTip.Tip="Write more detailed information to the log file. Useful when troubleshooting an issue.">
+					Verbose logging
+				</CheckBox>
+				<TextBlock Grid.Column="3"
+				           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
+				           Foreground="{StaticResource TextFaintBrush}"
+				           HorizontalAlignment="Right" VerticalAlignment="Center"
+				           Text="{Binding LauncherVersion, StringFormat='Launcher v{0}'}" />
+			</Grid>
 		</Grid>
 		</Border>
 	</Grid>

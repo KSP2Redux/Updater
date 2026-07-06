@@ -129,9 +129,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
         timer.Tick += async (sender, args) =>
         {
-            if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+            try
+            {
+                if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+            }
+            catch (Exception ex)
+            {
+                // This is an async void-shaped event handler (DispatcherTimer.Tick), so an unhandled
+                // exception here would crash the whole app on a background tick unrelated to anything
+                // the user just did.
+                _log.Error("Periodic update check failed unexpectedly.", ex);
+            }
         };
-        
+
         timer.Start();
     }
 
@@ -142,6 +152,9 @@ public partial class MainWindowViewModel : ViewModelBase
             _log.Error("Background task faulted.", antecedent.Exception);
         }
     }
+
+    public Task LaunchExternalLinkAsync(TopLevel? topLevel, string url)
+        => ExternalLinkLauncher.LaunchAsync(topLevel, url, _messageBoxService, _log);
 
     // Startup initialization failing is more severe than a background task like the news feed
     // failing to load (which just leaves a list empty) - if this throws, feeds/install detection/
@@ -252,9 +265,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (ksp2.VersionDetectionException is { } e)
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Could not detect version",
-                $"{e.GetType().FullName}\n\n{e}", ButtonEnum.Ok,
-                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            _log.Error("Could not detect the installed KSP2 version.", e);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Detect Game Version",
+                "KSP2 Redux couldn't figure out which version of the game is installed. " +
+                "This can happen if the game files are missing, corrupted, or from an unsupported source.\n\n" +
+                "You can still try launching or installing, but update checks may be unreliable. " +
+                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 
@@ -264,7 +281,7 @@ public partial class MainWindowViewModel : ViewModelBase
         List<News> newsList = await _newsService.FindAllNews();
         foreach (News news in newsList)
         {
-            _newsCollectionService.Add(new Shared.NewsItemViewModel(_newsService, news));
+            _newsCollectionService.Add(new Shared.NewsItemViewModel(news));
         }
 
         MaybeAutoSelectLatestCommunityNews();

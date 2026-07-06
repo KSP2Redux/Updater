@@ -1,7 +1,10 @@
 ﻿using System;
 using System.IO.Abstractions;
 using System.Text.Json;
+using Avalonia.Controls;
+using Avalonia.Threading;
 using Ksp2Redux.Tools.Launcher.Models;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
 
@@ -16,17 +19,21 @@ public class LauncherConfigService : ILauncherConfigService
 {
     private readonly IFileSystem _fileSystem;
     private readonly IEnvironmentProvider _environmentProvider;
+    private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
+    private bool _showingSaveFailureDialog;
 
     public LauncherConfig Config { get; set; }
     private readonly JsonSerializerOptions StorageOptions = new() { WriteIndented = true };
 
     private const string LauncherConfigJson = "redux-launcher-config.json";
 
-    public LauncherConfigService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider, ILogService log)
+    public LauncherConfigService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider,
+        IMessageBoxService messageBoxService, ILogService log)
     {
         _fileSystem = fileSystem;
         _environmentProvider = environmentProvider;
+        _messageBoxService = messageBoxService;
         _log = log;
         GetOrCreateCurrentConfig(_fileSystem);
     }
@@ -117,22 +124,54 @@ public class LauncherConfigService : ILauncherConfigService
         return string.IsNullOrEmpty(leaf) ? "KSP2" : leaf;
     }
     
+    // Called directly from dozens of UI property-changed callbacks (renaming an install, toggling a
+    // checkbox, etc.) via Ksp2InstallService, so a transient I/O failure here (AppData briefly
+    // unreachable - a OneDrive redirect, a USB drive, a network share) must never throw back into a
+    // data-binding callback and crash the whole app. Report and swallow instead.
     public void Save()
     {
-        var directory = _fileSystem.Path.GetDirectoryName(Config.StoragePath);
-        if (string.IsNullOrWhiteSpace(directory))
-            throw new InvalidOperationException($"Could not determine config directory from storage path '{Config.StoragePath}'.");
-
-        _fileSystem.Directory.CreateDirectory(directory);
         try
         {
+            var directory = _fileSystem.Path.GetDirectoryName(Config.StoragePath);
+            if (string.IsNullOrWhiteSpace(directory))
+                throw new InvalidOperationException($"Could not determine config directory from storage path '{Config.StoragePath}'.");
+
+            _fileSystem.Directory.CreateDirectory(directory);
             _fileSystem.File.WriteAllText(Config.StoragePath, JsonSerializer.Serialize(Config, StorageOptions));
             _log.Info($"Launcher config saved to {Config.StoragePath}");
         }
         catch (Exception ex)
         {
             _log.Error($"Failed to save launcher config to {Config.StoragePath}", ex);
-            throw;
+            ReportSaveFailure(ex);
+        }
+    }
+
+    private void ReportSaveFailure(Exception ex)
+    {
+        if (_showingSaveFailureDialog) return;
+        _showingSaveFailureDialog = true;
+        try
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try
+                {
+                    await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Save Settings",
+                        $"Your changes could not be saved: {ex.Message}\nThey may be lost if you close the launcher. " +
+                        $"Check that {Config.StoragePath} is writable and try again.",
+                        ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                }
+                finally
+                {
+                    _showingSaveFailureDialog = false;
+                }
+            });
+        }
+        catch (Exception dispatchEx)
+        {
+            _log.Error("Could not show save-failure dialog.", dispatchEx);
+            _showingSaveFailureDialog = false;
         }
     }
 

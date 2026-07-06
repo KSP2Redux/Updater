@@ -221,7 +221,17 @@ public partial class HomeTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task LaunchGame()
     {
-        if (_ksp2InstallService.Ksp2 is null) return;
+        // Re-validate right before using it rather than trusting whatever was cached at the last
+        // refresh - the install could have been moved, had its drive ejected, or been deleted in
+        // the meantime if the app was left idle.
+        _ksp2InstallService.TryLoadKsp2Install();
+        if (_ksp2InstallService.Ksp2 is not { IsValid: true })
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                "KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
         var activeEntry = _ksp2InstallService.ActiveEntry;
         if (activeEntry is null) return;
 
@@ -234,22 +244,45 @@ public partial class HomeTabViewModel : ViewModelBase
                 FileName = $"steam://rungameid/{appId}",
                 UseShellExecute = true,
             };
-            Process.Start(startInfo);
+            try
+            {
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                _log.Error("Failed to launch through Steam.", ex);
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                    $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.",
+                    ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+            }
             return;
         }
 
         MainButtonEnabled = false;
-        using Process process = new();
-        process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
-        process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
-        var launchArgs = activeEntry.LaunchArguments;
-        if (!string.IsNullOrWhiteSpace(launchArgs))
+        try
         {
-            process.StartInfo.Arguments = launchArgs;
+            using Process process = new();
+            process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
+            process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
+            var launchArgs = activeEntry.LaunchArguments;
+            if (!string.IsNullOrWhiteSpace(launchArgs))
+            {
+                process.StartInfo.Arguments = launchArgs;
+            }
+            process.Start();
+            await process.WaitForExitAsync();
         }
-        process.Start();
-        await process.WaitForExitAsync();
-        MainButtonEnabled = true;
+        catch (Exception ex)
+        {
+            _log.Error("Failed to launch KSP2.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        finally
+        {
+            MainButtonEnabled = true;
+        }
     }
 
     [RelayCommand]
@@ -455,12 +488,11 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         catch (InstallFailedException e)
         {
-            Log(e.Message);
+            LogError(e.Message, e);
         }
         catch (Exception e)
         {
-            Log($"Error updating Redux: {e.Message}");
-            Log($"Stack Trace: {e.StackTrace}");
+            LogError($"Error updating Redux: {e.Message}", e);
             Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
         }
         finally
@@ -512,12 +544,11 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         catch (InstallFailedException e)
         {
-            Log(e.Message);
+            LogError(e.Message, e);
         }
         catch (Exception e)
         {
-            Log($"Error updating Redux: {e.Message}");
-            Log($"Stack Trace: {e.StackTrace}");
+            LogError($"Error updating Redux: {e.Message}", e);
             Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
         }
         finally
@@ -569,6 +600,20 @@ public partial class HomeTabViewModel : ViewModelBase
     private void Log(string message)
     {
         _log.Info(message);
+        AppendToInstallLog(message);
+    }
+
+    // Real install/patch failures used to go through Log(), which always writes at Info - grepping a
+    // user's log file for "ERROR" to find out what went wrong turned up nothing, since the failure and
+    // its stack trace were filed alongside routine progress lines.
+    private void LogError(string message, Exception? exception = null)
+    {
+        _log.Error(message, exception);
+        AppendToInstallLog(message);
+    }
+
+    private void AppendToInstallLog(string message)
+    {
         bool queueUpdate;
         lock (_installLogLock)
         {
