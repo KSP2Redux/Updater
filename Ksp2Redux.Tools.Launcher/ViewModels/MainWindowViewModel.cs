@@ -38,10 +38,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
 
-    [ObservableProperty] private InstallState _currentInstallState;
+    [ObservableProperty]
+    public partial InstallState CurrentInstallState { get; set; }
 
-    [ObservableProperty] private bool _isUpdateDownloading;
-
+    [ObservableProperty]
+    public partial bool IsUpdateDownloading { get; set; }
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
     public ModsTabViewModel ModsTab { get; }
@@ -49,13 +50,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public Shared.NewsCollectionViewModel NewsCollectionViewModel { get; }
 
-    [ObservableProperty] private int _currentTab;
+    [ObservableProperty]
+    public partial int CurrentTab { get; set; }
 
     // Drives the blurred backdrop behind whichever glass panel (Home log, Community
     // article, Settings, Mods) is currently on screen. Home and Community don't always
     // have one showing, so this has to react to their own visibility state too, not just
     // which tab is selected.
-    [ObservableProperty] private bool _isContentPanelVisible;
+    [ObservableProperty]
+    public partial bool IsContentPanelVisible { get; set; }
 
     public MainWindowViewModel(HomeTabViewModel homeTab, CommunityTabViewModel communityTab, ModsTabViewModel modsTab,
         SettingsTabViewModel settingsTabViewModel, IKsp2InstallService ksp2InstallService,
@@ -117,7 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         UpdateContentPanelVisible();
 
-        _ = InitializeAsync().ContinueWith(LogErrors);
+        _ = InitializeAsync().ContinueWith(HandleInitializeFailure);
 
         var timer = new DispatcherTimer
         {
@@ -138,6 +141,21 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _log.Error("Background task faulted.", antecedent.Exception);
         }
+    }
+
+    // Startup initialization failing is more severe than a background task like the news feed
+    // failing to load (which just leaves a list empty) - if this throws, feeds/install detection/
+    // the update check may not have run at all, so tell the user instead of failing silently.
+    private void HandleInitializeFailure(Task antecedent)
+    {
+        if (!antecedent.IsFaulted) return;
+        _log.Error("Startup initialization failed.", antecedent.Exception);
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Startup Error",
+                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        });
     }
 
     private async Task InitializeAsync()

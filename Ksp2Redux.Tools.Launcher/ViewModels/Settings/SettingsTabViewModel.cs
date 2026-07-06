@@ -31,9 +31,14 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public ObservableCollection<string> ValidChannels { get; } = [];
 
-    [ObservableProperty] private Ksp2InstallRowViewModel? _selectedInstall;
-    [ObservableProperty] private bool _hasSelectedInstall;
-    [ObservableProperty] private bool _canRemoveSelectedInstall;
+    [ObservableProperty]
+    public partial Ksp2InstallRowViewModel? SelectedInstall { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasSelectedInstall { get; set; }
+
+    [ObservableProperty]
+    public partial bool CanRemoveSelectedInstall { get; set; }
 
     public string LauncherVersion => _assemblyService.GetVersion()?.ToString(4) ?? "?";
 

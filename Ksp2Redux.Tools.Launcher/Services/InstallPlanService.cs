@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common;
@@ -18,11 +20,16 @@ public interface IInstallPlanService
 }
 
 public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider,
-    IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService, IZipFileService zipFileService) : IInstallPlanService
+    IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService, IZipFileService zipFileService,
+    IDiskSpaceService diskSpaceService) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
     private const string PORTABLE_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.portable-prepatch.patch";
+
+    // Extra headroom on top of the raw estimate below, since patch application briefly holds both the
+    // old and new copy of a changed file, and the download itself needs to sit on disk before it's applied.
+    private const double RequiredSpaceSafetyMargin = 1.2;
     
     public void Describe(InstallPlan installPlan, Action<string> log)
     {
@@ -55,6 +62,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     public async Task ApplyToFolder(InstallPlan installPlan, string install, Action<string> log,
         Action<long, long> downloadProgress, Action<int, int> stepsProgress, CancellationToken ct)
     {
+        EnsureEnoughDiskSpace(installPlan, install, log);
+
         var i = 0;
         foreach (var step in installPlan.Steps)
         {
@@ -133,11 +142,16 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile))   // Test: Convert to factory, add interface for patch
+                    try
                     {
+                        using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);   // Test: Convert to factory, add interface for patch
                         await patch.AsyncApply(environmentProvider, install, install, log, log);
                     }
-                    
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        RollbackOrRethrow(install, log, ex);
+                    }
+
                     delete_patch:
                     fileSystem.File.Delete(patchFile);
                     break;
@@ -146,9 +160,14 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 case InstallPlanAction.ApplyPatchFile:
                 {
                     var patchPath = await step.Argument!(log, downloadProgress, ct);
-                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath))
+                    try
                     {
+                        using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath);
                         await patch.AsyncApply(environmentProvider, install, install, log, log);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        RollbackOrRethrow(install, log, ex);
                     }
                     if (step.DeleteAfter && fileSystem.File.Exists(patchPath))
                     {
@@ -164,5 +183,97 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             stepsProgress(++i, installPlan.Steps.Count);
             await Task.Delay(250, ct);
         }
+    }
+
+    /// <summary>
+    /// Called when a Prepatch/ApplyPatchFile step throws partway through. If a known-good snapshot
+    /// (uninstall.zip) exists, restores it so a corrupt patch or a mid-write failure (e.g. disk full)
+    /// doesn't leave the install half-patched, then throws <see cref="InstallFailedException"/> describing
+    /// what happened. Note this restores the whole install to the last snapshot, which may discard other
+    /// patches already applied earlier in the same plan - still strictly better than a half-patched install.
+    /// If there is no snapshot to restore (nothing has been written to the install dir yet), rethrows the
+    /// original exception unchanged.
+    /// </summary>
+    private void RollbackOrRethrow(string install, Action<string> log, Exception original)
+    {
+        if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
+        {
+            ExceptionDispatchInfo.Capture(original).Throw();
+            return; // unreachable, keeps the compiler happy
+        }
+
+        log($"Install step failed ({original.Message}). Rolling back to the last known-good state...");
+
+        Exception? rollbackFailure = null;
+        try
+        {
+            cacheService.RecursivelyRestoreCache(install, true);
+        }
+        catch (Exception rollbackEx)
+        {
+            rollbackFailure = rollbackEx;
+        }
+
+        if (rollbackFailure is null)
+        {
+            log("Rolled back successfully.");
+            throw new InstallFailedException(
+                $"Installation failed and was automatically rolled back to the previous state. Original error: {original.Message}",
+                original, rolledBack: true);
+        }
+
+        log($"Rollback also failed: {rollbackFailure.Message}");
+        throw new InstallFailedException(
+            $"Installation failed ({original.Message}) and the automatic rollback also failed ({rollbackFailure.Message}). " +
+            "The install may be in a broken state - try Uninstall or Revert to Stock from Settings.",
+            original, rolledBack: false);
+    }
+
+    private void EnsureEnoughDiskSpace(InstallPlan installPlan, string install, Action<string> log)
+    {
+        long requiredBytes = installPlan.Cost;
+
+        // The first prepatch on an install snapshots the whole directory into uninstall.zip alongside it,
+        // so that needs to fit on the same drive too.
+        bool needsCacheSnapshot = installPlan.Steps.Any(s => s.Action == InstallPlanAction.Prepatch) &&
+                                   !fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip"));
+        if (needsCacheSnapshot)
+        {
+            requiredBytes += GetDirectorySize(install);
+        }
+
+        requiredBytes = (long)(requiredBytes * RequiredSpaceSafetyMargin);
+        if (requiredBytes <= 0) return;
+
+        var availableBytes = diskSpaceService.GetAvailableFreeSpace(install);
+        if (availableBytes is null)
+        {
+            log("Could not determine available disk space, skipping pre-flight space check.");
+            return;
+        }
+
+        if (availableBytes < requiredBytes)
+        {
+            throw new InvalidOperationException(
+                $"Not enough free disk space to continue: need approximately {FormatBytes(requiredBytes)}, " +
+                $"but only {FormatBytes(availableBytes.Value)} is available. Free up some space and try again.");
+        }
+    }
+
+    private long GetDirectorySize(string directory)
+    {
+        long total = 0;
+        foreach (var file in fileSystem.Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+        {
+            try { total += fileSystem.FileInfo.New(file).Length; }
+            catch (IOException) { /* file may have been removed/locked concurrently; ignore for this estimate */ }
+        }
+        return total;
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        double mb = bytes / (1024.0 * 1024.0);
+        return mb >= 1024 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
     }
 }

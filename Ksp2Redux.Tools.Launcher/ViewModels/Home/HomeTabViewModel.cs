@@ -6,11 +6,13 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
@@ -22,14 +24,23 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IInstallPlanService _installPlanService;
     private readonly IUpdateService _updateService;
     private readonly IOperatingSystemService _operatingSystemService;
+    private readonly IMessageBoxService _messageBoxService;
     private readonly ILogService _log;
     
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
     public ObservableCollection<Ksp2InstallChoiceViewModel> Installs { get; } = [];
 
-    [ObservableProperty] private GameVersionViewModel? _selectedVersion;
-    [ObservableProperty] private Ksp2InstallChoiceViewModel? _selectedInstall;
-    [ObservableProperty] private bool _isInstallSwitcherEnabled;
+    [ObservableProperty]
+    public partial GameVersionViewModel? SelectedVersion { get; set; }
+
+    [ObservableProperty]
+    public partial Ksp2InstallChoiceViewModel? SelectedInstall { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsInstallSwitcherEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial bool FeedRefreshFailed { get; set; }
 
     public enum MainButtonState
     {
@@ -38,18 +49,43 @@ public partial class HomeTabViewModel : ViewModelBase
         Update,
         Cancel,
     }
-    [ObservableProperty] private MainButtonState _mainButtonShown;
-    [ObservableProperty] private bool _mainButtonEnabled;
-    [ObservableProperty] private string _mainButtonTooltip = "Loading...";
-    [ObservableProperty] private bool _isProgressVisible;
-    [ObservableProperty] private float _downloadProgressMb = 250;
-    [ObservableProperty] private float _downloadProgressTotalMb = 450;
-    [ObservableProperty] private float _installProgressSteps = 1;
-    [ObservableProperty] private float _installProgressTotalSteps = 3;
-    [ObservableProperty] private bool _isInstallLogVisible;
-    [ObservableProperty] private string _installLogText = string.Empty;
-    [ObservableProperty] private bool _installationDisabled;
-    
+    [ObservableProperty]
+    public partial MainButtonState MainButtonShown { get; set; }
+
+    [ObservableProperty]
+    public partial bool MainButtonEnabled { get; set; }
+
+    // Null/empty means "no tooltip" - the enabled states below intentionally clear this, since
+    // a tooltip that just repeats the button's own label (e.g. "Install Ksp2Redux" on an already
+    // labeled INSTALL button) is redundant clutter. It's only worth showing when it explains why
+    // the button is disabled, which the label alone can't do.
+    [ObservableProperty]
+    public partial string? MainButtonTooltip { get; set; } = "Loading...";
+
+    [ObservableProperty]
+    public partial bool IsProgressVisible { get; set; }
+
+    [ObservableProperty]
+    public partial float DownloadProgressMb { get; set; } = 250;
+
+    [ObservableProperty]
+    public partial float DownloadProgressTotalMb { get; set; } = 450;
+
+    [ObservableProperty]
+    public partial float InstallProgressSteps { get; set; } = 1;
+
+    [ObservableProperty]
+    public partial float InstallProgressTotalSteps { get; set; } = 3;
+
+    [ObservableProperty]
+    public partial bool IsInstallLogVisible { get; set; }
+
+    [ObservableProperty]
+    public partial string InstallLogText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool InstallationDisabled { get; set; }
+
     private readonly StringBuilder _installLogBuilder = new();
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
@@ -59,7 +95,7 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, ILogService log)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, ILogService log)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
@@ -67,6 +103,7 @@ public partial class HomeTabViewModel : ViewModelBase
         _installPlanService = installPlanService;
         _updateService = updateService;
         _operatingSystemService = operatingSystemService;
+        _messageBoxService = messageBoxService;
         _log = log;
 
         RebuildInstallsCollection();
@@ -125,15 +162,17 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         if(updateChannels)
             await UpdateAsync();
-        RebuildVersionsCollection();
+        RebuildVersionsCollectionPreservingSelection();
         UpdateMainButtonState();
     }
     private async Task UpdateAsync()
     {
+        var allSucceeded = true;
         foreach (var feed in _releasesFeedService.ReleasesFeed)
         {
-            await feed.Value.UpdateManifest();
+            if (!await feed.Value.UpdateManifest()) allSucceeded = false;
         }
+        FeedRefreshFailed = !allSucceeded;
     }
 
     // Single refresh entry point shared by the periodic timer and, later, a manual button / F5.
@@ -146,10 +185,18 @@ public partial class HomeTabViewModel : ViewModelBase
         // otherwise a background refresh would clobber the Cancel button mid operation.
         if (_cancelCurrentOperation is not null) return;
 
-        // RebuildVersionsCollection resets SelectedVersion to a default, which would pull the
-        // user's choice out from under them on every periodic refresh. Capture and restore it.
-        var previous = SelectedVersion;
         await UpdateAsync();
+        RebuildVersionsCollectionPreservingSelection();
+        UpdateMainButtonState();
+    }
+
+    // RebuildVersionsCollection resets SelectedVersion to a default, which would pull the user's
+    // choice out from under them any time the list gets rebuilt - a periodic feed refresh, or an
+    // unrelated settings change to the active install (which also fires ActiveInstallChanged).
+    // Capture and restore it around the rebuild instead.
+    private void RebuildVersionsCollectionPreservingSelection()
+    {
+        var previous = SelectedVersion;
         RebuildVersionsCollection();
         if (previous is not null)
         {
@@ -157,7 +204,6 @@ public partial class HomeTabViewModel : ViewModelBase
                 v.Channel == previous.Channel && v.Version.Equals(previous.Version));
             if (match is not null) SelectedVersion = match;
         }
-        UpdateMainButtonState();
     }
 
     [RelayCommand]
@@ -255,13 +301,15 @@ public partial class HomeTabViewModel : ViewModelBase
         var linuxLaunchBlocked = _operatingSystemService.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false);
         const string linuxLaunchBlockedTooltip = "Enable \"Launch through Steam\" in settings to launch on Linux.";
 
+        const string installationDisabledTooltip = "The launcher needs to update itself before you can install or update Redux.";
+
         if (ksp2.Distribution != Distribution.Redux)
         {
             MainButtonEnabled = true;
+            MainButtonTooltip = null;
             if (selectedVersion.Version.Equals(ksp2.GameVersion) || selectedVersion.Channel == "installed")
             {
                 MainButtonShown = MainButtonState.Launch;
-                MainButtonTooltip = "Launch Stock KSP2";
                 if (linuxLaunchBlocked)
                 {
                     MainButtonEnabled = false;
@@ -272,7 +320,7 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 MainButtonEnabled = !InstallationDisabled;
                 MainButtonShown = MainButtonState.Install;
-                MainButtonTooltip = "Install Ksp2Redux";
+                if (InstallationDisabled) MainButtonTooltip = installationDisabledTooltip;
             }
             return;
         }
@@ -281,7 +329,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = true;
             MainButtonShown = MainButtonState.Launch;
-            MainButtonTooltip = "Launch Ksp2Redux";
+            MainButtonTooltip = null;
             if (linuxLaunchBlocked)
             {
                 MainButtonEnabled = false;
@@ -292,7 +340,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = !InstallationDisabled;
             MainButtonShown = MainButtonState.Update;
-            MainButtonTooltip = "Update Ksp2Redux";
+            MainButtonTooltip = InstallationDisabled ? installationDisabledTooltip : null;
         }
     }
 
@@ -368,7 +416,7 @@ public partial class HomeTabViewModel : ViewModelBase
         // Set up process cancellation trigger.
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
-        MainButtonTooltip = "Cancel installation";
+        MainButtonTooltip = null;
         _cancelCurrentOperation = new CancellationTokenSource();
 
         Log("Creating install plan");
@@ -379,6 +427,14 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             await RunPlanOnInstall(plan, ksp2);
             Log("KSP2 Redux Successfully Installed");
+        }
+        catch (OperationCanceledException)
+        {
+            Log("Installation cancelled");
+        }
+        catch (InstallFailedException e)
+        {
+            Log(e.Message);
         }
         catch (Exception e)
         {
@@ -421,13 +477,21 @@ public partial class HomeTabViewModel : ViewModelBase
         
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
-        MainButtonTooltip = "Cancel installation";
+        MainButtonTooltip = null;
         _cancelCurrentOperation = new CancellationTokenSource();
         
         try
         {
             await RunPlanOnInstall(plan, ksp2);
             Log("KSP2 Redux Successfully Installed");
+        }
+        catch (OperationCanceledException)
+        {
+            Log("Installation cancelled");
+        }
+        catch (InstallFailedException e)
+        {
+            Log(e.Message);
         }
         catch (Exception e)
         {
@@ -535,6 +599,9 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error("Manual launcher update failed.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
+                $"Something went wrong while checking for launcher updates: {ex.Message}\nPlease try again later.",
+                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 }

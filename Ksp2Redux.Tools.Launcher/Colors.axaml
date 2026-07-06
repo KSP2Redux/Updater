@@ -26,6 +26,11 @@
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
     <SolidColorBrush x:Key="DangerHoverBrush" Color="{StaticResource DangerHoverColor}" />
 
+    <!-- Semantic: non-urgent warnings (e.g. a background feed refresh that fell back to
+         cached data) - deliberately calmer than Danger since nothing is actually broken -->
+    <Color x:Key="WarningColor">#D9A441</Color>
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}" />
+
     <!-- Neutral buttons -->
     <Color x:Key="NeutralButtonColor">#666666</Color>
     <Color x:Key="NeutralButtonHoverColor">#333333</Color>

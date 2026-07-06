@@ -19,9 +19,10 @@ public class Ksp2InstallServiceTest
         fileSystem.SetupGet(fs => fs.Path).Returns(path.Object);
 
         var moduleDef = new Mock<IModuleDefinitionService>();
+        var logService = new Mock<ILogService>();
         var config = new LauncherConfig { StoragePath = "/tmp/cfg.json" };
         cfg.SetupGet(c => c.Config).Returns(config);
-        var svc = new Ksp2InstallService(cfg.Object, fileSystem.Object, moduleDef.Object);
+        var svc = new Ksp2InstallService(cfg.Object, fileSystem.Object, moduleDef.Object, logService.Object);
         return (svc, cfg, config);
     }
 
