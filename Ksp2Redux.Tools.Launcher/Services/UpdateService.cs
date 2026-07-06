@@ -56,6 +56,28 @@ public class UpdateService : IUpdateService
         [JsonPropertyName("tag_name")] public string TagName { get; set; } = "";
         [JsonPropertyName("prerelease")] public bool Prerelease { get; set; }
         [JsonPropertyName("assets")] public GitHubReleaseAsset[] Assets { get; set; } = [];
+        [JsonPropertyName("body")] public string? Body { get; set; }
+    }
+
+    // Release notes are commonly edited on GitHub after the build was already tagged and uploaded,
+    // so this is built fresh from whatever the release currently says rather than anything baked in
+    // at build time. Pure and dependency-free so it's unit-testable without standing up the whole service.
+    public static string BuildUpdateFoundMessage(Version newVersion, string? releaseNotes)
+    {
+        const string actionMessage = "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.";
+        const int maxNotesLength = 500;
+
+        if (string.IsNullOrWhiteSpace(releaseNotes))
+        {
+            return $"What's new in v{newVersion}:\n(No release notes provided.)\n\n{actionMessage}";
+        }
+
+        var trimmed = releaseNotes.Trim();
+        var shown = trimmed.Length > maxNotesLength
+            ? trimmed[..maxNotesLength].TrimEnd() + "..."
+            : trimmed;
+
+        return $"What's new in v{newVersion}:\n{shown}\n\n{actionMessage}";
     }
 
     public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log)
@@ -155,7 +177,7 @@ public class UpdateService : IUpdateService
             }
 
             var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
-                "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.", ButtonEnum.OkCancel,
+                BuildUpdateFoundMessage(latestRelease.Version, latestRelease.Release.Body), ButtonEnum.OkCancel,
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
 
             if (result != ButtonResult.Ok) return false;
