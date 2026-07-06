@@ -289,6 +289,17 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
+        // IsValid only confirms the exe exists - it says nothing about whether we could actually
+        // read its version. Falling through without this check let Install/Update stay enabled with
+        // an unknown "from" version, which crashed or hung once clicked (see issue #26).
+        if (ksp2.GameVersion is null)
+        {
+            MainButtonEnabled = false;
+            MainButtonShown = MainButtonState.Launch;
+            MainButtonTooltip = "Couldn't detect the installed game version. Verifying game files through Steam/Epic, or reinstalling the game, may fix this.";
+            return;
+        }
+
         var selectedVersion = SelectedVersion;
         if (selectedVersion is null)
         {
@@ -412,7 +423,17 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             return;
         }
-        
+
+        // The main button should already be disabled whenever this is null (see
+        // UpdateMainButtonState), but guard here too rather than pass a null "from" version into
+        // GetPatchListToVersion, which assumes a real GameVersion and would throw or search a
+        // patch graph that was never meant to be reached from "unknown".
+        if (ksp2.GameVersion is null)
+        {
+            Log("Couldn't detect the installed game version, so it's unclear which patches to apply. Verifying game files, or reinstalling the game, may fix this.");
+            return;
+        }
+
         // Set up process cancellation trigger.
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
@@ -420,9 +441,9 @@ public partial class HomeTabViewModel : ViewModelBase
         _cancelCurrentOperation = new CancellationTokenSource();
 
         Log("Creating install plan");
-            
+
         var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
-            .GetPatchListToVersion(_ksp2InstallService.Ksp2!.GameVersion!, SelectedVersion.Version);
+            .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
         try
         {
             await RunPlanOnInstall(plan, ksp2);
