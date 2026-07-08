@@ -167,6 +167,22 @@ public class UpdateService : IUpdateService
         {
             _log.Info($"Update available: v{latestRelease.Version}.");
 
+            // Validate the release is actually installable BEFORE prompting. The CI workflow used
+            // to create the release visibly and then upload the (large) platform binaries, so a
+            // check landing in that window saw the new version with no usable asset yet - and
+            // clicking OK on the dialog silently did nothing (reported as "won't update on first
+            // click of ok"). An incomplete release is treated as not-yet-published: skip quietly
+            // and let the next periodic check pick it up once its files are all there.
+            var platformKeyword = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
+            var asset = latestRelease.Release.Assets
+                .FirstOrDefault(a => a.Name.Contains(platformKeyword, StringComparison.OrdinalIgnoreCase));
+            const string sha256Prefix = "sha256:";
+            if (asset == null || asset.Digest?.StartsWith(sha256Prefix, StringComparison.OrdinalIgnoreCase) != true)
+            {
+                _log.Warn($"Release v{latestRelease.Version} has no usable '{platformKeyword}' asset yet (missing asset or sha256 digest - still uploading?). Skipping until a later check. Available assets: {string.Join(", ", latestRelease.Release.Assets.Select(a => a.Name))}");
+                return true;
+            }
+
             if (!_isSingleFile)
             {
                 _log.Warn("Running in non-single-file build, refusing to self-update.");
@@ -182,86 +198,58 @@ public class UpdateService : IUpdateService
 
             if (result != ButtonResult.Ok) return false;
 
-            var platformKeyword = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
-            var asset = latestRelease.Release.Assets
-                .FirstOrDefault(a => a.Name.Contains(platformKeyword, StringComparison.OrdinalIgnoreCase));
+            _log.Info($"Selected update asset: {asset.Name}.");
+            var expectedHash = asset.Digest[sha256Prefix.Length..].Trim().ToLowerInvariant();
 
-            if (asset == null)
+            DownloadingChanged?.Invoke(true);
+            var restartTriggered = false;
+            try
             {
-                // The CI release workflow creates the GitHub release first and then uploads the
-                // (large) platform binaries as assets, so a check that lands in that window sees
-                // the new version with no matching asset yet. This used to fall through silently -
-                // the user clicked OK and nothing visibly happened until a later check re-fetched
-                // the release (reported as "won't update on first click of ok").
-                _log.Warn($"No asset matched platform keyword '{platformKeyword}' in release v{latestRelease.Version}. Available assets: {string.Join(", ", latestRelease.Release.Assets.Select(a => a.Name))}");
-                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Not Ready Yet",
-                    $"Version {latestRelease.Version} was just published but its download isn't available yet.\nThe launcher will retry automatically in a few minutes, or you can restart it to try again.",
-                    ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                _log.Info($"Downloading {asset.Name} from {asset.BrowserDownloadUrl}.");
+                var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
+                var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+                if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    _log.Error($"Checksum mismatch for {asset.Name}: expected {expectedHash}, got {actualHash}");
+                    await ShowUpdateFailedAsync();
+                    return false;
+                }
+                _log.Info($"Downloaded {bytes.Length} bytes for {asset.Name}, checksum verified.");
+
+                var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
+                _fileSystem.Directory.CreateDirectory(updateDir);
+                foreach (var stale in _fileSystem.Directory.EnumerateFiles(updateDir))
+                {
+                    try { _fileSystem.File.Delete(stale); } catch { }
+                }
+
+                var updatePath = _fileSystem.Path.Combine(updateDir, asset.Name);
+                await _fileSystem.File.WriteAllBytesAsync(updatePath, bytes);
+                _log.Info($"Wrote update binary to {updatePath}. Triggering restart.");
+
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    using var chmod = Process.Start("chmod", $"+x \"{updatePath}\"")!;
+                    await chmod.WaitForExitAsync();
+                    if (chmod.ExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"chmod +x on {updatePath} exited with code {chmod.ExitCode}.");
+                    }
+                }
+
+                TriggerRestart(updatePath);
+                restartTriggered = true;
+            }
+            catch (Exception e)
+            {
+                _log.Error($"Update download/install failed for {asset.Name}.", e);
+                await ShowUpdateFailedAsync();
                 return false;
             }
-            else
+            finally
             {
-                _log.Info($"Selected update asset: {asset.Name}.");
-                const string sha256Prefix = "sha256:";
-                if (asset.Digest == null || !asset.Digest.StartsWith(sha256Prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    _log.Error($"No sha256 digest reported by GitHub for {asset.Name}, refusing to update.");
-                    await ShowUpdateFailedAsync();
-                    return false;
-                }
-
-                var expectedHash = asset.Digest[sha256Prefix.Length..].Trim().ToLowerInvariant();
-
-                DownloadingChanged?.Invoke(true);
-                var restartTriggered = false;
-                try
-                {
-                    _log.Info($"Downloading {asset.Name} from {asset.BrowserDownloadUrl}.");
-                    var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
-                    var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-
-                    if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _log.Error($"Checksum mismatch for {asset.Name}: expected {expectedHash}, got {actualHash}");
-                        await ShowUpdateFailedAsync();
-                        return false;
-                    }
-                    _log.Info($"Downloaded {bytes.Length} bytes for {asset.Name}, checksum verified.");
-
-                    var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
-                    _fileSystem.Directory.CreateDirectory(updateDir);
-                    foreach (var stale in _fileSystem.Directory.EnumerateFiles(updateDir))
-                    {
-                        try { _fileSystem.File.Delete(stale); } catch { }
-                    }
-
-                    var updatePath = _fileSystem.Path.Combine(updateDir, asset.Name);
-                    await _fileSystem.File.WriteAllBytesAsync(updatePath, bytes);
-                    _log.Info($"Wrote update binary to {updatePath}. Triggering restart.");
-
-                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    {
-                        using var chmod = Process.Start("chmod", $"+x \"{updatePath}\"")!;
-                        await chmod.WaitForExitAsync();
-                        if (chmod.ExitCode != 0)
-                        {
-                            throw new InvalidOperationException($"chmod +x on {updatePath} exited with code {chmod.ExitCode}.");
-                        }
-                    }
-
-                    TriggerRestart(updatePath);
-                    restartTriggered = true;
-                }
-                catch (Exception e)
-                {
-                    _log.Error($"Update download/install failed for {asset.Name}.", e);
-                    await ShowUpdateFailedAsync();
-                    return false;
-                }
-                finally
-                {
-                    if (!restartTriggered) DownloadingChanged?.Invoke(false);
-                }
+                if (!restartTriggered) DownloadingChanged?.Invoke(false);
             }
         }
         else
