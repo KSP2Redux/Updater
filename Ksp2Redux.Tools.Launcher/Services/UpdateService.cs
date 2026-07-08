@@ -188,7 +188,16 @@ public class UpdateService : IUpdateService
 
             if (asset == null)
             {
+                // The CI release workflow creates the GitHub release first and then uploads the
+                // (large) platform binaries as assets, so a check that lands in that window sees
+                // the new version with no matching asset yet. This used to fall through silently -
+                // the user clicked OK and nothing visibly happened until a later check re-fetched
+                // the release (reported as "won't update on first click of ok").
                 _log.Warn($"No asset matched platform keyword '{platformKeyword}' in release v{latestRelease.Version}. Available assets: {string.Join(", ", latestRelease.Release.Assets.Select(a => a.Name))}");
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Not Ready Yet",
+                    $"Version {latestRelease.Version} was just published but its download isn't available yet.\nThe launcher will retry automatically in a few minutes, or you can restart it to try again.",
+                    ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                return false;
             }
             else
             {
