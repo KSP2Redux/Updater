@@ -61,8 +61,14 @@ jobs:
         TAG: ${{ steps.get_version.outputs.TAG }}
         TITLE: "KSP2 Redux Updater v${{ steps.get_version.outputs.VERSION }}"
       run: |
+        # Create as a draft first: launchers in the wild poll the releases API every
+        # 10 minutes, and a release that becomes visible before its binaries finish
+        # uploading gets offered as an update that can't actually be downloaded.
+        # Drafts are invisible to the API, so only flip it public once everything is up.
         gh release create "$TAG" \
           ./publish/Ksp2Redux-win-x64.exe \
           ./publish/Ksp2Redux-linux-x64 \
           --title "$TITLE" \
-          --generate-notes
+          --generate-notes \
+          --draft
+        gh release edit "$TAG" --draft=false
