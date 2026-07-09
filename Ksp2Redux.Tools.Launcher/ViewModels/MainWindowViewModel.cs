@@ -37,7 +37,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly IMessageBoxService _messageBoxService;
     private readonly IWindowPlacementService _windowPlacementService;
+    private readonly IAssemblyService _assemblyService;
     private readonly ILogService _log;
+
+    /// <summary>Launcher version shown in the title bar, e.g. "v0.3.0".</summary>
+    public string LauncherVersionText => $"v{_assemblyService.GetVersion()?.ToString(3) ?? "dev"}";
 
     [ObservableProperty]
     public partial InstallState CurrentInstallState { get; set; }
@@ -66,11 +70,13 @@ public partial class MainWindowViewModel : ViewModelBase
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
         INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService,
-        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, IWindowPlacementService windowPlacementService, ILogService log)
+        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, IWindowPlacementService windowPlacementService,
+        IAssemblyService assemblyService, ILogService log)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _windowPlacementService = windowPlacementService;
+        _assemblyService = assemblyService;
         _releasesFeedService = releasesFeedService;
         _tabNavigatorService = tabNavigatorService;
         _fileSystem = fileSystem;

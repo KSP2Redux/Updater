@@ -32,8 +32,13 @@
                 HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
                 VerticalAlignment="{TemplateBinding VerticalAlignment}">
           <DockPanel LastChildFill="True">
+            <!-- The tab strip lives in the window's title bar now (MainWindow.axaml nav
+                 buttons bound to GoToTabCommand); this TabControl is only the content
+                 host, so its own header is hidden rather than removed - TabItems still
+                 carry the tab identity and selection state. -->
             <ItemsPresenter Name="PART_ItemsPresenter"
                             DockPanel.Dock="Top"
+                            IsVisible="False"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Margin="0,16,0,0"

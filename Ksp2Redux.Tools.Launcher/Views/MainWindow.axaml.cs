@@ -36,6 +36,18 @@ public partial class MainWindow : Window
         };
         Closing += (_, _) => SaveWindowPlacement();
 
+        // The title-bar nav buttons aren't TabItems, so tab selection can't style them
+        // via :selected - mirror CurrentTab onto an "active" style class instead.
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is not MainWindowViewModel vm) return;
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainWindowViewModel.CurrentTab)) UpdateActiveNavTab();
+            };
+            UpdateActiveNavTab();
+        };
+
         // Which panel is "active" changes on every tab switch and every time Home's log
         // or Community's article shows/hides, none of which fire a single one-shot event
         // we can hook. Recomputing on every layout pass keeps it in sync regardless of
@@ -111,6 +123,15 @@ public partial class MainWindow : Window
         if (ResizeGrips is not null) ResizeGrips.IsVisible = !maximized;
         if (MaximizeGlyph is not null) MaximizeGlyph.Text = maximized ? "❐" : "◻";
         if (MaximizeButton is not null) ToolTip.SetTip(MaximizeButton, maximized ? "Restore" : "Maximize");
+    }
+
+    private void UpdateActiveNavTab()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        HomeNavButton?.Classes.Set("active", vm.CurrentTab == MainWindowViewModel.HomeTabId);
+        CommunityNavButton?.Classes.Set("active", vm.CurrentTab == MainWindowViewModel.CommunityTabId);
+        ModsNavButton?.Classes.Set("active", vm.CurrentTab == MainWindowViewModel.ModsTabId);
+        SettingsNavButton?.Classes.Set("active", vm.CurrentTab == MainWindowViewModel.SettingsTabId);
     }
 
     private void RefreshBackdropClips()
