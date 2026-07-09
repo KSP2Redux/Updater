@@ -23,9 +23,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         Opened += (_, _) =>
         {
-            DisableWindowResize();
             ApplyNativeRoundedCorners();
-            SetCustomWndProc();
+            UpdateMaximizedState();
             RefreshBackdropClips();
         };
 
@@ -34,6 +33,29 @@ public partial class MainWindow : Window
         // we can hook. Recomputing on every layout pass keeps it in sync regardless of
         // what caused the layout change.
         LayoutUpdated += (_, _) => RefreshBackdropClips();
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty)
+        {
+            UpdateMaximizedState();
+        }
+    }
+
+    // The red 2px frame deliberately stays in every state (brand signature); only the
+    // corner rounding drops at maximize, since the OS squares the window anyway and a
+    // rounded clip would leave black notches at the screen edges.
+    private void UpdateMaximizedState()
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        OuterFrame?.Classes.Set("maximized", maximized);
+        InnerChrome?.Classes.Set("maximized", maximized);
+        this.FindControl<Border>("TitleBar")?.Classes.Set("maximized", maximized);
+        if (ResizeGrips is not null) ResizeGrips.IsVisible = !maximized;
+        if (MaximizeGlyph is not null) MaximizeGlyph.Text = maximized ? "❐" : "◻";
+        if (MaximizeButton is not null) ToolTip.SetTip(MaximizeButton, maximized ? "Restore" : "Maximize");
     }
 
     private void RefreshBackdropClips()
@@ -95,10 +117,22 @@ public partial class MainWindow : Window
 
     private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        if (e.ClickCount == 2)
         {
-            BeginMoveDrag(e);
+            ToggleMaximized();
+            return;
         }
+
+        BeginMoveDrag(e);
+    }
+
+    private void ResizeGrip_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (sender is not Control { Tag: string tag } || !Enum.TryParse<WindowEdge>(tag, out var edge)) return;
+        BeginResizeDrag(edge, e);
     }
 
     private void Minimize_Click(object? sender, RoutedEventArgs e)
@@ -106,55 +140,19 @@ public partial class MainWindow : Window
         WindowState = WindowState.Minimized;
     }
 
+    private void Maximize_Click(object? sender, RoutedEventArgs e)
+    {
+        ToggleMaximized();
+    }
+
+    private void ToggleMaximized()
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+
     private void Close_Click(object? sender, RoutedEventArgs e)
     {
         Close();
-    }
-
-    private void DisableWindowResize()
-    {
-        IPlatformHandle? handle = TryGetPlatformHandle();
-        if (handle is null || !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return;
-        }
-
-        const int GWL_STYLE = -16;
-        const int WS_THICKFRAME = 0x00040000;
-        const uint SWP_NOMOVE = 0x0002;
-        const uint SWP_NOSIZE = 0x0001;
-        const uint SWP_NOZORDER = 0x0004;
-        const uint SWP_NOACTIVATE = 0x0010;
-        const uint SWP_FRAMECHANGED = 0x0020;
-
-        nint hwnd = handle.Handle;
-        int style = GetWindowLong(hwnd, GWL_STYLE);
-
-        // Remove resizing
-        style &= ~WS_THICKFRAME;
-
-        SetWindowLong(hwnd, GWL_STYLE, style);
-
-        // SetWindowLong alone doesn't make Windows recompute the frame; without this,
-        // it can keep using metrics cached under the old WS_THICKFRAME style.
-        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-    }
-
-    private void SetCustomWndProc()
-    {
-        IPlatformHandle? handle = TryGetPlatformHandle();
-        if (handle is null || !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return;
-        }
-
-        IntPtr hwnd = handle.Handle;
-        _originalWndProc = GetWindowLongPtr(hwnd, GWLP_WNDPROC);
-        _hwnd = hwnd;
-
-        // replace WndProc with a custom one
-        SetWindowLongPtr(hwnd, GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(NewWndProcDelegate));
     }
 
     private void ApplyNativeRoundedCorners()
@@ -180,42 +178,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private delegate nint WndProcDelegate(nint hWnd, uint msg, nint wParam, nint lParam);
-    private static nint _originalWndProc;
-    private static nint _hwnd;
-    private static readonly WndProcDelegate NewWndProcDelegate = CustomWndProc;
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
-
-    private static nint CustomWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
-    {
-        const uint WM_NCHITTEST = 0x0084;
-        const int HTCLIENT = 1;
-
-        return msg == WM_NCHITTEST
-            ? HTCLIENT // Always return client area — no resize zones
-            : CallWindowProc(_originalWndProc, hWnd, msg, wParam, lParam); // Call original WndProc for everything else
-    }
-
-    // Win32 interop
-    private const int GWLP_WNDPROC = -4;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern int GetWindowLong(nint hWnd, int nIndex);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint newProc);
-
-    [DllImport("user32.dll")]
-    private static extern nint CallWindowProc(nint lpPrevWndFunc, nint hWnd, uint msg, nint wParam, nint lParam);
 
     [DllImport("dwmapi.dll", PreserveSig = true)]
     private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int pvAttribute, int cbAttribute);
