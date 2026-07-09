@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -6,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
@@ -24,9 +26,15 @@ public partial class MainWindow : Window
         Opened += (_, _) =>
         {
             ApplyNativeRoundedCorners();
+            RestoreWindowPlacement();
             UpdateMaximizedState();
             RefreshBackdropClips();
         };
+        PositionChanged += (_, e) =>
+        {
+            if (WindowState == WindowState.Normal) _lastNormalPosition = e.Point;
+        };
+        Closing += (_, _) => SaveWindowPlacement();
 
         // Which panel is "active" changes on every tab switch and every time Home's log
         // or Community's article shows/hides, none of which fire a single one-shot event
@@ -42,6 +50,53 @@ public partial class MainWindow : Window
         {
             UpdateMaximizedState();
         }
+        else if (change.Property == ClientSizeProperty && WindowState == WindowState.Normal)
+        {
+            _lastNormalSize = ClientSize;
+        }
+    }
+
+    // The size/position to persist must be the NORMAL bounds even when the window closes
+    // maximized or minimized - saving the maximized rect would make restore-from-maximized
+    // snap to a full-screen-sized "normal" window.
+    private PixelPoint _lastNormalPosition;
+    private Size _lastNormalSize;
+
+    private void RestoreWindowPlacement()
+    {
+        _lastNormalPosition = Position;
+        _lastNormalSize = ClientSize;
+
+        if (DataContext is not MainWindowViewModel vm) return;
+        var workingAreas = Screens.All.Select(s => s.WorkingArea).ToList();
+        var placement = vm.GetRestoredWindowPlacement(workingAreas, MinWidth, MinHeight);
+        if (placement is null) return;
+
+        Position = new PixelPoint(placement.X, placement.Y);
+        Width = placement.Width;
+        Height = placement.Height;
+        _lastNormalPosition = Position;
+        _lastNormalSize = new Size(placement.Width, placement.Height);
+        if (placement.IsMaximized)
+        {
+            WindowState = WindowState.Maximized;
+        }
+    }
+
+    private void SaveWindowPlacement()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var normal = WindowState == WindowState.Normal;
+        var position = normal ? Position : _lastNormalPosition;
+        var size = normal ? ClientSize : _lastNormalSize;
+        vm.SaveWindowPlacement(new WindowPlacement
+        {
+            X = position.X,
+            Y = position.Y,
+            Width = size.Width,
+            Height = size.Height,
+            IsMaximized = WindowState == WindowState.Maximized,
+        });
     }
 
     // The red 2px frame deliberately stays in every state (brand signature); only the
