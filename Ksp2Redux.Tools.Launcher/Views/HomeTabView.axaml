@@ -3,9 +3,18 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
+             xmlns:converters="clr-namespace:Ksp2Redux.Tools.Launcher.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.HomeTabView"
              x:DataType="home:HomeTabViewModel">
+	<UserControl.Resources>
+		<converters:BoolToBrushConverter x:Key="RoadmapStatusBrushConverter"
+		                                 HeaderBrush="{StaticResource WarningBrush}"
+		                                 ItemBrush="{StaticResource TextSecondaryBrush}" />
+		<converters:BoolToBrushConverter x:Key="StatusChipBrushConverter"
+		                                 HeaderBrush="{StaticResource SuccessHoverBrush}"
+		                                 ItemBrush="{StaticResource WarningBrush}" />
+	</UserControl.Resources>
 	<UserControl.Styles>
 		<Style Selector="ProgressBar">
 			<Setter Property="Margin" Value="8"/>
@@ -51,6 +60,99 @@
 	</UserControl.Styles>
 
     <Grid>
+		<!-- Default Home state (hidden while an install/update runs and the log takes over):
+		     hero copy over the raw background art, the featured-update panel, and the
+		     roadmap row. The hero deliberately has NO glass panel - the design puts this
+		     text straight on the art. -->
+		<Grid IsVisible="{Binding IsInstallLogVisible, Converter={StaticResource InverseBoolConverter}}"
+		      Margin="24,8,24,8" RowDefinitions="*,Auto" ColumnDefinitions="*,340">
+			<StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="16,0,32,0" Spacing="16">
+				<TextBlock Text="COMMUNITY CONTINUATION"
+				           FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="11" LetterSpacing="4"
+				           Foreground="{StaticResource BrandRedBrush}" />
+				<TextBlock Text="KSP2 REDUX"
+				           FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="48" LetterSpacing="5"
+				           Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" />
+				<TextBlock Text="Finishing Kerbal Space Program 2 the way it was meant to be - colonies, resources, interstellar travel and multiplayer."
+				           FontFamily="{StaticResource JetBrainsMonoRegular}" FontSize="13" LineHeight="22"
+				           Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" MaxWidth="520"
+				           HorizontalAlignment="Left" />
+				<Border HorizontalAlignment="Left" Padding="12,5"
+				        BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}"
+				        BorderBrush="{Binding StatusChipOk, Converter={StaticResource StatusChipBrushConverter}}"
+				        Background="{StaticResource ScrimSoftBrush}">
+					<StackPanel Orientation="Horizontal" Spacing="8">
+						<Ellipse Width="7" Height="7" VerticalAlignment="Center"
+						         Fill="{Binding StatusChipOk, Converter={StaticResource StatusChipBrushConverter}}" />
+						<TextBlock Name="StatusChipText" Text="{Binding StatusChipText}"
+						           FontFamily="{StaticResource JetBrainsMonoRegular}" FontSize="11"
+						           Foreground="{Binding StatusChipOk, Converter={StaticResource StatusChipBrushConverter}}" />
+					</StackPanel>
+				</Border>
+			</StackPanel>
+
+			<Border Grid.Row="0" Grid.Column="1" Name="FeaturedPanel"
+			        IsVisible="{Binding HasFeaturedUpdate}"
+			        VerticalAlignment="Stretch"
+			        Background="{StaticResource GlassSurfaceBrush}"
+			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="2"
+			        CornerRadius="{StaticResource RadiusLarge}" Padding="20">
+				<DockPanel LastChildFill="False">
+					<StackPanel DockPanel.Dock="Top" Spacing="10">
+						<TextBlock Text="FEATURED UPDATE"
+						           FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="10" LetterSpacing="3"
+						           Foreground="{StaticResource BrandRedBrush}" />
+						<TextBlock Name="FeaturedTitle" Text="{Binding FeaturedTitle}"
+						           FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="20"
+						           Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" />
+						<TextBlock Text="{Binding FeaturedDate}"
+						           FontFamily="{StaticResource JetBrainsMonoRegular}" FontSize="10" LetterSpacing="1"
+						           Foreground="{StaticResource BrandRedBrush}" />
+						<TextBlock Text="{Binding FeaturedExcerpt}"
+						           FontFamily="{StaticResource JetBrainsMonoRegular}" FontSize="11" LineHeight="19"
+						           Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
+					</StackPanel>
+					<Button DockPanel.Dock="Bottom" Name="ReadFullNotesButton" Classes="link-button"
+					        Click="ReadFullNotes_OnClick"
+					        Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand">
+						<TextBlock Text="Read full notes ›"
+						           FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="11"
+						           Foreground="{StaticResource BrandRedBrush}" />
+					</Button>
+				</DockPanel>
+			</Border>
+
+			<ItemsControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+			              ItemsSource="{Binding RoadmapCards}" Margin="0,20,0,0">
+				<ItemsControl.ItemsPanel>
+					<ItemsPanelTemplate>
+						<UniformGrid Rows="1" Columns="4" />
+					</ItemsPanelTemplate>
+				</ItemsControl.ItemsPanel>
+				<ItemsControl.ItemTemplate>
+					<DataTemplate DataType="home:RoadmapCardViewModel">
+						<Border Margin="6,0" Padding="14,12"
+						        Background="{StaticResource GlassSurfaceBrush}"
+						        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
+						        CornerRadius="{StaticResource RadiusMedium}">
+							<Grid ColumnDefinitions="*,Auto">
+								<StackPanel Grid.Column="0" Spacing="4">
+									<TextBlock Text="{Binding Title}"
+									           FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13"
+									           Foreground="{StaticResource TextPrimaryBrush}" />
+									<TextBlock Text="{Binding StatusText}"
+									           FontFamily="{StaticResource JetBrainsMonoRegular}" FontSize="10" LetterSpacing="1"
+									           Foreground="{Binding InProgress, Converter={StaticResource RoadmapStatusBrushConverter}}" />
+								</StackPanel>
+								<Ellipse Grid.Column="1" Width="6" Height="6" VerticalAlignment="Top"
+								         Fill="{StaticResource BrandRedBrush}" />
+							</Grid>
+						</Border>
+					</DataTemplate>
+				</ItemsControl.ItemTemplate>
+			</ItemsControl>
+		</Grid>
+
 		<Border x:Name="GlassPanel" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
 				BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
 				BoxShadow="{StaticResource GlassPanelShadow}"

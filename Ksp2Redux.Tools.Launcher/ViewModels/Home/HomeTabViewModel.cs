@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -86,6 +87,40 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool InstallationDisabled { get; set; }
 
+    // Featured update panel on the Home hero: mirrors the newest item from the same news
+    // feed the sidebar list shows, so there's no second fetch and no second source of truth.
+    [ObservableProperty]
+    public partial string? FeaturedTitle { get; set; }
+
+    [ObservableProperty]
+    public partial string? FeaturedDate { get; set; }
+
+    [ObservableProperty]
+    public partial string? FeaturedExcerpt { get; set; }
+
+    [ObservableProperty]
+    public partial string? FeaturedNewsId { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasFeaturedUpdate { get; set; }
+
+    // Status chip in the Home hero ("Ready - v0.2.3.1 beta" with a green dot, or what's
+    // blocking that). Derived alongside the main button state, which already inspects
+    // exactly the same install facts.
+    [ObservableProperty]
+    public partial string StatusChipText { get; set; } = "Checking...";
+
+    [ObservableProperty]
+    public partial bool StatusChipOk { get; set; }
+
+    public IReadOnlyList<RoadmapCardViewModel> RoadmapCards { get; } =
+    [
+        new("Colonies", "In progress", true),
+        new("Resources", "In progress", true),
+        new("Interstellar", "Planned", false),
+        new("Multiplayer", "Planned", false),
+    ];
+
     private readonly StringBuilder _installLogBuilder = new();
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
@@ -95,7 +130,8 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, ILogService log)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService,
+        INewsItemCollectionService newsItemCollectionService, ILogService log)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
@@ -105,6 +141,12 @@ public partial class HomeTabViewModel : ViewModelBase
         _operatingSystemService = operatingSystemService;
         _messageBoxService = messageBoxService;
         _log = log;
+
+        // News loads asynchronously after startup, so react to the shared collection
+        // filling up rather than reading it once here.
+        newsItemCollectionService.NewsCollection.CollectionChanged += (_, _) =>
+            UpdateFeaturedUpdate(newsItemCollectionService.NewsCollection);
+        UpdateFeaturedUpdate(newsItemCollectionService.NewsCollection);
 
         RebuildInstallsCollection();
         RebuildVersionsCollection();
@@ -310,9 +352,64 @@ public partial class HomeTabViewModel : ViewModelBase
     
     public void RefreshMainButtonState() => UpdateMainButtonState();
 
+    private void UpdateFeaturedUpdate(IEnumerable<Shared.NewsItemViewModel> news)
+    {
+        var newest = news.OrderByDescending(n => n.Date).FirstOrDefault();
+        if (newest is null)
+        {
+            HasFeaturedUpdate = false;
+            return;
+        }
+
+        FeaturedTitle = newest.Title;
+        FeaturedDate = newest.Date.ToLocalTime().ToString("yyyy-MM-dd");
+        FeaturedExcerpt = ExtractPlainTextExcerpt(newest.Content);
+        FeaturedNewsId = newest.NewsId;
+        HasFeaturedUpdate = true;
+    }
+
+    // News content is blog HTML (rendered fully on the Community tab); the hero panel only
+    // wants a short plain-text teaser of it.
+    public static string ExtractPlainTextExcerpt(string html, int maxLength = 260)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
+
+        var text = System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", " ");
+        text = System.Net.WebUtility.HtmlDecode(text);
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+        if (text.Length <= maxLength) return text;
+
+        var cut = text.LastIndexOf(' ', maxLength);
+        if (cut <= 0) cut = maxLength;
+        return text[..cut].TrimEnd() + "...";
+    }
+
+    private void UpdateStatusChip()
+    {
+        var ksp2 = _ksp2InstallService.Ksp2;
+        if (ksp2 is null || !ksp2.IsValid)
+        {
+            StatusChipText = "Game not detected";
+            StatusChipOk = false;
+            return;
+        }
+
+        if (ksp2.GameVersion is null)
+        {
+            StatusChipText = "Game version unknown";
+            StatusChipOk = false;
+            return;
+        }
+
+        var version = ksp2.GameVersion;
+        StatusChipText = $"Ready - v{version.VersionNumber}.{version.BuildNumber} {version.Channel.ToLowerInvariant()}";
+        StatusChipOk = true;
+    }
+
     private void UpdateMainButtonState()
     {
         _ksp2InstallService.TryLoadKsp2Install();
+        UpdateStatusChip();
         var ksp2 = _ksp2InstallService.Ksp2;
         if (ksp2 is null || !ksp2.IsValid)
         {
