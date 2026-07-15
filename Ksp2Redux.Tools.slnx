@@ -1,10 +1,14 @@
 <Solution>
-  <Project Path="Ksp2Redux.Tools.Common/Ksp2Redux.Tools.Common.csproj" />
-  <Project Path="Ksp2Redux.Tools.Installer/Ksp2Redux.Tools.Installer.csproj" />
-  <Project Path="Ksp2Redux.Tools.Launcher.Test.MockGame/Ksp2Redux.Tools.Launcher.Test.MockGame.csproj" />
-  <Project Path="Ksp2Redux.Tools.Launcher.Test/Ksp2Redux.Tools.Launcher.Test.csproj" />
-  <Project Path="Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
-  <Project Path="Ksp2Redux.Tools.PatchApplier/Ksp2Redux.Tools.PatchApplier.csproj" />
-  <Project Path="Ksp2Redux.Tools.PatchGenerator/Ksp2Redux.Tools.PatchGenerator.csproj" />
-  <Project Path="Ksp2Redux.Tools.Uploader/Ksp2Redux.Tools.Uploader.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/Ksp2Redux.Tools.Common/Ksp2Redux.Tools.Common.csproj" />
+    <Project Path="src/Ksp2Redux.Tools.Installer/Ksp2Redux.Tools.Installer.csproj" />
+    <Project Path="src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
+    <Project Path="src/Ksp2Redux.Tools.PatchApplier/Ksp2Redux.Tools.PatchApplier.csproj" />
+    <Project Path="src/Ksp2Redux.Tools.PatchGenerator/Ksp2Redux.Tools.PatchGenerator.csproj" />
+    <Project Path="src/Ksp2Redux.Tools.Uploader/Ksp2Redux.Tools.Uploader.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ksp2Redux.Tools.Launcher.Tests/Ksp2Redux.Tools.Launcher.Tests.csproj" />
+    <Project Path="tests/Ksp2Redux.Tools.Launcher.Tests.MockGame/Ksp2Redux.Tools.Launcher.Tests.MockGame.csproj" />
+  </Folder>
 </Solution>

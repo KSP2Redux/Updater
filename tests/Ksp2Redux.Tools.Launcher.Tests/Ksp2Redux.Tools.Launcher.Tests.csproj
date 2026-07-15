@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <AssemblyTitle>KSP2 Redux Launcher Tests</AssemblyTitle>
+        <Description>Test suite for the KSP2 Redux launcher</Description>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia.Headless.NUnit" />
+        <PackageReference Include="coverlet.collector"/>
+        <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="EnvironmentAbstractions.TestHelpers" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Moq" />
+        <PackageReference Include="NUnit" />
+        <PackageReference Include="NUnit.Analyzers"/>
+        <PackageReference Include="NUnit3TestAdapter"/>
+        <PackageReference Include="Testably.Abstractions.Testing" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="NUnit.Framework"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj" />
+      <!-- Build MockGame but don't reference its assembly; its output is embedded below
+           as the fake game executable the detector tests copy into the mock filesystem. -->
+      <ProjectReference Include="..\Ksp2Redux.Tools.Launcher.Tests.MockGame\Ksp2Redux.Tools.Launcher.Tests.MockGame.csproj">
+        <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+        <Private>false</Private>
+      </ProjectReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="MockExecutable.sh" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="..\Ksp2Redux.Tools.Launcher.Tests.MockGame\bin\$(Configuration)\net10.0\MockGame.dll"
+                        LogicalName="Ksp2Redux.Tools.Launcher.Tests.MockGame.MockGame.exe"
+                        Visible="false" />
+    </ItemGroup>
+
+</Project>

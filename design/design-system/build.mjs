@@ -7,7 +7,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const launcherAssets = path.join(root, '..', '..', 'Ksp2Redux.Tools.Launcher', 'Assets');
+const launcherAssets = path.join(root, '..', '..', 'src', 'Ksp2Redux.Tools.Launcher', 'Assets');
 const dist = path.join(root, 'dist');
 
 await mkdir(path.join(dist, 'fonts'), {recursive: true});
