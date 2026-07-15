@@ -5,7 +5,7 @@
   "buildCmd": "npm run build (run inside design/design-system/)",
   "srcDir": "design/design-system/src",
   "cssEntry": "dist/styles.css",
-  "readmeHeader": ".design-sync/conventions.md",
+  "readmeHeader": "design/conventions.md",
   "overrides": {
     "GlassPanel": {
       "cardMode": "column"
