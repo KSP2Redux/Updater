@@ -1,78 +1,78 @@
 name: Build and Release
 
 on:
-  push:
-    branches: [ "main" ]
+    push:
+        branches: [ "main" ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write 
-    outputs:
-      tag_exists: ${{ steps.check_tag.outputs.exists }}
-      version: ${{ steps.get_version.outputs.VERSION }}
-      tag: ${{ steps.get_version.outputs.TAG }}
-    
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0 # Essential to check existing tags
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        outputs:
+            tag_exists: ${{ steps.check_tag.outputs.exists }}
+            version: ${{ steps.get_version.outputs.VERSION }}
+            tag: ${{ steps.get_version.outputs.TAG }}
+        
+        steps:
+            -   uses: actions/checkout@v6
+                with:
+                    fetch-depth: 0 # Essential to check existing tags
 
-    - name: Extract Version from Directory.Build.props
-      id: get_version
-      run: |
-          # Extracts the text between <Version> and </Version> tags
-          VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props)
-          if [ -z "$VERSION" ]; then
-            echo "::error::Could not extract <Version> from Directory.Build.props"
-            exit 1
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "TAG=updater-v$VERSION" >> $GITHUB_OUTPUT
+            -   name: Extract Version from Directory.Build.props
+                id: get_version
+                run: |
+                    # Extracts the text between <Version> and </Version> tags
+                    VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props)
+                    if [ -z "$VERSION" ]; then
+                      echo "::error::Could not extract <Version> from Directory.Build.props"
+                      exit 1
+                    fi
+                    echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+                    echo "TAG=updater-v$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Check if Tag Exists
-      id: check_tag
-      env:
-        TAG: ${{ steps.get_version.outputs.TAG }}
-      run: |
-        if git show-ref --tags --verify --quiet "refs/tags/${{ env.TAG }}"; then
-          echo "Tag ${{ env.TAG }} already exists. Skipping build and release."
-          echo "exists=true" >> $GITHUB_OUTPUT
-        else
-          echo "New version detected: ${{ env.TAG }}. Proceeding..."
-          echo "exists=false" >> $GITHUB_OUTPUT
-        fi
+            -   name: Check if Tag Exists
+                id: check_tag
+                env:
+                    TAG: ${{ steps.get_version.outputs.TAG }}
+                run: |
+                    if git show-ref --tags --verify --quiet "refs/tags/${{ env.TAG }}"; then
+                      echo "Tag ${{ env.TAG }} already exists. Skipping build and release."
+                      echo "exists=true" >> $GITHUB_OUTPUT
+                    else
+                      echo "New version detected: ${{ env.TAG }}. Proceeding..."
+                      echo "exists=false" >> $GITHUB_OUTPUT
+                    fi
 
-    - name: Setup .NET
-      if: steps.check_tag.outputs.exists == 'false'
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 10.0.x
+            -   name: Setup .NET
+                if: steps.check_tag.outputs.exists == 'false'
+                uses: actions/setup-dotnet@v5
+                with:
+                    dotnet-version: 10.0.x
 
-    - name: Build and Publish
-      if: steps.check_tag.outputs.exists == 'false'
-      run: |
-        dotnet publish src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
-        dotnet publish src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
-        mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Redux-win-x64.exe
-        mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Redux-linux-x64
+            -   name: Build and Publish
+                if: steps.check_tag.outputs.exists == 'false'
+                run: |
+                    dotnet publish src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/win
+                    dotnet publish src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
+                    mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Redux-win-x64.exe
+                    mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Redux-linux-x64
 
-    - name: Create Release with Auto-Notes
-      if: steps.check_tag.outputs.exists == 'false'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ steps.get_version.outputs.TAG }}
-        TITLE: "KSP2 Redux Updater v${{ steps.get_version.outputs.VERSION }}"
-      run: |
-        # Create as a draft first: launchers in the wild poll the releases API every
-        # 10 minutes, and a release that becomes visible before its binaries finish
-        # uploading gets offered as an update that can't actually be downloaded.
-        # Drafts are invisible to the API, so only flip it public once everything is up.
-        gh release create "$TAG" \
-          ./publish/Ksp2Redux-win-x64.exe \
-          ./publish/Ksp2Redux-linux-x64 \
-          --title "$TITLE" \
-          --generate-notes \
-          --draft
-        gh release edit "$TAG" --draft=false
+            -   name: Create Release with Auto-Notes
+                if: steps.check_tag.outputs.exists == 'false'
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    TAG: ${{ steps.get_version.outputs.TAG }}
+                    TITLE: "KSP2 Redux Updater v${{ steps.get_version.outputs.VERSION }}"
+                run: |
+                    # Create as a draft first: launchers in the wild poll the releases API every
+                    # 10 minutes, and a release that becomes visible before its binaries finish
+                    # uploading gets offered as an update that can't actually be downloaded.
+                    # Drafts are invisible to the API, so only flip it public once everything is up.
+                    gh release create "$TAG" \
+                      ./publish/Ksp2Redux-win-x64.exe \
+                      ./publish/Ksp2Redux-linux-x64 \
+                      --title "$TITLE" \
+                      --generate-notes \
+                      --draft
+                    gh release edit "$TAG" --draft=false
