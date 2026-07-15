@@ -38,10 +38,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="MockExecutable.sh" />
-    </ItemGroup>
-
-    <ItemGroup>
       <EmbeddedResource Include="..\Ksp2Redux.Tools.Launcher.Tests.MockGame\bin\$(Configuration)\net10.0\MockGame.dll"
                         LogicalName="Ksp2Redux.Tools.Launcher.Tests.MockGame.MockGame.exe"
                         Visible="false" />

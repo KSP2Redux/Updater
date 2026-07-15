@@ -9,12 +9,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Octokit" />
-      <PackageReference Include="Tomlyn" />
+        <PackageReference Include="Octokit"/>
+        <PackageReference Include="Tomlyn"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj" />
+        <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj"/>
     </ItemGroup>
 
 </Project>
