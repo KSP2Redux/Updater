@@ -2,6 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ksp2Redux.Tools.Launcher.ViewModels"
         xmlns:views="using:Ksp2Redux.Tools.Launcher.Views"
+        xmlns:home="using:Ksp2Redux.Tools.Launcher.Views.Home"
+        xmlns:community="using:Ksp2Redux.Tools.Launcher.Views.Community"
+        xmlns:mods="using:Ksp2Redux.Tools.Launcher.Views.Mods"
+        xmlns:settings="using:Ksp2Redux.Tools.Launcher.Views.Settings"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
@@ -242,13 +246,13 @@
                     <Border Grid.Column="1" Padding="0,0,24,24">
                         <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
                             <TabItem Name="HomeTab" Header="Home">
-                                <views:HomeTabView Name="HomeView" DataContext="{Binding HomeTab}"/>
+                                <home:HomeTabView Name="HomeView" DataContext="{Binding HomeTab}"/>
                             </TabItem>
                             <TabItem Name="CommunityTab" Header="Community">
-                                <views:CommunityTabView Name="CommunityView" DataContext="{Binding CommunityTab}"/>
+                                <community:CommunityTabView Name="CommunityView" DataContext="{Binding CommunityTab}"/>
                             </TabItem>
                             <TabItem Name="ModsTab" Header="Mods">
-                                <views:ModsTabView Name="ModsView" DataContext="{Binding ModsTab}"/>
+                                <mods:ModsTabView Name="ModsView" DataContext="{Binding ModsTab}"/>
                             </TabItem>
                             <TabItem Name="SettingsTab">
                                 <TabItem.Header>
@@ -262,7 +266,7 @@
                                         </Canvas>
                                     </Grid>
                                 </TabItem.Header>
-                                <views:SettingsTabView Name="SettingsView" DataContext="{Binding SettingsTab}" />
+                                <settings:SettingsTabView Name="SettingsView" DataContext="{Binding SettingsTab}" />
                             </TabItem>
                         </TabControl>
                     </Border>

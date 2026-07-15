@@ -6,7 +6,7 @@
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              x:DataType="settings:SettingsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Ksp2Redux.Tools.Launcher.Views.SettingsTabView"
+             x:Class="Ksp2Redux.Tools.Launcher.Views.Settings.SettingsTabView"
              VerticalAlignment="Stretch">
 
 	<Grid VerticalAlignment="Stretch">

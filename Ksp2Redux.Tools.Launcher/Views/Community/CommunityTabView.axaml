@@ -5,7 +5,7 @@
              xmlns:community="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Community"
              xmlns:launcher="clr-namespace:Ksp2Redux.Tools.Launcher"
              mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="530"
-             x:Class="Ksp2Redux.Tools.Launcher.Views.CommunityTabView"
+             x:Class="Ksp2Redux.Tools.Launcher.Views.Community.CommunityTabView"
              x:DataType="community:CommunityTabViewModel">
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <Border x:Name="GlassPanel" Margin="24,8,24,8" BorderThickness="2" BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}" BoxShadow="{StaticResource GlassPanelShadow}" CornerRadius="{StaticResource RadiusLarge}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">

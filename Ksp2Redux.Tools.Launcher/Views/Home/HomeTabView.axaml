@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Ksp2Redux.Tools.Launcher.Views.HomeTabView"
+             x:Class="Ksp2Redux.Tools.Launcher.Views.Home.HomeTabView"
              x:DataType="home:HomeTabViewModel">
 	<UserControl.Styles>
 		<Style Selector="ProgressBar">

@@ -4,7 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
-namespace Ksp2Redux.Tools.Launcher.Views;
+namespace Ksp2Redux.Tools.Launcher.Views.Settings;
 
 public partial class SettingsTabView : UserControl
 {

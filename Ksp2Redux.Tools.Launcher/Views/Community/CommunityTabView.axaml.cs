@@ -3,7 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 
-namespace Ksp2Redux.Tools.Launcher.Views;
+namespace Ksp2Redux.Tools.Launcher.Views.Community;
 
 public partial class CommunityTabView : UserControl
 {

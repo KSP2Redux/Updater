@@ -5,7 +5,7 @@
              xmlns:mods="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Mods"
              x:DataType="mods:ModsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Ksp2Redux.Tools.Launcher.Views.ModsTabView">
+             x:Class="Ksp2Redux.Tools.Launcher.Views.Mods.ModsTabView">
     <Border x:Name="GlassPanel" Margin="24,8,24,8" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
             BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
             BoxShadow="{StaticResource GlassPanelShadow}"

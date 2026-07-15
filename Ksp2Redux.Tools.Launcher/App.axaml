@@ -16,7 +16,7 @@
             <FontFamily x:Key="JetBrainsMonoBold">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Bold</FontFamily>
 
             <ResourceDictionary.MergedDictionaries>
-                <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Colors.axaml" />
+                <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Themes/Colors.axaml" />
                 <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabControl.axaml" />
                 <MergeResourceInclude Source="avares://Ksp2Redux.Tools.Launcher/Controls/TabItem.axaml" />
             </ResourceDictionary.MergedDictionaries>
@@ -43,7 +43,7 @@
                 <ColorPaletteResources x:Key="Dark" Accent="{StaticResource BrandRedColor}" />
             </FluentTheme.Palettes>
         </FluentTheme>
-        <StyleInclude Source="avares://Ksp2Redux.Tools.Launcher/Radii.axaml" />
+        <StyleInclude Source="avares://Ksp2Redux.Tools.Launcher/Themes/Radii.axaml" />
 
         <Style Selector="ComboBoxItem.group-header">
             <Setter Property="IsEnabled" Value="False"/>
@@ -51,6 +51,6 @@
             <Setter Property="Focusable" Value="False"/>
         </Style>
         
-        <StyleInclude Source="/Styles.axaml"/>
+        <StyleInclude Source="avares://Ksp2Redux.Tools.Launcher/Themes/Styles.axaml"/>
     </Application.Styles>
 </Application>

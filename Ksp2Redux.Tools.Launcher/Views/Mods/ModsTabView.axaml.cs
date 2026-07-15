@@ -1,7 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace Ksp2Redux.Tools.Launcher.Views;
+namespace Ksp2Redux.Tools.Launcher.Views.Mods;
 
 public partial class ModsTabView : UserControl
 {

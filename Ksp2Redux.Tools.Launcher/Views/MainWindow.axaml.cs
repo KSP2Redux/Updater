@@ -9,6 +9,10 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;
+using Ksp2Redux.Tools.Launcher.Views.Community;
+using Ksp2Redux.Tools.Launcher.Views.Home;
+using Ksp2Redux.Tools.Launcher.Views.Mods;
+using Ksp2Redux.Tools.Launcher.Views.Settings;
 
 namespace Ksp2Redux.Tools.Launcher.Views;
 
