@@ -34,6 +34,12 @@ public class LauncherConfig
     /// </summary>
     public bool VerboseLogging { get; set; } = false;
 
+    /// <summary>
+    /// Last window geometry. Null until the window has been closed once (first run
+    /// uses the built-in defaults and centers on screen).
+    /// </summary>
+    public WindowPlacement? WindowPlacement { get; set; }
+
     [JsonIgnore]
     public string StoragePath { get; set; }
 

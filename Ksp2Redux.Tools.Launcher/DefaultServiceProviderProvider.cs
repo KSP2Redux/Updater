@@ -43,6 +43,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IMessageBoxService, MessageBoxService>();
         serviceCollection.AddSingleton<IOperatingSystemService, OperatingSystemService>();
         serviceCollection.AddSingleton<IDiskSpaceService, DiskSpaceService>();
+        serviceCollection.AddSingleton<IWindowPlacementService, WindowPlacementService>();
         return serviceCollection.BuildServiceProvider();
     }
 }
