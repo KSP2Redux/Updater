@@ -2,26 +2,25 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <LangVersion>latest</LangVersion>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <AssemblyTitle>KSP2 Redux Launcher Tests</AssemblyTitle>
+        <Description>Test suite for the KSP2 Redux launcher</Description>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia.Headless.NUnit" Version="12.0.5" />
-        <PackageReference Include="coverlet.collector" Version="10.0.1"/>
-        <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0">
+        <PackageReference Include="Avalonia.Headless.NUnit" />
+        <PackageReference Include="coverlet.collector"/>
+        <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="EnvironmentAbstractions.TestHelpers" Version="5.0.0" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
-        <PackageReference Include="Moq" Version="4.20.72" />
-        <PackageReference Include="NUnit" Version="4.6.1" />
-        <PackageReference Include="NUnit.Analyzers" Version="4.14.0"/>
-        <PackageReference Include="NUnit3TestAdapter" Version="6.2.0"/>
-        <PackageReference Include="Testably.Abstractions.Testing" Version="6.6.0" />
+        <PackageReference Include="EnvironmentAbstractions.TestHelpers" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Moq" />
+        <PackageReference Include="NUnit" />
+        <PackageReference Include="NUnit.Analyzers"/>
+        <PackageReference Include="NUnit3TestAdapter"/>
+        <PackageReference Include="Testably.Abstractions.Testing" />
     </ItemGroup>
 
     <ItemGroup>

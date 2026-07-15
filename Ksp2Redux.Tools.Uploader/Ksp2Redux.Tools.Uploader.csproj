@@ -2,14 +2,15 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <TargetFramework>net10.0</TargetFramework>
+        <AssemblyTitle>KSP2 Redux Uploader</AssemblyTitle>
+        <Description>Command-line tool that uploads KSP2 Redux releases and updates the release manifest</Description>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Octokit" Version="14.0.0" />
-      <PackageReference Include="Tomlyn" Version="2.10.1" />
+      <PackageReference Include="Octokit" />
+      <PackageReference Include="Tomlyn" />
     </ItemGroup>
 
     <ItemGroup>

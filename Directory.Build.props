@@ -1,0 +1,19 @@
+<Project>
+
+    <!-- Shared settings for every project in the repo. Individual .csproj files can override any of these. -->
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <Version>0.3.0</Version>
+        <Authors>KSP2 Redux</Authors>
+        <Company>KSP2 Redux</Company>
+        <Product>KSP2 Redux</Product>
+        <Copyright>Copyright © KSP2 Redux</Copyright>
+        <NeutralLanguage>en</NeutralLanguage>
+        <RepositoryUrl>https://github.com/KSP2Redux/Updater</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+
+</Project>

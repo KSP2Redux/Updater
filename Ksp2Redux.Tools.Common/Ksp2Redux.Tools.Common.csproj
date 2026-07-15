@@ -2,23 +2,23 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <LangVersion>latest</LangVersion>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <AssemblyTitle>KSP2 Redux Common</AssemblyTitle>
+        <Description>Shared patching, archive, and filesystem primitives for the KSP2 Redux tools</Description>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="BsDiff" Version="1.1.0" />
-      <PackageReference Include="EnvironmentAbstractions" Version="5.0.0" />
-      <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0">
+      <PackageReference Include="BsDiff" />
+      <PackageReference Include="EnvironmentAbstractions" />
+      <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
+      <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Testably.Abstractions" Version="10.2.0" />
+      <PackageReference Include="Testably.Abstractions" />
     </ItemGroup>
 
     <ItemGroup>
