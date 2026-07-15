@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Text.Json;
 using Avalonia.Controls;
@@ -38,6 +39,7 @@ public class LauncherConfigService : ILauncherConfigService
         GetOrCreateCurrentConfig(_fileSystem);
     }
 
+    [MemberNotNull(nameof(Config))]
     private void GetOrCreateCurrentConfig(IFileSystem fileSystem)
     {
         var storageDir = GetLocalStorageDirectory();

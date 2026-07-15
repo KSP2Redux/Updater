@@ -5,7 +5,7 @@ namespace Ksp2Redux.Tools.Launcher.Converters;
 
 public class CaseConverter : IValueConverter
 {
-    public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
         if (value is not string str || parameter is not string casing)
         {

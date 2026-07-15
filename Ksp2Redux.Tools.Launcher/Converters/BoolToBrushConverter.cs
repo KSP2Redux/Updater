@@ -10,7 +10,7 @@ public class BoolToBrushConverter : IValueConverter
     public IBrush? HeaderBrush { get; set; } = Brushes.Gray;
     public IBrush? ItemBrush { get; set; } = Brushes.Black;
 
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is bool isHeader)
             return isHeader ? HeaderBrush : ItemBrush;

@@ -98,7 +98,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         cacheService.RecursivelyCreateCache(install);
                     }
 
-                    var patchFile = fileSystem.Path.GetTempFileName();
+                    var patchFile = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), fileSystem.Path.GetRandomFileName());
                     var exe = fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
                     var ksp2Install = new Ksp2Install(fileSystem, moduleDefinitionService, exe);
                     switch (ksp2Install.Distribution)

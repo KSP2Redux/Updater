@@ -23,7 +23,7 @@ public class ManifestReleasesFeed
 
     private ReleaseManifest? _manifest;
 
-    public string CurrentChannel { get; private set; }
+    public string CurrentChannel { get; private set; } = "invalid";
 
     public ManifestReleasesFeed(IFileSystem fileSystem, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService,
         ILogService log, string downloadStorageDir, FeedInfo feed)

@@ -37,8 +37,8 @@ namespace Ksp2Redux.Tools.Launcher.Controls
         /// <summary>
         /// How to extract a group key from each item
         /// </summary>
-        public static readonly StyledProperty<Func<object, string>> GroupKeySelectorProperty =
-            AvaloniaProperty.Register<GroupedComboBox, Func<object, string>>(nameof(GroupKeySelector));
+        public static readonly StyledProperty<Func<object, string>?> GroupKeySelectorProperty =
+            AvaloniaProperty.Register<GroupedComboBox, Func<object, string>?>(nameof(GroupKeySelector));
 
         public IEnumerable? ItemsSource
         {
