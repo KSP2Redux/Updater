@@ -87,6 +87,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(MessageBoxService.Object); 
         serviceCollection.AddSingleton(OperatingSystemService.Object);
         serviceCollection.AddSingleton(DiskSpaceService.Object);
+        serviceCollection.AddSingleton<IWindowPlacementService, WindowPlacementService>();
         ServiceProvider = serviceCollection.BuildServiceProvider();
     }
 }

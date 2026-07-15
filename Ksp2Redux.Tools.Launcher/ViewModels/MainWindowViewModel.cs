@@ -36,6 +36,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IKsp2DetectorService _ksp2DetectorService;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly IWindowPlacementService _windowPlacementService;
     private readonly ILogService _log;
 
     [ObservableProperty]
@@ -65,10 +66,11 @@ public partial class MainWindowViewModel : ViewModelBase
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
         INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService,
-        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, ILogService log)
+        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, IWindowPlacementService windowPlacementService, ILogService log)
     {
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
+        _windowPlacementService = windowPlacementService;
         _releasesFeedService = releasesFeedService;
         _tabNavigatorService = tabNavigatorService;
         _fileSystem = fileSystem;
@@ -151,6 +153,19 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _log.Error("Background task faulted.", antecedent.Exception);
         }
+    }
+
+    /// <summary>
+    /// Returns the placement the window should restore to, validated against the current
+    /// monitor layout, or null to use the built-in defaults (first run, or garbage data).
+    /// </summary>
+    public WindowPlacement? GetRestoredWindowPlacement(IReadOnlyList<Avalonia.PixelRect> screenWorkingAreas, double minWidth, double minHeight) =>
+        _windowPlacementService.Sanitize(_launcherConfigService.Config.WindowPlacement, screenWorkingAreas, minWidth, minHeight);
+
+    public void SaveWindowPlacement(WindowPlacement placement)
+    {
+        _launcherConfigService.Config.WindowPlacement = placement;
+        _launcherConfigService.Save();
     }
 
     public Task LaunchExternalLinkAsync(TopLevel? topLevel, string url)
