@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      # One PR for all Avalonia-family packages so they stay in lockstep
+      avalonia:
+        patterns:
+          - "Avalonia*"
+          - "MessageBox.Avalonia"
+      # One PR for routine minor/patch bumps of everything else
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
