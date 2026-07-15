@@ -4,8 +4,8 @@
         xmlns:views="using:Ksp2Redux.Tools.Launcher.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
-        Width="1000" Height="700" CanResize="False"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+        Width="1280" Height="800" MinWidth="1000" MinHeight="700" CanResize="True"
         x:Class="Ksp2Redux.Tools.Launcher.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Background="Transparent"
@@ -36,6 +36,19 @@
     <!-- ReSharper restore Xaml.RedundantResource -->
 
     <Window.Styles>
+        <!-- When maximized the OS squares the window anyway, so rounded corners would
+             leave black notches at the screen edges - square everything. The red 2px
+             frame itself deliberately stays visible in every state (brand signature). -->
+        <Style Selector="Border#OuterFrame.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Border#InnerChrome.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Border#TitleBar.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+
         <Style Selector="Border#TitleBar">
             <!-- Matches the inner chrome Border's CornerRadius below (RadiusLarge minus
                  the outer frame's 2px BorderThickness) so it nests flush at the top
@@ -99,14 +112,18 @@
         </Style>
     </Window.Styles>
 
-    <Border BorderBrush="{StaticResource BrandRedBrush}" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}" VerticalAlignment="Stretch">
+    <Panel>
+    <Border Name="OuterFrame" BorderBrush="{StaticResource BrandRedBrush}" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}" VerticalAlignment="Stretch">
         <!-- 10 = RadiusLarge (12) minus the outer Border's 2px BorderThickness, so the
              two borders form a properly nested concentric ring instead of a mismatched gap. -->
-        <Border Background="Black" CornerRadius="10" ClipToBounds="True">
+        <Border Name="InnerChrome" Background="Black" CornerRadius="10" ClipToBounds="True">
             <Grid RowDefinitions="Auto,*">
                 <Border Grid.RowSpan="2">
                     <Border.Background>
-                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" />
+                        <!-- UniformToFill: the default Fill would distort the art once the window can be
+     any aspect ratio. All three copies (base + two blur layers) must use the same
+     stretch so the blurred copies stay pixel-aligned with the base. -->
+                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
                     </Border.Background>
                 </Border>
 
@@ -123,7 +140,7 @@
                 <Border Grid.RowSpan="2" Name="ContentBackdropBlur" IsHitTestVisible="False"
                         IsVisible="{Binding IsContentPanelVisible}">
                     <Border.Background>
-                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" />
+                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
                     </Border.Background>
                     <Border.Effect>
                         <BlurEffect Radius="36" />
@@ -135,7 +152,7 @@
                      binding needed here). -->
                 <Border Grid.RowSpan="2" Name="SidebarBackdropBlur" IsHitTestVisible="False">
                     <Border.Background>
-                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" />
+                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
                     </Border.Background>
                     <Border.Effect>
                         <BlurEffect Radius="36" />
@@ -153,7 +170,7 @@
                 </Border>
                 <Border Name="TitleBar">
                     <Grid Height="32" Background="Black" PointerPressed="TitleBar_PointerPressed"
-                          ColumnDefinitions="*,32,32">
+                          ColumnDefinitions="*,32,32,32">
                         <Button Classes="titlebar-button"
                                 Grid.Column="1"
                                 Width="32"
@@ -174,7 +191,28 @@
                                            TextAlignment="Center" />
                             </Border>
                         </Button>
-                        <Button Name="CloseButton" Classes="titlebar-button" Grid.Column="2"
+                        <Button Name="MaximizeButton" Classes="titlebar-button"
+                                Grid.Column="2"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Maximize_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Name="MaximizeGlyph"
+                                           Text="◻"
+                                           FontSize="13"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                        <Button Name="CloseButton" Classes="titlebar-button" Grid.Column="3"
                                 Width="32"
                                 Height="32"
                                 HorizontalAlignment="Stretch"
@@ -239,4 +277,21 @@
             </Grid>
         </Border>
     </Border>
+
+    <!-- Invisible resize grips along the window edges. With WindowDecorations="None"
+         there is no native frame to grab, and on Linux no WM-provided resize border
+         exists at all, so these are the guaranteed cross-platform resize surface.
+         Hidden while maximized (code-behind toggles IsVisible). Edges are inset by
+         12px at the ends so the corner grips win their overlap. -->
+    <Grid Name="ResizeGrips">
+        <Border Background="Transparent" Height="6" VerticalAlignment="Top" Margin="12,0" Cursor="TopSide" Tag="North" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Height="6" VerticalAlignment="Bottom" Margin="12,0" Cursor="BottomSide" Tag="South" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="6" HorizontalAlignment="Left" Margin="0,12" Cursor="LeftSide" Tag="West" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="6" HorizontalAlignment="Right" Margin="0,12" Cursor="RightSide" Tag="East" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="TopLeftCorner" Tag="NorthWest" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="TopRightCorner" Tag="NorthEast" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="BottomLeftCorner" Tag="SouthWest" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="BottomRightCorner" Tag="SouthEast" PointerPressed="ResizeGrip_PointerPressed" />
+    </Grid>
+    </Panel>
 </Window>
