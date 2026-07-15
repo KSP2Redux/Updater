@@ -2,7 +2,7 @@
 using System.IO;
 using System.Reflection;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 public interface IAssemblyService
 {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 public interface IOperatingSystemService
 {

@@ -1,4 +1,4 @@
-using Ksp2Redux.Tools.Launcher.Services;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
 
 namespace Ksp2Redux.Tools.Launcher.Test;
 

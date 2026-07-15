@@ -1,7 +1,10 @@
 ﻿using System;
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.Common.Services;
-using Ksp2Redux.Tools.Launcher.Services;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.News;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;

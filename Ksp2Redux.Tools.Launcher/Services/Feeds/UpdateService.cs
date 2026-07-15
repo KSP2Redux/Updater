@@ -11,8 +11,10 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using MsBox.Avalonia.Enums;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Feeds;
 
 
 public interface IUpdateService

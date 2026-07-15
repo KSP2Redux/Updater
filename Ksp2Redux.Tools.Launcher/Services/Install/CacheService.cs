@@ -6,7 +6,7 @@ using System.IO.Compression;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Common.Wrappers;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 public interface ICacheService
 {

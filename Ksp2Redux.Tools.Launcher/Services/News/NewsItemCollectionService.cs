@@ -1,7 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.News;
 
 public interface INewsItemCollectionService
 {

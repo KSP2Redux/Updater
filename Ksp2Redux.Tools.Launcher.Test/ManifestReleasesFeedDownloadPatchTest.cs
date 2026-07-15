@@ -2,7 +2,9 @@ using System.Net;
 using System.Security.Cryptography;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Models;
-using Ksp2Redux.Tools.Launcher.Services;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
 using Testably.Abstractions.Testing;
 

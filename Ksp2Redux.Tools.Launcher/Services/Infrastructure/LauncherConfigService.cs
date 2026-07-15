@@ -6,8 +6,9 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using Ksp2Redux.Tools.Launcher.Models;
 using MsBox.Avalonia.Enums;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 public interface ILauncherConfigService
 {

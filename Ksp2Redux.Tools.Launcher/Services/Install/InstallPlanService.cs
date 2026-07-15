@@ -8,8 +8,9 @@ using System.Threading.Tasks;
 using Ksp2Redux.Tools.Common.Patching;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 public interface IInstallPlanService
 {

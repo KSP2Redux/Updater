@@ -2,8 +2,9 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using MsBox.Avalonia.Enums;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 /// <summary>
 /// Shared behavior for opening a link in the default browser from a view model - validates the URL,

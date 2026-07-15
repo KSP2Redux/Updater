@@ -5,7 +5,8 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using CommandLine;
-using Ksp2Redux.Tools.Launcher.Services;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher;
 

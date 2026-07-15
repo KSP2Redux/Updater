@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CodeHollow.FeedReader;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.News;
 
 public interface INewsProviderService
 {

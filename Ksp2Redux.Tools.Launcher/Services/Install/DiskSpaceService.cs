@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.IO.Abstractions;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 public interface IDiskSpaceService
 {

@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.Launcher.Models;
-using Ksp2Redux.Tools.Launcher.Services;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
 
 namespace Ksp2Redux.Tools.Launcher.Test;

@@ -1,6 +1,6 @@
 ﻿using Mono.Cecil;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 public interface IModuleDefinitionService
 {

@@ -4,23 +4,24 @@ using System.Linq;
 using System.Threading.Tasks;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.News;
 
 public interface INewsService
 {
-    Task<List<News>> FindAllNews();
-    News? GetNews(string? id);
+    Task<List<Models.News>> FindAllNews();
+    Models.News? GetNews(string? id);
     Task FetchNews();
 }
 
 public class NewsService(INewsProviderService newsProviderService, ILogService log) : INewsService
 {
-    private List<News> _newsList = new();
+    private List<Models.News> _newsList = new();
 
-    public async Task<List<News>> FindAllNews() => await Task.Run(() => _newsList.OrderByDescending(n => n.Date).ToList());
+    public async Task<List<Models.News>> FindAllNews() => await Task.Run(() => _newsList.OrderByDescending(n => n.Date).ToList());
 
-    public News? GetNews(string? id) => id is null ? null : _newsList.FirstOrDefault(n => n.Id == id);
+    public Models.News? GetNews(string? id) => id is null ? null : _newsList.FirstOrDefault(n => n.Id == id);
 
     public async Task FetchNews()
     {
@@ -32,7 +33,7 @@ public class NewsService(INewsProviderService newsProviderService, ILogService l
 
     private void LoadNewsFromFeed(Feed rssNewsContent)
     {
-        var newsList = new List<News>();
+        var newsList = new List<Models.News>();
         foreach (var item in rssNewsContent.Items)
         {
             if (item.PublishingDate is not { } date)
@@ -41,7 +42,7 @@ public class NewsService(INewsProviderService newsProviderService, ILogService l
                 continue;
             }
 
-            newsList.Add(new News
+            newsList.Add(new Models.News
             {
                 Id = string.IsNullOrWhiteSpace(item.Link) ? Guid.NewGuid().ToString() : item.Link,
                 Title = item.Title,

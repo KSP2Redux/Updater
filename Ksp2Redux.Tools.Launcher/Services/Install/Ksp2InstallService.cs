@@ -4,8 +4,9 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 public interface IKsp2InstallService
 {

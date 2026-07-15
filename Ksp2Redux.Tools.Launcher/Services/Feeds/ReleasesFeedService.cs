@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Ksp2Redux.Tools.Launcher.Models;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Feeds;
 
 public interface IReleasesFeedService
 {

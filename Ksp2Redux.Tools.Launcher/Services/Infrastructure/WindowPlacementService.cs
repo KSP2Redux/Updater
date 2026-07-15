@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 public interface IWindowPlacementService
 {

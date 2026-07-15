@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO.Abstractions;
 using System.Linq;
-using Ksp2Redux.Tools.Launcher.Services;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 

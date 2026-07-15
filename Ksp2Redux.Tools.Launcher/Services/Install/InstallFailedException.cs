@@ -1,6 +1,6 @@
 using System;
 
-namespace Ksp2Redux.Tools.Launcher.Services;
+namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 /// <summary>
 /// Thrown by <see cref="InstallPlanService.ApplyToFolder"/> when a patch-apply step fails partway
