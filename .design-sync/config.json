@@ -2,11 +2,13 @@
   "pkg": "@ksp2redux/design",
   "globalName": "Ksp2ReduxDesign",
   "shape": "package",
-  "buildCmd": "npm run build (run inside design-system/)",
-  "srcDir": "design-system/src",
+  "buildCmd": "npm run build (run inside design/design-system/)",
+  "srcDir": "design/design-system/src",
   "cssEntry": "dist/styles.css",
   "readmeHeader": ".design-sync/conventions.md",
   "overrides": {
-    "GlassPanel": { "cardMode": "column" }
+    "GlassPanel": {
+      "cardMode": "column"
+    }
   }
 }
