@@ -29,6 +29,12 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj" />
+      <!-- Build MockGame but don't reference its assembly; its output is embedded below
+           as the fake game executable the detector tests copy into the mock filesystem. -->
+      <ProjectReference Include="..\Ksp2Redux.Tools.Launcher.Test.MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.csproj">
+        <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+        <Private>false</Private>
+      </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>
@@ -36,23 +42,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.dll" />
-      <EmbeddedResource Include="MockGame\MockGame.dll">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </EmbeddedResource>
-      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.exe" />
-      <EmbeddedResource Include="MockGame\MockGame.exe">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </EmbeddedResource>
-      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.pdb" />
-      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.deps.json" />
-      <EmbeddedResource Include="MockGame\MockGame.deps.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </EmbeddedResource>
-      <None Remove="MockGame\Ksp2Redux.Tools.Launcher.Test.MockGame.runtimeconfig.json" />
-      <EmbeddedResource Include="MockGame\runtimeconfig.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </EmbeddedResource>
+      <EmbeddedResource Include="..\Ksp2Redux.Tools.Launcher.Test.MockGame\bin\$(Configuration)\net10.0\MockGame.dll"
+                        LogicalName="Ksp2Redux.Tools.Launcher.Test.MockGame.MockGame.exe"
+                        Visible="false" />
     </ItemGroup>
 
 </Project>
