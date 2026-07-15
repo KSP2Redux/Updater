@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Services;
 using Moq;
 using Testably.Abstractions.Testing;

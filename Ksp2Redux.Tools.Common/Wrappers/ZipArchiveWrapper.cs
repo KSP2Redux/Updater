@@ -2,7 +2,7 @@
 using System.IO.Compression;
 using Testably.Abstractions;
 
-namespace Ksp2Redux.Tools.Common;
+namespace Ksp2Redux.Tools.Common.Wrappers;
 
 public interface IZipArchive : IDisposable
 {

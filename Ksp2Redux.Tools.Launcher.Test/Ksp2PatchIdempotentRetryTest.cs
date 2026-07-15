@@ -2,8 +2,8 @@ using System.IO.Abstractions;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
-using Ksp2Redux.Tools.Common;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Patching;
+using Ksp2Redux.Tools.Common.Wrappers;
 using Moq;
 using Testably.Abstractions.Testing;
 

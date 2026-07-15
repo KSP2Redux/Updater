@@ -4,9 +4,10 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Common.Wrappers;
 
-namespace Ksp2Redux.Tools.Common;
+namespace Ksp2Redux.Tools.Common.Patching;
 
 public class Ksp2Patch : IDisposable
 {

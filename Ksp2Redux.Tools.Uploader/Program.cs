@@ -2,7 +2,7 @@
 
 using System.Security.Cryptography;
 using System.Text.Json;
-using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Uploader;
 using Octokit;
 using Tomlyn;

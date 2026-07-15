@@ -493,7 +493,7 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception e)
         {
             LogError($"Error updating Redux: {e.Message}", e);
-            Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
+            Log("Redux may be in an invalid state, try uninstalling and reinstalling");
         }
         finally
         {
@@ -549,7 +549,7 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception e)
         {
             LogError($"Error updating Redux: {e.Message}", e);
-            Log($"Redux may be in an invalid state, try uninstalling and reinstalling");
+            Log("Redux may be in an invalid state, try uninstalling and reinstalling");
         }
         finally
         {

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Ksp2Redux.Tools.Common;
+namespace Ksp2Redux.Tools.Common.Patching;
 
 public sealed record PatchOperation
 {

@@ -1,4 +1,4 @@
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services;
 using Moq;

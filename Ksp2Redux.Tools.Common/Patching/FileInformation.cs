@@ -1,6 +1,6 @@
 using System.IO.Abstractions;
 
-namespace Ksp2Redux.Tools.Common;
+namespace Ksp2Redux.Tools.Common.Patching;
 
 public static class FileInformation
 {

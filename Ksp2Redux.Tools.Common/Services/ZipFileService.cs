@@ -1,7 +1,8 @@
 ﻿using System.IO.Abstractions;
 using System.IO.Compression;
+using Ksp2Redux.Tools.Common.Wrappers;
 
-namespace Ksp2Redux.Tools.Common.Service;
+namespace Ksp2Redux.Tools.Common.Services;
 
 public interface IZipFileService
 {

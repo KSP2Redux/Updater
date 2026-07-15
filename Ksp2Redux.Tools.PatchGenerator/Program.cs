@@ -1,8 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.IO.Abstractions;
-using Ksp2Redux.Tools.Common;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Patching;
+using Ksp2Redux.Tools.Common.Services;
 using Testably.Abstractions;
 
 Console.WriteLine(string.Join(", ",args));

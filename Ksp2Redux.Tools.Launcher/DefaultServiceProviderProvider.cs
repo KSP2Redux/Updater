@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO.Abstractions;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Services;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;

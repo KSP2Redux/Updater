@@ -7,7 +7,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Services;
 
 namespace Ksp2Redux.Tools.Launcher.Models;

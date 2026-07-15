@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Models;
 using Octokit;
 

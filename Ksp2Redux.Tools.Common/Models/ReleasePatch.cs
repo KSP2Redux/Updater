@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Ksp2Redux.Tools.Common;
+namespace Ksp2Redux.Tools.Common.Models;
 
 public sealed record ReleasePatch
 {

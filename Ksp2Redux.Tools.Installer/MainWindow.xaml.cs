@@ -2,8 +2,8 @@
 using System.IO.Abstractions;
 using System.Windows;
 using System.Windows.Controls;
-using Ksp2Redux.Tools.Common;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Patching;
+using Ksp2Redux.Tools.Common.Services;
 using Microsoft.Win32;
 using Testably.Abstractions;
 using Exception = System.Exception;

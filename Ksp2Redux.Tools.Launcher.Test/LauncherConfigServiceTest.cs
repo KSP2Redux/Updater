@@ -27,18 +27,18 @@ public class LauncherConfigServiceTest
     };
 
     // Same content as simpleLauncherConfigJson but already migrated to the multi-install schema.
-    private string simpleLauncherConfigJsonMigrated => $$"""
-                                              {
-                                                  "Ksp2InstallPath": "",
-                                                  "ReleaseChannel": "channel",
-                                                  "LastInstalledVersion": null,
-                                                  "Feeds": [],
-                                                  "Ksp2Installs": [
-                                                      { "Id": "11111111-1111-1111-1111-111111111111", "Name": "patch", "ExePath": "ksp2 install patch", "ReleaseChannel": "channel", "LastInstalledVersion": null }
-                                                  ],
-                                                  "ActiveKsp2InstallId": "11111111-1111-1111-1111-111111111111"
-                                              }
-                                              """;
+    private string simpleLauncherConfigJsonMigrated => """
+                                                       {
+                                                           "Ksp2InstallPath": "",
+                                                           "ReleaseChannel": "channel",
+                                                           "LastInstalledVersion": null,
+                                                           "Feeds": [],
+                                                           "Ksp2Installs": [
+                                                               { "Id": "11111111-1111-1111-1111-111111111111", "Name": "patch", "ExePath": "ksp2 install patch", "ReleaseChannel": "channel", "LastInstalledVersion": null }
+                                                           ],
+                                                           "ActiveKsp2InstallId": "11111111-1111-1111-1111-111111111111"
+                                                       }
+                                                       """;
     
     private string emptyLauncherConfigJson = """
                                             {

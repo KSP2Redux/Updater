@@ -2,7 +2,7 @@
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
-using Ksp2Redux.Tools.Common;
+using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;

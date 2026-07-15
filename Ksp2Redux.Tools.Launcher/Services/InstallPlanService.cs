@@ -5,8 +5,8 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Ksp2Redux.Tools.Common;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Patching;
+using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.Services;

@@ -1,6 +1,6 @@
 using System.IO.Abstractions;
-using Ksp2Redux.Tools.Common;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Patching;
+using Ksp2Redux.Tools.Common.Services;
 using Testably.Abstractions;
 
 if (args.Length < 2)

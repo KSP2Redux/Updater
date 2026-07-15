@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.IO.Compression;
-using Ksp2Redux.Tools.Common;
-using Ksp2Redux.Tools.Common.Service;
+using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Common.Wrappers;
 
 namespace Ksp2Redux.Tools.Launcher.Services;
 
