@@ -9,6 +9,15 @@
         <local:ViewLocator/>
     </Application.DataTemplates>
 
+    <!-- macOS application menu (ignored on Windows/Linux, which use no menu bar) -->
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <NativeMenuItem Header="About KSP2 Redux" Click="AboutMenuItem_OnClick" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Check for Updates…" Click="CheckForUpdatesMenuItem_OnClick" />
+        </NativeMenu>
+    </NativeMenu.Menu>
+
     <Application.Resources>
         <ResourceDictionary>
             <FontFamily x:Key="LedCounter7">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#LED Counter 7</FontFamily>

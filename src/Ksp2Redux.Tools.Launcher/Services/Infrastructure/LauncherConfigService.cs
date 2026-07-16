@@ -4,7 +4,6 @@ using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Ksp2Redux.Tools.Launcher.Models;
-using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
@@ -160,8 +159,7 @@ public class LauncherConfigService : ILauncherConfigService
                 {
                     await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Save Settings",
                         $"Your changes could not be saved: {ex.Message}\nThey may be lost if you close the launcher. " +
-                        $"Check that {Config.StoragePath} is writable and try again.",
-                        ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                        $"Check that {Config.StoragePath} is writable and try again.", windowStartupLocation: WindowStartupLocation.CenterOwner);
                 }
                 finally
                 {

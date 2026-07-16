@@ -181,8 +181,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Dispatcher.UIThread.Post(async () =>
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Startup Error",
-                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         });
     }
 
@@ -194,8 +193,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _log.Warn("Partial update detected from a prior launch.");
             var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Partial Update Complete",
-                $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
 
         // First start the updater service
@@ -226,7 +224,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 _log.Warn("KSP2 install was not auto-detected.");
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Not Found!",
-                    "Your KSP2 install was not detected, go to the settings tab to set it", ButtonEnum.Ok,
+                    "Your KSP2 install was not detected, go to the settings tab to set it",
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
             }
         }
@@ -273,7 +271,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (!ksp2.IsValid)
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Invalid EXE",
-                $"The configured KSP2 EXE path is not valid:\n{ksp2.ExePath}", ButtonEnum.Ok,
+                $"The configured KSP2 EXE path is not valid:\n{ksp2.ExePath}",
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -285,8 +283,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "KSP2 Redux couldn't figure out which version of the game is installed. " +
                 "This can happen if the game files are missing, corrupted, or from an unsupported source.\n\n" +
                 "You can still try launching or installing, but update checks may be unreliable. " +
-                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 

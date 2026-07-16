@@ -10,7 +10,6 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
-using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
@@ -226,8 +225,7 @@ public partial class HomeTabViewModel : ViewModelBase
         if (_ksp2InstallService.Ksp2 is not { IsValid: true })
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                "KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                "KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.", windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
         var activeEntry = _ksp2InstallService.ActiveEntry;
@@ -250,8 +248,7 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 _log.Error("Failed to launch through Steam.", ex);
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                    $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.",
-                    ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.", windowStartupLocation: WindowStartupLocation.CenterOwner);
             }
             return;
         }
@@ -274,8 +271,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             _log.Error("Failed to launch KSP2.", ex);
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
         finally
         {
@@ -664,8 +660,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             _log.Error("Manual launcher update failed.", ex);
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
-                $"Something went wrong while checking for launcher updates: {ex.Message}\nPlease try again later.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                $"Something went wrong while checking for launcher updates: {ex.Message}\nPlease try again later.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 }

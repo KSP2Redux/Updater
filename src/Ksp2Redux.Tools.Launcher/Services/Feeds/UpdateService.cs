@@ -192,7 +192,7 @@ public class UpdateService : IUpdateService
             {
                 _log.Warn("Running in non-single-file build, refusing to self-update.");
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
-                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.", ButtonEnum.Ok,
+                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.",
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
                 return false;
             }
@@ -270,7 +270,7 @@ public class UpdateService : IUpdateService
         var repo = _launcherConfigService.Config.LauncherRepo.TrimEnd('/');
         var releasesUrl = $"{repo}/releases";
         await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
-            $"Please download the latest version of the launcher from\n{releasesUrl}", ButtonEnum.Ok,
+            $"Please download the latest version of the launcher from\n{releasesUrl}",
             windowStartupLocation: WindowStartupLocation.CenterOwner);
         try
         {
