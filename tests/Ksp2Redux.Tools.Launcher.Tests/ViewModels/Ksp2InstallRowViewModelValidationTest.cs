@@ -4,7 +4,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Moq;
 using Testably.Abstractions.Testing;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.ViewModels;
 
 public class Ksp2InstallRowViewModelValidationTest
 {

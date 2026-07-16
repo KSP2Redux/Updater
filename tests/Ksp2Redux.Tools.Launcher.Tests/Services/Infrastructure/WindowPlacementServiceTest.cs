@@ -2,7 +2,7 @@ using Avalonia;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.Services.Infrastructure;
 
 public class WindowPlacementServiceTest
 {

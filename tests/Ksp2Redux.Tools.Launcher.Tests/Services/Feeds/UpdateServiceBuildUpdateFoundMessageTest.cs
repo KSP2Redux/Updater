@@ -1,6 +1,6 @@
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.Services.Feeds;
 
 public class UpdateServiceBuildUpdateFoundMessageTest
 {

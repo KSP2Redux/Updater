@@ -4,7 +4,7 @@ using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 using Moq;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.ViewModels;
 
 public class CommunityTabViewModelTest
 {

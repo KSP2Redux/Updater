@@ -3,7 +3,7 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.Services.Infrastructure;
 
 public class LauncherConfigServiceTest
 {

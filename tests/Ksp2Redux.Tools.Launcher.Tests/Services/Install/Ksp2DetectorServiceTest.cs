@@ -3,7 +3,7 @@ using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
 using Testably.Abstractions.Testing;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 
 public class Ksp2DetectorServiceTest
 {

@@ -1,7 +1,7 @@
 ﻿using Ksp2Redux.Tools.Launcher.Models;
 using Mono.Cecil;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.Models;
 
 public class GameVersionTest
 {

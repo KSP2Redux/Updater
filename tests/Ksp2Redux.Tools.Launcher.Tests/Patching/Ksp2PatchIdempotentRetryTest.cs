@@ -6,7 +6,7 @@ using Ksp2Redux.Tools.Common.Wrappers;
 using Moq;
 using Testably.Abstractions.Testing;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.Patching;
 
 public class Ksp2PatchIdempotentRetryTest
 {

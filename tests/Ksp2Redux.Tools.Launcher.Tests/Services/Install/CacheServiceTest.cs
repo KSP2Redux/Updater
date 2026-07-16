@@ -4,7 +4,7 @@ using Ksp2Redux.Tools.Launcher.Services.Install;
 using Moq;
 using Testably.Abstractions.Testing;
 
-namespace Ksp2Redux.Tools.Launcher.Tests;
+namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 
 public class CacheServiceTest
 {
