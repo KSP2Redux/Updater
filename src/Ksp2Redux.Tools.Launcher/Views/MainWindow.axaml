@@ -1,0 +1,301 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ksp2Redux.Tools.Launcher.ViewModels"
+        xmlns:views="using:Ksp2Redux.Tools.Launcher.Views"
+        xmlns:home="using:Ksp2Redux.Tools.Launcher.Views.Home"
+        xmlns:community="using:Ksp2Redux.Tools.Launcher.Views.Community"
+        xmlns:mods="using:Ksp2Redux.Tools.Launcher.Views.Mods"
+        xmlns:settings="using:Ksp2Redux.Tools.Launcher.Views.Settings"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+        Width="1280" Height="800" MinWidth="1000" MinHeight="700" CanResize="True"
+        x:Class="Ksp2Redux.Tools.Launcher.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="Transparent"
+        TransparencyBackgroundFallback="Transparent"
+        WindowDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/favicon.ico"
+        Title="KSP2 Redux">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Escape" Command="{Binding HandleEscapeCommand}" />
+        <KeyBinding Gesture="Ctrl+D1" Command="{Binding GoToTabCommand}" CommandParameter="0" />
+        <KeyBinding Gesture="Ctrl+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="Ctrl+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="Ctrl+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
+    </Window.KeyBindings>
+
+    <!-- ReSharper disable Xaml.RedundantResource -->
+    <Window.Resources>
+        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{StaticResource BrandRedColor}" />
+    </Window.Resources>
+    <!-- ReSharper restore Xaml.RedundantResource -->
+
+    <Window.Styles>
+        <!-- When maximized the OS squares the window anyway, so rounded corners would
+             leave black notches at the screen edges - square everything. The red 2px
+             frame itself deliberately stays visible in every state (brand signature). -->
+        <Style Selector="Border#OuterFrame.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Border#InnerChrome.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Border#TitleBar.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+
+        <Style Selector="Border#TitleBar">
+            <!-- Matches the inner chrome Border's CornerRadius below (RadiusLarge minus
+                 the outer frame's 2px BorderThickness) so it nests flush at the top
+                 corners instead of leaving a seam. -->
+            <Setter Property="CornerRadius" Value="10,10,0,0" />
+            <Setter Property="ClipToBounds" Value="True" />
+
+            <Style Selector="^ Button.titlebar-button">
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="BorderThickness" Value="0" />
+
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="HorizontalAlignment" Value="Center" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+                <Style Selector="^ Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^:pointerover Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="{StaticResource OverlayHighlightBrush}" />
+                </Style>
+                <Style Selector="^#CloseButton Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^#CloseButton:pointerover Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="{StaticResource BrandRedBrush}" />
+                </Style>
+            </Style>
+        </Style>
+
+        <Style Selector="TabItem">
+            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="FontSize" Value="32" />
+            <Setter Property="Margin" Value="20,0" />
+
+            <Style Selector="^ Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselected}" />
+            </Style>
+            <Style Selector="^:pointerover Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselectedPointerOver}" />
+            </Style>
+            <Style Selector="^:pressed Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselectedPressed}" />
+            </Style>
+            <Style Selector="^:selected Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelected}" />
+            </Style>
+            <Style Selector="^:selected:pointerover Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelectedPointerOver}" />
+            </Style>
+            <Style Selector="^:selected:pressed Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelectedPressed}" />
+            </Style>
+        </Style>
+    </Window.Styles>
+
+    <Panel>
+    <Border Name="OuterFrame" BorderBrush="{StaticResource BrandRedBrush}" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}" VerticalAlignment="Stretch">
+        <!-- 10 = RadiusLarge (12) minus the outer Border's 2px BorderThickness, so the
+             two borders form a properly nested concentric ring instead of a mismatched gap. -->
+        <Border Name="InnerChrome" Background="Black" CornerRadius="10" ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*">
+                <Border Grid.RowSpan="2">
+                    <Border.Background>
+                        <!-- UniformToFill: the default Fill would distort the art once the window can be
+     any aspect ratio. All three copies (base + two blur layers) must use the same
+     stretch so the blurred copies stay pixel-aligned with the base. -->
+                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
+                    </Border.Background>
+                </Border>
+
+                <!--
+                    Avalonia has no real backdrop-filter, so the "frosted glass" look behind
+                    the Home/Community/Settings/Mods cards is faked with a second full-window
+                    copy of the same background art, blurred, then clipped down to exactly
+                    where the panel sits. Because both copies share the same bounds and
+                    stretch, they line up pixel-for-pixel; only the clip rect (kept in sync
+                    with the panel's fixed 24,8,24,8 margin in MainWindow.axaml.cs) needs to
+                    know where to cut. The panels themselves are then translucent instead of
+                    solid so this shows through.
+                -->
+                <Border Grid.RowSpan="2" Name="ContentBackdropBlur" IsHitTestVisible="False"
+                        IsVisible="{Binding IsContentPanelVisible}">
+                    <Border.Background>
+                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
+                    </Border.Background>
+                    <Border.Effect>
+                        <BlurEffect Radius="36" />
+                    </Border.Effect>
+                </Border>
+
+                <!-- Same trick as ContentBackdropBlur above, but clipped to the sidebar's
+                     news panel instead, which is always shown (no IsContentPanelVisible
+                     binding needed here). -->
+                <Border Grid.RowSpan="2" Name="SidebarBackdropBlur" IsHitTestVisible="False">
+                    <Border.Background>
+                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
+                    </Border.Background>
+                    <Border.Effect>
+                        <BlurEffect Radius="36" />
+                    </Border.Effect>
+                </Border>
+
+                <Border Grid.RowSpan="2">
+                    <Border.Background>
+                        <LinearGradientBrush Opacity="{Binding CurrentTab, Converter={StaticResource IsSettingsTabConverter}}"
+                                             StartPoint="0%,50%" EndPoint="100%,50%">
+                            <GradientStop Color="#66000000" Offset="0.6"/>
+                            <GradientStop Color="#00000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border Name="TitleBar">
+                    <Grid Height="32" Background="Black" PointerPressed="TitleBar_PointerPressed"
+                          ColumnDefinitions="*,32,32,32">
+                        <Button Classes="titlebar-button"
+                                Grid.Column="1"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Minimize_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Text="−"
+                                           FontSize="14"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                        <Button Name="MaximizeButton" Classes="titlebar-button"
+                                Grid.Column="2"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Maximize_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Name="MaximizeGlyph"
+                                           Text="◻"
+                                           FontSize="13"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                        <Button Name="CloseButton" Classes="titlebar-button" Grid.Column="3"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Close_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Text="✕"
+                                           FontSize="13"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0" Padding="24,16,24,12">
+                        <views:SidebarView Name="Sidebar" />
+                    </Border>
+
+                    <Border Grid.Column="1" Padding="0,0,24,24">
+                        <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
+                            <TabItem Name="HomeTab" Header="Home">
+                                <home:HomeTabView Name="HomeView" DataContext="{Binding HomeTab}"/>
+                            </TabItem>
+                            <TabItem Name="CommunityTab" Header="Community">
+                                <community:CommunityTabView Name="CommunityView" DataContext="{Binding CommunityTab}"/>
+                            </TabItem>
+                            <TabItem Name="ModsTab" Header="Mods">
+                                <mods:ModsTabView Name="ModsView" DataContext="{Binding ModsTab}"/>
+                            </TabItem>
+                            <TabItem Name="SettingsTab">
+                                <TabItem.Header>
+                                    <Grid Margin="2,6,2,8">
+                                        <Canvas Width="16" Height="16">
+                                            <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+                                                <Rectangle.OpacityMask>
+                                                    <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/settings-icon.png"></ImageBrush>
+                                                </Rectangle.OpacityMask>
+                                            </Rectangle>
+                                        </Canvas>
+                                    </Grid>
+                                </TabItem.Header>
+                                <settings:SettingsTabView Name="SettingsView" DataContext="{Binding SettingsTab}" />
+                            </TabItem>
+                        </TabControl>
+                    </Border>
+                </Grid>
+
+                <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="{StaticResource ScrimMediumBrush}">
+                    <TextBlock Text="Update Downloading..."
+                               Foreground="{StaticResource TextPrimaryBrush}" FontSize="32"
+                               FontFamily="{StaticResource JetBrainsMonoLight}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+
+    <!-- Invisible resize grips along the window edges. With WindowDecorations="None"
+         there is no native frame to grab, and on Linux no WM-provided resize border
+         exists at all, so these are the guaranteed cross-platform resize surface.
+         Hidden while maximized (code-behind toggles IsVisible). Edges are inset by
+         12px at the ends so the corner grips win their overlap. -->
+    <Grid Name="ResizeGrips">
+        <Border Background="Transparent" Height="6" VerticalAlignment="Top" Margin="12,0" Cursor="TopSide" Tag="North" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Height="6" VerticalAlignment="Bottom" Margin="12,0" Cursor="BottomSide" Tag="South" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="6" HorizontalAlignment="Left" Margin="0,12" Cursor="LeftSide" Tag="West" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="6" HorizontalAlignment="Right" Margin="0,12" Cursor="RightSide" Tag="East" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="TopLeftCorner" Tag="NorthWest" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="TopRightCorner" Tag="NorthEast" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="BottomLeftCorner" Tag="SouthWest" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="BottomRightCorner" Tag="SouthEast" PointerPressed="ResizeGrip_PointerPressed" />
+    </Grid>
+    </Panel>
+</Window>

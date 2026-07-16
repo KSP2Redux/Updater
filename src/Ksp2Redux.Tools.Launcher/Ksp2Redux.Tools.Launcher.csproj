@@ -1,0 +1,83 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>Assets\favicon.ico</ApplicationIcon>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
+        <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <LangVersion>preview</LangVersion>
+        <AssemblyTitle>KSP2 Redux</AssemblyTitle>
+        <Description>Launcher and updater for KSP2 Redux</Description>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" />
+        <PackageReference Include="Avalonia.Desktop" />
+        <PackageReference Include="Avalonia.HtmlRenderer" />
+        <PackageReference Include="Avalonia.Themes.Fluent" />
+        <PackageReference Include="Avalonia.Fonts.Inter" />
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />
+        <PackageReference Include="CodeHollow.FeedReader" />
+        <PackageReference Include="CommandLineParser" />
+        <PackageReference Include="CommunityToolkit.Mvvm" />
+        <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="MessageBox.Avalonia" />
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" />
+        <PackageReference Include="Mono.Cecil" />
+        <PackageReference Include="Octokit" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Views\Shared\NewsItemView.axaml.cs">
+        <DependentUpon>NewsItemView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+    </ItemGroup>
+
+    <!-- Bundle ICU only for the RIDs the package actually provides (win/linux); macOS
+         has no app-local ICU build and must use the OS-provided one. -->
+    <ItemGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win')) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux'))">
+        <RuntimeHostConfigurationOption
+                Include="System.Globalization.AppLocalIcu"
+                Value="72.1.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Prepatches\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Prepatches\epic-prepatch.patch" />
+      <EmbeddedResource Include="Prepatches\epic-prepatch.patch" />
+      <None Remove="Prepatches\portable-prepatch.patch" />
+      <EmbeddedResource Include="Prepatches\portable-prepatch.patch" />
+      <None Remove="Prepatches\steam-prepatch.patch" />
+      <EmbeddedResource Include="Prepatches\steam-prepatch.patch" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="BannedSymbols.txt" />
+    </ItemGroup>
+</Project>

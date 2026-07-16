@@ -1,0 +1,39 @@
+<Project>
+    <!-- Central Package Management: every package version in the repo lives here.
+           .csproj files reference packages by name only. -->
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageVersion Include="Avalonia" Version="12.1.0"/>
+        <PackageVersion Include="Avalonia.Desktop" Version="12.1.0"/>
+        <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.0"/>
+        <PackageVersion Include="Avalonia.Headless.NUnit" Version="12.1.0"/>
+        <PackageVersion Include="Avalonia.HtmlRenderer" Version="12.0.0"/>
+        <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.0"/>
+        <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3"/>
+        <PackageVersion Include="BsDiff" Version="1.1.0"/>
+        <PackageVersion Include="CodeHollow.FeedReader" Version="1.2.6"/>
+        <PackageVersion Include="CommandLineParser" Version="2.9.1"/>
+        <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2"/>
+        <PackageVersion Include="coverlet.collector" Version="10.0.1"/>
+        <PackageVersion Include="EnvironmentAbstractions" Version="5.0.0"/>
+        <PackageVersion Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0"/>
+        <PackageVersion Include="EnvironmentAbstractions.TestHelpers" Version="5.0.0"/>
+        <PackageVersion Include="MessageBox.Avalonia" Version="12.0.0"/>
+        <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0"/>
+        <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10"/>
+        <!-- Keep in sync with the RuntimeHostConfigurationOption value in Ksp2Redux.Tools.Launcher.csproj -->
+        <PackageVersion Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3"/>
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1"/>
+        <PackageVersion Include="Mono.Cecil" Version="0.11.6"/>
+        <PackageVersion Include="Moq" Version="4.20.72"/>
+        <PackageVersion Include="NUnit" Version="4.6.1"/>
+        <PackageVersion Include="NUnit.Analyzers" Version="4.14.0"/>
+        <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0"/>
+        <PackageVersion Include="Octokit" Version="14.0.0"/>
+        <PackageVersion Include="Testably.Abstractions" Version="10.3.0"/>
+        <PackageVersion Include="Testably.Abstractions.Testing" Version="7.0.1"/>
+        <PackageVersion Include="Tomlyn" Version="2.10.1"/>
+    </ItemGroup>
+</Project>

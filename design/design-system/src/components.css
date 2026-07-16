@@ -1,0 +1,120 @@
+/* GlassPanel - translucent dark panel over a blurred backdrop, the launcher's
+   main content surface (Home install log, Community article pane). */
+.krx-glass-panel {
+    background: var(--krx-glass-surface);
+    border: 2px solid var(--krx-glass-border);
+    border-radius: var(--krx-radius-lg);
+    box-shadow: var(--krx-glass-shadow);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--krx-text-primary);
+    font-family: var(--krx-font-mono);
+    padding: 16px;
+}
+
+/* MainButton - the launcher's big LED-style sidebar action button.
+   Art (button-*.png) is inlined as data URLs at build time; see button-art.css. */
+.krx-main-button {
+    position: relative;
+    display: inline-block;
+    width: 260px;
+    height: 76px;
+    padding: 0;
+    border: none;
+    border-radius: var(--krx-radius-md);
+    background-color: transparent;
+    background-size: 260px auto;
+    background-repeat: no-repeat;
+    background-position: top left;
+    cursor: pointer;
+    overflow: hidden;
+    text-align: left;
+}
+
+.krx-main-button__label {
+    position: absolute;
+    top: 16px;
+    left: 24px;
+    font-family: var(--krx-font-led);
+    font-size: 32px;
+    line-height: 1;
+    color: var(--krx-main-button-text);
+}
+
+.krx-main-button__tint {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--krx-radius-md);
+    background: transparent;
+    pointer-events: none;
+}
+
+.krx-main-button:hover .krx-main-button__tint {
+    background: var(--krx-overlay-hover);
+}
+
+.krx-main-button:active .krx-main-button__tint {
+    background: var(--krx-overlay-pressed);
+}
+
+.krx-main-button:disabled {
+    cursor: default;
+}
+
+.krx-main-button:disabled .krx-main-button__tint {
+    background: var(--krx-scrim-strong);
+}
+
+/* Button - standard action button (refresh, settings actions, dialogs). */
+.krx-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    border-radius: var(--krx-radius-md);
+    font-family: var(--krx-font-mono);
+    font-size: 12px;
+    color: var(--krx-text-primary);
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+.krx-button--sm {
+    font-size: 11px;
+    padding: 3px 9px;
+}
+
+.krx-button--success {
+    background: var(--krx-success);
+}
+
+.krx-button--success:hover:not(:disabled) {
+    background: var(--krx-success-hover);
+}
+
+.krx-button--success:active:not(:disabled) {
+    background: var(--krx-success-pressed);
+}
+
+.krx-button--danger {
+    background: var(--krx-danger);
+}
+
+.krx-button--danger:hover:not(:disabled) {
+    background: var(--krx-danger-hover);
+}
+
+.krx-button--neutral {
+    background: var(--krx-neutral-button);
+}
+
+.krx-button--neutral:hover:not(:disabled) {
+    background: var(--krx-neutral-button-hover);
+}
+
+.krx-button:disabled {
+    background: var(--krx-disabled-surface);
+    opacity: 0.6;
+    cursor: default;
+}

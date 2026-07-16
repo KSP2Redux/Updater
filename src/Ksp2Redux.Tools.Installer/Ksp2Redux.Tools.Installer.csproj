@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <UseWPF>true</UseWPF>
+        <AssemblyTitle>KSP2 Redux Installer</AssemblyTitle>
+        <Description>Windows installer for KSP2 Redux</Description>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>Ksp2Redux.Tools</RootNamespace>
+        <NoWarn>$(NoWarn);WPF0001</NoWarn>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj"/>
+    </ItemGroup>
+
+</Project>

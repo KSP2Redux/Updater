@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "PatchGenerator": {
+      "commandName": "Project",
+      "commandLineArgs": "path/to/stock-ksp2 path/to/redux-build path/to/output.patch false"
+    }
+  }
+}

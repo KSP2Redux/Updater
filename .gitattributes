@@ -1,0 +1,20 @@
+# Normalize line endings: text files are stored with LF in the repo,
+# checked out per-platform. Binary types are listed explicitly so they
+# are never touched.
+* text=auto
+
+# Always LF, even on Windows checkouts
+*.sh text eol=lf
+
+# The prepatch files are binary zip payloads, not text diffs
+*.patch binary
+
+# Images and fonts
+*.png binary
+*.ico binary
+*.gif binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
