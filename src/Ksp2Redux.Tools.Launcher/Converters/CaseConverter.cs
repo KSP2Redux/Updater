@@ -1,5 +1,4 @@
-﻿using System;
-using Avalonia.Data.Converters;
+﻿using Avalonia.Data.Converters;
 
 namespace Ksp2Redux.Tools.Launcher.Converters;
 

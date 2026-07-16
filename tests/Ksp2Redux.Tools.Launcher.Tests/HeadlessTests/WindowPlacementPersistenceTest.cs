@@ -1,8 +1,6 @@
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using CodeHollow.FeedReader;
-using Ksp2Redux.Tools.Launcher.Services.Feeds;
-using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.Views;
@@ -26,7 +24,7 @@ public class WindowPlacementPersistenceTest
 
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();

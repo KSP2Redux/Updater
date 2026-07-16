@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
-public class LauncherConfig
+public class LauncherConfig(string storagePath)
 {
     public string Ksp2InstallPath { get; set; } = "";
     public string ReleaseChannel { get; set; } = "beta";
@@ -41,14 +39,9 @@ public class LauncherConfig
     public WindowPlacement? WindowPlacement { get; set; }
 
     [JsonIgnore]
-    public string StoragePath { get; set; }
+    public string StoragePath { get; set; } = storagePath;
 
     public LauncherConfig() : this(string.Empty)
     {
-    }
-
-    public LauncherConfig(string storagePath)
-    {
-        StoragePath = storagePath;
     }
 }

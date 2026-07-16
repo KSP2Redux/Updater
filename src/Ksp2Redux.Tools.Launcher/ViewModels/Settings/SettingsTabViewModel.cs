@@ -1,14 +1,11 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
-using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO.Abstractions;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -153,12 +150,12 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     private static readonly FilePickerFileType Ksp2Exe = new("KSP2 installation")
     {
-        Patterns = ["KSP2_x64.exe"],
+        Patterns = ["KSP2_x64.exe"]
     };
 
     private static readonly FilePickerFileType Patch = new("KSP2 Patch File")
     {
-        Patterns = ["*.patch"],
+        Patterns = ["*.patch"]
     };
 
     [RelayCommand]
@@ -232,7 +229,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             Title = "Open KSP2_x64.exe",
             AllowMultiple = false,
             FileTypeFilter = [Ksp2Exe],
-            SuggestedStartLocation = startFolder,
+            SuggestedStartLocation = startFolder
         });
 
         return files?.Count >= 1 ? files[0] : null;
@@ -313,7 +310,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             Title = "Open Patch File",
             AllowMultiple = false,
             FileTypeFilter = [Patch],
-            SuggestedStartLocation = startFolder,
+            SuggestedStartLocation = startFolder
         });
 
         return files?.Count >= 1 ? files[0] : null;

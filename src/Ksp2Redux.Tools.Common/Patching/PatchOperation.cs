@@ -20,6 +20,6 @@ public sealed record PatchOperation
     {
         Patch,
         Add,
-        Remove,
+        Remove
     }
 }

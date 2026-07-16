@@ -67,7 +67,7 @@ if (!isDeleteOnly)
             Name = $"KSP2 Redux {uploadManifest.Version}",
             Body = releaseBody,
             Draft = false,
-            Prerelease = false,
+            Prerelease = false
         };
 
         createdRelease = await github.Repository.Release.Create(repoOwner, repoName, newRelease);
@@ -98,7 +98,7 @@ if (!isDeleteOnly)
         {
             FileName = fileName,
             ContentType = "application/octet-stream",
-            RawData = stream,
+            RawData = stream
         };
 
         var asset = await github.Repository.Release.UploadAsset(createdRelease, upload);
@@ -120,9 +120,9 @@ if (!isDeleteOnly)
             Size = localSize,
             Requires = new PatchRequirement
             {
-                Version = patch.PreviousVersion,
+                Version = patch.PreviousVersion
             },
-            Url = asset.BrowserDownloadUrl,
+            Url = asset.BrowserDownloadUrl
         };
 
         patchesToPrepend.Add(releasePatch);
@@ -188,7 +188,7 @@ feedJson.GeneratedAt = DateTime.UtcNow;
 
 var newFeedContent = JsonSerializer.Serialize(feedJson, new JsonSerializerOptions()
 {
-    WriteIndented = true,
+    WriteIndented = true
 });
 
 var commitMessage = isDeleteOnly

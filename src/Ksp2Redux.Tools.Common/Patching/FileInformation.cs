@@ -30,6 +30,6 @@ public static class FileInformation
         fileSystem.Path.Combine(Ksp2X64Data, "boot.config"),
         "Ksp2.log",
         "redux.log",
-        "redux.log.old",
+        "redux.log.old"
     ], StringComparer.OrdinalIgnoreCase);
 }

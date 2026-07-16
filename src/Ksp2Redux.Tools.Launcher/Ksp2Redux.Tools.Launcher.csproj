@@ -56,7 +56,9 @@
       </Compile>
     </ItemGroup>
 
-    <ItemGroup>
+    <!-- Bundle ICU only for the RIDs the package actually provides (win/linux); macOS
+         has no app-local ICU build and must use the OS-provided one. -->
+    <ItemGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win')) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux'))">
         <RuntimeHostConfigurationOption
                 Include="System.Globalization.AppLocalIcu"
                 Value="72.1.0.3" />

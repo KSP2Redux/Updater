@@ -25,7 +25,7 @@ public class LaunchGameRevalidationTest
 
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();

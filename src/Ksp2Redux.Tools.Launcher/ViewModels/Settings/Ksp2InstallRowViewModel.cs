@@ -1,6 +1,4 @@
-using System;
 using System.IO.Abstractions;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;

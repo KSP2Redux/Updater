@@ -1,5 +1,4 @@
 using System.IO.Abstractions;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
 using Testably.Abstractions.Testing;

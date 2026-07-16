@@ -1,4 +1,3 @@
-using System.Net.Http;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -33,7 +32,7 @@ public class FeedRefreshFailureTest
             Channel = channel,
             GeneratedAt = new DateTime(2020, 1, 4),
             Patches = [],
-            SchemaVersion = 1,
+            SchemaVersion = 1
         };
 
         TestAppBuilder.ManifestReleasesFeedProviderService
@@ -45,7 +44,7 @@ public class FeedRefreshFailureTest
 
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();

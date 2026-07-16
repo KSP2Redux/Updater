@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using CodeHollow.FeedReader;
+﻿using CodeHollow.FeedReader;
 
 namespace Ksp2Redux.Tools.Launcher.Services.News;
 

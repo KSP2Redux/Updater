@@ -130,7 +130,7 @@ public class DownloadTest
             Requires = new PatchRequirement { Version = null },
             Size = 10,
             Url = "https://github.com/patch1Rollup.patch",
-            Version = "0.2.3.1.1234",
+            Version = "0.2.3.1.1234"
         };
 
         TestAppBuilder.ManifestReleasesFeedProviderService
@@ -159,7 +159,7 @@ public class DownloadTest
         {
             Content = new ByteArrayContent(patch1RollupZipBytes)
             {
-                Headers = { ContentLength = patch1RollupZipBytes.Length },
+                Headers = { ContentLength = patch1RollupZipBytes.Length }
             },
             StatusCode = HttpStatusCode.OK
         };
@@ -286,7 +286,7 @@ public class DownloadTest
         // Act - Assert
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();

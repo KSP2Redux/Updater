@@ -1,11 +1,7 @@
-using System;
-using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
@@ -14,7 +10,7 @@ public enum LogLevel
     Debug = 0,
     Info = 1,
     Warn = 2,
-    Error = 3,
+    Error = 3
 }
 
 public interface ILogService

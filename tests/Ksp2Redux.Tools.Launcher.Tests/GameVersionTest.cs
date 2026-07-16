@@ -307,7 +307,7 @@ public class GameVersionTest
         GameVersion gameVersion = new()
         {
             VersionNumber = Version.Parse("0.0.0.0"),
-            BuildNumber = "1234",
+            BuildNumber = "1234"
         };
         
         // Act

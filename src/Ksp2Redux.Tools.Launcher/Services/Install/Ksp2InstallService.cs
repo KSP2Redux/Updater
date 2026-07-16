@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
@@ -82,7 +78,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
             Name = string.IsNullOrWhiteSpace(name) ? LauncherConfigService.DeriveDefaultInstallName(exePath) : name!,
             ReleaseChannel = launcherConfigService.Config.Ksp2Installs.Count > 0
                 ? (ActiveEntry?.ReleaseChannel ?? "beta")
-                : (string.IsNullOrEmpty(launcherConfigService.Config.ReleaseChannel) ? "beta" : launcherConfigService.Config.ReleaseChannel),
+                : (string.IsNullOrEmpty(launcherConfigService.Config.ReleaseChannel) ? "beta" : launcherConfigService.Config.ReleaseChannel)
         };
         launcherConfigService.Config.Ksp2Installs.Add(entry);
 

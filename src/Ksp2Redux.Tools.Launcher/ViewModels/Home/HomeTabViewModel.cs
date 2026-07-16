@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -49,7 +45,7 @@ public partial class HomeTabViewModel : ViewModelBase
         Launch,
         Install,
         Update,
-        Cancel,
+        Cancel
     }
     [ObservableProperty]
     public partial MainButtonState MainButtonShown { get; set; }
@@ -244,7 +240,7 @@ public partial class HomeTabViewModel : ViewModelBase
             var startInfo = new ProcessStartInfo
             {
                 FileName = $"steam://rungameid/{appId}",
-                UseShellExecute = true,
+                UseShellExecute = true
             };
             try
             {

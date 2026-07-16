@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using CodeHollow.FeedReader;
@@ -24,7 +23,7 @@ public class DiagnosticInfoTest
 
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();

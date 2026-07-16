@@ -18,7 +18,7 @@ public class Ksp2Patch : IDisposable
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        WriteIndented = true,
+        WriteIndented = true
     };
 
     public Ksp2Patch(IFileSystem fileSystem, IZipArchive archive)
@@ -118,7 +118,7 @@ public class Ksp2Patch : IDisposable
                     Action = PatchOperation.PatchAction.Patch,
                     FileName = _fileSystem.Path.Combine(prefix, file.Name),
                     OriginalHash = oldSHA.Hash!,
-                    FinalHash = newSHA.Hash!,
+                    FinalHash = newSHA.Hash!
                 });
             }
             else
@@ -137,7 +137,7 @@ public class Ksp2Patch : IDisposable
                 {
                     Action = PatchOperation.PatchAction.Add,
                     FileName = _fileSystem.Path.Combine(prefix, file.Name),
-                    FinalHash = newSHA.Hash!,
+                    FinalHash = newSHA.Hash!
                 });
             }
         }

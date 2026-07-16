@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+﻿namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 public interface ITabNavigatorService
 {

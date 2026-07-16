@@ -26,7 +26,7 @@ public class ManifestReleasesFeedUpdateManifestTest
         Channel = channel,
         GeneratedAt = new DateTime(2026, 1, 1),
         SchemaVersion = 1,
-        Patches = [new ReleasePatch { Version = version, Requires = new PatchRequirement { Version = null }, Size = 1, Url = "https://x", ChecksumSha256 = "0", ReleasedAt = DateTime.UtcNow }],
+        Patches = [new ReleasePatch { Version = version, Requires = new PatchRequirement { Version = null }, Size = 1, Url = "https://x", ChecksumSha256 = "0", ReleasedAt = DateTime.UtcNow }]
     };
 
     [Test]
@@ -43,7 +43,7 @@ public class ManifestReleasesFeedUpdateManifestTest
         {
             Assert.That(succeeded, Is.False, "A failed refresh should still report failure.");
             Assert.That(feed.CurrentChannel, Is.EqualTo("beta"), "The last known channel must not be wiped out by a failed refresh.");
-            Assert.That(feed.GetAllVersions().Select(v => v.BuildNumber), Is.EqualTo(new[] { "5" }),
+            Assert.That(feed.GetAllVersions().Select(v => v.BuildNumber), Is.EqualTo(["5"]),
                 "A failed refresh must keep showing the last known patch list, not an empty one.");
         });
     }
@@ -62,7 +62,7 @@ public class ManifestReleasesFeedUpdateManifestTest
         {
             Assert.That(succeeded, Is.False);
             Assert.That(feed.CurrentChannel, Is.EqualTo("beta"));
-            Assert.That(feed.GetAllVersions().Select(v => v.BuildNumber), Is.EqualTo(new[] { "5" }));
+            Assert.That(feed.GetAllVersions().Select(v => v.BuildNumber), Is.EqualTo(["5"]));
         });
     }
 

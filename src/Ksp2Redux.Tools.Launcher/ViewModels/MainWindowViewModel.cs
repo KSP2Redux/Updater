@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Abstractions;
-using System.Threading.Tasks;
+﻿using System.IO.Abstractions;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -336,7 +333,7 @@ public partial class MainWindowViewModel : ViewModelBase
             CommunityTabId => CommunityTab.NewsVisible,
             ModsTabId => true,
             SettingsTabId => true,
-            _ => false,
+            _ => false
         };
     }
 

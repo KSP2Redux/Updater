@@ -28,7 +28,7 @@ public class MainButtonTooltipTest
 
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -68,12 +68,12 @@ public class MainButtonTooltipTest
                 Channel = f.Filename.Split('-', '.')[1],
                 GeneratedAt = new DateTime(2020, 1, 4),
                 Patches = [],
-                SchemaVersion = 1,
+                SchemaVersion = 1
             });
 
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();

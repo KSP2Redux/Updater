@@ -1,4 +1,3 @@
-using System;
 using System.IO.Abstractions;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;

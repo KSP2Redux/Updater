@@ -1,12 +1,10 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Ksp2Redux.Tools.Launcher.Models;
 using MsBox.Avalonia.Enums;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
@@ -95,7 +93,7 @@ public class LauncherConfigService : ILauncherConfigService
                 Name = DeriveDefaultInstallName(Config.Ksp2InstallPath),
                 LaunchThroughSteam = Config.LaunchThroughSteam,
                 SteamAppId = string.IsNullOrEmpty(Config.SteamAppId) ? "954850" : Config.SteamAppId,
-                LaunchArguments = Config.LaunchArguments,
+                LaunchArguments = Config.LaunchArguments
             };
             Config.Ksp2Installs.Add(entry);
             Config.ActiveKsp2InstallId = entry.Id;

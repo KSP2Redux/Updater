@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Abstractions;
+﻿using System.IO.Abstractions;
 using System.IO.Compression;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Common.Wrappers;
@@ -28,7 +25,7 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
     // otherwise-ignored stock folders (e.g. baked subscenes under StreamingAssets).
     public List<string> PurgeOnRestore =>
     [
-        fileSystem.Path.Combine("KSP2_x64_Data", "StreamingAssets", "EntityScenes"),
+        fileSystem.Path.Combine("KSP2_x64_Data", "StreamingAssets", "EntityScenes")
     ];
 
 

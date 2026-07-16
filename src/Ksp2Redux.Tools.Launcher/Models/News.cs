@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Ksp2Redux.Tools.Launcher.Models;
+﻿namespace Ksp2Redux.Tools.Launcher.Models;
 
 public sealed record News
 {

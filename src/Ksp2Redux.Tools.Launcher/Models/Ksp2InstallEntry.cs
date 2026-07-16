@@ -1,5 +1,3 @@
-using System;
-
 namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class Ksp2InstallEntry

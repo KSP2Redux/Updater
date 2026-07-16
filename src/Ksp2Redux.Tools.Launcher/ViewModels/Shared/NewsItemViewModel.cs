@@ -1,5 +1,4 @@
-﻿using System;
-using Ksp2Redux.Tools.Launcher.Models;
+﻿using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 

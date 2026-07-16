@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using CodeHollow.FeedReader;
-using Ksp2Redux.Tools.Launcher.Models;
+﻿using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.News;
@@ -17,7 +12,7 @@ public interface INewsService
 
 public class NewsService(INewsProviderService newsProviderService, ILogService log) : INewsService
 {
-    private List<Models.News> _newsList = new();
+    private List<Models.News> _newsList = [];
 
     public async Task<List<Models.News>> FindAllNews() => await Task.Run(() => _newsList.OrderByDescending(n => n.Date).ToList());
 
@@ -49,7 +44,7 @@ public class NewsService(INewsProviderService newsProviderService, ILogService l
                 Author = item.Author,
                 Content = item.Content,
                 Link = item.Link,
-                Date = date,
+                Date = date
             });
         }
         _newsList = newsList.OrderBy(n => n.Date).ToList();

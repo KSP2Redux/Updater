@@ -2,7 +2,6 @@ using System.Net;
 using System.Security.Cryptography;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Models;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
@@ -36,7 +35,7 @@ public class ManifestReleasesFeedDownloadPatchTest
             Url = url,
             ChecksumSha256 = Convert.ToHexString(SHA256.HashData(content)),
             Size = content.Length,
-            ReleasedAt = DateTime.UtcNow,
+            ReleasedAt = DateTime.UtcNow
         };
     }
 
@@ -46,7 +45,7 @@ public class ManifestReleasesFeedDownloadPatchTest
             .ReturnsAsync(() => new HttpResponseMessage
             {
                 Content = new ByteArrayContent(content) { Headers = { ContentLength = content.Length } },
-                StatusCode = HttpStatusCode.OK,
+                StatusCode = HttpStatusCode.OK
             });
     }
 

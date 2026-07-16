@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -99,7 +97,7 @@ public partial class MainWindow : Window
             Y = position.Y,
             Width = size.Width,
             Height = size.Height,
-            IsMaximized = WindowState == WindowState.Maximized,
+            IsMaximized = WindowState == WindowState.Maximized
         });
     }
 
@@ -151,7 +149,7 @@ public partial class MainWindow : Window
         MainWindowViewModel.CommunityTabId => this.FindControl<CommunityTabView>("CommunityView")?.GlassPanelBorder,
         MainWindowViewModel.ModsTabId => this.FindControl<ModsTabView>("ModsView")?.GlassPanelBorder,
         MainWindowViewModel.SettingsTabId => this.FindControl<SettingsTabView>("SettingsView")?.GlassPanelBorder,
-        _ => null,
+        _ => null
     };
 
     private void UpdateSidebarBackdropClip()
@@ -247,6 +245,6 @@ public partial class MainWindow : Window
         Default = 0,
         DoNotRound = 1,
         Round = 2,
-        RoundSmall = 3,
+        RoundSmall = 3
     }
 }

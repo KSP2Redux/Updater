@@ -2,12 +2,7 @@
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Shared;
 
-public class NewsCollectionViewModel : ViewModelBase
+public class NewsCollectionViewModel(ObservableCollection<NewsItemViewModel> newsCollection) : ViewModelBase
 {
-    public ObservableCollection<NewsItemViewModel> NewsCollection { get; set; }
-
-    public NewsCollectionViewModel(ObservableCollection<NewsItemViewModel> newsCollection)
-    {
-        NewsCollection = newsCollection;
-    }
+    public ObservableCollection<NewsItemViewModel> NewsCollection { get; set; } = newsCollection;
 }

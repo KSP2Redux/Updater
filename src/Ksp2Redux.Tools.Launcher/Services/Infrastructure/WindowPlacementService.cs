@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Avalonia;
 using Ksp2Redux.Tools.Launcher.Models;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
@@ -37,7 +33,7 @@ public class WindowPlacementService : IWindowPlacementService
             Y = saved.Y,
             Width = Math.Max(saved.Width, minWidth),
             Height = Math.Max(saved.Height, minHeight),
-            IsMaximized = saved.IsMaximized,
+            IsMaximized = saved.IsMaximized
         };
 
         // No screen info available (headless, exotic platform): nothing to validate against.

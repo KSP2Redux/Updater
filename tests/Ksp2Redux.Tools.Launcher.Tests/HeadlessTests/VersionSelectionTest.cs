@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -7,9 +6,6 @@ using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
-using Ksp2Redux.Tools.Launcher.Services.Feeds;
-using Ksp2Redux.Tools.Launcher.Services.News;
-using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.Views;
@@ -40,7 +36,7 @@ public class VersionSelectionTest
             Requires = new PatchRequirement { Version = null },
             Size = 10,
             Url = "https://github.com/patch1Rollup.patch",
-            Version = "0.2.3.1.1234",
+            Version = "0.2.3.1.1234"
         };
 
         TestAppBuilder.ManifestReleasesFeedProviderService
@@ -65,7 +61,7 @@ public class VersionSelectionTest
         // Act
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();

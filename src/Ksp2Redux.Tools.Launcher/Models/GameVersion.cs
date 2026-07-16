@@ -1,6 +1,4 @@
 ﻿using Mono.Cecil;
-using System;
-using System.Linq;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
@@ -77,7 +75,7 @@ public class GameVersion : IEquatable<GameVersion>
             Channel = channel,
             VersionNumber = version,
             BuildNumber = buildNumber,
-            CommitHash = commitHash,
+            CommitHash = commitHash
         };
     }
 

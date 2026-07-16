@@ -1,5 +1,3 @@
-using System;
-
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 /// <summary>

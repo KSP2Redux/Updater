@@ -22,7 +22,7 @@ public class Ksp2InstallRowViewModelValidationTest
             Name = "Test",
             ExePath = exePath,
             ReleaseChannel = "beta",
-            SteamAppId = steamAppId,
+            SteamAppId = steamAppId
         };
         var ksp2InstallService = new Mock<IKsp2InstallService>();
         var row = new Ksp2InstallRowViewModel(fs, ksp2InstallService.Object, entry, isActive: true);

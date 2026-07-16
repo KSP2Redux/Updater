@@ -74,7 +74,7 @@ public class ConfigTest
         // Act
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         
@@ -83,7 +83,7 @@ public class ConfigTest
         {
             ExePath = "KSP2_x64.exe",
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Name = "Kerbal Space Program 2",
+            Name = "Kerbal Space Program 2"
         });
         
         ComboBox? combobox = window
@@ -165,7 +165,7 @@ public class ConfigTest
             ChecksumSha256 = "0",
             Url = "https://example.com/patch0.patch",
             Size = 0,
-            Requires = new PatchRequirement(),
+            Requires = new PatchRequirement()
         };
         ReleasePatch patch1 = new()
         {
@@ -174,7 +174,7 @@ public class ConfigTest
             ChecksumSha256 = "1",
             Url = "https://example.com/patch1.patch",
             Size = 0,
-            Requires = new PatchRequirement(),
+            Requires = new PatchRequirement()
         };
 
         TestAppBuilder.ManifestReleasesFeedProviderService
@@ -190,7 +190,7 @@ public class ConfigTest
         // Act
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
 
@@ -201,7 +201,7 @@ public class ConfigTest
             VersionNumber = new Version(1, 1, 2, 0),
             Channel = "channel-1",
             CommitHash = "1",
-            ReleasedAt = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+            ReleasedAt = new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc)
         });
         List<GameVersionViewModel> expectedItems =
         [
@@ -212,8 +212,8 @@ public class ConfigTest
                 VersionNumber = new Version(1, 1, 1, 0),
                 Channel = "channel-1",
                 CommitHash = "0",
-                ReleasedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            }),
+                ReleasedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            })
         ];
         
         GroupedComboBox? combobox = window
@@ -253,7 +253,7 @@ public class ConfigTest
         // Act
         MainWindow window = new MainWindow
         {
-            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>(),
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
         

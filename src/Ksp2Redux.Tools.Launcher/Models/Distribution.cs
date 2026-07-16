@@ -6,5 +6,5 @@ public enum Distribution
     Steam,
     Epic,
     Redux,
-    Prepatched,
+    Prepatched
 }

@@ -24,14 +24,14 @@ public class NewsServiceTest
             [
                 new FeedItem { Title = "Good post", Link = "https://a", PublishingDate = new DateTime(2026, 1, 1) },
                 new FeedItem { Title = "Missing date", Link = "https://b", PublishingDate = null },
-                new FeedItem { Title = "Another good post", Link = "https://c", PublishingDate = new DateTime(2026, 1, 2) },
-            ],
+                new FeedItem { Title = "Another good post", Link = "https://c", PublishingDate = new DateTime(2026, 1, 2) }
+            ]
         });
 
         await service.FetchNews();
         var news = await service.FindAllNews();
 
-        Assert.That(news.Select(n => n.Title), Is.EquivalentTo(new[] { "Good post", "Another good post" }));
+        Assert.That(news.Select(n => n.Title), Is.EquivalentTo(["Good post", "Another good post"]));
         log.Verify(l => l.Warn(It.Is<string>(s => s.Contains("Missing date")), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
     }
 
@@ -44,8 +44,8 @@ public class NewsServiceTest
             Items =
             [
                 new FeedItem { Title = "First", Link = "https://a", PublishingDate = new DateTime(2026, 1, 1) },
-                new FeedItem { Title = "Second", Link = "https://b", PublishingDate = new DateTime(2026, 1, 2) },
-            ],
+                new FeedItem { Title = "Second", Link = "https://b", PublishingDate = new DateTime(2026, 1, 2) }
+            ]
         });
         await service.FetchNews();
         var secondId = (await service.FindAllNews()).Single(n => n.Title == "Second").Id;
@@ -54,7 +54,7 @@ public class NewsServiceTest
         // would now point somewhere else (or be out of range), but the stable id still resolves.
         provider.Setup(p => p.GetSyndicationFeed()).ReturnsAsync(new Feed
         {
-            Items = [new FeedItem { Title = "Second", Link = "https://b", PublishingDate = new DateTime(2026, 1, 2) }],
+            Items = [new FeedItem { Title = "Second", Link = "https://b", PublishingDate = new DateTime(2026, 1, 2) }]
         });
         await service.FetchNews();
 

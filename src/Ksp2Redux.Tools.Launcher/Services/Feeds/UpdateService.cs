@@ -1,17 +1,12 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO.Abstractions;
-using System.Linq;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using MsBox.Avalonia.Enums;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Feeds;

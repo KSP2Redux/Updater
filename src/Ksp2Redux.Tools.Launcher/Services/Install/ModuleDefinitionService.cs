@@ -14,7 +14,7 @@ public class ModuleDefinitionService : IModuleDefinitionService
     public ModuleDefinition ReadModule(string fileName)
         => ModuleDefinition.ReadModule(fileName, new ReaderParameters
         {
-            InMemory = true,
+            InMemory = true
         });
     
 #pragma warning restore RS0030
