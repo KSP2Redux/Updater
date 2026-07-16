@@ -126,6 +126,14 @@ public class UpdateService : IUpdateService
 
     private async Task<bool> CheckAndPerformUpdateCoreAsync()
     {
+        // No macOS release assets exist yet, and the win/linux platform-keyword match below
+        // would otherwise offer the *linux* binary to a mac build and overwrite it.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            _log.Info("Self-update is not available on macOS (no macOS release assets are published). Skipping check.");
+            return true;
+        }
+
         var releasesUrl = $"https://api.github.com/repos/{_owner}/{_repo}/releases";
         _log.Info($"Checking for launcher updates from {releasesUrl} (current version {_version}).");
 

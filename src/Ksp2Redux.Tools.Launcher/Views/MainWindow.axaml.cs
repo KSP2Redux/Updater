@@ -25,6 +25,7 @@ public partial class MainWindow : Window
         // fields permanently null, so any code referencing them (e.g. the backdrop-blur
         // clip calculations below) silently no-ops.
         InitializeComponent();
+        if (_isMac) ApplyMacChrome();
         Opened += (_, _) =>
         {
             ApplyNativeRoundedCorners();
@@ -63,6 +64,20 @@ public partial class MainWindow : Window
     // snap to a full-screen-sized "normal" window.
     private PixelPoint _lastNormalPosition;
     private Size _lastNormalSize;
+
+    private readonly bool _isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
+    // macOS gets the native traffic lights (always top-left - an OS convention) layered
+    // over our custom titlebar via ExtendClientArea; the hand-drawn Windows-style caption
+    // buttons and the manual resize grips only exist because the other platforms run with
+    // no system decorations at all.
+    private void ApplyMacChrome()
+    {
+        WindowDecorations = WindowDecorations.Full;
+        MinimizeButton.IsVisible = false;
+        MaximizeButton.IsVisible = false;
+        CloseButton.IsVisible = false;
+    }
 
     private void RestoreWindowPlacement()
     {
@@ -110,7 +125,7 @@ public partial class MainWindow : Window
         OuterFrame?.Classes.Set("maximized", maximized);
         InnerChrome?.Classes.Set("maximized", maximized);
         this.FindControl<Border>("TitleBar")?.Classes.Set("maximized", maximized);
-        if (ResizeGrips is not null) ResizeGrips.IsVisible = !maximized;
+        if (ResizeGrips is not null) ResizeGrips.IsVisible = !maximized && !_isMac;
         if (MaximizeGlyph is not null) MaximizeGlyph.Text = maximized ? "❐" : "◻";
         if (MaximizeButton is not null) ToolTip.SetTip(MaximizeButton, maximized ? "Restore" : "Maximize");
     }

@@ -8,7 +8,7 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>true</SelfContained>
-        <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+        <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <LangVersion>preview</LangVersion>
         <AssemblyTitle>KSP2 Redux</AssemblyTitle>
@@ -55,6 +55,31 @@
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>
+
+    <!-- macOS .app bundle metadata, consumed by the Dotnet.Bundle BundleApp target:
+         dotnet msbuild -t:BundleApp -p:RuntimeIdentifier=osx-arm64 -p:Configuration=Release -p:SelfContained=true -->
+    <PropertyGroup>
+        <CFBundleName>KSP2 Redux</CFBundleName>
+        <CFBundleDisplayName>KSP2 Redux</CFBundleDisplayName>
+        <CFBundleIdentifier>org.ksp2redux.launcher</CFBundleIdentifier>
+        <CFBundleVersion>$(Version)</CFBundleVersion>
+        <CFBundleShortVersionString>$(Version)</CFBundleShortVersionString>
+        <CFBundlePackageType>APPL</CFBundlePackageType>
+        <CFBundleExecutable>Ksp2Redux.Tools.Launcher</CFBundleExecutable>
+        <CFBundleIconFile>Ksp2Redux.icns</CFBundleIconFile>
+        <NSHighResolutionCapable>true</NSHighResolutionCapable>
+        <NSHumanReadableCopyright>$(Copyright)</NSHumanReadableCopyright>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Dotnet.Bundle" PrivateAssets="all" />
+    </ItemGroup>
+
+    <!-- Dotnet.Bundle writes CFBundleIconFile into Info.plist but never copies the file. -->
+    <Target Name="CopyMacBundleIcon" AfterTargets="BundleApp">
+        <Copy SourceFiles="Assets/Ksp2Redux.icns"
+              DestinationFiles="$(PublishDir)$(CFBundleDisplayName).app/Contents/Resources/$(CFBundleIconFile)" />
+    </Target>
 
     <!-- Bundle ICU only for the RIDs the package actually provides (win/linux); macOS
          has no app-local ICU build and must use the OS-provided one. -->

@@ -1,12 +1,15 @@
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher;
 
@@ -60,7 +63,48 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
             };
         }
 
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            SetupMacAppMenu(log);
+        }
+
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // Populates the macOS application menu (the one under the app's name in the system
+    // menu bar). Avalonia appends the standard Hide/Quit entries itself.
+    private void SetupMacAppMenu(ILogService log)
+    {
+        var about = new NativeMenuItem("About KSP2 Redux");
+        about.Click += async (_, _) =>
+        {
+            var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+            await _serviceProvider!.GetRequiredService<IMessageBoxService>().ShowMessageBoxAsOwnedAsync(
+                "About KSP2 Redux",
+                $"KSP2 Redux Launcher\nVersion {version}\n\n" +
+                "The installer, updater and launcher for KSP2 Redux.\n" +
+                "https://ksp2redux.org",
+                ButtonEnum.Ok);
+        };
+
+        var checkForUpdates = new NativeMenuItem("Check for Updates…");
+        checkForUpdates.Click += async (_, _) =>
+        {
+            try
+            {
+                await _serviceProvider!.GetRequiredService<IUpdateService>().CheckAndPerformUpdateAsync();
+            }
+            catch (Exception ex)
+            {
+                log.Error("Manual update check from the app menu failed.", ex);
+            }
+        };
+
+        var menu = new NativeMenu();
+        menu.Items.Add(about);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(checkForUpdates);
+        NativeMenu.SetMenu(this, menu);
     }
 
     // Deliberately bypasses Avalonia/MsBox.Avalonia entirely - the framework may not be usable yet at

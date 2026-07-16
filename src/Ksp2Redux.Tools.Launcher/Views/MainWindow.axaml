@@ -31,6 +31,11 @@
         <KeyBinding Gesture="Ctrl+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
         <KeyBinding Gesture="Ctrl+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
         <KeyBinding Gesture="Ctrl+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
+        <!-- macOS equivalents (Cmd+1..4); Meta is unbound on Windows/Linux keyboards in practice -->
+        <KeyBinding Gesture="Meta+D1" Command="{Binding GoToTabCommand}" CommandParameter="0" />
+        <KeyBinding Gesture="Meta+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="Meta+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="Meta+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
     </Window.KeyBindings>
 
     <!-- ReSharper disable Xaml.RedundantResource -->
@@ -175,7 +180,7 @@
                 <Border Name="TitleBar">
                     <Grid Height="32" Background="Black" PointerPressed="TitleBar_PointerPressed"
                           ColumnDefinitions="*,32,32,32">
-                        <Button Classes="titlebar-button"
+                        <Button Name="MinimizeButton" Classes="titlebar-button"
                                 Grid.Column="1"
                                 Width="32"
                                 Height="32"

@@ -3,6 +3,7 @@
              x:Class="Ksp2Redux.Tools.Launcher.App"
              xmlns:local="using:Ksp2Redux.Tools.Launcher"
              xmlns:converters="clr-namespace:Ksp2Redux.Tools.Launcher.Converters"
+             Name="KSP2 Redux"
              RequestedThemeVariant="Dark">
     <Application.DataTemplates>
         <local:ViewLocator/>

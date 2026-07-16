@@ -10,6 +10,15 @@ dotnet build          # build everything
 dotnet test           # run the test suite
 ```
 
+The launcher also runs on macOS for development (the game itself is not
+available there yet). To produce a proper `.app` bundle:
+
+```sh
+dotnet msbuild src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj \
+  -t:BundleApp -p:RuntimeIdentifier=osx-arm64 -p:Configuration=Release \
+  -p:SelfContained=true -p:PublishSingleFile=false
+```
+
 The solution (`Ksp2Redux.Tools.slnx`) is laid out as:
 
 | Path | What it is |
