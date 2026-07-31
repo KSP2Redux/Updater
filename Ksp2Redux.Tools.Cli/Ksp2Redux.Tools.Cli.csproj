@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <AssemblyName>redux-launcher-cli</AssemblyName>
+        <RootNamespace>Ksp2Redux.Tools.Cli</RootNamespace>
+        <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+        <!-- The launcher project is SelfContained, and NETSDK1151 forbids a framework dependent exe
+             from referencing a self contained one. Matching it means every build needs a runtime
+             identifier, which build-launcher-cli.ps1 passes. -->
+        <SelfContained>true</SelfContained>
+        <Version>0.3.1</Version>
+        <AssemblyTitle>KSP2 Redux Launcher CLI</AssemblyTitle>
+        <Product>KSP2 Redux</Product>
+        <Company>KSP2 Redux</Company>
+        <Description>Scriptable front end over the KSP2 Redux launcher: list channels and versions, install a specific build, and launch the game.</Description>
+        <!-- The launcher is a WinExe and brings Avalonia in transitively. This project stays a console
+             Exe so stdout, stderr and exit codes behave normally when driven from a script. -->
+        <InvariantGlobalization>true</InvariantGlobalization>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="CommandLineParser" Version="2.9.1" />
+        <PackageReference Include="EnvironmentAbstractions" Version="5.0.0" />
+        <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+        <PackageReference Include="Testably.Abstractions" Version="10.2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj" />
+        <ProjectReference Include="..\Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="..\Ksp2Redux.Tools.Launcher\BannedSymbols.txt" Link="BannedSymbols.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Ksp2Redux.Tools.Launcher.Test" />
+    </ItemGroup>
+
+</Project>

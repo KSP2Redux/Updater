@@ -30,6 +30,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj" />
+      <ProjectReference Include="..\Ksp2Redux.Tools.Cli\Ksp2Redux.Tools.Cli.csproj" />
     </ItemGroup>
 
     <ItemGroup>
