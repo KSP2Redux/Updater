@@ -46,6 +46,9 @@
 					        Command="{Binding RemoveSelectedInstallCommand}"
 					        IsEnabled="{Binding CanRemoveSelectedInstall}"
 					        ToolTip.Tip="Remove this install. At least one install must remain.">Remove</Button>
+					<Button Command="{Binding OpenInstallFolderCommand}"
+					        IsEnabled="{Binding HasSelectedInstall}"
+					        ToolTip.Tip="Open this install's folder in your file browser.">Open Folder</Button>
 				</StackPanel>
 
 				<TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"
