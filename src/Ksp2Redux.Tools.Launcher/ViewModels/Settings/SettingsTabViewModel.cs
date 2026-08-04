@@ -209,6 +209,29 @@ public partial class SettingsTabViewModel : ViewModelBase
         _ksp2InstallService.RemoveInstall(row.Id);
     }
 
+    [RelayCommand]
+    public async Task OpenInstallFolder()
+    {
+        var exePath = _ksp2InstallService.ActiveEntry?.ExePath;
+        var folder = string.IsNullOrWhiteSpace(exePath) ? null : _fileSystem.Path.GetDirectoryName(exePath);
+        if (string.IsNullOrWhiteSpace(folder) || !_fileSystem.Directory.Exists(folder))
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", "The install folder could not be found.",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch (Exception e)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", $"Could not open the install folder.\n{e.Message}",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+    }
+
     public async Task<IStorageFile?> DoOpenFilePickerAsync()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||

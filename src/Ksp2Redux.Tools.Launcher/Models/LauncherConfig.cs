@@ -6,6 +6,7 @@ public class LauncherConfig(string storagePath)
 {
     public string Ksp2InstallPath { get; set; } = "";
     public string ReleaseChannel { get; set; } = "beta";
+    public bool AutoSwitchedToStable { get; set; } = false;
     public bool LaunchThroughSteam { get; set; } = false;
     public string SteamAppId { get; set; } = "954850";
     public string LaunchArguments { get; set; } = "-popupwindow";

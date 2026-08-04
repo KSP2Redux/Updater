@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Ksp2Redux.Tools.Cli/Ksp2Redux.Tools.Cli.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Common/Ksp2Redux.Tools.Common.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Installer/Ksp2Redux.Tools.Installer.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />

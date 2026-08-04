@@ -24,6 +24,7 @@ public interface IKsp2InstallService
     void RenameInstall(Guid id, string newName);
     void SetActiveInstall(Guid id);
     void UpdateActiveReleaseChannel(string channel);
+    void AutoSwitchToStableIfPending(bool stableHasReleases);
     void UpdateActiveLastInstalledVersion(GameVersion? version);
     void UpdateInstallReleaseChannel(Guid id, string channel);
     void UpdateInstallExePath(Guid id, string newExePath);
@@ -152,6 +153,19 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         entry.ReleaseChannel = channel;
         launcherConfigService.Save();
         ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void AutoSwitchToStableIfPending(bool stableHasReleases)
+    {
+        if (launcherConfigService.Config.AutoSwitchedToStable) return;
+        if (!stableHasReleases) return;
+        if (ActiveEntry is not { } entry) return;
+
+        var switched = entry.ReleaseChannel == "beta";
+        if (switched) entry.ReleaseChannel = "stable";
+        launcherConfigService.Config.AutoSwitchedToStable = true;
+        launcherConfigService.Save();
+        if (switched) ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void UpdateActiveLastInstalledVersion(GameVersion? version)

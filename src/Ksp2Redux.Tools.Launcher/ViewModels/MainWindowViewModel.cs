@@ -259,6 +259,11 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
         SettingsTab.SetLoaded();
+
+        var stableHasReleases = _releasesFeedService.ReleasesFeed.TryGetValue("stable", out var stableFeed)
+                                && stableFeed.GetLatestVersion() is not null;
+        _ksp2InstallService.AutoSwitchToStableIfPending(stableHasReleases);
+
         await HomeTab.UpdateVersionsList(false);
         _log.Info("MainWindow initialization complete.");
 

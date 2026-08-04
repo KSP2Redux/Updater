@@ -138,4 +138,72 @@ public class Ksp2InstallServiceTest
         Assert.That(entry.ReleaseChannel, Is.EqualTo("alpha"));
         Assert.That(raised, Is.EqualTo(1));
     }
+
+    [Test]
+    public void AutoSwitchToStableIfPending_SwitchesActiveBetaInstall_Once()
+    {
+        var (svc, cfgMock, config) = MakeService();
+        var entry = svc.AddInstall("/a/KSP2_x64.exe");
+
+        var raised = 0;
+        svc.ActiveInstallChanged += (_, _) => raised++;
+        svc.AutoSwitchToStableIfPending(true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.ReleaseChannel, Is.EqualTo("stable"));
+            Assert.That(config.AutoSwitchedToStable, Is.True);
+            Assert.That(raised, Is.EqualTo(1));
+        });
+
+        svc.AutoSwitchToStableIfPending(true);
+        Assert.That(raised, Is.EqualTo(1), "Second call must be a no-op.");
+    }
+
+    [Test]
+    public void AutoSwitchToStableIfPending_NoStableRelease_DoesNothing()
+    {
+        var (svc, cfgMock, config) = MakeService();
+        var entry = svc.AddInstall("/a/KSP2_x64.exe");
+        cfgMock.Invocations.Clear();
+
+        svc.AutoSwitchToStableIfPending(false);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.ReleaseChannel, Is.EqualTo("beta"));
+            Assert.That(config.AutoSwitchedToStable, Is.False);
+        });
+        cfgMock.Verify(c => c.Save(), Times.Never);
+    }
+
+    [Test]
+    public void AutoSwitchToStableIfPending_NoActiveInstall_Defers()
+    {
+        var (svc, cfgMock, config) = MakeService();
+
+        svc.AutoSwitchToStableIfPending(true);
+
+        Assert.That(config.AutoSwitchedToStable, Is.False);
+        cfgMock.Verify(c => c.Save(), Times.Never);
+    }
+
+    [Test]
+    public void AutoSwitchToStableIfPending_ActiveOnOtherChannel_SpendsGateWithoutSwitching()
+    {
+        var (svc, _, config) = MakeService();
+        var entry = svc.AddInstall("/a/KSP2_x64.exe");
+        svc.UpdateActiveReleaseChannel("alpha");
+
+        var raised = 0;
+        svc.ActiveInstallChanged += (_, _) => raised++;
+        svc.AutoSwitchToStableIfPending(true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.ReleaseChannel, Is.EqualTo("alpha"));
+            Assert.That(config.AutoSwitchedToStable, Is.True);
+            Assert.That(raised, Is.Zero);
+        });
+    }
 }
