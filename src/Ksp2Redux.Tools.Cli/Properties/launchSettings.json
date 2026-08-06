@@ -3,7 +3,7 @@
     "profiles": {
         "Cli": {
             "commandName": "Project",
-            "commandLineArgs": "list --channel nightly"
+            "commandLineArgs": ""
         }
     }
 }
