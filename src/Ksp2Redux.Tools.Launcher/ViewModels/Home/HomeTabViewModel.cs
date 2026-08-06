@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Text;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -23,6 +24,8 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IUpdateService _updateService;
     private readonly IOperatingSystemService _operatingSystemService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly IEnvironmentProvider _environmentProvider;
+    private readonly IFileSystem _fileSystem;
     private readonly ILogService _log;
     
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
@@ -93,7 +96,7 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, ILogService log)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
@@ -102,6 +105,8 @@ public partial class HomeTabViewModel : ViewModelBase
         _updateService = updateService;
         _operatingSystemService = operatingSystemService;
         _messageBoxService = messageBoxService;
+        _environmentProvider = environmentProvider;
+        _fileSystem = fileSystem;
         _log = log;
 
         RebuildInstallsCollection();
@@ -437,7 +442,15 @@ public partial class HomeTabViewModel : ViewModelBase
     private async Task RunPatchProcess()
     {
         // // lock main window tabs?
-        
+
+        // Bail before any UI/log setup if the launcher is running from inside the target install
+        // folder - the plan would try to overwrite or lock the running executable and fail.
+        _ksp2InstallService.TryLoadKsp2Install();
+        if (_ksp2InstallService.Ksp2 is { } target && await BlockIfLauncherInsideInstallDir(target))
+        {
+            return;
+        }
+
         ResetInstallLog();
         IsInstallLogVisible = true;
         IsProgressVisible = true;
@@ -505,7 +518,12 @@ public partial class HomeTabViewModel : ViewModelBase
 
     public async Task InstallFromPatchFile(string path)
     {
-        
+        _ksp2InstallService.TryLoadKsp2Install();
+        if (_ksp2InstallService.Ksp2 is { } target && await BlockIfLauncherInsideInstallDir(target))
+        {
+            return;
+        }
+
         ResetInstallLog();
         IsInstallLogVisible = true;
         IsProgressVisible = true;
@@ -559,6 +577,42 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
+
+    // Certain install plans replace or delete the launcher's own files. If the launcher is running
+    // from inside the KSP2 install folder those files are locked (Windows) or would be pulled out
+    // from under the running process, so the install fails partway. Warn and refuse rather than let
+    // it break. This is a hard block - there's no safe "proceed anyway".
+    private async Task<bool> BlockIfLauncherInsideInstallDir(Ksp2Install ksp2)
+    {
+        if (!IsLauncherInsideInstallDir(ksp2.InstallDir)) return false;
+
+        _log.Warn($"Refusing to install: launcher is running from inside the install directory \"{ksp2.InstallDir}\".");
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Can't Install Here",
+            "The launcher is running from inside the KSP2 install folder, so installing or updating Redux would " +
+            "overwrite the launcher while it's running and fail.\n\n" +
+            "Move the launcher to a folder outside the game directory, then run it again and retry.",
+            ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        return true;
+    }
+
+    private bool IsLauncherInsideInstallDir(string installDir)
+    {
+        var launcherPath = _environmentProvider.ProcessPath;
+        if (string.IsNullOrEmpty(launcherPath) || string.IsNullOrEmpty(installDir)) return false;
+
+        var launcherDir = _fileSystem.Path.GetDirectoryName(_fileSystem.Path.GetFullPath(launcherPath));
+        if (string.IsNullOrEmpty(launcherDir)) return false;
+
+        var comparison = _operatingSystemService.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var installFull = TrimTrailingSeparators(_fileSystem.Path.GetFullPath(installDir));
+        var launcherFull = TrimTrailingSeparators(launcherDir);
+
+        return launcherFull.Equals(installFull, comparison)
+            || launcherFull.StartsWith(installFull + _fileSystem.Path.DirectorySeparatorChar, comparison);
+    }
+
+    private string TrimTrailingSeparators(string path) =>
+        path.TrimEnd(_fileSystem.Path.DirectorySeparatorChar, _fileSystem.Path.AltDirectorySeparatorChar);
 
     private async Task RunPlanOnInstall(InstallPlan plan, Ksp2Install ksp2)
     {
