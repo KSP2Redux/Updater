@@ -124,7 +124,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             Installs.Clear();
             foreach (var entry in entries)
             {
-                Installs.Add(new Ksp2InstallRowViewModel(_fileSystem, _ksp2InstallService, entry, entry.Id == activeId));
+                Installs.Add(new Ksp2InstallRowViewModel(_fileSystem, _ksp2InstallService, _messageBoxService, entry, entry.Id == activeId));
             }
         }
         SyncSelectedInstall();
