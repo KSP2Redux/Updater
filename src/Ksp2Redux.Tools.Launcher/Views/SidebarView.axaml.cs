@@ -1,0 +1,114 @@
+using System.ComponentModel;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml;
+using Ksp2Redux.Tools.Launcher.ViewModels;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+
+namespace Ksp2Redux.Tools.Launcher.Views;
+
+public partial class SidebarView : UserControl
+{
+    private HomeTabViewModel? Model => (DataContext as MainWindowViewModel)?.HomeTab;
+    private MainWindowViewModel? MainViewModel => DataContext as MainWindowViewModel;
+    private Button? LaunchButtonControl => this.FindControl<Button>("LaunchButton");
+    private Button? UpdateButtonControl => this.FindControl<Button>("UpdateButton");
+    private Button? CancelButtonControl => this.FindControl<Button>("CancelButton");
+    private Button? InstallButtonControl => this.FindControl<Button>("InstallButton");
+    private Shared.NewsCollectionView? NewsCollectionControl => this.FindControl<Shared.NewsCollectionView>("NewsCollection");
+
+    public Border? NewsPanelBorder => NewsCollectionControl?.NewsPanelBorder;
+
+    public SidebarView()
+    {
+        AvaloniaXamlLoader.Load(this);
+        Loaded += RefreshAll;
+    }
+
+    private void RefreshAll(object? sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model) return;
+        ShowButton(model.MainButtonShown);
+        model.PropertyChanged += ReactToHomeTabPropertyChanged;
+    }
+
+    private void ReactToHomeTabPropertyChanged(object? sender, PropertyChangedEventArgs? e)
+    {
+        if (Model is not { } model) return;
+        ShowButton(model.MainButtonShown);
+    }
+
+    private void ShowButton(HomeTabViewModel.MainButtonState which)
+    {
+        if (LaunchButtonControl is not { } launchButton ||
+            UpdateButtonControl is not { } updateButton ||
+            CancelButtonControl is not { } cancelButton ||
+            InstallButtonControl is not { } installButton)
+        {
+            return;
+        }
+
+        launchButton.IsVisible = false;
+        updateButton.IsVisible = false;
+        cancelButton.IsVisible = false;
+        installButton.IsVisible = false;
+        switch (which)
+        {
+            case HomeTabViewModel.MainButtonState.Launch:
+                launchButton.IsVisible = true;
+                break;
+            case HomeTabViewModel.MainButtonState.Install:
+                installButton.IsVisible = true;
+                break;
+            case HomeTabViewModel.MainButtonState.Update:
+                updateButton.IsVisible = true;
+                break;
+            case HomeTabViewModel.MainButtonState.Cancel:
+                cancelButton.IsVisible = true;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(which), which, null);
+        }
+    }
+
+    private async void LaunchUri(string url)
+    {
+        if (MainViewModel is not { } model) return;
+        await model.LaunchExternalLinkAsync(TopLevel.GetTopLevel(this), url);
+    }
+
+    private void WebsiteLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri("https://ksp2redux.org");
+    }
+
+    private void DiscordLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri("https://discord.gg/8yq8d5VGQR");
+    }
+
+    private void TikTokLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri("https://tiktok.com/@ksp2redux");
+    }
+
+    private void RedditLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri("https://reddit.com/r/KSP2Redux");
+    }
+
+    private void ForumsLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux");
+    }
+
+    private void YoutubeLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri("https://www.youtube.com/@RendezvousEntertainmentModding");
+    }
+
+    private void GithubLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        LaunchUri("https://github.com/KSP2Redux");
+    }
+}
