@@ -1,14 +1,20 @@
 using System.IO.Abstractions;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
 public partial class Ksp2InstallRowViewModel : ViewModelBase
 {
+    private const string BETA_CHANNEL = "beta";
+
     private readonly IFileSystem _fileSystem;
     private readonly IKsp2InstallService _ksp2InstallService;
+    private readonly IMessageBoxService _messageBoxService;
     private readonly Ksp2InstallEntry _entry;
 
     public Guid Id => _entry.Id;
@@ -43,10 +49,12 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool DisableGraphicsJobs { get; set; }
 
-    public Ksp2InstallRowViewModel(IFileSystem fileSystem, IKsp2InstallService ksp2InstallService, Ksp2InstallEntry entry, bool isActive)
+    public Ksp2InstallRowViewModel(IFileSystem fileSystem, IKsp2InstallService ksp2InstallService,
+        IMessageBoxService messageBoxService, Ksp2InstallEntry entry, bool isActive)
     {
         _fileSystem = fileSystem;
         _ksp2InstallService = ksp2InstallService;
+        _messageBoxService = messageBoxService;
         _entry = entry;
         Name = entry.Name;
         ExePath = entry.ExePath;
@@ -70,8 +78,20 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     partial void OnReleaseChannelChanged(string value)
     {
         if (string.IsNullOrEmpty(value)) return;
+
+        var switchingToBeta = value == BETA_CHANNEL && _entry.ReleaseChannel != BETA_CHANNEL;
+
         _ksp2InstallService.UpdateInstallReleaseChannel(_entry.Id, value);
+
+        if (switchingToBeta) _ = WarnAboutBetaChannelAsync();
     }
+
+    private Task WarnAboutBetaChannelAsync()
+        => _messageBoxService.ShowMessageBoxAsOwnedAsync("Switching to Beta",
+            "The beta channel is for QA testing. Builds are unstable and can break at any time.\n\n" +
+            "We recommend not using it with existing campaigns.",
+            icon: Icon.Warning,
+            windowStartupLocation: WindowStartupLocation.CenterOwner);
     partial void OnIsActiveChanged(bool value)
     {
         if (value) _ksp2InstallService.SetActiveInstall(_entry.Id);
