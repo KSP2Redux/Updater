@@ -104,7 +104,7 @@ public partial class SidebarView : UserControl
 
     private void YoutubeLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri("https://www.youtube.com/@RendezvousEntertainmentModding");
+        LaunchUri("https://www.youtube.com/@KSP2Redux");
     }
 
     private void GithubLink_OnClick(object? sender, RoutedEventArgs e)
