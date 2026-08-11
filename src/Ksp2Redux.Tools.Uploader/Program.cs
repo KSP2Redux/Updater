@@ -33,10 +33,12 @@ var tag = "v" + uploadManifest.Version;
 
 var isDeleteOnly = uploadManifest.Patches is not { Count: > 0 };
 
-// Only a snapshot carries a label: the build pipeline reserves one for beta publishes and leaves it
-// empty everywhere else. Those are rolling builds rather than versions anyone chose, so GitHub is told
-// to keep them out of the "Latest release" slot.
-var isSnapshot = !string.IsNullOrWhiteSpace(uploadManifest.Label);
+// Snapshot or tagged release is the pipeline's to decide, and it says so on the manifest. A snapshot is
+// a rolling build rather than a version anyone chose, so GitHub is told to keep it out of the "Latest
+// release" slot.
+var isPrerelease = uploadManifest.Prerelease;
+
+Console.WriteLine($"Uploading {tag} as {(isPrerelease ? "a prerelease" : "a release")}.");
 
 if (isDeleteOnly && string.IsNullOrWhiteSpace(uploadManifest.Label))
 {
@@ -66,10 +68,10 @@ if (!isDeleteOnly)
 
         // A release can be reached a second time when a build is re-uploaded onto its own tag, and the
         // flag has to be corrected there too or it keeps whatever the first upload gave it.
-        var fixPrerelease = createdRelease.Prerelease != isSnapshot;
+        var fixPrerelease = createdRelease.Prerelease != isPrerelease;
         if (fixPrerelease)
         {
-            update.Prerelease = isSnapshot;
+            update.Prerelease = isPrerelease;
         }
 
         if (hasChangelog || fixPrerelease)
@@ -86,13 +88,13 @@ if (!isDeleteOnly)
             Name = $"KSP2 Redux {uploadManifest.Version}",
             Body = releaseBody,
             Draft = false,
-            Prerelease = isSnapshot
+            Prerelease = isPrerelease
         };
 
         createdRelease = await github.Repository.Release.Create(repoOwner, repoName, newRelease);
 
         Console.WriteLine(
-            $"Created {(isSnapshot ? "prerelease" : "release")} at: {createdRelease.HtmlUrl}");
+            $"Created {(isPrerelease ? "prerelease" : "release")} at: {createdRelease.HtmlUrl}");
     }
 
     var existingAssets = (await github.Repository.Release.GetAllAssets(repoOwner, repoName, createdRelease.Id)).ToList();

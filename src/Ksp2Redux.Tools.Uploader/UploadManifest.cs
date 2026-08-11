@@ -8,6 +8,8 @@ public sealed record UploadManifest
     public required string Token { get; init; }
     public required string Version { get; init; }
 
+    public bool Prerelease { get; init; }
+
     public string? Label { get; init; }
     public string? Changelog { get; init; }
     public List<PatchUploadEntry>? Patches { get; init; }
