@@ -33,6 +33,11 @@ var tag = "v" + uploadManifest.Version;
 
 var isDeleteOnly = uploadManifest.Patches is not { Count: > 0 };
 
+// Only a snapshot carries a label: the build pipeline reserves one for beta publishes and leaves it
+// empty everywhere else. Those are rolling builds rather than versions anyone chose, so GitHub is told
+// to keep them out of the "Latest release" slot.
+var isSnapshot = !string.IsNullOrWhiteSpace(uploadManifest.Label);
+
 if (isDeleteOnly && string.IsNullOrWhiteSpace(uploadManifest.Label))
 {
     Console.Error.WriteLine("Manifest has no patches and no label. Nothing to upload and nothing to delete.");
@@ -52,12 +57,26 @@ if (!isDeleteOnly)
         createdRelease = await github.Repository.Release.Get(repoOwner, repoName, tag);
         Console.WriteLine($"Found existing release at: {createdRelease.HtmlUrl}");
 
-        if (!string.IsNullOrWhiteSpace(uploadManifest.Changelog))
+        var update = createdRelease.ToUpdate();
+        var hasChangelog = !string.IsNullOrWhiteSpace(uploadManifest.Changelog);
+        if (hasChangelog)
         {
-            var update = createdRelease.ToUpdate();
             update.Body = releaseBody;
+        }
+
+        // A release can be reached a second time when a build is re-uploaded onto its own tag, and the
+        // flag has to be corrected there too or it keeps whatever the first upload gave it.
+        var fixPrerelease = createdRelease.Prerelease != isSnapshot;
+        if (fixPrerelease)
+        {
+            update.Prerelease = isSnapshot;
+        }
+
+        if (hasChangelog || fixPrerelease)
+        {
             createdRelease = await github.Repository.Release.Edit(repoOwner, repoName, createdRelease.Id, update);
-            Console.WriteLine("Updated release body from changelog");
+            Console.WriteLine(
+                $"Updated existing release (changelog: {hasChangelog}, prerelease: {createdRelease.Prerelease})");
         }
     }
     catch (NotFoundException)
@@ -67,12 +86,13 @@ if (!isDeleteOnly)
             Name = $"KSP2 Redux {uploadManifest.Version}",
             Body = releaseBody,
             Draft = false,
-            Prerelease = false
+            Prerelease = isSnapshot
         };
 
         createdRelease = await github.Repository.Release.Create(repoOwner, repoName, newRelease);
 
-        Console.WriteLine($"Created release at: {createdRelease.HtmlUrl}");
+        Console.WriteLine(
+            $"Created {(isSnapshot ? "prerelease" : "release")} at: {createdRelease.HtmlUrl}");
     }
 
     var existingAssets = (await github.Repository.Release.GetAllAssets(repoOwner, repoName, createdRelease.Id)).ToList();
