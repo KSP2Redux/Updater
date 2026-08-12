@@ -44,7 +44,7 @@ public static class CliBanner
     {
         try
         {
-            if (!CanDrawHalfBlocks())
+            if (!console.Profile.Capabilities.Unicode && !EncodingCarriesHalfBlocks())
             {
                 WriteWordmark(console);
                 return;
@@ -76,9 +76,10 @@ public static class CliBanner
     }
 
     // Spectre's unicode capability reports false for plenty of consoles that draw a half block
-    // perfectly well, so the question is asked of the encoding directly: can it carry the character
-    // back out unchanged. The DOS code pages can, and UTF-8 can. Anything that cannot gets letters.
-    private static bool CanDrawHalfBlocks()
+    // perfectly well, so a no from it is checked against the encoding: can that carry the character
+    // back out unchanged. The DOS code pages can, and UTF-8 can. Only when both say no do we give up
+    // on the logo and write letters instead.
+    private static bool EncodingCarriesHalfBlocks()
     {
         try
         {

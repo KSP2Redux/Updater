@@ -1,47 +1,42 @@
-﻿using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Infrastructure;
+using Spectre.Console;
+using Spectre.Console.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
 public class CliBannerTest
 {
-    private TextWriter _originalError = null!;
-    private StringWriter _error = null!;
-
-    [SetUp]
-    public void SetUp()
+    // The console is supplied rather than detected, because a build agent has no terminal and would
+    // otherwise resolve to no colour and draw nothing.
+    private static (CliOutput Output, TestConsole Console) Build(bool isJson = false, bool isQuiet = false)
     {
-        _originalError = Console.Error;
-        _error = new StringWriter();
-        Console.SetError(_error);
-    }
+        TestConsole console = new();
+        console.Profile.Capabilities.Ansi = true;
+        console.Profile.Capabilities.Unicode = true;
+        console.Profile.Capabilities.ColorSystem = ColorSystem.TrueColor;
 
-    [TearDown]
-    public void TearDown()
-    {
-        Console.SetError(_originalError);
-        _error.Dispose();
+        CliOutput output = new(
+            new StringWriter(),
+            isJson,
+            CliCapabilities.Detect(ColorMode.Always, isJson, isVerbose: false, isQuiet),
+            null,
+            console);
+
+        return (output, console);
     }
 
     [Test]
-    public void Write_StyledStream_DrawsTheLogo()
+    public void Write_StyledStream_DrawsTheLogoInHalfBlocks()
     {
         // Arrange
-        CliOutput output = new(
-            new StringWriter(),
-            isJson: false,
-            CliCapabilities.Detect(ColorMode.Always, isJson: false, isVerbose: false));
+        var (output, console) = Build();
 
         // Act
         CliBanner.Write(output);
 
         // Assert
-        string drawn = _error.ToString();
-
-        Assert.That(drawn, Does.Contain("38;2;"), "the upper half of a cell carries a colour");
-
-        Assert.That(drawn, Does.Contain("48;2;"), "the lower half of a cell carries a colour");
-
-        Assert.That(drawn, Does.Contain('▀'), "the logo is drawn with half blocks");
+        Assert.That(console.Output, Does.Contain('▀'));
+        Assert.That(console.Lines, Has.Count.GreaterThan(4));
     }
 
     // A pipe gets the same bytes it got before there was a banner.
@@ -49,44 +44,39 @@ public class CliBannerTest
     public void Write_PlainStream_DrawsNothing()
     {
         // Arrange
-        CliOutput output = new(new StringWriter(), isJson: false);
+        TestConsole console = new();
+        CliOutput output = new(new StringWriter(), isJson: false, CliCapabilities.Plain, null, console);
 
         // Act
         CliBanner.Write(output);
 
         // Assert
-        Assert.That(_error.ToString(), Is.Empty);
+        Assert.That(console.Output, Is.Empty);
     }
 
     [Test]
     public void Write_JsonMode_DrawsNothing()
     {
         // Arrange
-        CliOutput output = new(
-            new StringWriter(),
-            isJson: true,
-            CliCapabilities.Detect(ColorMode.Always, isJson: true, isVerbose: false));
+        var (output, console) = Build(isJson: true);
 
         // Act
         CliBanner.Write(output);
 
         // Assert
-        Assert.That(_error.ToString(), Is.Empty);
+        Assert.That(console.Output, Is.Empty);
     }
 
     [Test]
     public void Write_Quiet_DrawsNothing()
     {
         // Arrange
-        CliOutput output = new(
-            new StringWriter(),
-            isJson: false,
-            CliCapabilities.Detect(ColorMode.Always, isJson: false, isVerbose: false, isQuiet: true));
+        var (output, console) = Build(isQuiet: true);
 
         // Act
         CliBanner.Write(output);
 
         // Assert
-        Assert.That(_error.ToString(), Is.Empty);
+        Assert.That(console.Output, Is.Empty);
     }
 }

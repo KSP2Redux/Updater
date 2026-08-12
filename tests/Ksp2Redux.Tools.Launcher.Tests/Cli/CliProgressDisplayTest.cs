@@ -1,5 +1,9 @@
 ﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 
+using Spectre.Console;
+
+using Spectre.Console.Testing;
+
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
 public class CliProgressDisplayTest
@@ -68,14 +72,24 @@ public class CliProgressDisplayTest
         Assert.That(lines[0].Trim(), Is.EqualTo("downloaded 100 of 100 MB"));
     }
 
+    // The console is supplied rather than detected, because a build agent has no terminal and a
+    // live display resolves to drawing nothing there.
     [Test]
-    public async Task RunAsync_AnimatedStream_RunsTheWorkAndDrawsSomething()
+    public async Task RunAsync_AnimatedStream_RunsTheWorkThroughTheLiveDisplay()
     {
         // Arrange
+        TestConsole console = new();
+        console.Profile.Capabilities.Ansi = true;
+        console.Profile.Capabilities.Interactive = true;
+        console.Profile.Capabilities.ColorSystem = ColorSystem.TrueColor;
+
         CliOutput output = new(
             new StringWriter(),
             isJson: false,
-            CliCapabilities.Detect(ColorMode.Always, isJson: false, isVerbose: false));
+            CliCapabilities.Detect(ColorMode.Always, isJson: false, isVerbose: false),
+            null,
+            console);
+
         var ranToCompletion = false;
 
         // Act
@@ -89,7 +103,9 @@ public class CliProgressDisplayTest
         });
 
         // Assert
+
         Assert.That(ranToCompletion, Is.True);
-        Assert.That(_error.ToString(), Is.Not.Empty);
+
+        Assert.That(console.Output, Does.Contain("Applying patch"));
     }
 }
