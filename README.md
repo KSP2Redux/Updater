@@ -41,4 +41,4 @@ It is a cross-platform application with releases currently being made for Window
 For more information about KSP2 Redux, see [our website](https://ksp2redux.org) or the [Redux GitHub page](https://github.com/KSP2Redux/Redux).
 
 ## Contact
-You can contact us in the [KSP2 Modding Society Discord server](https://discord.gg/8yq8d5VGQR).
+You can contact us in the [KSP2 Redux Discord server](https://discord.gg/ksp2redux).
