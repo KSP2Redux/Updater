@@ -1,7 +1,7 @@
-namespace Ksp2Redux.Tools.Cli;
+namespace Ksp2Redux.Tools.Cli.Infrastructure;
 
 /// <summary>
-/// Process exit codes returned by the CLI verbs.
+/// Process exit codes returned by the CLI commands.
 /// </summary>
 // Scripts branch on these values, so the numbers are part of the contract. Append new members
 // rather than renumbering existing ones.
@@ -13,7 +13,7 @@ public static class ExitCode
     public const int SUCCESS = 0;
 
     /// <summary>
-    /// Argument parsing failed, or a verb was given arguments it cannot satisfy.
+    /// Argument parsing failed, or a command was given arguments it cannot satisfy.
     /// </summary>
     public const int USAGE_ERROR = 1;
 
@@ -53,4 +53,9 @@ public static class ExitCode
     /// The command was cancelled before it finished.
     /// </summary>
     public const int CANCELLED = 8;
+
+    /// <summary>
+    /// The launcher config could not be written, so the change was not kept.
+    /// </summary>
+    public const int CONFIG_WRITE_FAILED = 9;
 }

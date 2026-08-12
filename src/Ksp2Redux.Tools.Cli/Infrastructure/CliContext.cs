@@ -1,29 +1,38 @@
 using System.IO.Abstractions;
+using System.Text.Json;
+using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Microsoft.Extensions.DependencyInjection;
+using Spectre.Console;
 
-namespace Ksp2Redux.Tools.Cli;
+namespace Ksp2Redux.Tools.Cli.Infrastructure;
 
 /// <summary>
-/// The setup every verb shares: the launcher config, the KSP2 install to act on, and the release feeds.
+/// The setup every command shares: the launcher config, the KSP2 install to act on, and the release feeds.
 /// </summary>
 public sealed class CliContext
 {
+    /// <summary>
+    /// How much of an install id the CLI shows, and the least it accepts back as a selector.
+    /// </summary>
+    public const int ID_PREFIX_LENGTH = 8;
+
     private const string DOWNLOAD_CACHE_FOLDER = "download-cache";
     private const string INTERNAL_CHANNEL = "internal";
 
     private readonly IFileSystem _fileSystem;
+    private readonly IModuleDefinitionService _moduleDefinitions;
     private readonly IManifestReleasesFeedProviderService _feedProvider;
     private readonly ILogService _log;
 
     /// <summary>
-    /// Initializes the context by resolving the launcher services the verbs need.
+    /// Initializes the context by resolving the launcher services the commands need.
     /// </summary>
     /// <param name="services">The container built by <see cref="CliServiceProvider" />.</param>
-    /// <param name="output">The writer the verbs report through.</param>
+    /// <param name="output">The writer the commands report through.</param>
     public CliContext(IServiceProvider services, CliOutput output)
     {
         Output = output;
@@ -31,13 +40,43 @@ public sealed class CliContext
         InstallService = services.GetRequiredService<IKsp2InstallService>();
         FeedService = services.GetRequiredService<IReleasesFeedService>();
         InstallPlanService = services.GetRequiredService<IInstallPlanService>();
-        _fileSystem = services.GetRequiredService<IFileSystem>();
+        DetectorService = services.GetRequiredService<IKsp2DetectorService>();
+        DiskSpaceService = services.GetRequiredService<IDiskSpaceService>();
+        FileSystem = services.GetRequiredService<IFileSystem>();
+        _fileSystem = FileSystem;
+        _moduleDefinitions = services.GetRequiredService<IModuleDefinitionService>();
         _feedProvider = services.GetRequiredService<IManifestReleasesFeedProviderService>();
         _log = services.GetRequiredService<ILogService>();
     }
 
     /// <summary>
-    /// Gets the writer the verbs report through.
+    /// Gets the service that scans the well known Steam and Epic locations for KSP2.
+    /// </summary>
+    public IKsp2DetectorService DetectorService { get; }
+
+    /// <summary>
+    /// Gets the service reporting free space on the drive holding an install.
+    /// </summary>
+    public IDiskSpaceService DiskSpaceService { get; }
+
+    /// <summary>
+    /// Gets the file system the launcher services read and write through.
+    /// </summary>
+    public IFileSystem FileSystem { get; }
+
+    /// <summary>
+    /// Gets the launcher's log service, which knows the file this session is writing to.
+    /// </summary>
+    public ILogService LogService => _log;
+
+    /// <summary>
+    /// Gets the folder holding the manifests downloaded from the configured feeds.
+    /// </summary>
+    public string DownloadCacheDirectory =>
+        _fileSystem.Path.Combine(ConfigService.GetLocalStorageDirectory(), DOWNLOAD_CACHE_FOLDER);
+
+    /// <summary>
+    /// Gets the writer the commands report through.
     /// </summary>
     public CliOutput Output { get; }
 
@@ -81,47 +120,58 @@ public sealed class CliContext
     /// <returns>One result per configured feed, in config order.</returns>
     // A feed that fails is reported rather than thrown, so one dead feed does not stop a command
     // that only needed a different one.
-    public async Task<IReadOnlyList<FeedLoadResult>> LoadFeedsAsync()
+    public Task<IReadOnlyList<FeedLoadResult>> LoadFeedsAsync()
     {
-        var cacheDirectory = _fileSystem.Path.Combine(ConfigService.GetLocalStorageDirectory(), DOWNLOAD_CACHE_FOLDER);
-        _fileSystem.Directory.CreateDirectory(cacheDirectory);
-
-        List<FeedLoadResult> results = [];
-        foreach (var feed in ConfigService.Config.Feeds)
+        return Output.StatusAsync<IReadOnlyList<FeedLoadResult>>("Loading release feeds", async update =>
         {
-            var manifestFeed = new ManifestReleasesFeed(_fileSystem, _feedProvider, _log, cacheDirectory, feed);
-            try
+            var cacheDirectory = _fileSystem.Path.Combine(ConfigService.GetLocalStorageDirectory(), DOWNLOAD_CACHE_FOLDER);
+            _fileSystem.Directory.CreateDirectory(cacheDirectory);
+
+            List<FeedLoadResult> results = [];
+            foreach (var feed in ConfigService.Config.Feeds)
             {
-                if (!await manifestFeed.UpdateManifest())
+                update($"Loading {feed.Filename}");
+                var manifestFeed = new ManifestReleasesFeed(_fileSystem, _feedProvider, _log, cacheDirectory, feed);
+                try
                 {
-                    results.Add(new FeedLoadResult(feed, null, "manifest could not be downloaded or parsed"));
-                    continue;
+                    if (!await manifestFeed.UpdateManifest())
+                    {
+                        results.Add(new FeedLoadResult(feed, null, "manifest could not be downloaded or parsed"));
+                        continue;
+                    }
+
+                    FeedService.AddOrSet(manifestFeed.CurrentChannel, manifestFeed);
+                    results.Add(new FeedLoadResult(feed, manifestFeed.CurrentChannel, null));
                 }
-
-                FeedService.AddOrSet(manifestFeed.CurrentChannel, manifestFeed);
-                results.Add(new FeedLoadResult(feed, manifestFeed.CurrentChannel, null));
+                catch (Exception e)
+                {
+                    results.Add(new FeedLoadResult(feed, null, e.Message));
+                }
             }
-            catch (Exception e)
-            {
-                results.Add(new FeedLoadResult(feed, null, e.Message));
-            }
-        }
 
-        return results;
+            return results;
+        });
     }
 
     /// <summary>
-    /// Finds the install a command should act on, by id or by name, defaulting to the active install.
+    /// Finds the installation a command should act on, by id or by name, defaulting to the active installation.
     /// </summary>
-    /// <param name="selector">An install id or name, or null to use the active install.</param>
-    /// <returns>The matching install entry, or null when nothing matched.</returns>
+    /// <param name="selector">An installation id or name, or null to use the active installation.</param>
+    /// <returns>The matching installation entry, or null when nothing matched.</returns>
     public Ksp2InstallEntry? ResolveInstallEntry(string? selector)
     {
         InstallService.TryLoadKsp2Install();
 
         if (string.IsNullOrWhiteSpace(selector))
         {
-            return InstallService.ActiveEntry;
+            if (InstallService.ActiveEntry is { } active)
+            {
+                return active;
+            }
+
+            return Output.Capabilities.CanPrompt && InstallService.Entries.Count > 0
+                ? Prompt("No active KSP2 install is configured. Pick one:", InstallService.Entries)
+                : null;
         }
 
         if (Guid.TryParse(selector, out var id))
@@ -137,6 +187,15 @@ public sealed class CliContext
             .Where(e => string.Equals(e.Name, selector, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
+        // The installs table shows a shortened id on a terminal, so the shortened form has to work
+        // when it is handed back in.
+        if (matches.Count == 0 && selector.Length >= ID_PREFIX_LENGTH)
+        {
+            matches = InstallService.Entries
+                .Where(e => e.Id.ToString().StartsWith(selector, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
         if (matches.Count == 1)
         {
             return matches[0];
@@ -144,6 +203,11 @@ public sealed class CliContext
 
         if (matches.Count > 1)
         {
+            if (Output.Capabilities.CanPrompt)
+            {
+                return Prompt($"'{selector}' matches {matches.Count} installs by name. Pick one:", matches);
+            }
+
             Output.Error($"'{selector}' matches {matches.Count} installs by name. Use the id instead:");
             foreach (var match in matches)
             {
@@ -155,10 +219,90 @@ public sealed class CliContext
     }
 
     /// <summary>
+    /// Reads the launcher config back off disk and checks the change actually landed.
+    /// </summary>
+    /// <param name="expectation">The check to run against the config as it now exists on disk.</param>
+    /// <returns>True when the file could be read and satisfies <paramref name="expectation" />.</returns>
+    // LauncherConfigService.Save swallows a write failure and reports it through a dialog, which in
+    // a window less process is only a warning. Without this check a command that changed nothing on
+    // disk would still report success.
+    public bool ConfigPersisted(Func<LauncherConfig, bool> expectation)
+    {
+        try
+        {
+            var path = ConfigService.Config.StoragePath;
+            if (string.IsNullOrWhiteSpace(path) || !_fileSystem.File.Exists(path))
+            {
+                return false;
+            }
+
+            var saved = JsonSerializer.Deserialize<LauncherConfig>(_fileSystem.File.ReadAllText(path));
+            return saved is not null && expectation(saved);
+        }
+        catch (Exception e)
+        {
+            _log.Error("Could not read the launcher config back after saving it", e);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Turns a path to a KSP2 folder or executable into the executable path the launcher stores.
+    /// </summary>
+    /// <param name="path">A path to the KSP2 folder or to KSP2_x64.exe.</param>
+    /// <returns>The path to the executable, which may not exist.</returns>
+    public string ResolveExePath(string path)
+    {
+        var trimmed = path.Trim().Trim('"');
+        return _fileSystem.Directory.Exists(trimmed)
+            ? _fileSystem.Path.Combine(trimmed, Ksp2Install.KSP2_EXE_NAME)
+            : trimmed;
+    }
+
+    /// <summary>
+    /// Reads a KSP2 install off disk without touching the launcher config.
+    /// </summary>
+    /// <param name="exePath">The path to KSP2_x64.exe.</param>
+    /// <returns>The install, or null when it could not be read at all.</returns>
+    public Ksp2Install? ReadInstall(string exePath)
+    {
+        try
+        {
+            return new Ksp2Install(_fileSystem, _moduleDefinitions, exePath);
+        }
+        catch (Exception e)
+        {
+            _log.Error($"Could not read a KSP2 install at {exePath}", e);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Asks the user to pick an installation out of a list.
+    /// </summary>
+    /// <param name="title">The question shown above the list.</param>
+    /// <param name="entries">The installations to choose from.</param>
+    /// <returns>The installation the user picked.</returns>
+    private Ksp2InstallEntry Prompt(string title, IReadOnlyList<Ksp2InstallEntry> entries)
+    {
+        SelectionPrompt<Ksp2InstallEntry> prompt = new()
+        {
+            Title = $"[{CliTheme.HEADER_STYLE}]{Markup.Escape(title)}[/]",
+            HighlightStyle = new Style(CliTheme.BRAND_ORANGE),
+        };
+
+        prompt.UseConverter(entry =>
+            $"{Markup.Escape(entry.Name)} [{CliTheme.DETAIL_STYLE}]{Markup.Escape(entry.ReleaseChannel)}  {Markup.Escape(entry.ExePath)}[/]");
+        prompt.AddChoices(entries);
+
+        return Output.ProgressConsole.Prompt(prompt);
+    }
+
+    /// <summary>
     /// Reports that no install matched, listing what the launcher config holds.
     /// </summary>
-    /// <param name="selector">The selector that failed to match, or null when the active install was used.</param>
-    /// <returns>The install not found exit code.</returns>
+    /// <param name="selector">The selector that failed to match or null when the active installation was used.</param>
+    /// <returns>The install didn't found exit code.</returns>
     public int FailInstallNotFound(string? selector)
     {
         var message = string.IsNullOrWhiteSpace(selector)
@@ -168,14 +312,14 @@ public sealed class CliContext
         Output.Error(message);
         if (InstallService.Entries.Count == 0)
         {
-            Output.Error("  (the launcher config lists no installs at all)");
+            Output.ErrorDetail("  (the launcher config lists no installs at all)");
             return ExitCode.INSTALL_NOT_FOUND;
         }
 
-        Output.Error("Configured installs:");
+        Output.ErrorDetail("Configured installs:");
         foreach (var entry in InstallService.Entries)
         {
-            Output.Error($"  {entry.Id}  {entry.Name}  [{entry.ReleaseChannel}]  {entry.ExePath}");
+            Output.ErrorDetail($"  {entry.Id}  {entry.Name}  [{entry.ReleaseChannel}]  {entry.ExePath}");
         }
 
         return ExitCode.INSTALL_NOT_FOUND;
@@ -194,20 +338,20 @@ public sealed class CliContext
         var available = loaded.Where(r => r.IsOk).Select(r => r.Channel!).ToList();
         if (available.Count > 0)
         {
-            Output.Error($"Channels that loaded: {string.Join(", ", available)}");
+            Output.ErrorDetail($"Channels that loaded: {string.Join(", ", available)}");
         }
 
         foreach (var failure in loaded.Where(r => !r.IsOk))
         {
-            Output.Error($"Feed {failure.Feed.Repository} / {failure.Feed.Filename} failed: {failure.Error}");
+            Output.Warn($"Feed {failure.Feed.Repository} / {failure.Feed.Filename} failed: {failure.Error}");
         }
 
         // The internal channel ships in no default config, so reaching here on a fresh launcher is
         // the expected outcome rather than a fault. Point at the setup, not just the symptom.
         if (string.Equals(channel, INTERNAL_CHANNEL, StringComparison.OrdinalIgnoreCase))
         {
-            Output.Error("The internal channel is not configured by default. Add its feed to the");
-            Output.Error("launcher settings using the internal testing instructions, then re-run.");
+            Output.ErrorDetail("The internal channel is not configured by default. Add its feed to the");
+            Output.ErrorDetail("launcher settings using the internal testing instructions, then re-run.");
         }
 
         return ExitCode.FEED_NOT_CONFIGURED;
@@ -254,8 +398,8 @@ public sealed class CliContext
                 continue;
             }
 
-            Output.Error($"It exists in channel '{otherChannel}'. Name that channel explicitly if");
-            Output.Error("this install is meant to switch channels.");
+            Output.ErrorDetail($"It exists in channel '{otherChannel}'. Name that channel explicitly if");
+            Output.ErrorDetail("this install is meant to switch channels.");
             break;
         }
 

@@ -1,22 +1,22 @@
+using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
 
-namespace Ksp2Redux.Tools.Cli.Verbs;
+namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
 /// Lists the versions published to a channel.
 /// </summary>
-public static class ListVerb
+public sealed class ListCommand : ReduxCommand<ListSettings>
 {
-    /// <summary>
-    /// Prints a channel's versions oldest first, so the newest sits at the bottom of the output.
-    /// </summary>
-    /// <param name="context">The shared verb context.</param>
-    /// <param name="options">The parsed options for this verb.</param>
-    /// <returns>One of the values on <see cref="ExitCode" />.</returns>
-    public static async Task<int> RunAsync(CliContext context, ListOptions options)
+    /// <inheritdoc />
+    protected override async Task<int> RunAsync(
+        CliContext context,
+        ListSettings settings,
+        CancellationToken cancellationToken)
     {
-        var entry = context.ResolveInstallEntry(options.Install);
-        var channel = CliContext.ResolveChannel(options.Channel, entry);
+        var entry = context.ResolveInstallEntry(settings.Install);
+        var channel = CliContext.ResolveChannel(settings.Channel, entry);
         if (channel is null)
         {
             return context.Output.Fail(
@@ -38,9 +38,9 @@ public static class ListVerb
             .OrderBy(v => v.ReleasedAt)
             .ToList();
 
-        if (options.Take is { } take && take > 0 && versions.Count > take)
+        if (settings.Take is { } take && take > 0 && versions.Count > take)
         {
-            versions = versions.Skip(versions.Count - take).ToList();
+            versions = [.. versions.Skip(versions.Count - take)];
         }
 
         context.Output.Payload(
@@ -59,14 +59,17 @@ public static class ListVerb
 
     private static void WriteTable(CliContext context, IReadOnlyList<GameVersion> versions)
     {
-        List<IReadOnlyList<string>> rows = [];
-        foreach (var version in versions)
+        List<IReadOnlyList<CliCell>> rows = [];
+        for (var index = 0; index < versions.Count; index++)
         {
+            var version = versions[index];
+            var isNewest = index == versions.Count - 1;
+            var style = isNewest ? CliTheme.ACTIVE_STYLE : null;
             rows.Add([
-                version.BuildNumber,
-                CliContext.FormatVersion(version),
-                version.ReleasedAt?.ToString("u") ?? "",
-                version.Label ?? "",
+                new CliCell(version.BuildNumber, style),
+                new CliCell(CliContext.FormatVersion(version), style),
+                new CliCell(version.ReleasedAt?.ToString("u") ?? "", CliTheme.DETAIL_STYLE),
+                new CliCell(version.Label ?? "", CliTheme.DETAIL_STYLE),
             ]);
         }
 

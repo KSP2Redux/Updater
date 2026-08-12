@@ -1,18 +1,20 @@
-namespace Ksp2Redux.Tools.Cli.Verbs;
+using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Settings;
+
+namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
 /// Lists the release feeds in the launcher config and the channel each one serves.
 /// </summary>
-public static class ChannelsVerb
+public sealed class ChannelsCommand : ReduxCommand<ChannelsSettings>
 {
-    /// <summary>
-    /// Loads every configured feed and reports the channel it declares.
-    /// </summary>
-    /// <param name="context">The shared verb context.</param>
-    /// <returns>Success, or the feed unavailable code when no feed loaded at all.</returns>
+    /// <inheritdoc />
     // The channel name lives in the manifest rather than the config, so every feed has to be
     // fetched before this can answer. A feed that fails is listed with its error rather than hidden.
-    public static async Task<int> RunAsync(CliContext context)
+    protected override async Task<int> RunAsync(
+        CliContext context,
+        ChannelsSettings settings,
+        CancellationToken cancellationToken)
     {
         var loaded = await context.LoadFeedsAsync();
 
@@ -32,17 +34,16 @@ public static class ChannelsVerb
             }),
             () =>
             {
-                List<IReadOnlyList<string>> rows = [];
-                foreach (var result in loaded)
-                {
-                    rows.Add([
-                        result.Channel ?? "?",
-                        result.IsOk ? "ok" : "FAILED",
-                        result.Feed.Repository,
-                        result.Feed.Filename,
-                        result.Error ?? "",
-                    ]);
-                }
+                List<IReadOnlyList<CliCell>> rows =
+                [
+                    .. loaded.Select(result => (IReadOnlyList<CliCell>)
+                    [
+                        new CliCell(result.Channel ?? "?", result.IsOk ? null : CliTheme.DETAIL_STYLE),
+                        new CliCell(result.IsOk ? "ok" : "FAILED", result.IsOk ? CliTheme.ACTIVE_STYLE : $"bold {CliTheme.DANGER.ToMarkup()}"),
+                        result.Feed.Repository, new CliCell(result.Feed.Filename, CliTheme.DETAIL_STYLE),
+                        new CliCell(result.Error ?? "", CliTheme.DETAIL_STYLE),
+                    ])
+                ];
 
                 context.Output.Table(["CHANNEL", "STATUS", "REPOSITORY", "MANIFEST", "ERROR"], rows);
             });

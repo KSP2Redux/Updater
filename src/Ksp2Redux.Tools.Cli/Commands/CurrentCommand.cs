@@ -1,24 +1,25 @@
-namespace Ksp2Redux.Tools.Cli.Verbs;
+using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Settings;
+
+namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
 /// Reports the version currently installed into a KSP2 install.
 /// </summary>
-public static class CurrentVerb
+public sealed class CurrentCommand : ReduxCommand<CurrentSettings>
 {
-    /// <summary>
-    /// Prints the version detected in the install's own assembly.
-    /// </summary>
-    /// <param name="context">The shared verb context.</param>
-    /// <param name="options">The parsed options for this verb.</param>
-    /// <returns>One of the values on <see cref="ExitCode" />.</returns>
+    /// <inheritdoc />
     // The version comes from reading the install's Assembly-CSharp rather than from the launcher
     // config, so it stays correct after a patch applied by something other than the launcher.
-    public static Task<int> RunAsync(CliContext context, CurrentOptions options)
+    protected override Task<int> RunAsync(
+        CliContext context,
+        CurrentSettings settings,
+        CancellationToken cancellationToken)
     {
-        var entry = context.ResolveInstallEntry(options.Install);
+        var entry = context.ResolveInstallEntry(settings.Install);
         if (entry is null)
         {
-            return Task.FromResult(context.FailInstallNotFound(options.Install));
+            return Task.FromResult(context.FailInstallNotFound(settings.Install));
         }
 
         var install = context.InstallService.Ksp2;
@@ -52,11 +53,11 @@ public static class CurrentVerb
             () =>
             {
                 context.Output.Result(CliContext.FormatVersion(version));
-                context.Output.Progress($"  install:      {entry.Name} ({entry.Id})");
-                context.Output.Progress($"  channel:      {version.Channel}");
-                context.Output.Progress($"  commit:       {version.CommitHash}");
-                context.Output.Progress($"  distribution: {install.Distribution}");
-                context.Output.Progress($"  directory:    {install.InstallDir}");
+                context.Output.Detail($"  install:      {entry.Name} ({entry.Id})");
+                context.Output.Detail($"  channel:      {version.Channel}");
+                context.Output.Detail($"  commit:       {version.CommitHash}");
+                context.Output.Detail($"  distribution: {install.Distribution}");
+                context.Output.Detail($"  directory:    {install.InstallDir}");
             });
 
         return Task.FromResult(ExitCode.SUCCESS);

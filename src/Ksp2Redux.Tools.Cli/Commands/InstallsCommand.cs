@@ -1,16 +1,18 @@
-namespace Ksp2Redux.Tools.Cli.Verbs;
+using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Settings;
+
+namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
 /// Lists the KSP2 installs in the launcher config.
 /// </summary>
-public static class InstallsVerb
+public sealed class InstallsCommand : ReduxCommand<InstallsSettings>
 {
-    /// <summary>
-    /// Prints every configured install with its id, channel and path.
-    /// </summary>
-    /// <param name="context">The shared verb context.</param>
-    /// <returns>Success, or the install not found code when the config lists none.</returns>
-    public static Task<int> RunAsync(CliContext context)
+    /// <inheritdoc />
+    protected override Task<int> RunAsync(
+        CliContext context,
+        InstallsSettings settings,
+        CancellationToken cancellationToken)
     {
         context.InstallService.TryLoadKsp2Install();
 
@@ -36,15 +38,17 @@ public static class InstallsVerb
             }),
             () =>
             {
-                List<IReadOnlyList<string>> rows = [];
+                List<IReadOnlyList<CliCell>> rows = [];
                 foreach (var entry in entries)
                 {
+                    var isActive = entry.Id == activeId;
+                    var nameStyle = isActive ? CliTheme.ACTIVE_STYLE : null;
                     rows.Add([
-                        entry.Id == activeId ? "*" : "",
-                        entry.Id.ToString(),
-                        entry.Name,
+                        new CliCell(isActive ? "*" : "", nameStyle),
+                        new CliCell(ShortId(context, entry.Id), CliTheme.DETAIL_STYLE),
+                        new CliCell(entry.Name, nameStyle),
                         entry.ReleaseChannel,
-                        entry.ExePath,
+                        CliCell.Path(entry.ExePath),
                     ]);
                 }
 
@@ -53,4 +57,12 @@ public static class InstallsVerb
 
         return Task.FromResult(ExitCode.SUCCESS);
     }
+
+    // A full id is 36 characters of a table that also has to hold a path. The short form is enough
+    // to identify an install and enough to pass back in, because a prefix resolves. Plain output and
+    // the JSON document keep the whole thing.
+    private static string ShortId(CliContext context, Guid id) =>
+        context.Output.Capabilities.FancyResults
+            ? id.ToString()[..CliContext.ID_PREFIX_LENGTH]
+            : id.ToString();
 }
