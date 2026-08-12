@@ -35,7 +35,7 @@ and linux-x64 launcher binaries, and creates the GitHub release automatically
 (see `.github/workflows/release.yaml`).
 
 It is a cross-platform application with releases currently being made for Windows and Linux (untested). Please report any problems with running the application in
-[Issues](https://github.com/KSP2Redux/Updater/issues) or in the [KSP2 Modding Society Discord server](https://discord.gg/8yq8d5VGQR).
+[Issues](https://github.com/KSP2Redux/Updater/issues) or in the [KSP2 Redux Discord server](https://discord.gg/ksp2redux).
 
 ## KSP2 Redux
 For more information about KSP2 Redux, see [our website](https://ksp2redux.org) or the [Redux GitHub page](https://github.com/KSP2Redux/Redux).
