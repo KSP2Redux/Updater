@@ -99,7 +99,7 @@ public partial class SidebarView : UserControl
 
     private void ForumsLink_OnClick(object? sender, RoutedEventArgs e)
     {
-        LaunchUri("https://forum.kerbalspaceprogram.com/topic/226985-ksp2-redux");
+        LaunchUri("https://forum.kerbalspaceprogram.com/topic/231578-ksp2-redux-v0285/");
     }
 
     private void YoutubeLink_OnClick(object? sender, RoutedEventArgs e)
