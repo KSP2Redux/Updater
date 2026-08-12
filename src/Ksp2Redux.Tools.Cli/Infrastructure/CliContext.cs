@@ -41,6 +41,10 @@ public sealed class CliContext
         FeedService = services.GetRequiredService<IReleasesFeedService>();
         InstallPlanService = services.GetRequiredService<IInstallPlanService>();
         DetectorService = services.GetRequiredService<IKsp2DetectorService>();
+        OperatingSystemService = services.GetRequiredService<IOperatingSystemService>();
+        EnvironmentProvider = services.GetRequiredService<IEnvironmentProvider>();
+        EnvironmentVariables = services.GetRequiredService<IEnvironmentVariableProvider>();
+        AssemblyService = services.GetRequiredService<IAssemblyService>();
         DiskSpaceService = services.GetRequiredService<IDiskSpaceService>();
         FileSystem = services.GetRequiredService<IFileSystem>();
         _fileSystem = FileSystem;
@@ -53,6 +57,42 @@ public sealed class CliContext
     /// Gets the service that scans the well known Steam and Epic locations for KSP2.
     /// </summary>
     public IKsp2DetectorService DetectorService { get; }
+
+    /// <summary>
+    /// Gets the service answering which platform this is.
+    /// </summary>
+    public IOperatingSystemService OperatingSystemService { get; }
+
+    /// <summary>
+    /// Gets the process's own environment, which knows where its executable lives.
+    /// </summary>
+    public IEnvironmentProvider EnvironmentProvider { get; }
+
+    /// <summary>
+    /// Gets the reader and writer for environment variables, including the user's PATH.
+    /// </summary>
+    public IEnvironmentVariableProvider EnvironmentVariables { get; }
+
+    /// <summary>
+    /// Gets the running assembly, which carries the version the CLI reports.
+    /// </summary>
+    public IAssemblyService AssemblyService { get; }
+
+    /// <summary>
+    /// Gets the version this build reports, or 0.0.0.0 when it has none.
+    /// </summary>
+    public Version RunningVersion => AssemblyService.GetVersion() ?? new Version(0, 0, 0, 0);
+
+    /// <summary>
+    /// Builds a service that reads the CLI's own releases off GitHub.
+    /// </summary>
+    /// <param name="timeout">How long to wait on GitHub, or null for the default.</param>
+    /// <returns>A release service pointed at the configured repository.</returns>
+    public CliReleaseService CreateReleaseService(TimeSpan? timeout = null) => new(
+        ConfigService.Config.LauncherRepo,
+        OperatingSystemService.IsLinux(),
+        RunningVersion.ToString(),
+        timeout);
 
     /// <summary>
     /// Gets the service reporting free space on the drive holding an install.

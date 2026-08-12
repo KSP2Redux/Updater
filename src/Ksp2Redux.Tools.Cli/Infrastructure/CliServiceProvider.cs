@@ -32,6 +32,11 @@ public static class CliServiceProvider
 
         services.AddSingleton<IFileSystem, RealFileSystem>();
         services.AddSingleton(SystemEnvironmentProvider.Instance);
+
+        // Registered by interface as well, because self-update needs the running executable's path
+        // and self-uninstall needs to edit the user's PATH.
+        services.AddSingleton<IEnvironmentProvider>(SystemEnvironmentProvider.Instance);
+        services.AddSingleton<IEnvironmentVariableProvider>(SystemEnvironmentProvider.Instance);
         services.AddSingleton<ILogService, LogService>();
         services.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         services.AddSingleton<IAssemblyService, ExecutingAssemblyService>();

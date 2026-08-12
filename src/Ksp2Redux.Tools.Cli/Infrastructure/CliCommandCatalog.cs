@@ -40,6 +40,9 @@ public static class CliCommandCatalog
         new("cache", typeof(CacheSettings)),
         new("cache clear", typeof(CacheClearSettings)),
         new("logs", typeof(LogsSettings)),
+        new("version", typeof(VersionSettings)),
+        new("self-update", typeof(SelfUpdateSettings)),
+        new("self-uninstall", typeof(SelfUninstallSettings)),
         new("completion", typeof(CompletionSettings)),
     ];
 
@@ -140,7 +143,6 @@ public static class CliCommandCatalog
         if (path.Length == 0)
         {
             children.Add("help");
-            children.Add("version");
         }
 
         return children;

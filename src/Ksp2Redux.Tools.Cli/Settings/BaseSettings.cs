@@ -24,6 +24,13 @@ public abstract class BaseSettings : CommandSettings
     public bool IsVerbose { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether the daily check for a newer CLI is skipped.
+    /// </summary>
+    [CommandOption("--no-update-check")]
+    [Description("Do not check whether a newer CLI has been published.")]
+    public bool NoUpdateCheck { get; init; }
+
+    /// <summary>
     /// Gets a value indicating whether the Redux logo is suppressed.
     /// </summary>
     [CommandOption("--no-banner")]

@@ -1,0 +1,51 @@
+# Template for the winget manifest. {VERSION} and {SHA256} are filled in per release, see README.md.
+# The three winget manifest files are kept together here rather than split the way winget-pkgs
+# stores them, because this is the source they are generated from rather than the submission itself.
+PackageIdentifier: KSP2Redux.ReduxLauncherCli
+PackageVersion: "{VERSION}"
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0
+
+---
+PackageIdentifier: KSP2Redux.ReduxLauncherCli
+PackageVersion: "{VERSION}"
+PackageLocale: en-US
+Publisher: KSP2 Redux
+PublisherUrl: https://github.com/KSP2Redux
+PublisherSupportUrl: https://github.com/KSP2Redux/Updater/issues
+PackageName: KSP2 Redux Launcher CLI
+PackageUrl: https://github.com/KSP2Redux/Updater
+License: MIT
+LicenseUrl: https://github.com/KSP2Redux/Updater/blob/main/LICENSE.md
+ShortDescription: Scriptable front end over the KSP2 Redux launcher.
+Description: >-
+  Lists release channels and published versions, installs a specific Redux build into a KSP2
+  install, manages the installs the launcher knows about, and starts the game. Reads and writes the
+  same configuration as the KSP2 Redux launcher window.
+Moniker: redux-launcher-cli
+Tags:
+  - ksp2
+  - kerbal-space-program-2
+  - modding
+  - redux
+  - game
+ReleaseNotesUrl: https://github.com/KSP2Redux/Updater/releases/tag/cli-v{VERSION}
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
+
+---
+PackageIdentifier: KSP2Redux.ReduxLauncherCli
+PackageVersion: "{VERSION}"
+MinimumOSVersion: 10.0.0.0
+InstallerType: portable
+Commands:
+  - redux-launcher-cli
+ReleaseDate: "{RELEASE_DATE}"
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/KSP2Redux/Updater/releases/download/cli-v{VERSION}/redux-launcher-cli-win-x64.exe
+    InstallerSha256: "{SHA256}"
+    PortableCommandAlias: redux-launcher-cli
+ManifestType: installer
+ManifestVersion: 1.6.0

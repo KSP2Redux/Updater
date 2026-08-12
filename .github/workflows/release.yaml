@@ -13,7 +13,7 @@ jobs:
             tag_exists: ${{ steps.check_tag.outputs.exists }}
             version: ${{ steps.get_version.outputs.VERSION }}
             tag: ${{ steps.get_version.outputs.TAG }}
-        
+
         steps:
             -   uses: actions/checkout@v7
                 with:
@@ -30,11 +30,13 @@ jobs:
                     fi
                     echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
                     echo "TAG=updater-v$VERSION" >> $GITHUB_OUTPUT
+                    echo "CLI_TAG=cli-v$VERSION" >> $GITHUB_OUTPUT
 
             -   name: Check if Tag Exists
                 id: check_tag
                 env:
                     TAG: ${{ steps.get_version.outputs.TAG }}
+                    CLI_TAG: ${{ steps.get_version.outputs.CLI_TAG }}
                 run: |
                     if git show-ref --tags --verify --quiet "refs/tags/${{ env.TAG }}"; then
                       echo "Tag ${{ env.TAG }} already exists. Skipping build and release."
@@ -44,8 +46,18 @@ jobs:
                       echo "exists=false" >> $GITHUB_OUTPUT
                     fi
 
+                    # The CLI ships from its own tag, so it is checked separately. A release that
+                    # only adds the CLI to a version already tagged for the launcher still publishes.
+                    if git show-ref --tags --verify --quiet "refs/tags/${{ env.CLI_TAG }}"; then
+                      echo "Tag ${{ env.CLI_TAG }} already exists. Skipping the CLI release."
+                      echo "cli_exists=true" >> $GITHUB_OUTPUT
+                    else
+                      echo "New CLI version detected: ${{ env.CLI_TAG }}. Proceeding..."
+                      echo "cli_exists=false" >> $GITHUB_OUTPUT
+                    fi
+
             -   name: Setup .NET
-                if: steps.check_tag.outputs.exists == 'false'
+                if: steps.check_tag.outputs.exists == 'false' || steps.check_tag.outputs.cli_exists == 'false'
                 uses: actions/setup-dotnet@v6
                 with:
                     dotnet-version: 10.0.x
@@ -57,6 +69,14 @@ jobs:
                     dotnet publish src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/linux
                     mv ./publish/win/Ksp2Redux.Tools.Launcher.exe ./publish/Ksp2Redux-win-x64.exe
                     mv ./publish/linux/Ksp2Redux.Tools.Launcher ./publish/Ksp2Redux-linux-x64
+
+            -   name: Build and Publish CLI
+                if: steps.check_tag.outputs.cli_exists == 'false'
+                run: |
+                    dotnet publish src/Ksp2Redux.Tools.Cli/Ksp2Redux.Tools.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/cli-win
+                    dotnet publish src/Ksp2Redux.Tools.Cli/Ksp2Redux.Tools.Cli.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/cli-linux
+                    mv ./publish/cli-win/redux-launcher-cli.exe ./publish/redux-launcher-cli-win-x64.exe
+                    mv ./publish/cli-linux/redux-launcher-cli ./publish/redux-launcher-cli-linux-x64
 
             -   name: Create Release with Auto-Notes
                 if: steps.check_tag.outputs.exists == 'false'
@@ -76,3 +96,25 @@ jobs:
                       --generate-notes \
                       --draft
                     gh release edit "$TAG" --draft=false
+
+            -   name: Create CLI Release
+                if: steps.check_tag.outputs.cli_exists == 'false'
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    CLI_TAG: ${{ steps.get_version.outputs.CLI_TAG }}
+                    TITLE: "KSP2 Redux Launcher CLI v${{ steps.get_version.outputs.VERSION }}"
+                run: |
+                    # The CLI gets its own tag rather than riding along on the updater release. The
+                    # launcher picks its update asset by looking for "win" or "linux" in the name, so
+                    # a CLI binary sitting in an updater-v release would be offered to every launcher
+                    # already installed as an update to itself.
+                    #
+                    # Drafted first for the same reason as above: self-update skips a release whose
+                    # assets have no digest yet, and a draft is invisible until the upload finishes.
+                    gh release create "$CLI_TAG" \
+                      ./publish/redux-launcher-cli-win-x64.exe \
+                      ./publish/redux-launcher-cli-linux-x64 \
+                      --title "$TITLE" \
+                      --generate-notes \
+                      --draft
+                    gh release edit "$CLI_TAG" --draft=false
