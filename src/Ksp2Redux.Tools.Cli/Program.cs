@@ -107,6 +107,17 @@ public static class Program
                 .WithDescription("Print the launcher's most recent log file.")
                 .WithExample("logs", "--tail", "100");
 
+            config.AddCommand<VersionCommand>("version")
+                .WithDescription("Report the CLI's own version, and with --check whether a newer one is published.")
+                .WithExample("version", "--check");
+
+            config.AddCommand<SelfUpdateCommand>("self-update")
+                .WithDescription("Replace this CLI with the newest published build.")
+                .WithExample("self-update", "--check");
+
+            config.AddCommand<SelfUninstallCommand>("self-uninstall")
+                .WithDescription("Remove this CLI, leaving the launcher config alone.");
+
             config.AddCommand<CompletionCommand>("completion")
                 .WithDescription("Print a shell completion script for pwsh or bash.")
                 .WithExample("completion", "pwsh");
@@ -140,18 +151,13 @@ public static class Program
         return await app.RunAsync(normalized);
     }
 
-    // CommandLineParser answered to a help verb and a version verb, so both keep working here rather
-    // than turning into an unknown command for whatever script already calls them.
+    // CommandLineParser answered to a help verb, so it keeps working here rather than turning into
+    // an unknown command for whatever script already calls it. The version verb is a real command.
     private static string[] Normalize(string[] args)
     {
         if (args.Length == 0)
         {
             return args;
-        }
-
-        if (string.Equals(args[0], "version", StringComparison.OrdinalIgnoreCase))
-        {
-            return ["--version"];
         }
 
         if (string.Equals(args[0], "help", StringComparison.OrdinalIgnoreCase))

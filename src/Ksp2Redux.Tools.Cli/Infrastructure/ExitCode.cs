@@ -58,4 +58,9 @@ public static class ExitCode
     /// The launcher config could not be written, so the change was not kept.
     /// </summary>
     public const int CONFIG_WRITE_FAILED = 9;
+
+    /// <summary>
+    /// The CLI could not replace or remove its own binary.
+    /// </summary>
+    public const int SELF_UPDATE_FAILED = 10;
 }

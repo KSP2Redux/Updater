@@ -39,3 +39,17 @@ jobs:
                     name: Tests
                     path: TestResults/**/*.trx
                     reporter: dotnet-trx
+
+            # A plain build says nothing about whether the shipped binary works. The CLI is published
+            # self-contained and single file, which is where an embedded resource or a trimmed away
+            # dependency breaks, so the release shape is built and run here rather than at release time.
+            -   name: Publish the CLI the way it ships
+                run: dotnet publish src/Ksp2Redux.Tools.Cli/Ksp2Redux.Tools.Cli.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o ./publish/cli
+
+            -   name: Smoke test the published CLI
+                run: |
+                    ./publish/cli/redux-launcher-cli --version
+                    ./publish/cli/redux-launcher-cli --help
+                    ./publish/cli/redux-launcher-cli complete -- "word:inst"
+                    # No command means usage, which is exit code 1 rather than a crash.
+                    ./publish/cli/redux-launcher-cli && exit 1 || test $? -eq 1

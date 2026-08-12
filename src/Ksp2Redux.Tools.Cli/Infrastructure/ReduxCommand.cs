@@ -49,7 +49,17 @@ public abstract class ReduxCommand<TSettings> : AsyncCommand<TSettings>
 
             CliContext cliContext = new(services, output);
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, CliCancellation.Token);
-            return await RunAsync(cliContext, settings, cancellation.Token);
+
+            var exitCode = await RunAsync(cliContext, settings, cancellation.Token);
+
+            // After the command rather than before it, so the notice sits under the output the user
+            // actually asked for instead of pushing it down the screen.
+            if (NoticeApplies)
+            {
+                await CliUpdateNotice.NotifyAsync(cliContext, !settings.NoUpdateCheck, cancellation.Token);
+            }
+
+            return exitCode;
         }
         catch (OperationCanceledException)
         {
@@ -67,6 +77,13 @@ public abstract class ReduxCommand<TSettings> : AsyncCommand<TSettings>
             return output.Fail(ExitCode.USAGE_ERROR, e.Message);
         }
     }
+
+    /// <summary>
+    /// Gets a value indicating whether this command tells the user about a newer CLI when it finishes.
+    /// </summary>
+    // The commands that are about the CLI's own version do their own reporting, and a second notice
+    // underneath would only repeat them.
+    protected virtual bool NoticeApplies => true;
 
     /// <summary>
     /// Runs the command against a prepared context.
