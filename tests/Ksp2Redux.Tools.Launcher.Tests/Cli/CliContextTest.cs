@@ -1,4 +1,4 @@
-using Ksp2Redux.Tools.Cli;
+using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;

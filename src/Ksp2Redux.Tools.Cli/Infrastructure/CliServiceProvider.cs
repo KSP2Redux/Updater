@@ -6,10 +6,10 @@ using Ksp2Redux.Tools.Launcher.Services.Install;
 using Microsoft.Extensions.DependencyInjection;
 using Testably.Abstractions;
 
-namespace Ksp2Redux.Tools.Cli;
+namespace Ksp2Redux.Tools.Cli.Infrastructure;
 
 /// <summary>
-/// Factory for the service container the CLI verbs run against.
+/// Factory for the service container the CLI commands run against.
 /// </summary>
 // This is the launcher's DefaultServiceProviderProvider minus everything that needs a window: the
 // view models, news, tab navigation, window placement, and the launcher's own self update. What
@@ -19,9 +19,9 @@ namespace Ksp2Redux.Tools.Cli;
 public static class CliServiceProvider
 {
     /// <summary>
-    /// Builds the container holding the launcher services the verbs need.
+    /// Builds the container holding the launcher services the commands need.
     /// </summary>
-    /// <param name="output">The writer the verbs and the dialog stand in report through.</param>
+    /// <param name="output">The writer the commands and the dialog stand in report through.</param>
     /// <returns>The service provider for a CLI session.</returns>
     public static IServiceProvider Build(CliOutput output)
     {

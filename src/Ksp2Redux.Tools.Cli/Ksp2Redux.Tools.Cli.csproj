@@ -20,7 +20,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="CommandLineParser" />
         <PackageReference Include="EnvironmentAbstractions" />
         <PackageReference Include="EnvironmentAbstractions.BannedApiAnalyzer">
             <PrivateAssets>all</PrivateAssets>
@@ -31,7 +30,15 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Spectre.Console" />
+        <PackageReference Include="Spectre.Console.Cli" />
+        <PackageReference Include="Spectre.Console.ImageSharp" />
         <PackageReference Include="Testably.Abstractions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The launcher's logo, embedded so the banner works from a copied exe with no assets beside it. -->
+        <EmbeddedResource Include="..\Ksp2Redux.Tools.Launcher\Assets\logo.png" LogicalName="Ksp2Redux.Tools.Cli.logo.png" />
     </ItemGroup>
 
     <ItemGroup>

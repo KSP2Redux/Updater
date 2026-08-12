@@ -1,27 +1,32 @@
 using System.Diagnostics;
+using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
-namespace Ksp2Redux.Tools.Cli.Verbs;
+namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
 /// Starts KSP2 using an install's configured launch settings.
 /// </summary>
-public static class LaunchVerb
+public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
 {
     private const string DEFAULT_STEAM_APP_ID = "954850";
 
-    /// <summary>
-    /// Starts the game, either directly or through Steam, depending on the install's settings.
-    /// </summary>
-    /// <param name="context">The shared verb context.</param>
-    /// <param name="options">The parsed options for this verb.</param>
-    /// <param name="cancellationToken">Token cancelled when the user interrupts the process.</param>
-    /// <returns>One of the values on <see cref="ExitCode" />.</returns>
-    public static async Task<int> RunAsync(CliContext context, LaunchOptions options, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    protected override async Task<int> RunAsync(
+        CliContext context,
+        LaunchSettings settings,
+        CancellationToken cancellationToken)
     {
-        var entry = context.ResolveInstallEntry(options.Install);
+        if (!settings.NoBanner)
+        {
+            CliBanner.Write(context.Output);
+        }
+
+        var entry = context.ResolveInstallEntry(settings.Install);
         if (entry is null)
         {
-            return context.FailInstallNotFound(options.Install);
+            return context.FailInstallNotFound(settings.Install);
         }
 
         var install = context.InstallService.Ksp2;
@@ -52,9 +57,9 @@ public static class LaunchVerb
             }
 
             process.Start();
-            context.Output.Progress($"Started {install.ExePath} (pid {process.Id}).");
+            context.Output.Heading($"Started {install.ExePath} (pid {process.Id}).");
 
-            if (!options.ShouldWait)
+            if (!settings.ShouldWait)
             {
                 context.Output.Payload(
                     new { ok = true, pid = process.Id, waited = false },
@@ -82,7 +87,7 @@ public static class LaunchVerb
     }
 
     // Steam owns the process it starts, so there is no pid to report and nothing to wait on here.
-    private static int LaunchThroughSteam(CliContext context, Ksp2Redux.Tools.Launcher.Models.Ksp2InstallEntry entry)
+    private static int LaunchThroughSteam(CliContext context, Ksp2InstallEntry entry)
     {
         var appId = string.IsNullOrWhiteSpace(entry.SteamAppId) ? DEFAULT_STEAM_APP_ID : entry.SteamAppId;
         try
@@ -101,7 +106,7 @@ public static class LaunchVerb
                 $"Could not open Steam: {e.Message} Make sure Steam is installed and try again.");
         }
 
-        context.Output.Progress($"Asked Steam to run app {appId}.");
+        context.Output.Heading($"Asked Steam to run app {appId}.");
         context.Output.Payload(
             new { ok = true, steamAppId = appId, waited = false },
             () => context.Output.Result("started"));

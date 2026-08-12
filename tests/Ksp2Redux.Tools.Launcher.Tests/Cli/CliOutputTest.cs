@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Ksp2Redux.Tools.Cli;
+using Ksp2Redux.Tools.Cli.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
@@ -135,6 +135,27 @@ public class CliOutputTest
         Assert.That(lines[1], Is.EqualTo("------  --------------"));
         Assert.That(lines[2], Is.EqualTo("101669  0.2.3.0.101669"));
         Assert.That(lines[3], Is.EqualTo("1       x"));
+    }
+
+    // --color always must never reach the data channel, or a caller piping the document into a
+    // parser gets escape sequences in the middle of it.
+    [Test]
+    public void Payload_JsonModeAndForcedColor_WritesAPlainDocument()
+    {
+        // Arrange
+        StringWriter results = new();
+        CliOutput output = new(
+            results,
+            isJson: true,
+            CliCapabilities.Detect(ColorMode.Always, isJson: true, isVerbose: false));
+
+        // Act
+        output.Payload(new { build = "103669" }, () => { });
+
+        // Assert
+        Assert.That(results.ToString(), Does.Not.Contain(''));
+        using JsonDocument document = JsonDocument.Parse(results.ToString());
+        Assert.That(document.RootElement.GetProperty("build").GetString(), Is.EqualTo("103669"));
     }
 
     [Test]

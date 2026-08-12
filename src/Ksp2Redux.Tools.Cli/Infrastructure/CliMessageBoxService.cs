@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using MsBox.Avalonia.Enums;
 
-namespace Ksp2Redux.Tools.Cli;
+namespace Ksp2Redux.Tools.Cli.Infrastructure;
 
 /// <summary>
 /// Dialog service for a process with no window, writing the dialog text to stderr instead.
