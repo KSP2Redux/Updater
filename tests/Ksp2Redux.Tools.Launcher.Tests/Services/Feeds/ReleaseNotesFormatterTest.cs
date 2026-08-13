@@ -4,29 +4,16 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Services.Feeds;
 
 public class ReleaseNotesFormatterTest
 {
-    // The body GitHub generates, followed by the download guide the release workflow appends. This
-    // is what the dialog was showing verbatim, pipes and all.
+    // Exactly what GitHub generates, which is the whole body now.
     private const string REAL_BODY = """
         ## What's Changed
         * Game data folder button, kill command, shorter release notes by @EwyBoy in https://github.com/KSP2Redux/Updater/pull/64
 
         **Full Changelog**: https://github.com/KSP2Redux/Updater/compare/updater-v0.4.3.1...updater-v0.4.3.2
-
-        <!-- launcher-notes-end -->
-
-        ---
-
-        ### Which file do I want?
-
-        **The launcher**, if you just want to play. Download it and run it.
-
-        | File | Platform |
-        |---|---|
-        | `Ksp2Redux-win-x64.exe` | Windows |
         """;
 
     [Test]
-    public void ToPlainText_TheRealReleaseBody_KeepsOnlyTheChangelog()
+    public void ToPlainText_TheRealReleaseBody_ReadsAsText()
     {
         // Act
         string plain = ReleaseNotesFormatter.ToPlainText(REAL_BODY);
@@ -34,8 +21,6 @@ public class ReleaseNotesFormatterTest
         // Assert
         Assert.That(plain, Does.StartWith("What's Changed"));
         Assert.That(plain, Does.Contain("Game data folder button, kill command"));
-        Assert.That(plain, Does.Not.Contain("Which file do I want"));
-        Assert.That(plain, Does.Not.Contain("|"));
         Assert.That(plain, Does.Contain("in #64"), "the pull request URL is shortened to its number");
         Assert.That(plain, Does.Not.Contain("https://"), "no bare URLs survive");
     }
@@ -94,18 +79,17 @@ public class ReleaseNotesFormatterTest
         Assert.That(plain, Is.EqualTo("Fixed reading KSP2_x64_Data on startup"));
     }
 
-    // Releases published before the cutoff marker existed still have to render sensibly, they just
-    // keep the words from the part of the body aimed at the web page.
+    // Whatever else ends up in a body, the dialog should get words rather than markup.
     [Test]
-    public void ToPlainText_BodyWithoutTheMarker_StillStripsMarkup()
+    public void ToPlainText_HeadingsAndRules_StillStripsMarkup()
     {
         // Act
-        string plain = ReleaseNotesFormatter.ToPlainText("## What's Changed\n* A thing\n\n---\n\n### Which file do I want?\n\n**The launcher**, if you just want to play.");
+        string plain = ReleaseNotesFormatter.ToPlainText("## What's Changed\n* A thing\n\n---\n\n### Notes\n\n**Bold** lead in.");
 
         // Assert
         Assert.That(plain, Does.Not.Contain("#"));
         Assert.That(plain, Does.Not.Contain("*"));
-        Assert.That(plain, Does.Contain("The launcher, if you just want to play."));
+        Assert.That(plain, Does.Contain("Bold lead in."));
     }
 
     [TestCase(null)]
@@ -117,15 +101,5 @@ public class ReleaseNotesFormatterTest
         Assert.That(ReleaseNotesFormatter.ToPlainText(body), Is.Empty);
     }
 
-    // A release whose body is nothing but the guide leaves the dialog with no notes rather than a
-    // half table, and the caller falls back to its placeholder.
-    [Test]
-    public void ToPlainText_OnlyTheGuide_IsEmpty()
-    {
-        // Act
-        string plain = ReleaseNotesFormatter.ToPlainText("<!-- launcher-notes-end -->\n\n### Which file do I want?\n| A |");
 
-        // Assert
-        Assert.That(plain, Is.Empty);
-    }
 }

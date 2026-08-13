@@ -7,15 +7,9 @@ namespace Ksp2Redux.Tools.Launcher.Services.Feeds;
 /// Turns a GitHub release body into something worth showing in a message box.
 /// </summary>
 // The release body is markdown written for the releases page, where GitHub renders it. The update
-// dialog is a plain text control, so without this the user reads hashes, asterisks, pipe tables and
-// full URLs.
+// dialog is a plain text control, so without this the user reads hashes, asterisks and full URLs.
 public static partial class ReleaseNotesFormatter
 {
-    /// <summary>
-    /// Everything after this marker in a release body is for the web page rather than the launcher.
-    /// </summary>
-    public const string LAUNCHER_CUTOFF = "<!-- launcher-notes-end -->";
-
     /// <summary>
     /// Reduces a release body to plain text, keeping the words and dropping the markup.
     /// </summary>
@@ -28,15 +22,7 @@ public static partial class ReleaseNotesFormatter
             return "";
         }
 
-        var text = markdown.ReplaceLineEndings("\n");
-
-        var cutoff = text.IndexOf(LAUNCHER_CUTOFF, StringComparison.OrdinalIgnoreCase);
-        if (cutoff >= 0)
-        {
-            text = text[..cutoff];
-        }
-
-        text = HtmlComment().Replace(text, "");
+        var text = HtmlComment().Replace(markdown.ReplaceLineEndings("\n"), "");
 
         StringBuilder plain = new();
         foreach (var raw in text.Split('\n'))
