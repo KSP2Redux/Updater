@@ -70,6 +70,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton<ModsTabViewModel>();
         serviceCollection.AddSingleton<SettingsTabViewModel>();
         serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
+        serviceCollection.AddSingleton<IGameDataFolderService, GameDataFolderService>();
         serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
         serviceCollection.AddSingleton<ILogService, LogService>();
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();

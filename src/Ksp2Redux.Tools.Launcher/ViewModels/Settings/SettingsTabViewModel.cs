@@ -28,6 +28,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly ILogService _log;
+    private readonly IGameDataFolderService _gameDataFolderService;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -71,9 +72,11 @@ public partial class SettingsTabViewModel : ViewModelBase
     public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
-        IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log)
+        IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
+        IGameDataFolderService gameDataFolderService)
     {
         _fileSystem = fileSystem;
+        _gameDataFolderService = gameDataFolderService;
         _cacheService = cacheService;
         _tabNavigatorService = tabNavigatorService;
         _launcherConfigService = launcherConfigService;
@@ -228,6 +231,45 @@ public partial class SettingsTabViewModel : ViewModelBase
         catch (Exception e)
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", $"Could not open the install folder.\n{e.Message}",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+    }
+
+    /// <summary>
+    /// Opens the folder KSP2 keeps its saves, settings and its own log file in.
+    /// </summary>
+    // Unity only creates this the first time the game runs, so a path that resolves but is not there
+    // yet is a different problem from one that cannot be worked out at all, and says so.
+    [RelayCommand]
+    public async Task OpenGameDataFolder()
+    {
+        var folder = _gameDataFolderService.Resolve(_ksp2InstallService.ActiveEntry);
+
+        if (string.IsNullOrWhiteSpace(folder))
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                "The game data folder could not be worked out for this install.",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+
+        if (!_fileSystem.Directory.Exists(folder))
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Nothing there yet",
+                $"KSP2 has not created its data folder yet. Run the game once and it will appear at\n{folder}",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch (Exception e)
+        {
+            _log.Error($"Failed to open the game data folder at {folder}.", e);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Could not open the game data folder.\n{e.Message}",
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }

@@ -90,6 +90,10 @@ public static class Program
             config.AddCommand<LaunchCommand>("launch")
                 .WithDescription("Start KSP2 using the install's configured launch settings.");
 
+            config.AddCommand<KillCommand>("kill")
+                .WithDescription("Stop a running KSP2, for when it has hung.")
+                .WithAlias("stop");
+
             config.AddCommand<DoctorCommand>("doctor")
                 .WithDescription("Report the paths, installs and feeds the launcher can see.");
 

@@ -75,6 +75,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
                 downloadCache = cacheDirectory,
                 downloadCacheBytes = cacheBytes,
                 detectedInstall = detected,
+                gameDataFolder = context.GameDataFolderService.Resolve(context.InstallService.ActiveEntry),
                 installs,
                 feeds,
                 feedsChecked = !settings.IsOffline,
@@ -103,6 +104,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         WritePath(context, "log file", context.LogService.CurrentLogFilePath);
         WritePath(context, "download cache", $"{cacheDirectory} ({CliFormat.Bytes(cacheBytes)})");
         WritePath(context, "detected KSP2", detected);
+        WritePath(context, "game data", context.GameDataFolderService.Resolve(context.InstallService.ActiveEntry));
 
         context.Output.Section("Installs");
         if (installs.Count == 0)

@@ -95,9 +95,17 @@ jobs:
                       --draft
 
                     # Four files on one page needs a word about which is which, or people download the
-                    # command line tool when they wanted the launcher. Written above the notes GitHub
-                    # generated rather than replacing them.
-                    cat > release-notes.md <<'GUIDE'
+                    # command line tool when they wanted the launcher.
+                    #
+                    # It goes underneath the generated notes, not above them: the launcher shows the
+                    # first 500 characters of this body in its update dialog, and that space belongs to
+                    # the changelog. On the web page the guide still lands right above the asset list.
+                    gh release view "$TAG" --json body --jq .body > release-notes.md
+
+                    cat >> release-notes.md <<'GUIDE'
+
+                    ---
+
                     ### Which file do I want?
 
                     **The launcher**, if you just want to play. Download it and run it.
@@ -115,10 +123,6 @@ jobs:
                     |---|---|
                     | `redux-cli-x64.exe` | Windows |
                     | `redux-cli-x64` | Linux |
-
-                    ---
-
                     GUIDE
 
-                    gh release view "$TAG" --json body --jq .body >> release-notes.md
                     gh release edit "$TAG" --notes-file release-notes.md --draft=false

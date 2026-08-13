@@ -47,6 +47,7 @@ public static class CliServiceProvider
         services.AddSingleton<IDiskSpaceService, DiskSpaceService>();
         services.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
+        services.AddSingleton<IGameDataFolderService, GameDataFolderService>();
         services.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
         services.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         services.AddSingleton<IInstallPlanService, InstallPlanService>();

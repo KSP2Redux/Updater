@@ -46,6 +46,7 @@ public sealed class CliContext
         EnvironmentVariables = services.GetRequiredService<IEnvironmentVariableProvider>();
         AssemblyService = services.GetRequiredService<IAssemblyService>();
         DiskSpaceService = services.GetRequiredService<IDiskSpaceService>();
+        GameDataFolderService = services.GetRequiredService<IGameDataFolderService>();
         FileSystem = services.GetRequiredService<IFileSystem>();
         _fileSystem = FileSystem;
         _moduleDefinitions = services.GetRequiredService<IModuleDefinitionService>();
@@ -98,6 +99,11 @@ public sealed class CliContext
     /// Gets the service reporting free space on the drive holding an install.
     /// </summary>
     public IDiskSpaceService DiskSpaceService { get; }
+
+    /// <summary>
+    /// Gets the service that finds where KSP2 keeps its saves, settings and its own log.
+    /// </summary>
+    public IGameDataFolderService GameDataFolderService { get; }
 
     /// <summary>
     /// Gets the file system the launcher services read and write through.
