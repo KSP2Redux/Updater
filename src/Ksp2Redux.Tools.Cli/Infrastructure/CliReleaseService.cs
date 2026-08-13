@@ -16,21 +16,26 @@ namespace Ksp2Redux.Tools.Cli.Infrastructure;
 public sealed record CliRelease(Version Version, string AssetName, string DownloadUrl, string Sha256, string? Notes);
 
 /// <summary>
-/// Finds and fetches the CLI's own releases.
+/// Finds and fetches the CLI's builds out of the launcher's releases.
 /// </summary>
-// The launcher ships from tags starting updater-v and picks its asset by looking for "win" or
-// "linux" in the name, so the CLI ships from its own cli-v tags. A launcher already installed
-// somewhere would otherwise see these binaries as an update to itself.
+// The CLI rides along in the launcher's release so there is one download page rather than two, and
+// so the website's link to the newest release cannot land on the CLI by accident.
+//
+// That puts both products' binaries in one asset list, and the launcher's own updater picks its
+// download with Assets.FirstOrDefault(a => a.Name.Contains("win" or "linux")). Launchers already
+// installed cannot be fixed, so the CLI's asset names must never contain either word. "windows"
+// contains "win", so the rule is the substring rather than the whole word. CliReleaseServiceTest
+// holds the CLI to it.
 public sealed class CliReleaseService
 {
     /// <summary>
-    /// The tag prefix that marks a release as the CLI's.
+    /// The tag prefix of the releases the CLI ships in, shared with the launcher.
     /// </summary>
-    public const string TAG_PREFIX = "cli-v";
+    public const string TAG_PREFIX = "updater-v";
 
     private const string SHA256_PREFIX = "sha256:";
-    private const string WINDOWS_ASSET = "redux-launcher-cli-win-x64.exe";
-    private const string LINUX_ASSET = "redux-launcher-cli-linux-x64";
+    private const string WINDOWS_ASSET = "redux-cli-x64.exe";
+    private const string LINUX_ASSET = "redux-cli-x64";
 
     private readonly HttpClient _http;
     private readonly string _owner;

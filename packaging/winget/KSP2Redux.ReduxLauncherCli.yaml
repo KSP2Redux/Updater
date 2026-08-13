@@ -30,7 +30,7 @@ Tags:
   - modding
   - redux
   - game
-ReleaseNotesUrl: https://github.com/KSP2Redux/Updater/releases/tag/cli-v{VERSION}
+ReleaseNotesUrl: https://github.com/KSP2Redux/Updater/releases/tag/updater-v{VERSION}
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0
 
@@ -44,7 +44,7 @@ Commands:
 ReleaseDate: "{RELEASE_DATE}"
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/KSP2Redux/Updater/releases/download/cli-v{VERSION}/redux-launcher-cli-win-x64.exe
+    InstallerUrl: https://github.com/KSP2Redux/Updater/releases/download/updater-v{VERSION}/redux-cli-x64.exe
     InstallerSha256: "{SHA256}"
     PortableCommandAlias: redux-launcher-cli
 ManifestType: installer

@@ -35,9 +35,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repository = 'KSP2Redux/Updater'
-$assetName = 'redux-launcher-cli-win-x64.exe'
+$assetName = 'redux-cli-x64.exe'
 $executableName = 'redux-launcher-cli.exe'
-$tagPrefix = 'cli-v'
+$tagPrefix = 'updater-v'
 
 function Get-UserPathEntries {
     $path = [Environment]::GetEnvironmentVariable('PATH', 'User')
@@ -95,7 +95,8 @@ $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/rel
     'Accept'     = 'application/vnd.github+json'
 }
 
-# Only the CLI's own tags. The launcher ships from updater-v tags in the same repository.
+# The CLI ships inside the launcher's release, so these are the same tags the launcher uses.
+# Releases from before the CLI existed simply have no matching asset and are skipped below.
 $candidates = $releases |
     Where-Object { $_.tag_name -like "$tagPrefix*" -and -not $_.prerelease -and -not $_.draft } |
     ForEach-Object {

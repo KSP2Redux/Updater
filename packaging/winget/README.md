@@ -18,7 +18,7 @@ First release, done once by hand:
 2. Run it against the release asset:
 
    ```powershell
-   wingetcreate new https://github.com/KSP2Redux/Updater/releases/download/cli-v{VERSION}/redux-launcher-cli-win-x64.exe
+   wingetcreate new https://github.com/KSP2Redux/Updater/releases/download/updater-v{VERSION}/redux-cli-x64.exe
    ```
 
 3. Answer the prompts using the values in `KSP2Redux.ReduxLauncherCli.yaml`, then let it open the
@@ -29,7 +29,7 @@ Afterwards, each release is an update rather than a new package:
 ```powershell
 wingetcreate update KSP2Redux.ReduxLauncherCli `
   --version {VERSION} `
-  --urls https://github.com/KSP2Redux/Updater/releases/download/cli-v{VERSION}/redux-launcher-cli-win-x64.exe `
+  --urls https://github.com/KSP2Redux/Updater/releases/download/updater-v{VERSION}/redux-cli-x64.exe `
   --submit --token $env:WINGET_TOKEN
 ```
 
