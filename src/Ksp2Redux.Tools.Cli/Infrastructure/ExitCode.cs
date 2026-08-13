@@ -63,4 +63,9 @@ public static class ExitCode
     /// The CLI could not replace or remove its own binary.
     /// </summary>
     public const int SELF_UPDATE_FAILED = 10;
+
+    /// <summary>
+    /// A running game was found but could not be stopped.
+    /// </summary>
+    public const int KILL_FAILED = 11;
 }
