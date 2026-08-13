@@ -7,8 +7,8 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 public class CliReleaseServiceTest
 {
     private const string REPOSITORY = "https://github.com/KSP2Redux/Updater";
-    private const string WINDOWS_ASSET = "redux-launcher-cli-win-x64.exe";
-    private const string LINUX_ASSET = "redux-launcher-cli-linux-x64";
+    private const string WINDOWS_ASSET = "redux-cli-x64.exe";
+    private const string LINUX_ASSET = "redux-cli-x64";
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
@@ -44,9 +44,9 @@ public class CliReleaseServiceTest
     {
         // Arrange
         CliReleaseService service = Build($"""
-            [{Release("cli-v0.4.2.1", WINDOWS_ASSET)},
-             {Release("cli-v0.4.10.0", WINDOWS_ASSET)},
-             {Release("cli-v0.4.9.0", WINDOWS_ASSET)}]
+            [{Release("updater-v0.4.2.1", WINDOWS_ASSET)},
+             {Release("updater-v0.4.10.0", WINDOWS_ASSET)},
+             {Release("updater-v0.4.9.0", WINDOWS_ASSET)}]
             """);
 
         // Act
@@ -57,23 +57,52 @@ public class CliReleaseServiceTest
         Assert.That(release!.Version, Is.EqualTo(new Version(0, 4, 10, 0)));
     }
 
-    // The launcher ships from updater-v tags in the same repository and picks its asset by looking
-    // for "win" or "linux" in the name. The two must never see each other's releases.
+    // The two products share a release now, so the CLI has to ignore the launcher's binaries sitting
+    // in the same asset list rather than ignoring the release.
     [Test]
-    public async Task FindLatestAsync_LauncherRelease_IsIgnored()
+    public async Task FindLatestAsync_ReleaseWithOnlyLauncherAssets_FindsNothing()
+    {
+        // Arrange
+        CliReleaseService service = Build($"[{Release("updater-v9.9.9.9", "Ksp2Redux-win-x64.exe")}]");
+
+        // Act
+        CliRelease? release = await service.FindLatestAsync(CancellationToken.None);
+
+        // Assert
+        Assert.That(release, Is.Null);
+    }
+
+    // Releases from before the CLI existed carry no CLI asset, so the newest one that does wins.
+    [Test]
+    public async Task FindLatestAsync_OlderReleaseCarriesTheCli_PicksThatOne()
     {
         // Arrange
         CliReleaseService service = Build($"""
             [{Release("updater-v9.9.9.9", "Ksp2Redux-win-x64.exe")},
-             {Release("cli-v0.4.2.2", WINDOWS_ASSET)}]
+             {Release("updater-v0.4.3.0", WINDOWS_ASSET)}]
             """);
 
         // Act
         CliRelease? release = await service.FindLatestAsync(CancellationToken.None);
 
         // Assert
-        Assert.That(release, Is.Not.Null);
-        Assert.That(release!.Version, Is.EqualTo(new Version(0, 4, 2, 2)));
+        Assert.That(release!.Version, Is.EqualTo(new Version(0, 4, 3, 0)));
+    }
+
+    // The launcher's own updater picks its download with Contains("win") or Contains("linux") over
+    // this same asset list, and launchers already installed cannot be fixed. A CLI asset that
+    // matched either word would be handed to them as an update to themselves, so the names are
+    // pinned here rather than left to whoever edits the release workflow next.
+    [TestCase(true)]
+    [TestCase(false)]
+    public void AssetName_NeverContainsAWordTheLauncherMatchesOn(bool isLinux)
+    {
+        // Act
+        string name = new CliReleaseService(REPOSITORY, isLinux, "1.0.0").AssetName;
+
+        // Assert
+        Assert.That(name, Does.Not.Contain("win").IgnoreCase);
+        Assert.That(name, Does.Not.Contain("linux").IgnoreCase);
     }
 
     [Test]
@@ -81,8 +110,8 @@ public class CliReleaseServiceTest
     {
         // Arrange
         CliReleaseService service = Build($"""
-            [{Release("cli-v9.9.9.9", WINDOWS_ASSET, prerelease: true)},
-             {Release("cli-v0.4.2.2", WINDOWS_ASSET)}]
+            [{Release("updater-v9.9.9.9", WINDOWS_ASSET, prerelease: true)},
+             {Release("updater-v0.4.2.2", WINDOWS_ASSET)}]
             """);
 
         // Act
@@ -99,8 +128,8 @@ public class CliReleaseServiceTest
     {
         // Arrange
         CliReleaseService service = Build($"""
-            [{Release("cli-v0.5.0.0", WINDOWS_ASSET, digest: null)},
-             {Release("cli-v0.4.2.2", WINDOWS_ASSET)}]
+            [{Release("updater-v0.5.0.0", WINDOWS_ASSET, digest: null)},
+             {Release("updater-v0.4.2.2", WINDOWS_ASSET)}]
             """);
 
         // Act
@@ -114,7 +143,7 @@ public class CliReleaseServiceTest
     public async Task FindLatestAsync_NoAssetForThisPlatform_FindsNothing()
     {
         // Arrange
-        CliReleaseService service = Build($"[{Release("cli-v0.4.2.2", LINUX_ASSET)}]");
+        CliReleaseService service = Build($"[{Release("updater-v0.4.2.2", LINUX_ASSET)}]");
 
         // Act
         CliRelease? release = await service.FindLatestAsync(CancellationToken.None);
@@ -128,7 +157,7 @@ public class CliReleaseServiceTest
     {
         // Arrange
         CliReleaseService service = Build($"""
-            [{Release("cli-v0.4.2.2", LINUX_ASSET)}]
+            [{Release("updater-v0.4.2.2", LINUX_ASSET)}]
             """, isLinux: true);
 
         // Act

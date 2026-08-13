@@ -64,18 +64,24 @@ Warnings are errors.
 ## Releasing
 
 Bump `<Version>` in `Directory.Build.props` and merge to `main`. CI detects
-the new version and publishes two releases from it (see
-`.github/workflows/release.yaml`):
+the new version, tags `updater-v<version>`, and publishes one release holding
+both products (see `.github/workflows/release.yaml`):
 
-| Tag | Assets | Who reads it |
-|---|---|---|
-| `updater-v<version>` | `Ksp2Redux-win-x64.exe`, `Ksp2Redux-linux-x64` | the launcher's self-update |
-| `cli-v<version>` | `redux-launcher-cli-win-x64.exe`, `redux-launcher-cli-linux-x64` | the CLI's self-update and the install scripts |
+| Asset | What it is |
+|---|---|
+| `Ksp2Redux-win-x64.exe`, `Ksp2Redux-linux-x64` | the launcher |
+| `redux-cli-x64.exe`, `redux-cli-x64` | the command line tool |
 
-The CLI has its own tag rather than sharing the launcher's release on purpose.
-The launcher picks its update asset by looking for `win` or `linux` in the
-name, so a CLI binary sitting in an `updater-v` release would be offered to
-every launcher already installed as an update to itself.
+The CLI asset names must never contain `win` or `linux`. The launcher's
+self-update picks its download out of this same asset list with
+`Assets.FirstOrDefault(a => a.Name.Contains("win" or "linux"))`, and launchers
+already installed cannot be fixed, so an asset that matched would be handed to
+them as an update to themselves. Note `windows` contains `win`, so the rule is
+about the substring. A test in `CliReleaseServiceTest` holds the CLI to it.
+
+The release notes lead with a table saying which file is which, because a
+single page with four binaries on it is how people end up downloading the
+command line tool when they wanted the launcher.
 
 Publishing to winget is a separate manual step, see `packaging/winget`.
 

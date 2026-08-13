@@ -14,9 +14,12 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
     /// </summary>
     public const string SUPERSEDED_SUFFIX = ".old";
 
-    /// <inheritdoc />
-    protected override bool NoticeApplies => false;
-
+    /// <inheritdoc />
+
+    protected override bool NoticeApplies => false;
+
+
+
     /// <inheritdoc />
     protected override async Task<int> RunAsync(
         CliContext context,
@@ -48,7 +51,7 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
 
         if (latest is null)
         {
-            context.Output.Heading($"No published CLI release was found. Looking for tags starting {CliReleaseService.TAG_PREFIX}.");
+            context.Output.Heading($"No release with a CLI build was found. Looking for tags starting {CliReleaseService.TAG_PREFIX}.");
             context.Output.Payload(
                 new { ok = true, updated = false, current = context.RunningVersion.ToString(), latest = (string?)null },
                 () => context.Output.Result(context.RunningVersion.ToString()));

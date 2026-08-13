@@ -16,9 +16,9 @@
 set -euo pipefail
 
 REPOSITORY="KSP2Redux/Updater"
-ASSET_NAME="redux-launcher-cli-linux-x64"
+ASSET_NAME="redux-cli-x64"
 EXECUTABLE_NAME="redux-launcher-cli"
-TAG_PREFIX="cli-v"
+TAG_PREFIX="updater-v"
 INSTALL_DIRECTORY="${REDUX_CLI_HOME:-$HOME/.local/bin}"
 WANTED_VERSION=""
 UNINSTALL="false"
@@ -71,7 +71,8 @@ fi
 
 echo "Looking for the newest $EXECUTABLE_NAME release..."
 
-# Only the CLI's own tags. The launcher ships from updater-v tags in the same repository.
+# The CLI ships inside the launcher's release, so these are the same tags the launcher uses.
+# Releases from before the CLI existed simply have no matching asset and are skipped by the parser.
 releases_json="$(mktemp)"
 trap 'rm -f "$releases_json"' EXIT
 
