@@ -10,9 +10,13 @@ public interface IManifestReleasesFeedProviderService
 {
     Task<ReleaseManifest?> GetManifest(FeedInfo feed);
     Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct);
+    Task<HttpResponseMessage> DownloadFileAsync(FeedInfo feed, string url, long offset, CancellationToken ct);
 }
 
-public class ManifestReleasesFeedProviderService(IAssemblyService assemblyService, ILogService log) : IManifestReleasesFeedProviderService
+public class ManifestReleasesFeedProviderService(
+    IAssemblyService assemblyService,
+    ILauncherConfigService launcherConfigService,
+    ILogService log) : IManifestReleasesFeedProviderService
 {
     private readonly Dictionary<FeedInfo, GitHubClient> _clients = new();
     // ResponseHeadersRead means this only bounds getting the response headers for a patch download,
@@ -50,6 +54,10 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
 
     public async Task<ReleaseManifest?> GetManifest(FeedInfo feed)
     {
+        string? directUrl = feed.GetManifestUrl(launcherConfigService.Config.PatchDownloadSource);
+        if (!string.IsNullOrWhiteSpace(directUrl))
+            return await GetPublicManifest(directUrl, launcherConfigService.Config.PatchDownloadSource);
+
         var (owner, name) = ParseRepository(feed.Repository);
 
         if (!string.IsNullOrWhiteSpace(feed.Token))
@@ -64,6 +72,10 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
                 if (manifest == null)
                 {
                     log.Warn($"Authenticated manifest at {owner}/{name}/{feed.Filename} deserialized to null.");
+                }
+                else
+                {
+                    ReleaseManifestValidator.Validate(manifest);
                 }
                 return manifest;
             }
@@ -90,6 +102,10 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
             {
                 log.Warn($"Manifest at {rawUrl} deserialized to null.");
             }
+            else
+            {
+                ReleaseManifestValidator.Validate(manifest);
+            }
             return manifest;
         }
         catch (Exception ex)
@@ -99,12 +115,36 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
         }
     }
 
-    public async Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct)
+    private async Task<ReleaseManifest?> GetPublicManifest(string url, PatchDownloadSource source)
     {
-        var url = patch.Url;
+        var ct = CancellationToken.None;
+        log.Info($"Fetching {source} manifest: {url}");
+        var request = CreateRequest(HttpMethod.Get, url);
+        try
+        {
+            using var response = await _downloadClient.SendAsync(request, ct);
+            log.Info($"Manifest fetch {url} -> HTTP {(int)response.StatusCode} {response.StatusCode}, ContentLength={response.Content.Headers.ContentLength}.");
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var manifest = await System.Text.Json.JsonSerializer.DeserializeAsync<ReleaseManifest>(stream, cancellationToken: ct);
+            if (manifest is null)
+                throw new InvalidDataException($"Manifest at {url} deserialized to null.");
+
+            ReleaseManifestValidator.Validate(manifest);
+            return manifest;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.Error($"Manifest fetch failed for {url}.", ex);
+            throw new PatchDownloadException(source, $"Could not load the {source} release manifest.", ex);
+        }
+    }
+
+    public async Task<HttpResponseMessage> DownloadFileAsync(FeedInfo feed, string url, long offset, CancellationToken ct)
+    {
         var hasToken = !string.IsNullOrWhiteSpace(feed.Token);
 
-        if (hasToken && TryParseBrowserDownloadUrl(patch.Url, out var parsed))
+        if (hasToken && TryParseBrowserDownloadUrl(url, out var parsed))
         {
             log.Info($"Resolving authenticated asset URL via Octokit for {parsed.Owner}/{parsed.Repo} tag={parsed.Tag} name={parsed.Name}.");
             try
@@ -121,11 +161,13 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
             }
         }
 
-        log.Info($"Downloading patch v{patch.Version} ({patch.Size} bytes) from {url}.");
+        log.Info(offset > 0 ? $"Resuming download from byte {offset}: {url}" : $"Downloading {url}.");
 
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
-            new System.Net.Http.Headers.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString())));
+        var request = CreateRequest(HttpMethod.Get, url);
+        if (offset > 0)
+        {
+            request.Headers.Range = new RangeHeaderValue(offset, null);
+        }
         if (hasToken)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", feed.Token);
@@ -136,7 +178,6 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
         {
             var response = await _downloadClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             log.Info($"Patch download {url} -> HTTP {(int)response.StatusCode} {response.StatusCode}, ContentLength={response.Content.Headers.ContentLength}.");
-            response.EnsureSuccessStatusCode();
             return response;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -144,6 +185,21 @@ public class ManifestReleasesFeedProviderService(IAssemblyService assemblyServic
             log.Error($"Patch download failed for {url}.", ex);
             throw;
         }
+    }
+
+    public Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(patch.Url))
+            throw new InvalidOperationException("The patch does not have a legacy download URL.");
+        return DownloadFileAsync(feed, patch.Url, 0, ct);
+    }
+
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.UserAgent.Add(new ProductInfoHeaderValue(
+            new System.Net.Http.Headers.ProductHeaderValue("Ksp2ReduxLauncher", assemblyService.GetName().Version?.ToString())));
+        return request;
     }
 
     private static bool TryParseBrowserDownloadUrl(string url, out (string Owner, string Repo, string Tag, string Name) parsed)

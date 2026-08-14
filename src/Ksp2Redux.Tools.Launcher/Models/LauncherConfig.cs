@@ -4,6 +4,10 @@ namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class LauncherConfig(string storagePath)
 {
+    public const string PUBLIC_REPOSITORY = "https://github.com/KSP2Redux/Redux";
+    public const string R2_MANIFEST_BASE_URL = "https://download.ksp2redux.org";
+    public const string GITHUB_MANIFEST_BASE_URL = "https://raw.githubusercontent.com/KSP2Redux/Redux/main";
+
     public string Ksp2InstallPath { get; set; } = "";
     public string ReleaseChannel { get; set; } = "beta";
     public bool AutoSwitchedToStable { get; set; } = false;
@@ -16,15 +20,22 @@ public class LauncherConfig(string storagePath)
     public List<FeedInfo> Feeds { get; set; } = [
         new FeedInfo
         {
-            Repository = "https://github.com/KSP2Redux/Redux",
-            Filename ="manifest-stable.json"
+            Repository = PUBLIC_REPOSITORY,
+            Filename = "manifest-stable.json",
+            R2ManifestUrl = $"{R2_MANIFEST_BASE_URL}/manifest-stable.json",
+            GitHubManifestUrl = $"{GITHUB_MANIFEST_BASE_URL}/manifest-stable.json"
         },
         new FeedInfo
         {
-            Repository = "https://github.com/KSP2Redux/Redux",
-            Filename ="manifest-beta.json"
+            Repository = PUBLIC_REPOSITORY,
+            Filename = "manifest-beta.json",
+            R2ManifestUrl = $"{R2_MANIFEST_BASE_URL}/manifest-beta.json",
+            GitHubManifestUrl = $"{GITHUB_MANIFEST_BASE_URL}/manifest-beta.json"
         }
     ];
+
+    public PatchDownloadSource PatchDownloadSource { get; set; } = PatchDownloadSource.R2;
+    public int MaxConcurrentChunkDownloads { get; set; } = 4;
 
     public string LauncherRepo { get; set; } = "https://github.com/KSP2Redux/Updater";
 

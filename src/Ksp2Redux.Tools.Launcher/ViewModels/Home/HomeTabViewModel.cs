@@ -173,7 +173,26 @@ public partial class HomeTabViewModel : ViewModelBase
         var allSucceeded = true;
         foreach (var feed in _releasesFeedService.ReleasesFeed)
         {
-            if (!await feed.Value.UpdateManifest()) allSucceeded = false;
+            bool succeeded = await feed.Value.UpdateManifest();
+            if (!succeeded &&
+                FindPatchDownloadException(feed.Value.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
+                _launcherConfigService.Config.PatchDownloadSource == downloadFailure.DownloadSource)
+            {
+                var alternateSource = downloadFailure.DownloadSource.GetAlternate();
+                var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
+                    $"{downloadFailure.DownloadSource} Manifest Failed",
+                    $"The release list could not be downloaded from {downloadFailure.DownloadSource}. " +
+                    $"Retry using {alternateSource}? This choice will be saved in Advanced Downloads.",
+                    ButtonEnum.YesNo,
+                    windowStartupLocation: WindowStartupLocation.CenterOwner);
+                if (result == ButtonResult.Yes)
+                {
+                    _launcherConfigService.Config.PatchDownloadSource = alternateSource;
+                    _launcherConfigService.Save();
+                    succeeded = await feed.Value.UpdateManifest();
+                }
+            }
+            if (!succeeded) allSucceeded = false;
         }
         FeedRefreshFailed = !allSucceeded;
     }
@@ -486,11 +505,40 @@ public partial class HomeTabViewModel : ViewModelBase
 
         Log("Creating install plan");
 
-        var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
-            .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
         try
         {
-            await RunPlanOnInstall(plan, ksp2);
+            while (true)
+            {
+                var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
+                    .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
+                try
+                {
+                    await RunPlanOnInstall(plan, ksp2);
+                    break;
+                }
+                catch (Exception e) when (CanOfferMirrorSwitch(e))
+                {
+                    var failedSource = _launcherConfigService.Config.PatchDownloadSource;
+                    var alternateSource = failedSource.GetAlternate();
+                    var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
+                        $"{failedSource} Download Failed",
+                        $"A manifest or patch could not be downloaded from {failedSource}. " +
+                        $"Retry the complete update using {alternateSource}? Verified files already on disk will be reused.",
+                        ButtonEnum.YesNo,
+                        windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    if (result != ButtonResult.Yes)
+                    {
+                        throw;
+                    }
+
+                    _cancelCurrentOperation.Cancel();
+                    _cancelCurrentOperation.Dispose();
+                    _cancelCurrentOperation = new CancellationTokenSource();
+                    _launcherConfigService.Config.PatchDownloadSource = alternateSource;
+                    _launcherConfigService.Save();
+                    Log($"Retrying the update using {alternateSource}.");
+                }
+            }
             Log("KSP2 Redux Successfully Installed");
         }
         catch (OperationCanceledException)
@@ -515,6 +563,22 @@ public partial class HomeTabViewModel : ViewModelBase
             await UpdateVersionsList();
         }
     }
+
+    private static PatchDownloadException? FindPatchDownloadException(Exception? exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PatchDownloadException downloadException)
+            {
+                return downloadException;
+            }
+        }
+        return null;
+    }
+
+    private bool CanOfferMirrorSwitch(Exception exception) =>
+        FindPatchDownloadException(exception) is { CanSwitchSource: true } downloadFailure &&
+        downloadFailure.DownloadSource == _launcherConfigService.Config.PatchDownloadSource;
 
     public async Task InstallFromPatchFile(string path)
     {

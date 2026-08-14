@@ -248,7 +248,25 @@ public partial class MainWindowViewModel : ViewModelBase
             _log.Info($"Updating manifest for feed: {feed.Repository} / {feed.Filename}");
             try
             {
-                await newFeed.UpdateManifest();
+                bool updated = await newFeed.UpdateManifest();
+                if (!updated &&
+                    FindPatchDownloadException(newFeed.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
+                    _launcherConfigService.Config.PatchDownloadSource == downloadFailure.DownloadSource)
+                {
+                    var alternateSource = downloadFailure.DownloadSource.GetAlternate();
+                    var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
+                        $"{downloadFailure.DownloadSource} Manifest Failed",
+                        $"The release list could not be downloaded from {downloadFailure.DownloadSource}. " +
+                        $"Retry using {alternateSource}? This choice will be saved in Advanced Downloads.",
+                        ButtonEnum.YesNo,
+                        windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    if (result == ButtonResult.Yes)
+                    {
+                        _launcherConfigService.Config.PatchDownloadSource = alternateSource;
+                        _launcherConfigService.Save();
+                        updated = await newFeed.UpdateManifest();
+                    }
+                }
                 _log.Info($"Done adding feed: {feed.Repository} / {feed.Filename}, channel={newFeed.CurrentChannel}");
                 _releasesFeedService.AddOrSet(newFeed.CurrentChannel, newFeed);
                 SettingsTab.ValidChannels.Add(newFeed.CurrentChannel);
@@ -268,6 +286,18 @@ public partial class MainWindowViewModel : ViewModelBase
         _log.Info("MainWindow initialization complete.");
 
         // Now schedule update checks every 10 minutes
+    }
+
+    private static PatchDownloadException? FindPatchDownloadException(Exception? exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PatchDownloadException downloadException)
+            {
+                return downloadException;
+            }
+        }
+        return null;
     }
 
     private async Task CheckActiveInstallWarnings()

@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AWSSDK.S3"/>
         <PackageReference Include="Octokit"/>
         <PackageReference Include="Tomlyn"/>
     </ItemGroup>

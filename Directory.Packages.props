@@ -12,6 +12,7 @@
     <PackageVersion Include="Avalonia.HtmlRenderer" Version="12.0.0" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.1" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.102.1" />
     <PackageVersion Include="BsDiff" Version="1.1.0" />
     <PackageVersion Include="CodeHollow.FeedReader" Version="1.2.6" />
     <PackageVersion Include="CommandLineParser" Version="2.9.1" />

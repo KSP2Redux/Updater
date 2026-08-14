@@ -8,6 +8,14 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Settings.SettingsTabView"
              VerticalAlignment="Stretch">
+	<UserControl.Styles>
+		<Style Selector="NumericUpDown.chunk-download-spinner /template/ TextBox#PART_TextBox">
+			<Setter Property="CornerRadius" Value="7,0,0,7" />
+		</Style>
+		<Style Selector="NumericUpDown.chunk-download-spinner /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton#PART_DecreaseButton /template/ ContentPresenter#PART_ContentPresenter">
+			<Setter Property="CornerRadius" Value="0,7,7,0" />
+		</Style>
+	</UserControl.Styles>
 
 	<Grid VerticalAlignment="Stretch">
 		<Border x:Name="GlassPanel" Margin="24,8,24,8"
@@ -16,7 +24,9 @@
 		        BorderBrush="{StaticResource GlassSurfaceBorderBrush}"
 		        BoxShadow="{StaticResource GlassPanelShadow}"
 		        BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}">
-		<Grid Margin="20" RowDefinitions="Auto,Auto,Auto">
+		<ScrollViewer VerticalScrollBarVisibility="Auto"
+		              HorizontalScrollBarVisibility="Disabled">
+		<Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto">
 			<TextBlock Grid.Row="0" FontFamily="{StaticResource JetBrainsMonoLight}"
 			           FontSize="24" TextAlignment="Left" Margin="0,8,0,4">
 				SETTINGS
@@ -126,24 +136,46 @@
 				</Grid>
 			</Grid>
 
-			<Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="10" Margin="0,12,0,0">
-				<Button Grid.Column="0" FontSize="11" Padding="8,4" Click="OpenLogsFolderClick">Open Logs Folder</Button>
-				<Button Grid.Column="1" Name="OpenGameDataFolderButton" FontSize="11" Padding="8,4"
+			<Border Grid.Row="2" Margin="0,12,0,0" Padding="10"
+			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
+			        CornerRadius="{StaticResource RadiusMedium}">
+				<Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10" RowDefinitions="Auto,Auto" RowSpacing="6">
+					<TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4"
+					           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="12">ADVANCED DOWNLOADS</TextBlock>
+					<TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center">Patch source</TextBlock>
+					<ComboBox Grid.Row="1" Grid.Column="1" MinWidth="120"
+					          ItemsSource="{Binding PatchDownloadSources}"
+					          SelectedItem="{Binding PatchDownloadSource, Mode=TwoWay}"
+					          ToolTip.Tip="R2 is the primary download service. Select GitHub to use the permanent backup copies." />
+					<TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center">Concurrent chunks</TextBlock>
+					<NumericUpDown Grid.Row="1" Grid.Column="3" Classes="chunk-download-spinner"
+					               Width="112" Minimum="1" Maximum="8" Increment="1"
+					               Value="{Binding MaxConcurrentChunkDownloads, Mode=TwoWay}"
+					               ToolTip.Tip="Maximum simultaneous patch-part downloads (1-8)." />
+				</Grid>
+			</Border>
+
+			<Grid Grid.Row="3" RowDefinitions="Auto,Auto" Margin="0,12,0,0">
+				<WrapPanel Grid.Row="0" Orientation="Horizontal">
+				<Button Margin="0,0,10,6" FontSize="11" Padding="8,4" Click="OpenLogsFolderClick">Open Logs Folder</Button>
+				<Button Margin="0,0,10,6" Name="OpenGameDataFolderButton" FontSize="11" Padding="8,4"
 				        Command="{Binding OpenGameDataFolderCommand}"
 				        ToolTip.Tip="Open the folder KSP2 keeps its saves, settings and its own Player.log in.">Open Game Data Folder</Button>
-				<Button Grid.Column="2" FontSize="11" Padding="8,4" Click="CopyDiagnosticInfoClick">Copy Diagnostic Info</Button>
-				<CheckBox Grid.Column="3" FontSize="11" VerticalAlignment="Center"
+				<Button Margin="0,0,10,6" FontSize="11" Padding="8,4" Click="CopyDiagnosticInfoClick">Copy Diagnostic Info</Button>
+				<CheckBox Margin="0,0,0,6" FontSize="11" VerticalAlignment="Center"
 				          IsChecked="{Binding VerboseLogging, Mode=TwoWay}"
 				          ToolTip.Tip="Write more detailed information to the log file. Useful when troubleshooting an issue.">
 					Verbose logging
 				</CheckBox>
-				<TextBlock Grid.Column="4"
+				</WrapPanel>
+				<TextBlock Grid.Row="1" Margin="0,2,0,0"
 				           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
 				           Foreground="{StaticResource TextFaintBrush}"
 				           HorizontalAlignment="Right" VerticalAlignment="Center"
 				           Text="{Binding LauncherVersion, StringFormat='Launcher v{0}'}" />
 			</Grid>
 		</Grid>
+		</ScrollViewer>
 		</Border>
 	</Grid>
 </UserControl>

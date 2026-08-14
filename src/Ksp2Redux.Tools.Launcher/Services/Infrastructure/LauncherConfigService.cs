@@ -11,12 +11,14 @@ namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 public interface ILauncherConfigService
 {
     LauncherConfig Config { get; }
+    event Action? ConfigSaved;
     void Save();
     string GetLocalStorageDirectory();
 }
 
 public class LauncherConfigService : ILauncherConfigService
 {
+    public event Action? ConfigSaved;
     private readonly IFileSystem _fileSystem;
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly IMessageBoxService _messageBoxService;
@@ -72,12 +74,59 @@ public class LauncherConfigService : ILauncherConfigService
             Config = config;
             Config.StoragePath = configFilePath;
             _log.Info($"Launcher config loaded. Installs={Config.Ksp2Installs.Count}, Feeds={Config.Feeds.Count}, ActiveInstall={Config.ActiveKsp2InstallId}");
-            if (MigrateLegacySingleInstall())
+            bool didMigrate = MigrateLegacySingleInstall();
+            didMigrate |= MigratePublicFeeds();
+            didMigrate |= ClampDownloadConcurrency();
+            if (didMigrate)
             {
-                _log.Info("Launcher config migrated from legacy single-install schema.");
+                _log.Info("Launcher config migrated to the current schema.");
                 Save();
             }
         }
+    }
+
+    private bool MigratePublicFeeds()
+    {
+        bool didMigrate = false;
+        foreach (var feed in Config.Feeds)
+        {
+            bool isPublicRepository = string.Equals(
+                feed.Repository.TrimEnd('/'),
+                LauncherConfig.PUBLIC_REPOSITORY,
+                StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    feed.Repository.TrimEnd('/'),
+                    "KSP2Redux/Redux",
+                    StringComparison.OrdinalIgnoreCase);
+            bool isPublicManifest = feed.Filename is "manifest-stable.json" or "manifest-beta.json";
+            if (!isPublicRepository || !isPublicManifest || !string.IsNullOrWhiteSpace(feed.Token))
+                continue;
+
+            string r2Url = $"{LauncherConfig.R2_MANIFEST_BASE_URL}/{feed.Filename}";
+            string githubUrl = $"{LauncherConfig.GITHUB_MANIFEST_BASE_URL}/{feed.Filename}";
+            if (!string.Equals(feed.R2ManifestUrl, r2Url, StringComparison.Ordinal))
+            {
+                feed.R2ManifestUrl = r2Url;
+                didMigrate = true;
+            }
+            if (!string.Equals(feed.GitHubManifestUrl, githubUrl, StringComparison.Ordinal))
+            {
+                feed.GitHubManifestUrl = githubUrl;
+                didMigrate = true;
+            }
+        }
+
+        return didMigrate;
+    }
+
+    private bool ClampDownloadConcurrency()
+    {
+        int clamped = Math.Clamp(Config.MaxConcurrentChunkDownloads, 1, 8);
+        if (Config.MaxConcurrentChunkDownloads == clamped)
+            return false;
+
+        Config.MaxConcurrentChunkDownloads = clamped;
+        return true;
     }
 
     private bool MigrateLegacySingleInstall()
@@ -140,6 +189,7 @@ public class LauncherConfigService : ILauncherConfigService
             _fileSystem.Directory.CreateDirectory(directory);
             _fileSystem.File.WriteAllText(Config.StoragePath, JsonSerializer.Serialize(Config, StorageOptions));
             _log.Info($"Launcher config saved to {Config.StoragePath}");
+            ConfigSaved?.Invoke();
         }
         catch (Exception ex)
         {

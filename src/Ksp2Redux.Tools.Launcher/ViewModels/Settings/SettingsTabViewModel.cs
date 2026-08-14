@@ -7,8 +7,10 @@ using System.IO.Abstractions;
 using System.Runtime.InteropServices;
 using System.Text;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -34,6 +36,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     public bool ChannelsLoaded = false;
 
     public ObservableCollection<string> ValidChannels { get; } = [];
+    public IReadOnlyList<PatchDownloadSource> PatchDownloadSources { get; } = Enum.GetValues<PatchDownloadSource>();
 
     [ObservableProperty]
     public partial Ksp2InstallRowViewModel? SelectedInstall { get; set; }
@@ -46,6 +49,12 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool VerboseLogging { get; set; }
+
+    [ObservableProperty]
+    public partial PatchDownloadSource PatchDownloadSource { get; set; }
+
+    [ObservableProperty]
+    public partial int MaxConcurrentChunkDownloads { get; set; }
 
     [ObservableProperty]
     public partial bool IsAddingInstall { get; set; }
@@ -86,24 +95,67 @@ public partial class SettingsTabViewModel : ViewModelBase
         _messageBoxService = messageBoxService;
         _environmentProvider = environmentProvider;
         _log = log;
+        _launcherConfigService.ConfigSaved += () => Dispatcher.UIThread.Post(SyncDownloadSettings);
 
         _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
         _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
         RebuildInstalls();
 
-        _suppressVerboseLoggingSave = true;
-        try { VerboseLogging = _launcherConfigService.Config.VerboseLogging; }
-        finally { _suppressVerboseLoggingSave = false; }
+        _suppressSettingsSave = true;
+        try
+        {
+            VerboseLogging = _launcherConfigService.Config.VerboseLogging;
+            PatchDownloadSource = _launcherConfigService.Config.PatchDownloadSource;
+            MaxConcurrentChunkDownloads = _launcherConfigService.Config.MaxConcurrentChunkDownloads;
+        }
+        finally
+        {
+            _suppressSettingsSave = false;
+        }
         _log.MinimumLevel = VerboseLogging ? LogLevel.Debug : LogLevel.Info;
     }
 
-    private bool _suppressVerboseLoggingSave;
+    private void SyncDownloadSettings()
+    {
+        _suppressSettingsSave = true;
+        try
+        {
+            PatchDownloadSource = _launcherConfigService.Config.PatchDownloadSource;
+            MaxConcurrentChunkDownloads = _launcherConfigService.Config.MaxConcurrentChunkDownloads;
+        }
+        finally
+        {
+            _suppressSettingsSave = false;
+        }
+    }
+
+    private bool _suppressSettingsSave;
 
     partial void OnVerboseLoggingChanged(bool value)
     {
         _log.MinimumLevel = value ? LogLevel.Debug : LogLevel.Info;
-        if (_suppressVerboseLoggingSave) return;
+        if (_suppressSettingsSave) return;
         _launcherConfigService.Config.VerboseLogging = value;
+        _launcherConfigService.Save();
+    }
+
+    partial void OnPatchDownloadSourceChanged(PatchDownloadSource value)
+    {
+        if (_suppressSettingsSave) return;
+        _launcherConfigService.Config.PatchDownloadSource = value;
+        _launcherConfigService.Save();
+    }
+
+    partial void OnMaxConcurrentChunkDownloadsChanged(int value)
+    {
+        int clamped = Math.Clamp(value, 1, 8);
+        if (clamped != value)
+        {
+            MaxConcurrentChunkDownloads = clamped;
+            return;
+        }
+        if (_suppressSettingsSave) return;
+        _launcherConfigService.Config.MaxConcurrentChunkDownloads = clamped;
         _launcherConfigService.Save();
     }
 
@@ -407,6 +459,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         var sb = new StringBuilder();
         sb.AppendLine($"KSP2 Redux Launcher v{LauncherVersion}");
         sb.AppendLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+        sb.AppendLine($"Patch downloads: source={PatchDownloadSource}, concurrency={MaxConcurrentChunkDownloads}");
 
         if (_ksp2InstallService.ActiveEntry is { } entry)
         {

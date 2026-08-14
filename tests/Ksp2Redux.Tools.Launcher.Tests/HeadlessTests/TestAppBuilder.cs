@@ -85,6 +85,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(ModuleDefinitionService.Object);
         serviceCollection.AddSingleton(NewsProviderService.Object);
         serviceCollection.AddSingleton(ManifestReleasesFeedProviderService.Object);
+        serviceCollection.AddSingleton<IPatchDownloadService, PatchDownloadService>();
         serviceCollection.AddSingleton(ZipFileService.Object);
         serviceCollection.AddSingleton(UpdateService.Object);
         serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>(); 
