@@ -39,6 +39,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();
         serviceCollection.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
+        serviceCollection.AddSingleton<IPatchDownloadService, PatchDownloadService>();
         serviceCollection.AddSingleton<IZipFileService, ZipFileService>();
         serviceCollection.AddSingleton<IUpdateService, UpdateService>();
         serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();

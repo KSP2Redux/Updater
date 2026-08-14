@@ -13,8 +13,11 @@ public sealed record ReleasePatch
     [JsonPropertyName("requires")]
     public required PatchRequirement Requires { get; init; }
 
-    [JsonPropertyName("url")]
-    public required string Url { get; init; }
+    [JsonPropertyName("url"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Url { get; init; }
+
+    [JsonPropertyName("chunks"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ReleasePatchChunk>? Chunks { get; init; }
 
     [JsonPropertyName("checksum_sha256")]
     public required string ChecksumSha256 { get; init; }

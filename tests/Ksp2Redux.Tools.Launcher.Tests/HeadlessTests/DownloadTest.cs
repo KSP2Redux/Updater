@@ -14,6 +14,7 @@ using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Common.Wrappers;
 using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.Views;
@@ -128,7 +129,7 @@ public class DownloadTest
             ChecksumSha256 = Convert.ToHexString(SHA256.HashData(patch1RollupZipBytes)),
             ReleasedAt = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             Requires = new PatchRequirement { Version = null },
-            Size = 10,
+            Size = patch1RollupZipBytes.Length,
             Url = "https://github.com/patch1Rollup.patch",
             Version = "0.2.3.1.1234"
         };
@@ -165,8 +166,9 @@ public class DownloadTest
         };
 
         TestAppBuilder.ManifestReleasesFeedProviderService
-            .Setup(m => m.DownloadPatchAsync(
-                It.Is<FeedInfo>(f => f.Filename.Contains(DefaultChannel)), patch1Rollup, It.IsAny<CancellationToken>()))
+            .Setup(m => m.DownloadFileAsync(
+                It.Is<FeedInfo>(f => f.Filename.Contains(DefaultChannel)), patch1Rollup.Url!, 0,
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(downloadResponse);
 
         // Arrange Patch manifest and files
@@ -271,7 +273,7 @@ public class DownloadTest
                     .Returns(gameExeModule.module);
             });
         
-        string dowloadLocation = @"C:\AppDataLocal\Ksp2Redux\download-cache\patch1Rollup.patch";
+        string dowloadLocation = $@"C:\AppDataLocal\Ksp2Redux\download-cache\patches\{patch1Rollup.ChecksumSha256}.patch";
         TestAppBuilder.ZipFileService.Setup(z => z.OpenRead(dowloadLocation))
             .Returns(zippedPatch.Object);
         
@@ -290,6 +292,8 @@ public class DownloadTest
         };
         window.Show();
         Dispatcher.UIThread.RunJobs();
+        TestAppBuilder.ServiceProvider.GetRequiredService<ILauncherConfigService>()
+            .Config.PatchDownloadSource = PatchDownloadSource.GitHub;
         
         GroupedComboBox? versionSelectorCombobox = window
             .GetVisualDescendants()

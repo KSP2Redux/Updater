@@ -1,5 +1,6 @@
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
@@ -26,9 +27,17 @@ public class InstallPlanServiceRollbackTest
         var moduleDefinitionService = new Mock<IModuleDefinitionService>();
         var diskSpace = new Mock<IDiskSpaceService>();
         diskSpace.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
+        var patchDownloadService = new Mock<IPatchDownloadService>();
+        patchDownloadService.Setup(service => service.EnqueueAll(
+                It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
+                It.IsAny<int>(), It.IsAny<Action<string>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
+            .Returns([]);
+        var configService = new Mock<ILauncherConfigService>();
+        configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
 
         var service = new InstallPlanService(fs, cacheService.Object, environmentProvider, assemblyService.Object,
-            moduleDefinitionService.Object, zipFileService.Object, diskSpace.Object);
+            moduleDefinitionService.Object, zipFileService.Object, diskSpace.Object,
+            patchDownloadService.Object, configService.Object);
         return (service, cacheService, fs);
     }
 

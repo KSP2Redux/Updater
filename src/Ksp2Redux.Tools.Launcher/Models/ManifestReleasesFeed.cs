@@ -16,6 +16,8 @@ public class ManifestReleasesFeed(
 {
     private ReleaseManifest? _manifest;
 
+    public Exception? LastUpdateException { get; private set; }
+
     public string CurrentChannel { get; private set; } = "invalid";
 
     /// <returns>false if the fetch failed, true otherwise. On failure, a previously-loaded manifest
@@ -27,6 +29,7 @@ public class ManifestReleasesFeed(
         log.Info($"Updating manifest for feed {feed.Repository} / {feed.Filename}.");
         try
         {
+            LastUpdateException = null;
             var manifest = await manifestReleasesFeedProviderService.GetManifest(feed);
             if (manifest is null)
             {
@@ -41,10 +44,66 @@ public class ManifestReleasesFeed(
         }
         catch (Exception e)
         {
+            LastUpdateException = e;
             log.Error($"Could not download or parse manifest for {feed.Repository} / {feed.Filename}. Keeping the last known list, if any.", e);
             FallBackToInvalidIfNeverLoaded();
             return false;
         }
+    }
+
+    /// <summary>
+    /// Downloads a legacy single-URL patch. New install plans use the shared chunk download service.
+    /// </summary>
+    public async Task<string> DownloadPatch(
+        ReleasePatch patch, Action<string> downloadLog, Action<long, long> progress, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(patch.Url))
+            throw new InvalidOperationException("The patch does not have a legacy download URL.");
+        string fileName = patch.Url.Split('/').Last();
+        string destination = fileSystem.Path.Combine(downloadStorageDir, fileName);
+        progress(0, patch.Size);
+        if (!await MatchesChecksum(destination, patch, ct))
+        {
+            using var response = await manifestReleasesFeedProviderService.DownloadPatchAsync(feed, patch, ct);
+            response.EnsureSuccessStatusCode();
+            await using var input = await response.Content.ReadAsStreamAsync(ct);
+            {
+                await using var output = fileSystem.FileStream.New(
+                    destination, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, true);
+                var buffer = new byte[64 * 1024];
+                long written = 0;
+                var timer = Stopwatch.StartNew();
+                int read;
+                while ((read = await input.ReadAsync(buffer, ct)) > 0)
+                {
+                    await output.WriteAsync(buffer.AsMemory(0, read), ct);
+                    written += read;
+                    if (timer.ElapsedMilliseconds >= 100)
+                    {
+                        progress(written, patch.Size);
+                        timer.Restart();
+                    }
+                }
+                await output.FlushAsync(ct);
+            }
+            if (!await MatchesChecksum(destination, patch, ct))
+            {
+                fileSystem.File.Delete(destination);
+                throw new InvalidOperationException("The downloaded patch did not match its expected checksum.");
+            }
+        }
+        progress(patch.Size, patch.Size);
+        downloadLog("Download complete.");
+        return destination;
+    }
+
+    private async Task<bool> MatchesChecksum(string path, ReleasePatch patch, CancellationToken ct)
+    {
+        if (!fileSystem.File.Exists(path) || fileSystem.FileInfo.New(path).Length != patch.Size)
+            return false;
+        await using var stream = fileSystem.File.OpenRead(path);
+        byte[] hash = await SHA256.HashDataAsync(stream, ct);
+        return string.Equals(Convert.ToHexString(hash), patch.ChecksumSha256, StringComparison.OrdinalIgnoreCase);
     }
 
     private void FallBackToInvalidIfNeverLoaded()
@@ -123,14 +182,14 @@ public class ManifestReleasesFeed(
                     if (patch.Requires.Version == from)
                     {
                         bestPlan = new InstallPlan();
-                        bestPlan.ApplyPatchFile((log, progress,ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {from}", patch.Size);
+                        bestPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), $"applying patch for version: {to} from version {from}");
                         break;
                     }
 
                     if (patch.Requires.IsBasePatch)
                     {
                         var testPlan = new InstallPlan();
-                        testPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from prepatch", patch.Size);
+                        testPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), $"applying patch for version: {to} from prepatch");
                         testPlan.Prepatch();
                         testPlan.RevertToStock();
                         if (bestPlan == null || bestPlan.Cost > testPlan.Cost) bestPlan = testPlan;
@@ -138,7 +197,7 @@ public class ManifestReleasesFeed(
                     else
                     {
                         var newInitialPlan = new InstallPlan();
-                        newInitialPlan.ApplyPatchFile((log, progress, ct) => DownloadPatch(patch, log, progress, ct), $"applying patch for version: {to} from version {patch.Requires.Version}", patch.Size);
+                        newInitialPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), $"applying patch for version: {to} from version {patch.Requires.Version}");
                         var testPlan = GetPlan(from, patch.Requires.Version!, newInitialPlan);
                         if (testPlan != null && (bestPlan == null || bestPlan.Cost > testPlan.Cost)) bestPlan = testPlan;
                     }
@@ -150,75 +209,4 @@ public class ManifestReleasesFeed(
         }
     }
 
-    public async Task<string> DownloadPatch(ReleasePatch patch, Action<string> log1, Action<long, long> reportDownloadProgress,
-        CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        string fileName = patch.Url.Split("/").Last();
-        string patchDownloadTo = fileSystem.Path.Combine(downloadStorageDir, fileName);
-
-        log1($"Downloading {fileName}");
-        reportDownloadProgress(0, patch.Size);
-
-        bool cacheIsUsable = fileSystem.File.Exists(patchDownloadTo) &&
-                              fileSystem.FileInfo.New(patchDownloadTo).Length == patch.Size &&
-                              await MatchesChecksum(patchDownloadTo, patch, ct);
-
-        if (!cacheIsUsable)
-        {
-            using var downloadResponse = await manifestReleasesFeedProviderService.DownloadPatchAsync(feed, patch, ct);
-            long contentLength = downloadResponse.Content.Headers.ContentLength ?? patch.Size;
-
-            await using (var downloadStream = await downloadResponse.Content.ReadAsStreamAsync(ct))
-            await using (var fileStream = fileSystem.FileStream.New(patchDownloadTo, FileMode.Create, FileAccess.Write, FileShare.None,
-                             bufferSize: 64 * 1024, useAsync: true))
-            {
-                var buffer = new byte[64 * 1024];
-                long totalBytesRead = 0;
-                int bytesRead;
-                var updateTimer = Stopwatch.StartNew();
-
-                while ((bytesRead = await downloadStream.ReadAsync(buffer, ct)) > 0)
-                {
-                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
-                    totalBytesRead += bytesRead;
-
-                    if (updateTimer.ElapsedMilliseconds > 100)
-                    {
-                        reportDownloadProgress(totalBytesRead, contentLength);
-                        updateTimer.Restart();
-                    }
-                }
-            }
-
-            if (!await MatchesChecksum(patchDownloadTo, patch, ct))
-            {
-                log.Error($"Downloaded {fileName} failed checksum verification. Deleting corrupt download.");
-                fileSystem.File.Delete(patchDownloadTo);
-                throw new InvalidOperationException(
-                    $"Downloaded patch {fileName} did not match its expected checksum. The download may be corrupt or incomplete - please try again.");
-            }
-        }
-        else
-        {
-            reportDownloadProgress(patch.Size, patch.Size);
-        }
-
-        log1("Download complete.");
-        return patchDownloadTo;
-    }
-
-    private async Task<bool> MatchesChecksum(string filePath, ReleasePatch patch, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(patch.ChecksumSha256))
-        {
-            log.Error($"No checksum available for patch at {patch.Url}, refusing to trust it.");
-            return false;
-        }
-
-        await using var stream = fileSystem.File.OpenRead(filePath);
-        var hash = await SHA256.HashDataAsync(stream, ct);
-        var actual = Convert.ToHexString(hash);
-        return string.Equals(actual, patch.ChecksumSha256, StringComparison.OrdinalIgnoreCase);
-    }
 }

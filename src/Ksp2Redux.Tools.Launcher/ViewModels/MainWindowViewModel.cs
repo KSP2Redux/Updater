@@ -248,7 +248,23 @@ public partial class MainWindowViewModel : ViewModelBase
             _log.Info($"Updating manifest for feed: {feed.Repository} / {feed.Filename}");
             try
             {
-                await newFeed.UpdateManifest();
+                bool updated = await newFeed.UpdateManifest();
+                if (!updated &&
+                    _launcherConfigService.Config.PatchDownloadSource == PatchDownloadSource.R2 &&
+                    FindPatchDownloadException(newFeed.LastUpdateException) is { DownloadSource: PatchDownloadSource.R2 })
+                {
+                    var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
+                        "R2 Manifest Failed",
+                        "The release list could not be downloaded from R2. Retry using the permanent GitHub backup? This choice will be saved in Advanced Downloads.",
+                        ButtonEnum.YesNo,
+                        windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    if (result == ButtonResult.Yes)
+                    {
+                        _launcherConfigService.Config.PatchDownloadSource = PatchDownloadSource.GitHub;
+                        _launcherConfigService.Save();
+                        updated = await newFeed.UpdateManifest();
+                    }
+                }
                 _log.Info($"Done adding feed: {feed.Repository} / {feed.Filename}, channel={newFeed.CurrentChannel}");
                 _releasesFeedService.AddOrSet(newFeed.CurrentChannel, newFeed);
                 SettingsTab.ValidChannels.Add(newFeed.CurrentChannel);
@@ -268,6 +284,18 @@ public partial class MainWindowViewModel : ViewModelBase
         _log.Info("MainWindow initialization complete.");
 
         // Now schedule update checks every 10 minutes
+    }
+
+    private static PatchDownloadException? FindPatchDownloadException(Exception? exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PatchDownloadException downloadException)
+            {
+                return downloadException;
+            }
+        }
+        return null;
     }
 
     private async Task CheckActiveInstallWarnings()

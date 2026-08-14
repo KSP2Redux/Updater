@@ -173,7 +173,24 @@ public partial class HomeTabViewModel : ViewModelBase
         var allSucceeded = true;
         foreach (var feed in _releasesFeedService.ReleasesFeed)
         {
-            if (!await feed.Value.UpdateManifest()) allSucceeded = false;
+            bool succeeded = await feed.Value.UpdateManifest();
+            if (!succeeded &&
+                _launcherConfigService.Config.PatchDownloadSource == PatchDownloadSource.R2 &&
+                FindPatchDownloadException(feed.Value.LastUpdateException) is { DownloadSource: PatchDownloadSource.R2 })
+            {
+                var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
+                    "R2 Manifest Failed",
+                    "The release list could not be downloaded from R2. Retry using the permanent GitHub backup? This choice will be saved in Advanced Downloads.",
+                    ButtonEnum.YesNo,
+                    windowStartupLocation: WindowStartupLocation.CenterOwner);
+                if (result == ButtonResult.Yes)
+                {
+                    _launcherConfigService.Config.PatchDownloadSource = PatchDownloadSource.GitHub;
+                    _launcherConfigService.Save();
+                    succeeded = await feed.Value.UpdateManifest();
+                }
+            }
+            if (!succeeded) allSucceeded = false;
         }
         FeedRefreshFailed = !allSucceeded;
     }
@@ -486,11 +503,39 @@ public partial class HomeTabViewModel : ViewModelBase
 
         Log("Creating install plan");
 
-        var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
-            .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
         try
         {
-            await RunPlanOnInstall(plan, ksp2);
+            while (true)
+            {
+                var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
+                    .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
+                try
+                {
+                    await RunPlanOnInstall(plan, ksp2);
+                    break;
+                }
+                catch (Exception e) when (
+                    _launcherConfigService.Config.PatchDownloadSource == PatchDownloadSource.R2 &&
+                    FindPatchDownloadException(e) is { DownloadSource: PatchDownloadSource.R2 })
+                {
+                    var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
+                        "R2 Download Failed",
+                        "A manifest or patch could not be downloaded from R2. Retry the complete update using the permanent GitHub backup? Verified files already on disk will be reused.",
+                        ButtonEnum.YesNo,
+                        windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    if (result != ButtonResult.Yes)
+                    {
+                        throw;
+                    }
+
+                    _cancelCurrentOperation.Cancel();
+                    _cancelCurrentOperation.Dispose();
+                    _cancelCurrentOperation = new CancellationTokenSource();
+                    _launcherConfigService.Config.PatchDownloadSource = PatchDownloadSource.GitHub;
+                    _launcherConfigService.Save();
+                    Log("Retrying the update using GitHub.");
+                }
+            }
             Log("KSP2 Redux Successfully Installed");
         }
         catch (OperationCanceledException)
@@ -514,6 +559,18 @@ public partial class HomeTabViewModel : ViewModelBase
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
         }
+    }
+
+    private static PatchDownloadException? FindPatchDownloadException(Exception? exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PatchDownloadException downloadException)
+            {
+                return downloadException;
+            }
+        }
+        return null;
     }
 
     public async Task InstallFromPatchFile(string path)
