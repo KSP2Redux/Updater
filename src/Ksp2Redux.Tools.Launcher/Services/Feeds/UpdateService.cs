@@ -64,12 +64,17 @@ public class UpdateService : IUpdateService
         const string actionMessage = "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.";
         const int maxNotesLength = 500;
 
-        if (string.IsNullOrWhiteSpace(releaseNotes))
+        // The body is markdown meant for the releases page. This dialog is a plain text control, so
+        // it gets the words without the markup, and without the part of the page aimed at someone
+        // choosing which file to download.
+        var plain = ReleaseNotesFormatter.ToPlainText(releaseNotes);
+
+        if (string.IsNullOrWhiteSpace(plain))
         {
             return $"What's new in v{newVersion}:\n(No release notes provided.)\n\n{actionMessage}";
         }
 
-        var trimmed = releaseNotes.Trim();
+        var trimmed = plain.Trim();
         var shown = trimmed.Length > maxNotesLength
             ? trimmed[..maxNotesLength].TrimEnd() + "..."
             : trimmed;
