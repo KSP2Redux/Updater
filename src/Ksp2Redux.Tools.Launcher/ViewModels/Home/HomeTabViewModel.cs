@@ -175,17 +175,19 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             bool succeeded = await feed.Value.UpdateManifest();
             if (!succeeded &&
-                _launcherConfigService.Config.PatchDownloadSource == PatchDownloadSource.R2 &&
-                FindPatchDownloadException(feed.Value.LastUpdateException) is { DownloadSource: PatchDownloadSource.R2 })
+                FindPatchDownloadException(feed.Value.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
+                _launcherConfigService.Config.PatchDownloadSource == downloadFailure.DownloadSource)
             {
+                var alternateSource = downloadFailure.DownloadSource.GetAlternate();
                 var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                    "R2 Manifest Failed",
-                    "The release list could not be downloaded from R2. Retry using the permanent GitHub backup? This choice will be saved in Advanced Downloads.",
+                    $"{downloadFailure.DownloadSource} Manifest Failed",
+                    $"The release list could not be downloaded from {downloadFailure.DownloadSource}. " +
+                    $"Retry using {alternateSource}? This choice will be saved in Advanced Downloads.",
                     ButtonEnum.YesNo,
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
                 if (result == ButtonResult.Yes)
                 {
-                    _launcherConfigService.Config.PatchDownloadSource = PatchDownloadSource.GitHub;
+                    _launcherConfigService.Config.PatchDownloadSource = alternateSource;
                     _launcherConfigService.Save();
                     succeeded = await feed.Value.UpdateManifest();
                 }
@@ -514,13 +516,14 @@ public partial class HomeTabViewModel : ViewModelBase
                     await RunPlanOnInstall(plan, ksp2);
                     break;
                 }
-                catch (Exception e) when (
-                    _launcherConfigService.Config.PatchDownloadSource == PatchDownloadSource.R2 &&
-                    FindPatchDownloadException(e) is { DownloadSource: PatchDownloadSource.R2 })
+                catch (Exception e) when (CanOfferMirrorSwitch(e))
                 {
+                    var failedSource = _launcherConfigService.Config.PatchDownloadSource;
+                    var alternateSource = failedSource.GetAlternate();
                     var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                        "R2 Download Failed",
-                        "A manifest or patch could not be downloaded from R2. Retry the complete update using the permanent GitHub backup? Verified files already on disk will be reused.",
+                        $"{failedSource} Download Failed",
+                        $"A manifest or patch could not be downloaded from {failedSource}. " +
+                        $"Retry the complete update using {alternateSource}? Verified files already on disk will be reused.",
                         ButtonEnum.YesNo,
                         windowStartupLocation: WindowStartupLocation.CenterOwner);
                     if (result != ButtonResult.Yes)
@@ -531,9 +534,9 @@ public partial class HomeTabViewModel : ViewModelBase
                     _cancelCurrentOperation.Cancel();
                     _cancelCurrentOperation.Dispose();
                     _cancelCurrentOperation = new CancellationTokenSource();
-                    _launcherConfigService.Config.PatchDownloadSource = PatchDownloadSource.GitHub;
+                    _launcherConfigService.Config.PatchDownloadSource = alternateSource;
                     _launcherConfigService.Save();
-                    Log("Retrying the update using GitHub.");
+                    Log($"Retrying the update using {alternateSource}.");
                 }
             }
             Log("KSP2 Redux Successfully Installed");
@@ -572,6 +575,10 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         return null;
     }
+
+    private bool CanOfferMirrorSwitch(Exception exception) =>
+        FindPatchDownloadException(exception) is { CanSwitchSource: true } downloadFailure &&
+        downloadFailure.DownloadSource == _launcherConfigService.Config.PatchDownloadSource;
 
     public async Task InstallFromPatchFile(string path)
     {

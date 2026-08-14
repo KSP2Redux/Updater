@@ -113,6 +113,7 @@ public sealed class PatchDownloadService(
                 patchHash,
                 $"patch:{patchHash}",
                 source,
+                false,
                 transferLimit,
                 stagingSpace,
                 aggregate,
@@ -136,6 +137,7 @@ public sealed class PatchDownloadService(
                 chunkHash,
                 $"{patchHash}:{chunk.Index}",
                 selectedSource,
+                true,
                 transferLimit,
                 stagingSpace,
                 aggregate,
@@ -194,6 +196,7 @@ public sealed class PatchDownloadService(
         string expectedHash,
         string progressKey,
         PatchDownloadSource source,
+        bool canSwitchSource,
         SemaphoreSlim transferLimit,
         StagingSpaceCoordinator stagingSpace,
         AggregateDownloadProgress aggregate,
@@ -320,7 +323,11 @@ public sealed class PatchDownloadService(
             await Task.Delay(delayMilliseconds, ct);
         }
 
-        throw new PatchDownloadException(source, $"Could not download a verified patch part from {source}.", lastFailure);
+        throw new PatchDownloadException(
+            source,
+            $"Could not download a verified patch part from {source}.",
+            lastFailure,
+            canSwitchSource);
     }
 
     private async Task<bool> MatchesChecksumAsync(string path, long expectedSize, string expectedHash, CancellationToken ct)

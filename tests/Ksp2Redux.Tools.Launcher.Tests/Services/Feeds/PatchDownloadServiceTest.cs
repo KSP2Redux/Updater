@@ -73,6 +73,54 @@ public class PatchDownloadServiceTest
         provider.VerifyAll();
     }
 
+    [TestCase(PatchDownloadSource.R2)]
+    [TestCase(PatchDownloadSource.GitHub)]
+    public void EnqueueAll_ChunkFailureAllowsSwitchingToOtherMirror(PatchDownloadSource source)
+    {
+        byte[] first = [1, 2, 3];
+        byte[] second = [4, 5];
+        var patch = CreateChunkedPatch(first, second, first.Concat(second).ToArray());
+        var (service, provider, _) = MakeService();
+        provider.Setup(item => item.DownloadFileAsync(
+                It.IsAny<FeedInfo>(), It.IsAny<string>(), 0, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Response(HttpStatusCode.NotFound, []));
+
+        var tasks = service.EnqueueAll(
+            [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
+            source, 1, _ => { }, (_, _) => { }, CancellationToken.None);
+
+        var exception = Assert.ThrowsAsync<PatchDownloadException>(async () => await tasks[0]);
+        Assert.That(exception!.DownloadSource, Is.EqualTo(source));
+        Assert.That(exception.CanSwitchSource, Is.True);
+    }
+
+    [Test]
+    public void EnqueueAll_LegacyDownloadFailureDoesNotOfferUnavailableMirror()
+    {
+        byte[] whole = [1, 2, 3];
+        var patch = new ReleasePatch
+        {
+            Version = "1.0.0.1",
+            Requires = new PatchRequirement(),
+            Url = "https://github.com/example/release.patch",
+            ChecksumSha256 = Hash(whole),
+            Size = whole.Length,
+            ReleasedAt = DateTime.UtcNow
+        };
+        var (service, provider, _) = MakeService();
+        provider.Setup(item => item.DownloadFileAsync(
+                It.IsAny<FeedInfo>(), patch.Url, 0, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response(HttpStatusCode.NotFound, []));
+
+        var tasks = service.EnqueueAll(
+            [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
+            PatchDownloadSource.GitHub, 1, _ => { }, (_, _) => { }, CancellationToken.None);
+
+        var exception = Assert.ThrowsAsync<PatchDownloadException>(async () => await tasks[0]);
+        Assert.That(exception!.DownloadSource, Is.EqualTo(PatchDownloadSource.GitHub));
+        Assert.That(exception.CanSwitchSource, Is.False);
+    }
+
     private static (PatchDownloadService Service, Mock<IManifestReleasesFeedProviderService> Provider,
         MockFileSystem FileSystem) MakeService()
     {

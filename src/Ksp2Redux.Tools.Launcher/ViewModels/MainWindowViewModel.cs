@@ -250,17 +250,19 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 bool updated = await newFeed.UpdateManifest();
                 if (!updated &&
-                    _launcherConfigService.Config.PatchDownloadSource == PatchDownloadSource.R2 &&
-                    FindPatchDownloadException(newFeed.LastUpdateException) is { DownloadSource: PatchDownloadSource.R2 })
+                    FindPatchDownloadException(newFeed.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
+                    _launcherConfigService.Config.PatchDownloadSource == downloadFailure.DownloadSource)
                 {
+                    var alternateSource = downloadFailure.DownloadSource.GetAlternate();
                     var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                        "R2 Manifest Failed",
-                        "The release list could not be downloaded from R2. Retry using the permanent GitHub backup? This choice will be saved in Advanced Downloads.",
+                        $"{downloadFailure.DownloadSource} Manifest Failed",
+                        $"The release list could not be downloaded from {downloadFailure.DownloadSource}. " +
+                        $"Retry using {alternateSource}? This choice will be saved in Advanced Downloads.",
                         ButtonEnum.YesNo,
                         windowStartupLocation: WindowStartupLocation.CenterOwner);
                     if (result == ButtonResult.Yes)
                     {
-                        _launcherConfigService.Config.PatchDownloadSource = PatchDownloadSource.GitHub;
+                        _launcherConfigService.Config.PatchDownloadSource = alternateSource;
                         _launcherConfigService.Save();
                         updated = await newFeed.UpdateManifest();
                     }

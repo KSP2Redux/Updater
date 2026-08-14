@@ -4,6 +4,8 @@ using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.Views;
@@ -16,6 +18,18 @@ public class FeedRefreshFailureTest
 {
     private const string DefaultChannel = "beta";
     private const string OtherChannel = "stable";
+
+    [AvaloniaTest]
+    public async Task RefreshFeeds_R2ManifestFails_OffersGitHubMirror()
+    {
+        await VerifyManifestFailureOffersAlternateMirror(PatchDownloadSource.R2);
+    }
+
+    [AvaloniaTest]
+    public async Task RefreshFeeds_GitHubManifestFails_OffersR2Mirror()
+    {
+        await VerifyManifestFailureOffersAlternateMirror(PatchDownloadSource.GitHub);
+    }
 
     [AvaloniaTest]
     public async Task RefreshFeeds_ManifestFetchThrows_ShowsWarningBannerUntilNextSuccessfulRefresh()
@@ -83,5 +97,62 @@ public class FeedRefreshFailureTest
         // Assert - banner clears once refreshes succeed again
         Assert.That(homeTabViewModel.FeedRefreshFailed, Is.False);
         Assert.That(warningText.IsVisible, Is.False);
+    }
+
+    private static async Task VerifyManifestFailureOffersAlternateMirror(PatchDownloadSource failedSource)
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestHelpers.MockKsp2StockSteamInstall();
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
+
+        ReleaseManifest MakeManifest(FeedInfo feed) => new()
+        {
+            Channel = feed.Filename.Contains(DefaultChannel) ? DefaultChannel : OtherChannel,
+            GeneratedAt = new DateTime(2020, 1, 4),
+            Patches = [],
+            SchemaVersion = 1
+        };
+
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .Returns<FeedInfo>(feed => Task.FromResult<ReleaseManifest?>(MakeManifest(feed)));
+
+        MainWindow window = new()
+        {
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
+        };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var configService = TestAppBuilder.ServiceProvider.GetRequiredService<ILauncherConfigService>();
+        configService.Config.PatchDownloadSource = failedSource;
+        var alternateSource = failedSource.GetAlternate();
+
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .Returns<FeedInfo>(feed =>
+            {
+                if (configService.Config.PatchDownloadSource == failedSource)
+                {
+                    return Task.FromException<ReleaseManifest?>(new PatchDownloadException(
+                        failedSource,
+                        "simulated manifest failure"));
+                }
+                return Task.FromResult<ReleaseManifest?>(MakeManifest(feed));
+            });
+
+        var homeTabViewModel = TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
+        await homeTabViewModel.RefreshFeedsCommand.ExecuteAsync(null);
+
+        Assert.That(configService.Config.PatchDownloadSource, Is.EqualTo(alternateSource));
+        TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(
+            $"{failedSource} Manifest Failed",
+            It.Is<string>(text => text.Contains($"Retry using {alternateSource}?")),
+            MsBox.Avalonia.Enums.ButtonEnum.YesNo,
+            It.IsAny<MsBox.Avalonia.Enums.Icon>(),
+            It.IsAny<object>(),
+            It.IsAny<Avalonia.Controls.WindowStartupLocation>()), Times.Once);
     }
 }
