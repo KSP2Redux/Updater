@@ -62,7 +62,7 @@ try
     List<ReleaseAsset> existingAssets = [];
     using var r2 = isPublicChannel ? new R2Publisher(uploadManifest) : null;
 
-    if (!isDeleteOnly && !uploadManifest.DryRun)
+    if (!isDeleteOnly)
     {
         release = await GetOrCreateReleaseAsync(
             github, repoOwner, repoName, tag, uploadManifest, ReadChangelogSection(uploadManifest.Changelog));
@@ -80,11 +80,6 @@ try
     {
         if (!isPublicChannel)
         {
-            if (uploadManifest.DryRun)
-            {
-                Console.WriteLine($"Dry run: would upload legacy patch {patchEntry.File}.");
-                continue;
-            }
             var asset = await UploadLegacyPatchAsync(
                 github, repoOwner, repoName, release!, existingAssets, patchEntry.File);
             additions.Add(CreateLegacyPatch(uploadManifest, patchEntry, asset.BrowserDownloadUrl, releasedAt));
@@ -107,25 +102,16 @@ try
             string partName = $"part-{chunk.Index + 1:D4}-of-{packaged.Chunks.Count:D4}.bin";
             string objectKey = $"{prefix}/{partName}";
             string githubAssetName = $"patch-{packaged.ChecksumSha256.ToLowerInvariant()}-{partName}";
-            string githubUrl = $"https://github.com/{repoOwner}/{repoName}/releases/download/{tag}/{githubAssetName}";
-            if (uploadManifest.DryRun)
-            {
-                Console.WriteLine($"Dry run: {chunk.Path} -> R2 {objectKey} and GitHub {githubAssetName}.");
-            }
-            else
-            {
-                await r2!.UploadImmutableAsync(objectKey, chunk.Path, chunk.ChecksumSha256, CancellationToken.None);
-                var asset = await UploadExactAssetAsync(
-                    github, release!, existingAssets, chunk.Path, githubAssetName, chunk.Size);
-                githubUrl = asset.BrowserDownloadUrl;
-            }
+            await r2!.UploadImmutableAsync(objectKey, chunk.Path, chunk.ChecksumSha256, CancellationToken.None);
+            var asset = await UploadExactAssetAsync(
+                github, release!, existingAssets, chunk.Path, githubAssetName, chunk.Size);
             chunks.Add(new ReleasePatchChunk
             {
                 Index = chunk.Index,
                 Size = chunk.Size,
                 ChecksumSha256 = chunk.ChecksumSha256,
                 R2Url = r2!.GetPublicUrl(objectKey),
-                GitHubUrl = githubUrl
+                GitHubUrl = asset.BrowserDownloadUrl
             });
         }
 
@@ -147,14 +133,6 @@ try
         feedJson.SchemaVersion = 2;
     ReleaseManifestValidator.Validate(feedJson);
     string feedContent = JsonSerializer.Serialize(feedJson, new JsonSerializerOptions { WriteIndented = true });
-
-    if (uploadManifest.DryRun)
-    {
-        Console.WriteLine(
-            $"Dry run complete: schema {feedJson.SchemaVersion}, {feedJson.Patches.Count} patch entries, " +
-            $"{removed.Count} entries would leave the active manifest.");
-        return 0;
-    }
 
     if (uploadManifest.StageOnly)
     {
@@ -216,6 +194,8 @@ try
             $"https://raw.githubusercontent.com/{repoOwner}/{repoName}/{uploadManifest.Branch}/{uploadManifest.File}";
         await VerifyPublicManifestAsync(r2ManifestUrl, feedContent);
         await VerifyPublicManifestAsync(githubManifestUrl, feedContent);
+        // Stable R2 objects are permanent by policy, including objects retired by a
+        // same-version replacement. Only beta rotation removes retired R2 content.
         if (uploadManifest.Channel == "beta")
         {
             var activeKeys = feedJson.Patches
@@ -291,8 +271,6 @@ static async Task<List<ReleasePatch>> MigrateLegacyPatchesAsync(
         string patchDirectory = Path.Combine(workingDirectory, $"migration-{Guid.NewGuid():N}");
         Directory.CreateDirectory(patchDirectory);
         string localPatch = Path.Combine(patchDirectory, "source.patch");
-        if (upload.DryRun)
-            Console.WriteLine($"Dry run: validating migration of {patch.Version} from {patch.Url}.");
 
         using (var response = await http.GetAsync(patch.Url, HttpCompletionOption.ResponseHeadersRead))
         {
@@ -310,13 +288,8 @@ static async Task<List<ReleasePatch>> MigrateLegacyPatchesAsync(
             new RealFileSystem(), localPatch, Path.Combine(patchDirectory, "parts"),
             PatchChunker.DEFAULT_CHUNK_SIZE);
         await VerifyReconstructionAsync(packaged);
-        Release? release = null;
-        List<ReleaseAsset> releaseAssets = [];
-        if (!upload.DryRun)
-        {
-            release = await github.Repository.Release.Get(owner, repo, tag);
-            releaseAssets = (await github.Repository.Release.GetAllAssets(owner, repo, release.Id)).ToList();
-        }
+        var release = await github.Repository.Release.Get(owner, repo, tag);
+        var releaseAssets = (await github.Repository.Release.GetAllAssets(owner, repo, release.Id)).ToList();
         string requiredVersion = patch.Requires.IsBasePatch
             ? "base"
             : Uri.EscapeDataString(patch.Requires.Version!);
@@ -328,21 +301,16 @@ static async Task<List<ReleasePatch>> MigrateLegacyPatchesAsync(
             string partName = $"part-{chunk.Index + 1:D4}-of-{packaged.Chunks.Count:D4}.bin";
             string objectKey = $"{prefix}/{partName}";
             string assetName = $"patch-{packaged.ChecksumSha256.ToLowerInvariant()}-{partName}";
-            string githubUrl = $"https://github.com/{owner}/{repo}/releases/download/{tag}/{assetName}";
-            if (!upload.DryRun)
-            {
-                await r2.UploadImmutableAsync(objectKey, chunk.Path, chunk.ChecksumSha256, CancellationToken.None);
-                var asset = await UploadExactAssetAsync(
-                    github, release!, releaseAssets, chunk.Path, assetName, chunk.Size);
-                githubUrl = asset.BrowserDownloadUrl;
-            }
+            await r2.UploadImmutableAsync(objectKey, chunk.Path, chunk.ChecksumSha256, CancellationToken.None);
+            var asset = await UploadExactAssetAsync(
+                github, release, releaseAssets, chunk.Path, assetName, chunk.Size);
             chunks.Add(new ReleasePatchChunk
             {
                 Index = chunk.Index,
                 Size = chunk.Size,
                 ChecksumSha256 = chunk.ChecksumSha256,
                 R2Url = r2.GetPublicUrl(objectKey),
-                GitHubUrl = githubUrl
+                GitHubUrl = asset.BrowserDownloadUrl
             });
         }
         migrated.Add(patch with { Url = null, Chunks = chunks });

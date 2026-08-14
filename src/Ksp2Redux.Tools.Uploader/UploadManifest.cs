@@ -24,7 +24,6 @@ public sealed record UploadManifest
     public string? CloudflareZoneId { get; init; }
     public string? CloudflareApiToken { get; init; }
     public int RetainBetaReleases { get; init; } = 5;
-    public bool DryRun { get; init; }
     public bool MigrateExisting { get; init; }
     public bool StageOnly { get; init; }
     public bool R2ManifestOnly { get; init; }
