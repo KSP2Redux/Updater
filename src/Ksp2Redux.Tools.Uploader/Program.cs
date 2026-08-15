@@ -366,8 +366,10 @@ static async Task<ReleaseAsset> UploadLegacyPatchAsync(
     List<ReleaseAsset> existingAssets, string path)
 {
     string name = Path.GetFileName(path);
+    // A retry may replace this generated asset, but the full and delta patches
+    // share an extension and must remain alongside each other on the release.
     foreach (var stale in existingAssets.Where(asset =>
-                 string.Equals(Path.GetExtension(asset.Name), Path.GetExtension(name), StringComparison.OrdinalIgnoreCase)).ToList())
+                 string.Equals(asset.Name, name, StringComparison.OrdinalIgnoreCase)).ToList())
     {
         await github.Repository.Release.DeleteAsset(owner, repo, stale.Id);
         existingAssets.Remove(stale);
