@@ -43,6 +43,10 @@ if (isPublicChannel && !HasR2Configuration(uploadManifest))
 if (isDeleteOnly && string.IsNullOrWhiteSpace(uploadManifest.Label))
     throw new InvalidOperationException("The manifest has no patches and no label.");
 
+Console.WriteLine(
+    $"Publishing {tag} to {uploadManifest.Channel} as " +
+    $"{(uploadManifest.Prerelease ? "a prerelease" : "a release")}.");
+
 var github = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Uploader"))
 {
     Credentials = new Credentials(uploadManifest.Token)
@@ -67,6 +71,13 @@ try
         release = await GetOrCreateReleaseAsync(
             github, repoOwner, repoName, tag, uploadManifest, ReadChangelogSection(uploadManifest.Changelog));
         existingAssets = (await github.Repository.Release.GetAllAssets(repoOwner, repoName, release.Id)).ToList();
+        Console.WriteLine($"Found {existingAssets.Count} existing GitHub release asset(s).");
+
+        if (!isPublicChannel)
+        {
+            await DeleteLegacyAssetsBeingReplacedAsync(
+                github, repoOwner, repoName, existingAssets, uploadManifest.Patches ?? []);
+        }
     }
 
     DateTime releasedAt = DateTime.UtcNow;
@@ -80,8 +91,9 @@ try
     {
         if (!isPublicChannel)
         {
-            var asset = await UploadLegacyPatchAsync(
-                github, repoOwner, repoName, release!, existingAssets, patchEntry.File);
+            string assetName = Path.GetFileName(patchEntry.File);
+            var asset = await UploadExactAssetAsync(
+                github, release!, existingAssets, patchEntry.File, assetName, new FileInfo(patchEntry.File).Length);
             additions.Add(CreateLegacyPatch(uploadManifest, patchEntry, asset.BrowserDownloadUrl, releasedAt));
             continue;
         }
@@ -335,6 +347,7 @@ static async Task<Release> GetOrCreateReleaseAsync(
     try
     {
         var release = await github.Repository.Release.Get(owner, repo, tag);
+        Console.WriteLine($"Found existing GitHub release: {release.HtmlUrl}");
         var update = release.ToUpdate();
         bool change = false;
         if (!string.IsNullOrWhiteSpace(changelog))
@@ -347,35 +360,42 @@ static async Task<Release> GetOrCreateReleaseAsync(
             update.Prerelease = manifest.Prerelease;
             change = true;
         }
-        return change ? await github.Repository.Release.Edit(owner, repo, release.Id, update) : release;
+        if (!change)
+            return release;
+
+        var updated = await github.Repository.Release.Edit(owner, repo, release.Id, update);
+        Console.WriteLine(
+            $"Updated existing GitHub release (changelog: {!string.IsNullOrWhiteSpace(changelog)}, " +
+            $"prerelease: {updated.Prerelease}).");
+        return updated;
     }
     catch (NotFoundException)
     {
-        return await github.Repository.Release.Create(owner, repo, new NewRelease(tag)
+        var created = await github.Repository.Release.Create(owner, repo, new NewRelease(tag)
         {
             Name = $"KSP2 Redux {manifest.Version}",
             Body = changelog ?? "Automated upload for KSP2 Redux",
             Draft = false,
             Prerelease = manifest.Prerelease
         });
+        Console.WriteLine($"Created GitHub release: {created.HtmlUrl}");
+        return created;
     }
 }
 
-static async Task<ReleaseAsset> UploadLegacyPatchAsync(
-    GitHubClient github, string owner, string repo, Release release,
-    List<ReleaseAsset> existingAssets, string path)
+static async Task DeleteLegacyAssetsBeingReplacedAsync(
+    GitHubClient github, string owner, string repo,
+    List<ReleaseAsset> existingAssets, IReadOnlyList<PatchUploadEntry> patches)
 {
-    string name = Path.GetFileName(path);
-    // A retry may replace this generated asset, but the full and delta patches
-    // share an extension and must remain alongside each other on the release.
-    foreach (var stale in existingAssets.Where(asset =>
-                 string.Equals(asset.Name, name, StringComparison.OrdinalIgnoreCase)).ToList())
+    var namesToReplace = patches
+        .Select(patch => Path.GetFileName(patch.File))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    foreach (var stale in existingAssets.Where(asset => namesToReplace.Contains(asset.Name)).ToList())
     {
         await github.Repository.Release.DeleteAsset(owner, repo, stale.Id);
         existingAssets.Remove(stale);
+        Console.WriteLine($"Deleted existing GitHub asset before upload: {stale.Name}");
     }
-    return await UploadExactAssetAsync(
-        github, release, existingAssets, path, name, new FileInfo(path).Length);
 }
 
 static async Task<ReleaseAsset> UploadExactAssetAsync(
@@ -391,6 +411,7 @@ static async Task<ReleaseAsset> UploadExactAssetAsync(
         Console.WriteLine($"Verified existing GitHub asset: {assetName} ({expectedSize} bytes)");
         return existing;
     }
+    Console.WriteLine($"Uploading GitHub asset: {assetName} ({expectedSize} bytes)");
     await using var stream = File.OpenRead(path);
     var asset = await github.Repository.Release.UploadAsset(release, new ReleaseAssetUpload
     {
@@ -402,6 +423,7 @@ static async Task<ReleaseAsset> UploadExactAssetAsync(
         throw new InvalidOperationException(
             $"GitHub reports {asset.Size} bytes for '{assetName}', expected {expectedSize}.");
     existingAssets.Add(asset);
+    Console.WriteLine($"Uploaded GitHub asset: {asset.BrowserDownloadUrl}");
     return asset;
 }
 
