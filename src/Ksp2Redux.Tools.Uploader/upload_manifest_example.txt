@@ -3,6 +3,7 @@
 Repository = [github repository]
 Branch = [branch in repository the feed is in]
 File = [filename of the feed in the repository]
+SwinfoFile = [optional, filename of a swinfo document in the repository whose "version" field is rewritten to Version once the release has published; omit to leave every swinfo file untouched]
 Token = [the personal access token for the repository]
 Version = [the version ID of the upload]
 Prerelease = [optional, true for a snapshot so GitHub keeps it out of the "Latest release" slot, false for a tagged release; defaults to false]

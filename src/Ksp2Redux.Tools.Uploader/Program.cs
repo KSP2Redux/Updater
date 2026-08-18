@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Ksp2Redux.Tools.Common.Distribution;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Uploader;
@@ -225,6 +226,14 @@ try
         }
         await r2.ReportUsageAsync(CancellationToken.None);
     }
+
+    // Deliberately last. External version checkers poll the swinfo document, so it
+    // announces a release only once the feed commit and the verified R2 publication
+    // have both landed. A label cleanup publishes no version and leaves it alone.
+    if (!isDeleteOnly && !string.IsNullOrWhiteSpace(uploadManifest.SwinfoFile))
+        await UpdateSwinfoVersionAsync(
+            github, repoOwner, repoName, uploadManifest.SwinfoFile,
+            uploadManifest.Version, uploadManifest.Branch);
 }
 finally
 {
@@ -521,6 +530,50 @@ static async Task VerifyPublicManifestAsync(string url, string expectedJson)
         await Task.Delay(TimeSpan.FromSeconds(attempt * 2));
     }
     throw new InvalidOperationException($"Could not verify public manifest at {url}.", lastFailure);
+}
+
+// Rewrites the version field of a swinfo document and leaves the rest of the file
+// byte for byte as it was, so the hand-authored formatting survives a publish.
+// No read back verification here, unlike the release manifests: a swinfo file has no
+// R2 copy, and raw.githubusercontent.com serves a cached blob for minutes after a
+// commit, so verifying would fail on staleness rather than on anything real.
+static async Task UpdateSwinfoVersionAsync(
+    GitHubClient github, string owner, string repo, string swinfoFile, string version, string branch)
+{
+    var existing = (await github.Repository.Content.GetAllContentsByRef(
+        owner, repo, swinfoFile, branch))[0];
+
+    // Anchored on the quotes around the key, so neither ksp2_version nor version_check
+    // can match. Exactly one hit is required, because a swinfo file that grew a second
+    // version field or lost the one it had is not something to guess at mid publish.
+    const string versionFieldPattern =
+        """
+        "version"\s*:\s*"([^"]*)"
+        """;
+    var matches = Regex.Matches(existing.Content, versionFieldPattern);
+    if (matches.Count != 1)
+        throw new InvalidDataException(
+            $"Expected exactly one version field in {swinfoFile}, found {matches.Count}. " +
+            "The published release is unaffected; fix the file and rerun the publish.");
+
+    var currentVersion = matches[0].Groups[1];
+    if (string.Equals(currentVersion.Value, version, StringComparison.Ordinal))
+    {
+        Console.WriteLine($"{swinfoFile} already reports version {version}, so it was left unchanged.");
+        return;
+    }
+
+    string updated = string.Concat(
+        existing.Content.AsSpan(0, currentVersion.Index),
+        version,
+        existing.Content.AsSpan(currentVersion.Index + currentVersion.Length));
+
+    var request = new UpdateFileRequest(
+        $"Update version in {swinfoFile} for release {version}", updated, existing.Sha, branch);
+    var result = await github.Repository.Content.UpdateFile(owner, repo, swinfoFile, request);
+    Console.WriteLine(
+        $"Updated {swinfoFile} from version {currentVersion.Value} to {version} " +
+        $"with commit {result.Commit.Sha}.");
 }
 
 static string? TryGetR2ObjectKey(string publicBaseUrl, string url)

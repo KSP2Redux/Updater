@@ -12,6 +12,12 @@ public sealed record UploadManifest
 
     public string? Label { get; init; }
     public string? Changelog { get; init; }
+
+    // A swinfo document in the same repository whose version field tracks this
+    // publication. Omitted for channels that do not publish one, in which case
+    // no swinfo file is touched.
+    public string? SwinfoFile { get; init; }
+
     public List<PatchUploadEntry>? Patches { get; init; }
 
     public string? Channel { get; init; }
