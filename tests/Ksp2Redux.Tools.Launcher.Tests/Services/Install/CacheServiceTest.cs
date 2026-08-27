@@ -45,4 +45,23 @@ public class CacheServiceTest
             Assert.That(ex.ExpectedFile, Is.EqualTo("uninstall.zip"));
         });
     }
+
+    [Test]
+    public void AddFolder_ManagedShapesRuntime_IsIncludedInUninstallSnapshot()
+    {
+        var (service, fs, _) = MakeService();
+        string managedDirectory = fs.Path.Combine(InstallDir, "KSP2_x64_Data", "Managed");
+        string shapesPath = fs.Path.Combine(managedDirectory, "ShapesRuntime.dll");
+        fs.Directory.CreateDirectory(managedDirectory);
+        fs.File.WriteAllText(shapesPath, "stock shapes");
+        var archive = new Mock<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>();
+
+        service.AddFolder(archive.Object, InstallDir, "");
+
+        archive.Verify(
+            candidate => candidate.CreateEntryFromFile(
+                shapesPath,
+                fs.Path.Combine("KSP2_x64_Data", "Managed", "ShapesRuntime.dll")),
+            Times.Once);
+    }
 }

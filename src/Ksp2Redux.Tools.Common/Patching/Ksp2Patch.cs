@@ -42,7 +42,13 @@ public class Ksp2Patch : IDisposable
 #pragma warning restore RS0030
     }
 
-    public static FileSystemStream FromDiff(IFileSystem fileSystem, string saveFile, string ksp2Directory, string targetDirectory, bool checkRemovals=false)
+    public static FileSystemStream FromDiff(
+        IFileSystem fileSystem,
+        string saveFile,
+        string ksp2Directory,
+        string targetDirectory,
+        bool checkRemovals = false,
+        IEnumerable<string>? checkMissingDllsUnder = null)
     {
         if (!fileSystem.Directory.Exists(ksp2Directory))
         {
@@ -57,7 +63,13 @@ public class Ksp2Patch : IDisposable
         FileSystemStream writeFile = fileSystem.File.Open(saveFile, FileMode.Create, FileAccess.Write);
         using (Ksp2Patch patch = Empty(fileSystem, writeFile, true))
         {
-            ulong size = patch.RecursiveDiff(patch, ksp2Directory, targetDirectory, checkRemovals);
+            patch.AddMissingDllRemovalOperations(ksp2Directory, targetDirectory, checkMissingDllsUnder);
+
+            ulong size = patch.RecursiveDiff(
+                patch,
+                ksp2Directory,
+                targetDirectory,
+                checkRemovals);
 
             Console.WriteLine($"Expected result size: {size}");
 
@@ -72,13 +84,68 @@ public class Ksp2Patch : IDisposable
         return writeFile;
     }
 
-    private ulong RecursiveDiff(Ksp2Patch patch, string originalDirectory, string patchDirectory, bool checkRemovals, string prefix = "")
+    private void AddMissingDllRemovalOperations(
+        string originalDirectory,
+        string targetDirectory,
+        IEnumerable<string>? removalRoots)
+    {
+        var normalizedRoots = new HashSet<string>(
+            (removalRoots ?? []).Select(NormalizeEntryPath),
+            StringComparer.OrdinalIgnoreCase);
+        var emittedRemovals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string removalRoot in normalizedRoots)
+        {
+            string originalRoot = ResolveContainedPath(originalDirectory, removalRoot);
+            string targetRoot = ResolveContainedPath(targetDirectory, removalRoot);
+            if (!_fileSystem.Directory.Exists(originalRoot))
+            {
+                continue;
+            }
+
+            foreach (string originalFile in _fileSystem.Directory.EnumerateFiles(
+                         originalRoot,
+                         "*",
+                         SearchOption.AllDirectories))
+            {
+                if (!string.Equals(
+                        _fileSystem.Path.GetExtension(originalFile),
+                        ".dll",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string pathBelowRoot = _fileSystem.Path.GetRelativePath(originalRoot, originalFile);
+                string targetFile = _fileSystem.Path.Combine(targetRoot, pathBelowRoot);
+                string relativePath = _fileSystem.Path.GetRelativePath(originalDirectory, originalFile);
+                if (_fileSystem.File.Exists(targetFile) || !emittedRemovals.Add(relativePath))
+                {
+                    continue;
+                }
+
+                _manifest.Operations.Add(new PatchOperation
+                {
+                    FileName = relativePath,
+                    Action = PatchOperation.PatchAction.Remove
+                });
+            }
+        }
+    }
+
+    private ulong RecursiveDiff(
+        Ksp2Patch patch,
+        string originalDirectory,
+        string patchDirectory,
+        bool checkRemovals,
+        string prefix = "")
     {
         ulong sum = 0UL;
         var patchDir = _fileSystem.DirectoryInfo.New(patchDirectory);
         foreach (IFileInfo file in patchDir.GetFiles())
         {
-            if (FileInformation.IgnoreFiles(_fileSystem).Contains(_fileSystem.Path.Combine(prefix, file.Name))) continue;
+            string relativePath = _fileSystem.Path.Combine(prefix, file.Name);
+            if (FileInformation.IgnoreFiles(_fileSystem).Contains(relativePath)) continue;
 
             // Snapshot the source file's size/timestamp before reading it, so a change made to the
             // source tree while this (potentially long-running) diff is in progress is caught as a
@@ -148,11 +215,12 @@ public class Ksp2Patch : IDisposable
             var originalDir = _fileSystem.DirectoryInfo.New(originalDirectory);
             foreach (IFileInfo file in originalDir.GetFiles())
             {
+                string relativePath = _fileSystem.Path.Combine(prefix, file.Name);
                 if (!_fileSystem.File.Exists(_fileSystem.Path.Combine(patchDirectory, file.Name)))
                 {
                     _manifest.Operations.Add(new PatchOperation
                     {
-                        FileName = _fileSystem.Path.Combine(prefix, file.Name),
+                        FileName = relativePath,
                         Action = PatchOperation.PatchAction.Remove
                     });
                 }
@@ -175,7 +243,12 @@ public class Ksp2Patch : IDisposable
         {
             string newDir = _fileSystem.Path.Combine(originalDirectory, dir.Name);
             if (FileInformation.IgnoreDirectories(_fileSystem).Contains(_fileSystem.Path.Combine(prefix, dir.Name))) continue;
-            sum += RecursiveDiff(patch, newDir, dir.FullName, checkRemovals, _fileSystem.Path.Combine(prefix, dir.Name));
+            sum += RecursiveDiff(
+                patch,
+                newDir,
+                dir.FullName,
+                checkRemovals,
+                _fileSystem.Path.Combine(prefix, dir.Name));
         }
 
         return sum;
