@@ -203,10 +203,10 @@ try
         await r2!.UploadManifestAsync(uploadManifest.File, feedContent, CancellationToken.None);
         string r2ManifestUrl = r2.GetPublicUrl(uploadManifest.File);
         await PurgeManifestAsync(uploadManifest, r2ManifestUrl);
-        string githubManifestUrl =
-            $"https://raw.githubusercontent.com/{repoOwner}/{repoName}/{uploadManifest.Branch}/{uploadManifest.File}";
         await VerifyPublicManifestAsync(r2ManifestUrl, feedContent);
-        await VerifyPublicManifestAsync(githubManifestUrl, feedContent);
+        // UpdateFile returning a commit is the GitHub publication confirmation.
+        // Do not verify through raw.githubusercontent.com here: branch URLs are cached
+        // and can continue serving the previous manifest for minutes after the commit.
         // Stable R2 objects are permanent by policy, including objects retired by a
         // same-version replacement. Only beta rotation removes retired R2 content.
         if (uploadManifest.Channel == "beta")
