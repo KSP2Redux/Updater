@@ -210,7 +210,8 @@ public class Ksp2Patch : IDisposable
         }
 
 
-        if (checkRemovals)
+        // Newly added directories have no source tree to inspect for removals.
+        if (checkRemovals && _fileSystem.Directory.Exists(originalDirectory))
         {
             var originalDir = _fileSystem.DirectoryInfo.New(originalDirectory);
             foreach (IFileInfo file in originalDir.GetFiles())

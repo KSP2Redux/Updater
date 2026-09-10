@@ -21,6 +21,7 @@ public static class FileInformation
     [
         "PDLauncher",
         "BepInEx",
+        "KSP2_x64_BackUpThisFolder_ButDontShipItWithYourGame",
         fileSystem.Path.Combine(Ksp2X64Data, "StreamingAssets", "aa")
     ];
 
