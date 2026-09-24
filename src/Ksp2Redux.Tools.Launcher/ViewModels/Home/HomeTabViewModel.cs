@@ -594,6 +594,10 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             Log("Installation cancelled");
         }
+        catch (InsufficientDiskSpaceException e)
+        {
+            await ShowNotEnoughDiskSpace(e);
+        }
         catch (InstallFailedException e)
         {
             LogError(e.Message, e);
@@ -671,6 +675,10 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             Log("Installation cancelled");
         }
+        catch (InsufficientDiskSpaceException e)
+        {
+            await ShowNotEnoughDiskSpace(e);
+        }
         catch (InstallFailedException e)
         {
             LogError(e.Message, e);
@@ -706,6 +714,15 @@ public partial class HomeTabViewModel : ViewModelBase
             "Move the launcher to a folder outside the game directory, then run it again and retry.",
             ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         return true;
+    }
+
+    private async Task ShowNotEnoughDiskSpace(InsufficientDiskSpaceException e)
+    {
+        LogError(e.Message, e);
+        Log("Nothing was changed.");
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Not Enough Disk Space",
+            $"{e.Message}\n\nThe space is needed on the drive that holds:\n{e.Path}\n\nNothing was changed.",
+            ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
     private bool IsLauncherInsideInstallDir(string installDir)

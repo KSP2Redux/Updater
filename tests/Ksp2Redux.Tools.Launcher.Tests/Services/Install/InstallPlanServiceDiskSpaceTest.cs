@@ -12,12 +12,14 @@ public class InstallPlanServiceDiskSpaceTest
 {
     private const string InstallDir = @"C:\Games\Ksp2";
 
-    private static (InstallPlanService Service, Mock<IDiskSpaceService> DiskSpace, MockFileSystem Fs) MakeService()
+    private static (InstallPlanService Service, Mock<IDiskSpaceService> DiskSpace, MockFileSystem Fs) MakeService(
+        List<string>? ignoredDirectories = null)
     {
         var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         fs.Directory.CreateDirectory(InstallDir);
 
         var cacheService = new Mock<ICacheService>();
+        cacheService.SetupGet(c => c.IgnoredDirectories).Returns(ignoredDirectories ?? []);
         var environmentProvider = new MockEnvironmentProvider();
         var assemblyService = new Mock<IAssemblyService>();
         var moduleDefinitionService = new Mock<IModuleDefinitionService>();
@@ -47,7 +49,7 @@ public class InstallPlanServiceDiskSpaceTest
         plan.ApplyPatchFile((_, _, _) => Task.FromResult("unused"), "big patch", downloadSize: 10L * 1024 * 1024 * 1024); // 10 GB
 
         Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
-            Throws.InvalidOperationException);
+            Throws.TypeOf<InsufficientDiskSpaceException>());
     }
 
     [Test]
@@ -83,5 +85,39 @@ public class InstallPlanServiceDiskSpaceTest
         catch (Exception ex) { thrown = ex; }
 
         Assert.That(thrown?.Message ?? "", Does.Not.Contain("disk space"));
+    }
+
+    [Test]
+    public async Task ApplyToFolder_FirstPrepatch_DoesNotCountFoldersTheSnapshotSkips()
+    {
+        var streamingAssets = Path.Combine("KSP2_x64_Data", "StreamingAssets");
+        var (service, diskSpace, fs) = MakeService([streamingAssets]);
+        fs.Directory.CreateDirectory(fs.Path.Combine(InstallDir, streamingAssets));
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, streamingAssets, "data.bundle"), new byte[10 * 1024 * 1024]);
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "KSP2_x64.exe"), new byte[1024]);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(1024L * 1024);
+
+        var plan = new InstallPlan();
+        plan.Prepatch();
+
+        Exception? thrown = null;
+        try { await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None); }
+        catch (Exception ex) { thrown = ex; }
+
+        Assert.That(thrown?.Message ?? "", Does.Not.Contain("disk space"));
+    }
+
+    [Test]
+    public void ApplyToFolder_FirstPrepatch_CountsFilesTheSnapshotIncludes()
+    {
+        var (service, diskSpace, fs) = MakeService();
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "UnityPlayer.dll"), new byte[10 * 1024 * 1024]);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(1024L * 1024);
+
+        var plan = new InstallPlan();
+        plan.Prepatch();
+
+        Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
+            Throws.TypeOf<InsufficientDiskSpaceException>().With.Message.Contains("disk space"));
     }
 }
