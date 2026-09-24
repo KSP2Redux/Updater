@@ -90,7 +90,7 @@ public class InstallPlanServiceDiskSpaceTest
     [Test]
     public async Task ApplyToFolder_FirstPrepatch_DoesNotCountFoldersTheSnapshotSkips()
     {
-        var streamingAssets = Path.Combine("KSP2_x64_Data", "StreamingAssets");
+        var streamingAssets = @"KSP2_x64_Data\StreamingAssets";
         var (service, diskSpace, fs) = MakeService([streamingAssets]);
         fs.Directory.CreateDirectory(fs.Path.Combine(InstallDir, streamingAssets));
         fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, streamingAssets, "data.bundle"), new byte[10 * 1024 * 1024]);
