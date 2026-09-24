@@ -1,8 +1,10 @@
-using System.IO.Abstractions;
+﻿using System.IO.Abstractions;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
 using Testably.Abstractions;
 
@@ -48,10 +50,16 @@ public static class CliServiceProvider
         services.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         services.AddSingleton<IGameDataFolderService, GameDataFolderService>();
+        services.AddSingleton<IKsp2GameUninstallService, Ksp2GameUninstallService>();
         services.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
         services.AddSingleton<IPatchDownloadService, PatchDownloadService>();
         services.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         services.AddSingleton<IInstallPlanService, InstallPlanService>();
+        services.AddSingleton<IProcessRunner, ProcessRunner>();
+        services.AddSingleton<IWineRuntimeService, WineRuntimeService>();
+        services.AddSingleton<ISteamLoginStore, SteamLoginStore>();
+        services.AddSingleton<ISteamSessionService, SteamSessionService>();
+        services.AddSingleton<ISteamDepotDownloader, SteamDepotDownloader>();
 
         return services.BuildServiceProvider();
     }

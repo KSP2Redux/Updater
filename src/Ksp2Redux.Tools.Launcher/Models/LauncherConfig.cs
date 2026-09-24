@@ -50,6 +50,12 @@ public class LauncherConfig(string storagePath)
     /// </summary>
     public WindowPlacement? WindowPlacement { get; set; }
 
+    /// <summary>
+    /// Where the macOS launcher last found the Wine runtime inside its own .app, so the standalone CLI can
+    /// run the game through the same runtime and prefix wherever the app lives.
+    /// </summary>
+    public string? WineRuntimePath { get; set; }
+
     [JsonIgnore]
     public string StoragePath { get; set; } = storagePath;
 

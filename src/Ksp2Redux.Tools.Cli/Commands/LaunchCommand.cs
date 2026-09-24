@@ -1,7 +1,8 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -11,6 +12,7 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
 {
     private const string DEFAULT_STEAM_APP_ID = "954850";
+    private const string GAME_OUTPUT_LOG = "game-output.log";
 
     /// <inheritdoc />
     protected override async Task<int> RunAsync(
@@ -41,35 +43,92 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
         // on startup, so a CLI launch has to do it too or the setting silently does not apply.
         context.InstallService.ApplyActiveInstallBootConfig();
 
+        // Steam on macOS cannot run KSP2, so a ticked "Launch via Steam" left over in the config is ignored
+        // there rather than opening a steam:// link that does nothing.
+        if (context.OperatingSystemService.IsMacOS())
+        {
+            return await LaunchThroughWineAsync(context, entry, install, settings, cancellationToken);
+        }
+
         if (entry.LaunchThroughSteam)
         {
             return LaunchThroughSteam(context, entry);
         }
 
+        ProcessStartInfo startInfo = new(install.ExePath) { WorkingDirectory = install.InstallDir };
+        if (!string.IsNullOrWhiteSpace(entry.LaunchArguments))
+        {
+            startInfo.Arguments = entry.LaunchArguments;
+        }
+
+        return await StartAndReportAsync(context, startInfo, install.ExePath, settings, null, cancellationToken);
+    }
+
+    private static async Task<int> LaunchThroughWineAsync(
+        CliContext context,
+        Ksp2InstallEntry entry,
+        Ksp2Install install,
+        LaunchSettings settings,
+        CancellationToken cancellationToken)
+    {
+        if (context.WineRuntimeService.Detect() is not { } runtime)
+        {
+            return context.Output.Fail(
+                ExitCode.LAUNCH_FAILED,
+                "KSP2 needs a Windows compatibility runtime to run on a Mac, and none was found. " +
+                "Install the macOS KSP2 Redux launcher into Applications, which carries one, or install CrossOver.");
+        }
+
         try
         {
-            using Process process = new();
-            process.StartInfo.FileName = install.ExePath;
-            process.StartInfo.WorkingDirectory = install.InstallDir;
-            if (!string.IsNullOrWhiteSpace(entry.LaunchArguments))
-            {
-                process.StartInfo.Arguments = entry.LaunchArguments;
-            }
+            await context.WineRuntimeService.PrepareAsync(runtime, context.Output.Progress, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            return context.Output.Fail(ExitCode.LAUNCH_FAILED, $"Could not set up {runtime.DisplayName}: {e.Message}");
+        }
 
+        var logDirectory = context.FileSystem.Path.Combine(context.ConfigService.GetLocalStorageDirectory(), "logs");
+        context.FileSystem.Directory.CreateDirectory(logDirectory);
+        var gameOutput = context.FileSystem.Path.Combine(logDirectory, GAME_OUTPUT_LOG);
+        var startInfo = CliWineProcesses.WithOutputTo(
+            context.WineRuntimeService.CreateLaunchInfo(runtime, install.ExePath, install.InstallDir!, entry.LaunchArguments),
+            gameOutput);
+
+        context.Output.Detail($"  Wine and game output goes to {gameOutput}");
+        var runtimeName = runtime.Kind == WineRuntimeKind.Bundled ? "the launcher's Wine runtime" : "CrossOver";
+        return await StartAndReportAsync(context, startInfo, $"{install.ExePath} through {runtimeName}", settings, runtime.DisplayName, cancellationToken);
+    }
+
+    private static async Task<int> StartAndReportAsync(
+        CliContext context,
+        ProcessStartInfo startInfo,
+        string description,
+        LaunchSettings settings,
+        string? runtime,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using Process process = new() { StartInfo = startInfo };
             process.Start();
-            context.Output.Heading($"Started {install.ExePath} (pid {process.Id}).");
+            context.Output.Heading($"Started {description} (pid {process.Id}).");
 
             if (!settings.ShouldWait)
             {
                 context.Output.Payload(
-                    new { ok = true, pid = process.Id, waited = false },
+                    new { ok = true, pid = process.Id, waited = false, runtime },
                     () => context.Output.Result(process.Id.ToString()));
                 return ExitCode.SUCCESS;
             }
 
             await process.WaitForExitAsync(cancellationToken);
             context.Output.Payload(
-                new { ok = true, pid = process.Id, waited = true, exitCode = process.ExitCode },
+                new { ok = true, pid = process.Id, waited = true, exitCode = process.ExitCode, runtime },
                 () => context.Output.Result(process.ExitCode.ToString()));
 
             return ExitCode.SUCCESS;

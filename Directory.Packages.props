@@ -18,6 +18,7 @@
     <PackageVersion Include="CommandLineParser" Version="2.9.1" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageVersion Include="EnvironmentAbstractions" Version="5.0.0" />
     <PackageVersion Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0" />
     <PackageVersion Include="EnvironmentAbstractions.TestHelpers" Version="5.0.0" />
@@ -33,12 +34,14 @@
     <PackageVersion Include="NUnit.Analyzers" Version="4.14.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
     <PackageVersion Include="Octokit" Version="14.0.0" />
+    <PackageVersion Include="QRCoder" Version="1.8.0" />
     <!-- Spectre.Console.Cli has no 0.57 release, so it resolves against the newer renderer. The CLI
              smoke suite covers this pairing; re-run it when either line moves. -->
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Cli" Version="0.55.0" />
     <PackageVersion Include="Spectre.Console.ImageSharp" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2" />
+    <PackageVersion Include="SteamKit2" Version="3.4.0" />
     <PackageVersion Include="Testably.Abstractions" Version="10.3.0" />
     <PackageVersion Include="Testably.Abstractions.Testing" Version="7.0.2" />
     <PackageVersion Include="Tomlyn" Version="2.10.1" />

@@ -53,3 +53,36 @@ jobs:
                     ./publish/cli/redux-launcher-cli complete -- "word:inst"
                     # No command means usage, which is exit code 1 rather than a crash.
                     ./publish/cli/redux-launcher-cli && exit 1 || test $? -eq 1
+
+    # The launcher also ships as a macOS app, which the Linux job above never builds. This runs the
+    # tests on macOS, where file permissions and paths behave differently, and builds the .app the same
+    # way the release does, without the Wine runtime, which has its own workflow.
+    macos:
+        runs-on: macos-15
+
+        steps:
+            -   uses: actions/checkout@v7
+            -   name: Setup .NET
+                uses: actions/setup-dotnet@v6
+                with:
+                    dotnet-version: 10.0.x
+            -   name: Test
+                run: dotnet test --verbosity normal
+            -   name: Build the macOS app
+                run: packaging/macos/build-mac-app.sh --no-dmg
+            -   name: Check the app bundle
+                run: |
+                    app="artifacts/macos/KSP2 Redux.app"
+                    plutil -lint "$app/Contents/Info.plist"
+                    test -x "$app/Contents/MacOS/Ksp2Redux.Tools.Launcher"
+                    test -f "$app/Contents/Resources/Ksp2Redux.icns"
+                    codesign --verify --deep "$app"
+            -   name: Smoke test the macOS command line tool
+                run: |
+                    cli="artifacts/macos/KSP2 Redux.app/Contents/MacOS/redux-launcher-cli"
+                    "$cli" --version
+                    "$cli" --help
+                    artifacts/macos/redux-cli-macos-arm64 --version
+                    artifacts/macos/redux-cli-macos-arm64 complete -- "word:ste"
+                    # No command means usage, which is exit code 1 rather than a crash.
+                    artifacts/macos/redux-cli-macos-arm64 && exit 1 || test $? -eq 1

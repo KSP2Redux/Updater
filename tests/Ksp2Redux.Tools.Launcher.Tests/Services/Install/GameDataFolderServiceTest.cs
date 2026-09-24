@@ -2,6 +2,7 @@ using EnvironmentAbstractions;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Moq;
 using Testably.Abstractions.Testing;
 
@@ -9,7 +10,8 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 
 public class GameDataFolderServiceTest
 {
-    private static GameDataFolderService Build(bool isLinux, string userProfile = @"C:\Users\Eivind")
+    private static GameDataFolderService Build(bool isLinux, string userProfile = @"C:\Users\Eivind",
+        bool isMacOS = false, string? macGameDataFolder = null)
     {
         var fileSystem = new MockFileSystem(o => o.SimulatingOperatingSystem(
             isLinux ? SimulationMode.Linux : SimulationMode.Windows));
@@ -19,8 +21,12 @@ public class GameDataFolderServiceTest
 
         var operatingSystem = new Mock<IOperatingSystemService>();
         operatingSystem.Setup(o => o.IsLinux()).Returns(isLinux);
+        operatingSystem.Setup(o => o.IsMacOS()).Returns(isMacOS);
 
-        return new GameDataFolderService(fileSystem, environment.Object, operatingSystem.Object);
+        var wineRuntime = new Mock<IWineRuntimeService>();
+        wineRuntime.Setup(w => w.GetGameDataFolder()).Returns(macGameDataFolder);
+
+        return new GameDataFolderService(fileSystem, environment.Object, operatingSystem.Object, wineRuntime.Object);
     }
 
     private static Ksp2InstallEntry Entry(string exePath, string steamAppId = "954850") =>
@@ -110,5 +116,20 @@ public class GameDataFolderServiceTest
 
         // Assert
         Assert.That(folder, Is.Null);
+    }
+
+    // KSP2 runs inside a Wine prefix on macOS, so its data folder is wherever that prefix keeps it.
+    [Test]
+    public void Resolve_OnMacOS_IsTheFolderInsideTheWinePrefix()
+    {
+        // Arrange
+        const string prefixFolder = "/Users/eivind/Library/Application Support/Ksp2Redux/wine-prefix/drive_c/users/eivind/AppData/LocalLow/Intercept Games/Kerbal Space Program 2";
+        GameDataFolderService service = Build(isLinux: false, isMacOS: true, macGameDataFolder: prefixFolder);
+
+        // Act
+        string? folder = service.Resolve(Entry("/Users/eivind/Games/KSP2/KSP2_x64.exe"));
+
+        // Assert
+        Assert.That(folder, Is.EqualTo(prefixFolder));
     }
 }

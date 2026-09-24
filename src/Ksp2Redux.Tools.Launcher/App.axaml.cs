@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.Views;
@@ -61,6 +62,31 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // Handlers for the macOS application menu defined in App.axaml.
+    private async void AboutMenuItem_OnClick(object? sender, EventArgs e)
+    {
+        if (_serviceProvider is null) return;
+        var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+        await _serviceProvider.GetRequiredService<IMessageBoxService>().ShowMessageBoxAsOwnedAsync(
+            "About KSP2 Redux",
+            $"KSP2 Redux Launcher\nVersion {version}\n\n" +
+            "The installer, updater and launcher for KSP2 Redux.\n" +
+            "https://ksp2redux.org");
+    }
+
+    private async void CheckForUpdatesMenuItem_OnClick(object? sender, EventArgs e)
+    {
+        if (_serviceProvider is null) return;
+        try
+        {
+            await _serviceProvider.GetRequiredService<IUpdateService>().CheckAndPerformUpdateAsync();
+        }
+        catch (Exception ex)
+        {
+            _serviceProvider.GetService<ILogService>()?.Error("Manual update check from the app menu failed.", ex);
+        }
     }
 
     // Deliberately bypasses Avalonia/MsBox.Avalonia entirely - the framework may not be usable yet at

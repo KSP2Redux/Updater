@@ -95,3 +95,70 @@ jobs:
                       --draft
 
                     gh release edit "$TAG" --draft=false
+
+    # The macOS download is added to the release once it has been published. Launchers only update
+    # themselves on Windows and Linux, and pick their download by "win" or "linux" in the asset name,
+    # so a later asset whose name contains neither can never be offered to them as an update.
+    macos-runtime:
+        needs: build
+        if: needs.build.outputs.tag_exists == 'false'
+        uses: ./.github/workflows/macos-runtime.yml
+
+    macos:
+        needs: [ build, macos-runtime ]
+        if: needs.build.outputs.tag_exists == 'false'
+        runs-on: macos-15
+        permissions:
+            contents: write
+
+        steps:
+            -   uses: actions/checkout@v7
+
+            -   name: Setup .NET
+                uses: actions/setup-dotnet@v6
+                with:
+                    dotnet-version: 10.0.x
+
+            -   name: Download the runtime
+                uses: actions/download-artifact@v8
+                with:
+                    name: redux-mac-runtime
+                    path: artifacts/macos
+
+            -   name: Build the macOS app and disk image
+                run: packaging/macos/build-mac-app.sh --runtime artifacts/macos/redux-mac-runtime.tar.xz
+
+            -   name: Attach the disk image and the command line tool to the release
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    TAG: ${{ needs.build.outputs.tag }}
+                run: gh release upload "$TAG" artifacts/macos/KSP2-Redux-macOS-arm64.dmg artifacts/macos/redux-cli-macos-arm64 --clobber
+
+            # Wine and DXMT are LGPL-2.1, so every release that ships them has to point at their source.
+            -   name: Add the macOS files and the runtime's source to the release notes
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    TAG: ${{ needs.build.outputs.tag }}
+                run: |
+                    runtime_json="$(tar -xJOf artifacts/macos/redux-mac-runtime.tar.xz wine-runtime/runtime.json)"
+                    wine="$(jq -r .wine <<< "$runtime_json")"
+                    wine_source="$(jq -r .source <<< "$runtime_json")"
+                    wine_sha="$(jq -r .sourceSha256 <<< "$runtime_json")"
+                    dxmt="$(jq -r .dxmt <<< "$runtime_json")"
+
+                    notes="$(gh release view "$TAG" --json body --jq .body)"
+                    {
+                        printf '%s\n\n' "$notes"
+                        printf '### macOS\n\n'
+                        # shellcheck disable=SC2016 # the backticks are a Markdown code span
+                        printf -- '- `KSP2-Redux-macOS-arm64.dmg`: the launcher for Apple Silicon Macs, with the Wine runtime and the CLI inside\n'
+                        # shellcheck disable=SC2016
+                        printf -- '- `redux-cli-macos-arm64`: the command line tool on its own, for Apple Silicon Macs\n\n'
+                        printf '### macOS runtime\n\n'
+                        printf 'The macOS download bundles Wine (%s) and DXMT %s, both under the LGPL-2.1.\n\n' "$wine" "$dxmt"
+                        # shellcheck disable=SC2016 # the backticks are a Markdown code span
+                        printf -- '- Wine source: %s (SHA-256 `%s`)\n' "$wine_source" "$wine_sha"
+                        printf -- '- DXMT source: https://github.com/3Shain/dxmt/tree/%s\n' "$dxmt"
+                        printf -- '- Build script: https://github.com/%s/blob/%s/packaging/macos/build-runtime.sh\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA"
+                    } > release-notes.md
+                    gh release edit "$TAG" --notes-file release-notes.md

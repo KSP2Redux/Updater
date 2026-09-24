@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Abstractions;
@@ -11,6 +11,7 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -23,6 +24,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IInstallPlanService _installPlanService;
     private readonly IUpdateService _updateService;
     private readonly IOperatingSystemService _operatingSystemService;
+    private readonly IWineRuntimeService _wineRuntimeService;
     private readonly IMessageBoxService _messageBoxService;
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly IFileSystem _fileSystem;
@@ -96,7 +98,7 @@ public partial class HomeTabViewModel : ViewModelBase
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService)
     {
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
@@ -104,6 +106,7 @@ public partial class HomeTabViewModel : ViewModelBase
         _installPlanService = installPlanService;
         _updateService = updateService;
         _operatingSystemService = operatingSystemService;
+        _wineRuntimeService = wineRuntimeService;
         _messageBoxService = messageBoxService;
         _environmentProvider = environmentProvider;
         _fileSystem = fileSystem;
@@ -250,12 +253,19 @@ public partial class HomeTabViewModel : ViewModelBase
         if (_ksp2InstallService.Ksp2 is not { IsValid: true })
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                "KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                "KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.", windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
         var activeEntry = _ksp2InstallService.ActiveEntry;
         if (activeEntry is null) return;
+
+        // Checked before the Steam option: Steam on macOS cannot run KSP2, so a config that ticked "Launch
+        // through Steam" (on another OS, or before the option was hidden) must not send the launch there.
+        if (_operatingSystemService.IsMacOS())
+        {
+            await LaunchThroughWine(_ksp2InstallService.Ksp2, activeEntry.LaunchArguments);
+            return;
+        }
 
         if (activeEntry.LaunchThroughSteam)
         {
@@ -274,8 +284,7 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 _log.Error("Failed to launch through Steam.", ex);
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                    $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.",
-                    ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.", windowStartupLocation: WindowStartupLocation.CenterOwner);
             }
             return;
         }
@@ -298,8 +307,45 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             _log.Error("Failed to launch KSP2.", ex);
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        finally
+        {
+            MainButtonEnabled = true;
+        }
+    }
+
+    // KSP2 has no macOS build, so the Windows build runs through Wine with DXMT translating Direct3D 11
+    // to Metal. The first launch creates the prefix, which takes a little while, so progress goes to the
+    // install log panel the same way an install does.
+    private async Task LaunchThroughWine(Ksp2Install ksp2, string? launchArguments)
+    {
+        if (_wineRuntimeService.Detect() is not { } runtime)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                "KSP2 needs a Windows compatibility runtime to run on a Mac, and none was found.\n" +
+                "Use the macOS download of the launcher, which includes one, or install CrossOver.",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+
+        MainButtonEnabled = false;
+        try
+        {
+            await _wineRuntimeService.PrepareAsync(runtime, line => AppendToInstallLog(line), CancellationToken.None);
+
+            var startInfo = _wineRuntimeService.CreateLaunchInfo(runtime, ksp2.ExePath, ksp2.InstallDir!, launchArguments);
+            _log.Info($"Launching KSP2 through {runtime.DisplayName} ({runtime.WineBinary}).");
+            using var process = Process.Start(startInfo)
+                                ?? throw new InvalidOperationException($"{runtime.DisplayName} did not start.");
+            await process.WaitForExitAsync();
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to launch KSP2 through {runtime.DisplayName}.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
+                $"Couldn't start the game through {runtime.DisplayName}: {ex.Message}",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
         finally
         {
@@ -364,8 +410,11 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        var linuxLaunchBlocked = _operatingSystemService.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false);
-        const string linuxLaunchBlockedTooltip = "Enable \"Launch through Steam\" in settings to launch on Linux.";
+        var linuxLaunchBlocked = (_operatingSystemService.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false))
+                                 || (_operatingSystemService.IsMacOS() && _wineRuntimeService.Detect() is null);
+        var linuxLaunchBlockedTooltip = _operatingSystemService.IsMacOS()
+            ? "No Windows compatibility runtime found. Use the macOS download of the launcher, or install CrossOver."
+            : "Enable \"Launch via Steam\" in settings to launch on Linux.";
 
         const string installationDisabledTooltip = "The launcher needs to update itself before you can install or update Redux.";
 
@@ -782,8 +831,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             _log.Error("Manual launcher update failed.", ex);
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
-                $"Something went wrong while checking for launcher updates: {ex.Message}\nPlease try again later.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                $"Something went wrong while checking for launcher updates: {ex.Message}\nPlease try again later.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 }

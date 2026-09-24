@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
@@ -36,28 +36,29 @@ public sealed class CliReleaseService
     private const string SHA256_PREFIX = "sha256:";
     private const string WINDOWS_ASSET = "redux-cli-x64.exe";
     private const string LINUX_ASSET = "redux-cli-x64";
+    private const string MACOS_ASSET = "redux-cli-macos-arm64";
 
     private readonly HttpClient _http;
     private readonly string _owner;
     private readonly string _repo;
-    private readonly bool _isLinux;
+    private readonly CliPlatform _platform;
 
     /// <summary>
     /// Initializes the service against the repository the launcher config points at.
     /// </summary>
     /// <param name="repositoryUrl">The GitHub repository holding the releases.</param>
-    /// <param name="isLinux">True when the running platform wants the linux asset.</param>
+    /// <param name="platform">The platform whose asset to look for.</param>
     /// <param name="version">The running version, sent as the user agent.</param>
     /// <param name="timeout">How long to wait on GitHub, or null for a minute.</param>
     /// <param name="handler">The transport to use, or null for a plain one. Supplied by tests.</param>
     public CliReleaseService(
         string repositoryUrl,
-        bool isLinux,
+        CliPlatform platform,
         string version,
         TimeSpan? timeout = null,
         HttpMessageHandler? handler = null)
     {
-        _isLinux = isLinux;
+        _platform = platform;
         _http = handler is null ? new HttpClient() : new HttpClient(handler);
         _http.Timeout = timeout ?? TimeSpan.FromSeconds(60);
         _http.DefaultRequestHeaders.UserAgent.Add(
@@ -72,7 +73,12 @@ public sealed class CliReleaseService
     /// <summary>
     /// Gets the asset name this platform installs.
     /// </summary>
-    public string AssetName => _isLinux ? LINUX_ASSET : WINDOWS_ASSET;
+    public string AssetName => _platform switch
+    {
+        CliPlatform.Linux => LINUX_ASSET,
+        CliPlatform.MacOS => MACOS_ASSET,
+        _ => WINDOWS_ASSET,
+    };
 
     /// <summary>
     /// Finds the newest published CLI release that carries an asset for this platform.

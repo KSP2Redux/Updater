@@ -1,4 +1,4 @@
-using Ksp2Redux.Tools.Cli.Infrastructure;
+﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
@@ -21,7 +21,7 @@ public sealed class InstallsCommand : ReduxCommand<InstallsSettings>
         {
             return Task.FromResult(context.Output.Fail(
                 ExitCode.INSTALL_NOT_FOUND,
-                "The launcher config lists no KSP2 installs. Add one in the launcher first."));
+                "The launcher config lists no KSP2 installs. Add one with 'installs add', or download KSP2 with 'steam download'."));
         }
 
         var activeId = context.InstallService.ActiveEntry?.Id;

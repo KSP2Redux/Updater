@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Spectre.Console;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
@@ -61,6 +62,8 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         }
 
         var detected = context.DetectorService.DetectKsp2InstallLocation();
+        var wineRuntime = context.OperatingSystemService.IsMacOS() ? context.WineRuntimeService.Detect() : null;
+        var steamAccount = context.SteamSession.SavedAccountName;
         var cacheDirectory = context.DownloadCacheDirectory;
         var cacheBytes = DirectorySize(context, cacheDirectory);
 
@@ -76,11 +79,17 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
                 downloadCacheBytes = cacheBytes,
                 detectedInstall = detected,
                 gameDataFolder = context.GameDataFolderService.Resolve(context.InstallService.ActiveEntry),
+                wineRuntime = wineRuntime is null ? null : new { kind = wineRuntime.Kind.ToString(), wine = wineRuntime.WineBinary, prefix = wineRuntime.PrefixPath },
+                steamAccount,
                 installs,
                 feeds,
                 feedsChecked = !settings.IsOffline,
             },
-            () => WriteReport(context, settings, installs, feeds, detected, cacheDirectory, cacheBytes));
+            () =>
+            {
+                WriteReport(context, settings, installs, feeds, detected, cacheDirectory, cacheBytes);
+                WriteMacAndSteam(context, wineRuntime, steamAccount);
+            });
 
         return ExitCode.SUCCESS;
     }
@@ -144,6 +153,29 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
                 ? $"  ok      {feed.Channel}  {feed.Repository} / {feed.Filename}"
                 : $"  FAILED  {feed.Repository} / {feed.Filename}: {feed.Error}");
         }
+    }
+
+    private static void WriteMacAndSteam(CliContext context, WineRuntime? wineRuntime, string? steamAccount)
+    {
+        if (context.OperatingSystemService.IsMacOS())
+        {
+            context.Output.Section("macOS");
+            if (wineRuntime is null)
+            {
+                context.Output.Result("  no Wine runtime found: install the macOS launcher into Applications, or CrossOver");
+            }
+            else
+            {
+                context.Output.Result($"  {"runtime:",-16}" + (wineRuntime.Kind == WineRuntimeKind.Bundled
+                    ? $"bundled with the launcher ({wineRuntime.DisplayName})"
+                    : "the CrossOver app"));
+                WritePath(context, "wine", wineRuntime.WineBinary);
+                WritePath(context, "prefix", wineRuntime.PrefixPath);
+            }
+        }
+
+        context.Output.Section("Steam");
+        context.Output.Result(steamAccount is null ? "  not signed in" : $"  signed in as {steamAccount}");
     }
 
     // A path is the one value here long enough to wrap, so on a terminal it is drawn as a path that

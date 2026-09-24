@@ -55,7 +55,7 @@ public sealed class SelfUninstallCommand : ReduxCommand<SelfUninstallSettings>
 
         try
         {
-            if (context.OperatingSystemService.IsLinux())
+            if (!context.OperatingSystemService.IsWindows())
             {
                 context.FileSystem.File.Delete(executable);
             }
@@ -80,7 +80,7 @@ public sealed class SelfUninstallCommand : ReduxCommand<SelfUninstallSettings>
             () =>
             {
                 context.Output.Result(executable);
-                context.Output.Detail(context.OperatingSystemService.IsLinux()
+                context.Output.Detail(!context.OperatingSystemService.IsWindows()
                     ? "  the binary is gone"
                     : "  the binary is removed once this process exits");
 
@@ -98,7 +98,7 @@ public sealed class SelfUninstallCommand : ReduxCommand<SelfUninstallSettings>
     // scoped entry would need elevation and the installer never creates one.
     private static bool RemoveFromUserPath(CliContext context, string directory)
     {
-        if (context.OperatingSystemService.IsLinux() || string.IsNullOrWhiteSpace(directory))
+        if (!context.OperatingSystemService.IsWindows() || string.IsNullOrWhiteSpace(directory))
         {
             return false;
         }

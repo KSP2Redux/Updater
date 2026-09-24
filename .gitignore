@@ -144,3 +144,6 @@ ds-bundle/
 node_modules/
 design/design-system/dist/
 design-system/dist/
+
+# macOS packaging output (packaging/macos/build-mac-app.sh)
+artifacts/

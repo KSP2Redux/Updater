@@ -17,7 +17,9 @@ curl -fsSL https://raw.githubusercontent.com/KSP2Redux/Updater/main/scripts/inst
 ```
 
 That drops the binary in `%LOCALAPPDATA%\Programs\redux-launcher-cli` or `~/.local/bin` and puts it
-on your PATH. Running it again upgrades in place. Then:
+on your PATH. On a Mac the same `curl` line installs the Apple Silicon build, and the macOS launcher
+app also carries a copy at `KSP2 Redux.app/Contents/MacOS/redux-launcher-cli`. Running it again
+upgrades in place. Then:
 
 ```sh
 redux-launcher-cli --help              # every command, with examples
@@ -26,6 +28,23 @@ redux-launcher-cli installs add        # add the install it found to the config
 redux-launcher-cli update              # install the newest build in its channel
 redux-launcher-cli launch              # start the game
 ```
+
+No KSP2 on this machine, or on a Mac, where Steam will not download it? The CLI can fetch your own
+copy with your Steam account, no Steam client needed:
+
+```sh
+redux-launcher-cli steam login         # scan a QR code with the Steam Mobile App, or --password
+redux-launcher-cli steam download      # download KSP2 into ~/Games and add it as the active profile
+redux-launcher-cli update              # then install Redux into it
+```
+
+The sign-in is shared with the launcher window. On macOS, `launch` runs the game through the Wine
+runtime inside the launcher app (or CrossOver when that is all there is), in the same prefix the
+launcher uses, so saves are shared too. `kill` stops it.
+
+Each install profile carries its own launch settings, as in the launcher's Settings tab:
+`installs show` lists them, `installs set` changes them, and `installs delete` removes a copy of the
+game from disk along with its profile.
 
 It keeps itself current: `redux-launcher-cli self-update` installs the newest build, `version
 --check` reports whether one is published, and the CLI mentions a new release on its own once a day
@@ -42,6 +61,15 @@ Requires the .NET 10 SDK (pinned in `global.json`).
 ```sh
 dotnet build          # build everything
 dotnet test           # run the test suite
+```
+
+The launcher also runs on macOS for development (the game itself is not
+available there yet). To produce a proper `.app` bundle:
+
+```sh
+dotnet msbuild src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj \
+  -t:BundleApp -p:RuntimeIdentifier=osx-arm64 -p:Configuration=Release \
+  -p:SelfContained=true -p:PublishSingleFile=false
 ```
 
 The solution (`Ksp2Redux.Tools.slnx`) is laid out as:
@@ -70,14 +98,15 @@ both products (see `.github/workflows/release.yaml`):
 | Asset | What it is |
 |---|---|
 | `Ksp2Redux-win-x64.exe`, `Ksp2Redux-linux-x64` | the launcher |
-| `redux-cli-x64.exe`, `redux-cli-x64` | the command line tool |
+| `KSP2-Redux-macOS-arm64.dmg` | the macOS launcher, with the Wine runtime and the CLI inside |
+| `redux-cli-x64.exe`, `redux-cli-x64`, `redux-cli-macos-arm64` | the command line tool |
 
 The CLI asset names must never contain `win` or `linux`. The launcher's
 self-update picks its download out of this same asset list with
 `Assets.FirstOrDefault(a => a.Name.Contains("win" or "linux"))`, and launchers
 already installed cannot be fixed, so an asset that matched would be handed to
-them as an update to themselves. Note `windows` contains `win`, so the rule is
-about the substring. A test in `CliReleaseServiceTest` holds the CLI to it.
+them as an update to themselves. Note `windows` contains `win`, and so does
+`darwin`, so the rule is about the substring. A test in `CliReleaseServiceTest` holds the CLI to it.
 
 The release notes lead with a table saying which file is which, because a
 single page with four binaries on it is how people end up downloading the

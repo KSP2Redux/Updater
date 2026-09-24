@@ -1,4 +1,4 @@
-namespace Ksp2Redux.Tools.Cli.Infrastructure;
+﻿namespace Ksp2Redux.Tools.Cli.Infrastructure;
 
 /// <summary>
 /// Process exit codes returned by the CLI commands.
@@ -68,4 +68,19 @@ public static class ExitCode
     /// A running game was found but could not be stopped.
     /// </summary>
     public const int KILL_FAILED = 11;
+
+    /// <summary>
+    /// The command needs a Steam account and none is signed in.
+    /// </summary>
+    public const int STEAM_NOT_SIGNED_IN = 12;
+
+    /// <summary>
+    /// Steam refused the sign-in or could not be reached.
+    /// </summary>
+    public const int STEAM_FAILED = 13;
+
+    /// <summary>
+    /// Downloading the game from Steam failed partway. Running the command again resumes it.
+    /// </summary>
+    public const int DOWNLOAD_FAILED = 14;
 }

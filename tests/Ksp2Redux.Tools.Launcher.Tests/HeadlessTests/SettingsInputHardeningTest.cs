@@ -74,6 +74,29 @@ public class SettingsInputHardeningTest
         Assert.That(ksp2InstallService.Entries, Has.Count.EqualTo(countBefore - 1));
     }
 
+    // Removing the only install used to be blocked. Having none is a valid state the launcher already
+    // handles like a first run, so it is allowed.
+    [AvaloniaTest]
+    public async Task RemoveSelectedInstall_OnlyInstall_CanBeRemoved()
+    {
+        // Arrange
+        var settingsTabViewModel = await BootstrapAsync();
+        var ksp2InstallService = TestAppBuilder.ServiceProvider.GetRequiredService<IKsp2InstallService>();
+        Assert.That(ksp2InstallService.Entries, Has.Count.EqualTo(1));
+        Assert.That(settingsTabViewModel.CanRemoveSelectedInstall, Is.True);
+
+        TestAppBuilder.MessageBoxService.Setup(m => m.ShowMessageBoxAsOwnedAsync(
+                "Confirm", It.IsAny<string>(), It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()))
+            .ReturnsAsync(ButtonResult.Yes);
+
+        // Act
+        await settingsTabViewModel.RemoveSelectedInstallCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.That(ksp2InstallService.Entries, Is.Empty);
+        Assert.That(ksp2InstallService.ActiveEntry, Is.Null);
+    }
+
     [AvaloniaTest]
     public async Task AddInstall_AlreadyInProgress_ReturnsWithoutTouchingTheFilePicker()
     {

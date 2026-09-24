@@ -1,0 +1,66 @@
+# Builds the Wine + DXMT runtime bundled into the macOS launcher, and hands it on as an artifact.
+#
+# Called by the release workflow, run on its own when the runtime build changes, and startable by
+# hand. Compiling Wine takes the best part of an hour on a hosted runner, so the result is cached,
+# keyed on the build script. build-runtime.sh pins every source by version and checksum, so the same
+# script always produces the same runtime.
+name: macOS runtime
+
+on:
+    workflow_call:
+    workflow_dispatch:
+    pull_request:
+        paths:
+            - 'packaging/macos/build-runtime.sh'
+            - '.github/workflows/macos-runtime.yml'
+    push:
+        branches: [ "main" ]
+        paths:
+            - 'packaging/macos/build-runtime.sh'
+            - '.github/workflows/macos-runtime.yml'
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+    runtime:
+        runs-on: macos-15
+        timeout-minutes: 150
+
+        steps:
+            -   uses: actions/checkout@v7
+
+            -   name: Restore the runtime from cache
+                id: cache
+                uses: actions/cache@v6
+                with:
+                    path: artifacts/macos/redux-mac-runtime.tar.xz
+                    key: redux-mac-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packaging/macos/build-runtime.sh') }}
+
+            # KSP2 and the Wine built for it are x86_64, so both the build and the checks in it run
+            # under Rosetta, which the hosted images do not always ship with.
+            -   name: Make sure Rosetta is installed
+                if: steps.cache.outputs.cache-hit != 'true'
+                run: arch -x86_64 /usr/bin/true 2>/dev/null || sudo softwareupdate --install-rosetta --agree-to-license
+
+            -   name: Build the runtime
+                if: steps.cache.outputs.cache-hit != 'true'
+                run: packaging/macos/build-runtime.sh --install-deps --jobs "$(sysctl -n hw.ncpu)"
+
+            -   name: Upload the build logs
+                if: failure()
+                uses: actions/upload-artifact@v7
+                with:
+                    name: redux-mac-runtime-logs
+                    path: artifacts/macos/runtime-build/*.log
+                    if-no-files-found: ignore
+
+            -   name: Upload the runtime
+                uses: actions/upload-artifact@v7
+                with:
+                    name: redux-mac-runtime
+                    path: artifacts/macos/redux-mac-runtime.tar.xz
+                    if-no-files-found: error
+                    # Already compressed as .tar.xz.
+                    compression-level: 0

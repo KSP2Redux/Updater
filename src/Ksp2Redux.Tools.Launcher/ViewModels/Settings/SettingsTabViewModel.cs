@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System.Collections.ObjectModel;
@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using MsBox.Avalonia.Enums;
 
@@ -30,7 +31,10 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly ILogService _log;
+    private readonly IKsp2GameUninstallService _gameUninstallService;
     private readonly IGameDataFolderService _gameDataFolderService;
+    private readonly ISteamSessionService _steamSession;
+    private readonly ISteamDialogService _steamDialogs;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -42,7 +46,16 @@ public partial class SettingsTabViewModel : ViewModelBase
     public partial Ksp2InstallRowViewModel? SelectedInstall { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSteamLaunchOptions))]
     public partial bool HasSelectedInstall { get; set; }
+
+    /// <summary>
+    /// False on macOS, where Steam cannot run KSP2, so the game always starts through the launcher's own
+    /// Wine runtime and the Steam launch settings do not apply.
+    /// </summary>
+    public bool IsSteamLaunchSupported { get; }
+
+    public bool ShowSteamLaunchOptions => HasSelectedInstall && IsSteamLaunchSupported;
 
     [ObservableProperty]
     public partial bool CanRemoveSelectedInstall { get; set; }
@@ -59,6 +72,57 @@ public partial class SettingsTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsAddingInstall { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsRenamingInstall { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UninstallKsp2ButtonText))]
+    public partial bool IsUninstallingKsp2 { get; set; }
+
+    public string UninstallKsp2ButtonText => IsUninstallingKsp2 ? "Uninstalling..." : "Uninstall KSP2";
+
+    [ObservableProperty]
+    public partial string RenameText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool IsSteamSignedIn { get; set; }
+
+    [ObservableProperty]
+    public partial string SteamStatus { get; set; } = "Not signed in";
+
+    [ObservableProperty]
+    public partial bool IsSteamBusy { get; set; }
+
+    /// <summary>True while a live Steam connection is up, which lights the title bar icon green.</summary>
+    [ObservableProperty]
+    public partial bool IsSteamConnected { get; set; }
+
+    /// <summary>True while the launcher is reconnecting to Steam or signing in.</summary>
+    [ObservableProperty]
+    public partial bool IsSteamConnecting { get; set; }
+
+    [ObservableProperty]
+    public partial string SteamIndicatorTooltip { get; set; } = "Not signed in to Steam. Click to sign in.";
+
+    /// <summary>True once Steam is set up, which is what the Download KSP2 button needs.</summary>
+    [ObservableProperty]
+    public partial bool CanDownloadFromSteam { get; set; }
+
+    [ObservableProperty]
+    public partial string DownloadFromSteamTooltip { get; set; } = SIGN_IN_TO_DOWNLOAD_TOOLTIP;
+
+    private const string DOWNLOAD_TOOLTIP =
+        "Download your own copy of Kerbal Space Program 2 from Steam and add it as an install. It's a clean copy that Steam's own updates never touch, so it stays ready for Redux.";
+
+    private const string SIGN_IN_TO_DOWNLOAD_TOOLTIP =
+        "Sign in with Steam to download KSP2. Click the Steam icon in the bottom-right corner and sign in with the account that owns the game.";
+
+    private bool _isResumingSteam;
+    private bool _steamResumeFailed;
+
+    partial void OnIsSteamBusyChanged(bool value) => SyncSteamStatus();
+
+
     public string LauncherVersion => _assemblyService.GetVersion()?.ToString(4) ?? "?";
 
     private bool _suppressActiveSync;
@@ -70,8 +134,9 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     partial void OnSelectedInstallChanged(Ksp2InstallRowViewModel? value)
     {
+        IsRenamingInstall = false;
         HasSelectedInstall = value is not null;
-        CanRemoveSelectedInstall = value is not null && Installs.Count > 1;
+        CanRemoveSelectedInstall = value is not null;
         if (_suppressActiveSync) return;
         if (value is null) return;
         _ksp2InstallService.SetActiveInstall(value.Id);
@@ -82,8 +147,15 @@ public partial class SettingsTabViewModel : ViewModelBase
         IKsp2InstallService ksp2InstallService,
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
         IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
-        IGameDataFolderService gameDataFolderService)
+        IGameDataFolderService gameDataFolderService, ISteamSessionService steamSession, ISteamDialogService steamDialogs,
+        IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService)
     {
+        _gameUninstallService = gameUninstallService;
+        IsSteamLaunchSupported = !operatingSystemService.IsMacOS();
+        _steamSession = steamSession;
+        _steamDialogs = steamDialogs;
+        _steamSession.SignInChanged += (_, _) => Dispatcher.UIThread.Post(SyncSteamStatus);
+        SyncSteamStatus();
         _fileSystem = fileSystem;
         _gameDataFolderService = gameDataFolderService;
         _cacheService = cacheService;
@@ -189,12 +261,16 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         var activeId = _ksp2InstallService.ActiveEntry?.Id;
         var match = activeId is null ? null : Installs.FirstOrDefault(r => r.Id == activeId);
+        if (activeId is not null && match is null)
+        {
+            _log.Warn($"Active install {activeId} is missing from the Settings install list ({Installs.Count} rows, UI thread: {Dispatcher.UIThread.CheckAccess()}).");
+        }
         foreach (var row in Installs)
         {
             var shouldBeActive = row.Id == activeId;
             if (row.IsActive != shouldBeActive) row.IsActive = shouldBeActive;
         }
-        CanRemoveSelectedInstall = match is not null && Installs.Count > 1;
+        CanRemoveSelectedInstall = match is not null;
         if (ReferenceEquals(SelectedInstall, match)) return;
         _suppressActiveSync = true;
         try { SelectedInstall = match; }
@@ -251,9 +327,185 @@ public partial class SettingsTabViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    public void BeginRenameInstall()
+    {
+        if (SelectedInstall is not { } row) return;
+        RenameText = row.Name;
+        IsRenamingInstall = true;
+    }
+
+    /// <summary>
+    /// Applies the typed name to the selected profile. A blank name keeps the old one.
+    /// </summary>
+    [RelayCommand]
+    public void CommitRenameInstall()
+    {
+        if (!IsRenamingInstall) return;
+        IsRenamingInstall = false;
+
+        var name = RenameText.Trim();
+        if (name.Length == 0 || SelectedInstall is not { } row || name == row.Name) return;
+        row.Name = name;
+    }
+
+    [RelayCommand]
+    public void CancelRenameInstall() => IsRenamingInstall = false;
+
+    [RelayCommand]
+    public async Task BrowseExePath()
+    {
+        if (SelectedInstall is not { } row) return;
+
+        IStorageFile? chosen;
+        try
+        {
+            chosen = await DoOpenFilePickerAsync(row.ExePath);
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the file picker for an install path.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+
+        if (chosen is null) return;
+        row.ExePath = chosen.Path.LocalPath;
+    }
+
+    [RelayCommand]
+    public async Task SignInWithSteam()
+    {
+        if (IsSteamBusy) return;
+        IsSteamBusy = true;
+        try
+        {
+            if (!await _steamSession.TryResumeAsync(CancellationToken.None))
+            {
+                await _steamDialogs.ShowSignInAsync();
+            }
+        }
+        finally
+        {
+            IsSteamBusy = false;
+            SyncSteamStatus();
+        }
+    }
+
+    [RelayCommand]
+    public async Task SignOutOfSteam()
+    {
+        await _steamSession.SignOutAsync();
+        SyncSteamStatus();
+    }
+
+    [RelayCommand]
+    public async Task DownloadFromSteam()
+    {
+        if (IsSteamBusy) return;
+        IsSteamBusy = true;
+        try
+        {
+            var exePath = await _steamDialogs.DownloadGameAsync();
+            if (exePath is null) return;
+
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Download Complete",
+                "Kerbal Space Program 2 is downloaded and added as an install. Head to the Home tab to install Redux.",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            _tabNavigatorService.GoToHome();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Downloading KSP2 from Steam failed.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Download Failed", ex.Message,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        finally
+        {
+            IsSteamBusy = false;
+            SyncSteamStatus();
+        }
+    }
+
+    /// <summary>
+    /// Reconnects the saved Steam login in the background, so the player shows as signed in without
+    /// pressing anything. Called once when the launcher starts.
+    /// </summary>
+    public async Task ResumeSteamSessionAsync()
+    {
+        if (_steamSession.IsSignedIn || !_steamSession.HasSavedLogin || _isResumingSteam) return;
+
+        _isResumingSteam = true;
+        SyncSteamStatus();
+        try
+        {
+            // A login Steam has revoked is forgotten by TryResumeAsync, which drops the status back to
+            // "Not signed in". One that is still saved but couldn't connect is just offline for now.
+            var resumed = await _steamSession.TryResumeAsync(CancellationToken.None);
+            _steamResumeFailed = !resumed && _steamSession.HasSavedLogin;
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"Couldn't reconnect to Steam at startup: {ex.Message}");
+            _steamResumeFailed = true;
+        }
+        finally
+        {
+            _isResumingSteam = false;
+            SyncSteamStatus();
+        }
+    }
+
+    /// <summary>
+    /// Handles a click on the Steam icon in the title bar: reconnects a saved login, or opens the sign-in
+    /// window when there is none. Does nothing while already connected or connecting.
+    /// </summary>
+    [RelayCommand]
+    public async Task ConnectSteam()
+    {
+        if (_steamSession.IsSignedIn || _isResumingSteam || IsSteamBusy) return;
+
+        if (_steamSession.HasSavedLogin)
+        {
+            await ResumeSteamSessionAsync();
+        }
+        else
+        {
+            await SignInWithSteam();
+        }
+    }
+
+    // A saved login counts as signed in: the token is still valid until Steam says otherwise, and the
+    // download reconnects with it on its own, so there is nothing for the player to sign in to again.
+    private void SyncSteamStatus()
+    {
+        var savedAccount = _steamSession.SavedAccountName;
+        IsSteamSignedIn = _steamSession.IsSignedIn || savedAccount is not null;
+        SteamStatus = _steamSession.Account is { } account
+            ? $"Signed in as {account.DisplayName}"
+            : savedAccount is null
+                ? "Not signed in"
+                : _isResumingSteam
+                    ? $"Signed in as {savedAccount} (connecting...)"
+                    : _steamResumeFailed
+                        ? $"Signed in as {savedAccount} (offline)"
+                        : $"Signed in as {savedAccount}";
+
+        IsSteamConnected = _steamSession.IsSignedIn;
+        IsSteamConnecting = !IsSteamConnected && (_isResumingSteam || IsSteamBusy);
+        CanDownloadFromSteam = IsSteamSignedIn && !IsSteamBusy;
+        DownloadFromSteamTooltip = IsSteamSignedIn ? DOWNLOAD_TOOLTIP : SIGN_IN_TO_DOWNLOAD_TOOLTIP;
+        SteamIndicatorTooltip = IsSteamConnected ? $"Steam: {SteamStatus}"
+            : IsSteamConnecting ? "Connecting to Steam..."
+            : savedAccount is not null ? $"Steam: {SteamStatus}. Click to reconnect."
+            : "Not signed in to Steam. Click to sign in.";
+    }
+
+    [RelayCommand]
     public async Task RemoveSelectedInstall()
     {
-        if (Installs.Count <= 1) return;
+        // Removing the last install is allowed: the launcher treats having none like a first run, and
+        // offers to find or download the game again.
         if (SelectedInstall is not { } row) return;
 
         var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Confirm",
@@ -326,17 +578,18 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 
-    public async Task<IStorageFile?> DoOpenFilePickerAsync()
+    public async Task<IStorageFile?> DoOpenFilePickerAsync(string? startNear = null)
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
             desktop.MainWindow?.StorageProvider is not { } provider)
             throw new InvalidOperationException("Could not access the file picker (no active window).");
 
         IStorageFolder? startFolder = null;
-        var lastKnownPath = _ksp2InstallService.ActiveEntry?.ExePath;
-        if (!string.IsNullOrWhiteSpace(lastKnownPath) && _fileSystem.Path.Exists(lastKnownPath))
+        var lastKnownPath = startNear ?? _ksp2InstallService.ActiveEntry?.ExePath;
+        var lastKnownFolder = string.IsNullOrWhiteSpace(lastKnownPath) ? null : _fileSystem.Path.GetDirectoryName(lastKnownPath);
+        if (!string.IsNullOrEmpty(lastKnownFolder) && _fileSystem.Directory.Exists(lastKnownFolder))
         {
-            startFolder = await provider.TryGetFolderFromPathAsync(lastKnownPath);
+            startFolder = await provider.TryGetFolderFromPathAsync(lastKnownFolder);
         }
         startFolder ??= await provider.TryGetFolderFromPathAsync(STEAM_INSTALL_DIR);
         startFolder ??= await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Desktop);
@@ -351,6 +604,90 @@ public partial class SettingsTabViewModel : ViewModelBase
 
         return files?.Count >= 1 ? files[0] : null;
     }
+
+    /// <summary>
+    /// Removes the selected profile's copy of KSP2 from the computer, then the profile itself.
+    /// </summary>
+    [RelayCommand]
+    public async Task UninstallKsp2()
+    {
+        if (IsUninstallingKsp2 || SelectedInstall is not { } row) return;
+
+        var removal = _gameUninstallService.Inspect(row.ExePath);
+        switch (removal.Kind)
+        {
+            case Ksp2GameRemovalKind.NotAGameFolder:
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Can't Uninstall KSP2",
+                    $"{removal.Folder}\n\ndoesn't look like a KSP2 install folder (there is no {Ksp2Install.KSP2_EXE_NAME} with KSP2_x64_Data beside it), " +
+                    "so nothing was deleted. Remove the profile instead if it points at the wrong place.",
+                    icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                return;
+
+            case Ksp2GameRemovalKind.Missing:
+                if (await ConfirmAsync("KSP2 Already Gone",
+                        $"The game folder for \"{row.Name}\" no longer exists. Remove the profile from the launcher?"))
+                {
+                    _ksp2InstallService.RemoveInstall(row.Id);
+                }
+                return;
+
+            case Ksp2GameRemovalKind.UninstallThroughSteam:
+                if (!await ConfirmAsync("Uninstall KSP2",
+                        "This copy of KSP2 is managed by Steam, so Steam will uninstall it and ask you to confirm there. " +
+                        $"The \"{row.Name}\" profile is removed from the launcher.\n\nYour saves and settings are kept."))
+                {
+                    return;
+                }
+                try
+                {
+                    Process.Start(new ProcessStartInfo("steam://uninstall/954850") { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    _log.Error("Failed to hand the KSP2 uninstall to Steam.", ex);
+                    await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                        $"Couldn't open Steam to uninstall KSP2: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    return;
+                }
+                _ksp2InstallService.RemoveInstall(row.Id);
+                return;
+        }
+
+        if (!await ConfirmAsync("Uninstall KSP2",
+                $"Delete Kerbal Space Program 2 from this computer?\n\n{removal.Folder}\n\n" +
+                $"The whole folder is deleted, Redux included, and the \"{row.Name}\" profile is removed. " +
+                "This can't be undone.\n\nYour saves and settings are stored elsewhere and are kept."))
+        {
+            return;
+        }
+
+        IsUninstallingKsp2 = true;
+        try
+        {
+            await _gameUninstallService.DeleteAsync(removal);
+            _ksp2InstallService.RemoveInstall(row.Id);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to delete the KSP2 install at {removal.Folder}.", ex);
+            _ksp2InstallService.TryLoadKsp2Install();
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
+                $"Couldn't finish uninstalling KSP2: {ex.Message}\n\nMake sure the game isn't running, then try again.",
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+        finally
+        {
+            IsUninstallingKsp2 = false;
+        }
+
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Done!", "Kerbal Space Program 2 was uninstalled.",
+            windowStartupLocation: WindowStartupLocation.CenterOwner);
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string text) =>
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(title, text, ButtonEnum.YesNo, Icon.Warning,
+            windowStartupLocation: WindowStartupLocation.CenterOwner) == ButtonResult.Yes;
 
     public async Task UninstallRedux()
     {

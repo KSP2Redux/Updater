@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -19,6 +19,11 @@ public sealed class KillCommand : ReduxCommand<KillSettings>
         KillSettings settings,
         CancellationToken cancellationToken)
     {
+        if (context.OperatingSystemService.IsMacOS())
+        {
+            return KillUnderWineAsync(context, settings, cancellationToken);
+        }
+
         var processName = context.FileSystem.Path.GetFileNameWithoutExtension(Ksp2Install.KSP2_EXE_NAME);
 
         Process[] running;
@@ -109,6 +114,79 @@ public sealed class KillCommand : ReduxCommand<KillSettings>
             () => context.Output.Result(killed.Count.ToString()));
 
         return Task.FromResult(failures.Count == 0 ? ExitCode.SUCCESS : ExitCode.KILL_FAILED);
+    }
+
+    // The game runs inside a Wine session with helper processes of its own, and ending the session is what
+    // actually frees the game's files and the prefix. The pids are killed directly only when there is no
+    // runtime to end the session with, or it did not work.
+    private static async Task<int> KillUnderWineAsync(CliContext context, KillSettings settings, CancellationToken cancellationToken)
+    {
+        var pids = CliWineProcesses.FindGame();
+        if (pids.Count == 0)
+        {
+            context.Output.Heading("KSP2 is not running.");
+            context.Output.Payload(
+                new { ok = true, killed = 0, pids = Array.Empty<int>() },
+                () => context.Output.Result("0"));
+            return ExitCode.SUCCESS;
+        }
+
+        foreach (var pid in pids)
+        {
+            context.Output.Detail($"  pid {pid}  {Ksp2Install.KSP2_EXE_NAME} under Wine");
+        }
+
+        switch (CliConfirm.Ask(context.Output, settings.AssumeYes, "Stop KSP2? Anything unsaved is lost.", requireAnswer: true))
+        {
+            case ConfirmAnswer.Declined:
+                return context.Output.Fail(ExitCode.CANCELLED, "The game is still running.");
+            case ConfirmAnswer.NeedsFlag:
+                return context.Output.Fail(ExitCode.USAGE_ERROR, "Refusing to stop the game without a terminal to confirm on. Pass --yes.");
+            case ConfirmAnswer.Approved:
+            default:
+                break;
+        }
+
+        if (context.WineRuntimeService.Detect() is { } runtime)
+        {
+            try
+            {
+                using var stop = Process.Start(context.WineRuntimeService.CreateStopInfo(runtime));
+                if (stop is not null)
+                {
+                    await stop.WaitForExitAsync(cancellationToken).WaitAsync(TimeSpan.FromMilliseconds(KILL_TIMEOUT_MILLISECONDS), cancellationToken);
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                context.Output.Warn($"Could not end the Wine session: {e.Message}");
+            }
+        }
+
+        List<string> failures = [];
+        foreach (var pid in CliWineProcesses.FindGame())
+        {
+            try
+            {
+                using var process = Process.GetProcessById(pid);
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(KILL_TIMEOUT_MILLISECONDS);
+            }
+            catch (Exception e)
+            {
+                failures.Add($"pid {pid}: {e.Message}");
+            }
+        }
+
+        foreach (var failure in failures)
+        {
+            context.Output.Warn($"Could not stop {failure}");
+        }
+
+        context.Output.Payload(
+            new { ok = failures.Count == 0, killed = pids.Count, pids, failures },
+            () => context.Output.Result(pids.Count.ToString()));
+        return failures.Count == 0 ? ExitCode.SUCCESS : ExitCode.KILL_FAILED;
     }
 
     private const int KILL_TIMEOUT_MILLISECONDS = 10_000;

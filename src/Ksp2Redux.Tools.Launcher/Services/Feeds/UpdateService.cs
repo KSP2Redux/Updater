@@ -131,6 +131,14 @@ public class UpdateService : IUpdateService
 
     private async Task<bool> CheckAndPerformUpdateCoreAsync()
     {
+        // No macOS release assets exist yet, and the win/linux platform-keyword match below
+        // would otherwise offer the *linux* binary to a mac build and overwrite it.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            _log.Info("Self-update is not available on macOS (no macOS release assets are published). Skipping check.");
+            return true;
+        }
+
         var releasesUrl = $"https://api.github.com/repos/{_owner}/{_repo}/releases";
         _log.Info($"Checking for launcher updates from {releasesUrl} (current version {_version}).");
 
@@ -189,7 +197,7 @@ public class UpdateService : IUpdateService
             {
                 _log.Warn("Running in non-single-file build, refusing to self-update.");
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
-                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.", ButtonEnum.Ok,
+                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.",
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
                 return false;
             }
@@ -267,7 +275,7 @@ public class UpdateService : IUpdateService
         var repo = _launcherConfigService.Config.LauncherRepo.TrimEnd('/');
         var releasesUrl = $"{repo}/releases";
         await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
-            $"Please download the latest version of the launcher from\n{releasesUrl}", ButtonEnum.Ok,
+            $"Please download the latest version of the launcher from\n{releasesUrl}",
             windowStartupLocation: WindowStartupLocation.CenterOwner);
         try
         {
