@@ -79,7 +79,15 @@ jobs:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                     TAG: ${{ steps.get_version.outputs.TAG }}
                     TITLE: "KSP2 Redux Updater v${{ steps.get_version.outputs.VERSION }}"
+                    VERSION: ${{ steps.get_version.outputs.VERSION }}
                 run: |
+                    # A hand-written changelog in release-notes/ leads the release when there is one for this
+                    # version. GitHub's generated list of pull requests follows it either way.
+                    notes=()
+                    if [ -f "release-notes/v$VERSION.md" ]; then
+                        notes=(--notes-file "release-notes/v$VERSION.md")
+                    fi
+
                     # Create as a draft first: launchers in the wild poll the releases API every
                     # 10 minutes, and a release that becomes visible before its binaries finish
                     # uploading gets offered as an update that can't actually be downloaded.
@@ -90,6 +98,7 @@ jobs:
                       ./publish/redux-cli-x64.exe \
                       ./publish/redux-cli-x64 \
                       --title "$TITLE" \
+                      "${notes[@]}" \
                       --generate-notes \
                       --latest \
                       --draft
