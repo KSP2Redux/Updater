@@ -289,7 +289,7 @@ public class UpdateService : IUpdateService
     private void TriggerRestart(string newFilesPath)
     {
         var whereAmI = _environmentProvider.ProcessPath!;
-        var args = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\"";
+        var args = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\" {Program.RenderingFlags}".TrimEnd();
         var startInfo = new ProcessStartInfo
         {
             UseShellExecute = false,

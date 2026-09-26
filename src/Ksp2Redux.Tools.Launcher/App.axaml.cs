@@ -32,7 +32,7 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
         catch (Exception ex)
         {
             LogService.WriteEarly($"Fatal startup failure while initializing services: {ex}");
-            ShowFatalStartupError(ex);
+            ShowFatalError("KSP2 Redux failed to start", ex);
             // IEnvironmentProvider isn't available - the container that would provide it is exactly
             // what just failed to build.
 #pragma warning disable RS0030
@@ -43,6 +43,9 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
 
         var log = _serviceProvider.GetRequiredService<ILogService>();
         log.Info($"Launcher starting. Log file: {log.CurrentLogFilePath ?? "(console only)"}");
+        log.Info($"Launcher {typeof(App).Assembly.GetName().Version} on {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture}), {RuntimeInformation.FrameworkDescription}.");
+        if (Program.RenderingFlags.Length > 0) log.Info($"Rendering overridden with {Program.RenderingFlags}.");
+        AvaloniaLogSink.Target = log;
 
         HookGlobalExceptionHandlers(log);
 
@@ -50,13 +53,16 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            var mainWindow = new MainWindow
             {
                 DataContext = _serviceProvider.GetRequiredService<MainWindowViewModel>()
             };
+            mainWindow.Opened += (_, _) => log.Info($"Main window opened with transparency level {mainWindow.ActualTransparencyLevel}.");
+            desktop.MainWindow = mainWindow;
             desktop.Exit += (_, _) =>
             {
                 log.Info("Launcher exiting.");
+                AvaloniaLogSink.Target = null;
                 (log as IDisposable)?.Dispose();
             };
         }
@@ -88,18 +94,17 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
         }
     }
 
-    // Deliberately bypasses Avalonia/MsBox.Avalonia entirely - the framework may not be usable yet at
-    // this point, since this only runs when building the DI container (and therefore most of the app's
-    // own services) already failed. A plain native message box has no dependency on any of that.
-    private static void ShowFatalStartupError(Exception ex)
+    // Deliberately bypasses Avalonia/MsBox.Avalonia entirely - this runs when the DI container or
+    // Avalonia itself has already failed, so neither can be trusted to show a dialog.
+    internal static void ShowFatalError(string headline, Exception ex)
     {
-        var message = $"KSP2 Redux failed to start:\n\n{ex.Message}\n\n" +
-                      "A bootstrap.log with more detail was written to your logs folder.";
+        var message = $"{headline}:\n\n{ex.Message}\n\n" +
+                      $"More detail was written to {LogService.BootstrapLogPath}";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             try
             {
-                NativeMessageBox.ShowError(message, "KSP2 Redux - Startup Failed");
+                NativeMessageBox.ShowError(message, "KSP2 Redux");
                 return;
             }
             catch (Exception showEx)
@@ -112,12 +117,6 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
 
     private static void HookGlobalExceptionHandlers(ILogService log)
     {
-        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
-        {
-            var ex = args.ExceptionObject as Exception;
-            log.Error($"Unhandled AppDomain exception (IsTerminating={args.IsTerminating}).", ex);
-        };
-
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
             log.Error("Unobserved task exception.", args.Exception);

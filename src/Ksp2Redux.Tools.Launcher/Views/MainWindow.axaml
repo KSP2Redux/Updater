@@ -15,7 +15,7 @@
         Background="Transparent"
         ExtendClientAreaToDecorationsHint="True"
         TransparencyLevelHint="Transparent"
-        TransparencyBackgroundFallback="Transparent"
+        TransparencyBackgroundFallback="Black"
         WindowDecorations="None"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/favicon.ico"
