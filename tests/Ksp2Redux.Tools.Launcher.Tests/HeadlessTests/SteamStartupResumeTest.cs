@@ -199,4 +199,45 @@ public class SteamStartupResumeTest
             "Signed Out", SteamSessionService.REVOKE_FAILED_MESSAGE, It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(),
             It.IsAny<Avalonia.Controls.WindowStartupLocation>()), Times.Once);
     }
+
+    // An endless animation over the backdrop blurs re-renders them every frame. The pulsing Steam icon cost about
+    // 35% of a CPU core and made typing in the sign-in window lag.
+    [AvaloniaTest]
+    public void MainWindow_Styles_HaveNoEndlessAnimations()
+    {
+        // Arrange
+        var window = new MainWindow();
+
+        // Act
+        var endless = AllStyles(window.Styles)
+            .SelectMany(style => style.Animations)
+            .OfType<Avalonia.Animation.Animation>()
+            .Where(animation => animation.IterationCount == Avalonia.Animation.IterationCount.Infinite)
+            .ToList();
+
+        // Assert
+        Assert.That(endless, Is.Empty);
+    }
+
+    private static IEnumerable<Avalonia.Styling.StyleBase> AllStyles(IEnumerable<Avalonia.Styling.IStyle> styles)
+    {
+        foreach (var style in styles)
+        {
+            if (style is Avalonia.Styling.StyleBase styleBase)
+            {
+                yield return styleBase;
+                foreach (var child in AllStyles(styleBase.Children))
+                {
+                    yield return child;
+                }
+            }
+            else if (style is Avalonia.Styling.Styles group)
+            {
+                foreach (var child in AllStyles(group))
+                {
+                    yield return child;
+                }
+            }
+        }
+    }
 }

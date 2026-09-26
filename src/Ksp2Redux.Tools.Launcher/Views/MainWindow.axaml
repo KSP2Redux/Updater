@@ -114,18 +114,9 @@
         <Style Selector="Button#SteamIndicator:pointerover PathIcon">
             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
         </Style>
+        <!-- Steady rather than pulsing: the icon sits over the backdrop blurs, and any animation there re-renders them every frame. -->
         <Style Selector="Button#SteamIndicator.connecting PathIcon">
             <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
-            <Style.Animations>
-                <Animation Duration="0:0:1.2" IterationCount="INFINITE" PlaybackDirection="Alternate">
-                    <KeyFrame Cue="0%">
-                        <Setter Property="Opacity" Value="1" />
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="Opacity" Value="0.35" />
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
         </Style>
         <Style Selector="Button#SteamIndicator.connected PathIcon">
             <Setter Property="Foreground" Value="{StaticResource SuccessHoverBrush}" />

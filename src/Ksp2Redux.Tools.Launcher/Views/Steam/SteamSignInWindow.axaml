@@ -121,9 +121,6 @@
 				<TextBlock FontSize="12" Foreground="{StaticResource DangerHoverBrush}" TextWrapping="Wrap"
 				           Text="{Binding ErrorMessage}"
 				           IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-				<TextBlock FontSize="10" Foreground="{StaticResource TextFaintBrush}" TextWrapping="Wrap">
-					Your password goes straight to Steam. Redux only keeps a sign-in token, and signing out deletes it.
-				</TextBlock>
 			</StackPanel>
 			<Button Grid.Column="1" Margin="16,0,0,0" Padding="18,8" Command="{Binding CancelCommand}">Cancel</Button>
 		</Grid>
