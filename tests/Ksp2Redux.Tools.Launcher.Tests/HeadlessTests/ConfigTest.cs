@@ -1,5 +1,6 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Common.Models;
@@ -193,6 +194,7 @@ public class ConfigTest
             DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
+        Dispatcher.UIThread.RunJobs();
 
         // Assert
         GameVersionViewModel expectedSelectedItem = new(new()
@@ -256,6 +258,7 @@ public class ConfigTest
             DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
         };
         window.Show();
+        Dispatcher.UIThread.RunJobs();
         
         // Assert
         GameVersionViewModel expectedSelectedItem = new(new()

@@ -175,6 +175,12 @@ public sealed class LogService : ILogService, IDisposable
 
     private const long MaxBootstrapLogSizeBytes = 1 * 1024 * 1024;
 
+#pragma warning disable RS0030
+    public static string BootstrapLogPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        LocalStoragePaths.ReduxFolder, LocalStoragePaths.LogsSubfolder, "bootstrap.log");
+#pragma warning restore RS0030
+
     /// <summary>
     /// Best-effort log used before the DI container is available (Program.cs update-stage error handling).
     /// Appends to a bootstrap log file shared across every launch, so entries are tagged with the process id
@@ -185,10 +191,8 @@ public sealed class LogService : ILogService, IDisposable
 #pragma warning disable RS0030
         try
         {
-            var appdata = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var logsDir = Path.Combine(appdata, LocalStoragePaths.ReduxFolder, LocalStoragePaths.LogsSubfolder);
-            Directory.CreateDirectory(logsDir);
-            var path = Path.Combine(logsDir, "bootstrap.log");
+            var path = BootstrapLogPath;
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             if (File.Exists(path) && new FileInfo(path).Length >= MaxBootstrapLogSizeBytes)
             {
                 File.Delete(path);

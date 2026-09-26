@@ -1,0 +1,128 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:steam="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Steam"
+        xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+        x:Class="Ksp2Redux.Tools.Launcher.Views.Steam.SteamSignInWindow"
+        x:DataType="steam:SteamSignInViewModel"
+        Title="Sign in with Steam"
+        Width="760" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#181818"
+        FontFamily="{StaticResource JetBrainsMonoRegular}">
+	<Window.Styles>
+		<Style Selector="TextBox">
+			<Setter Property="Background" Value="{StaticResource InputSurfaceBrush}" />
+			<Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+			<Setter Property="FontSize" Value="13" />
+			<Setter Property="Padding" Value="10,7" />
+		</Style>
+		<Style Selector="Button.primary">
+			<Setter Property="Background" Value="{StaticResource SuccessBrush}" />
+			<Setter Property="Foreground" Value="White" />
+			<Setter Property="HorizontalAlignment" Value="Stretch" />
+			<Setter Property="HorizontalContentAlignment" Value="Center" />
+			<Setter Property="Padding" Value="0,9" />
+			<Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+			<Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+				<Setter Property="Background" Value="{StaticResource SuccessHoverBrush}" />
+				<Setter Property="Foreground" Value="White" />
+			</Style>
+			<Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+				<Setter Property="Background" Value="{StaticResource SuccessPressedBrush}" />
+			</Style>
+		</Style>
+		<Style Selector="TextBlock.label">
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+			<Setter Property="Margin" Value="0,0,0,4" />
+		</Style>
+	</Window.Styles>
+
+	<Grid RowDefinitions="Auto,Auto,Auto" Margin="32,28,32,24">
+		<StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,22">
+			<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="22" Foreground="White">SIGN IN WITH STEAM</TextBlock>
+			<TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap">
+				Redux downloads your own copy of Kerbal Space Program 2 straight from Steam. Sign in with the account that owns the game.
+			</TextBlock>
+		</StackPanel>
+
+		<Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
+			<StackPanel Grid.Column="0" Width="240" Spacing="12">
+				<Border Width="232" Height="232" CornerRadius="{StaticResource RadiusLarge}" Background="White"
+				        BoxShadow="{StaticResource GlassPanelShadow}" HorizontalAlignment="Center">
+					<Grid>
+						<Image Source="{Binding QrCode}" Stretch="Uniform" Margin="6"
+						       RenderOptions.BitmapInterpolationMode="None"
+						       IsVisible="{Binding QrCode, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+						<TextBlock Text="Getting a code..." Foreground="#555555" FontSize="12"
+						           HorizontalAlignment="Center" VerticalAlignment="Center"
+						           IsVisible="{Binding QrCode, Converter={x:Static conv:ObjectConverters.IsNull}}" />
+					</Grid>
+				</Border>
+				<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
+				           HorizontalAlignment="Center">Scan with the Steam app</TextBlock>
+				<TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center"
+				           TextWrapping="Wrap">In the Steam Mobile App, open Steam Guard and tap the QR scanner.</TextBlock>
+			</StackPanel>
+
+			<Grid Grid.Column="1" RowDefinitions="*,Auto,*" Margin="26,0">
+				<Rectangle Grid.Row="0" Width="1" Fill="{StaticResource GlassSurfaceBorderBrush}" />
+				<TextBlock Grid.Row="1" Margin="0,10" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+				           HorizontalAlignment="Center">OR</TextBlock>
+				<Rectangle Grid.Row="2" Width="1" Fill="{StaticResource GlassSurfaceBorderBrush}" />
+			</Grid>
+
+			<Panel Grid.Column="2" VerticalAlignment="Center">
+				<StackPanel Spacing="12" IsVisible="{Binding IsChoosing}">
+					<StackPanel>
+						<TextBlock Classes="label">STEAM ACCOUNT NAME</TextBlock>
+						<TextBox Name="AccountNameBox" Text="{Binding AccountName}" />
+					</StackPanel>
+					<StackPanel>
+						<TextBlock Classes="label">PASSWORD</TextBlock>
+						<TextBox Text="{Binding Password}" PasswordChar="•" RevealPassword="False">
+							<TextBox.KeyBindings>
+								<KeyBinding Gesture="Enter" Command="{Binding SignInWithPasswordCommand}" />
+							</TextBox.KeyBindings>
+						</TextBox>
+					</StackPanel>
+					<Button Classes="primary" Command="{Binding SignInWithPasswordCommand}" Margin="0,6,0,0">Sign in</Button>
+				</StackPanel>
+
+				<StackPanel Spacing="14" IsVisible="{Binding IsWorking}" VerticalAlignment="Center">
+					<TextBlock FontSize="13" Foreground="White">Signing in...</TextBlock>
+					<ProgressBar IsIndeterminate="True" Foreground="{StaticResource BrandOrangeBrush}" />
+				</StackPanel>
+
+				<StackPanel Spacing="12" IsVisible="{Binding IsEnteringGuardCode}">
+					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White">STEAM GUARD</TextBlock>
+					<TextBlock Text="{Binding GuardPrompt}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
+					<TextBox Name="GuardCodeBox" Text="{Binding GuardCodeInput}" FontSize="22"
+					         FontFamily="{StaticResource JetBrainsMonoBold}" HorizontalContentAlignment="Center"
+					         MaxLength="8">
+						<TextBox.KeyBindings>
+							<KeyBinding Gesture="Enter" Command="{Binding SubmitGuardCodeCommand}" />
+						</TextBox.KeyBindings>
+					</TextBox>
+					<Button Classes="primary" Command="{Binding SubmitGuardCodeCommand}">Continue</Button>
+				</StackPanel>
+
+				<StackPanel Spacing="14" IsVisible="{Binding IsAwaitingApproval}">
+					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White">STEAM GUARD</TextBlock>
+					<TextBlock Text="{Binding GuardPrompt}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
+					<ProgressBar IsIndeterminate="True" Foreground="{StaticResource BrandOrangeBrush}" />
+				</StackPanel>
+			</Panel>
+		</Grid>
+
+		<Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,24,0,0">
+			<StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
+				<TextBlock FontSize="12" Foreground="{StaticResource DangerHoverBrush}" TextWrapping="Wrap"
+				           Text="{Binding ErrorMessage}"
+				           IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+			</StackPanel>
+			<Button Grid.Column="1" Margin="16,0,0,0" Padding="18,8" Command="{Binding CancelCommand}">Cancel</Button>
+		</Grid>
+	</Grid>
+</Window>

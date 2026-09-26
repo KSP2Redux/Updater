@@ -16,7 +16,17 @@
 set -euo pipefail
 
 REPOSITORY="KSP2Redux/Updater"
-ASSET_NAME="redux-cli-x64"
+# The macOS Wine runtime is Apple Silicon only, so there is no Intel macOS build.
+case "$(uname -s)" in
+    Darwin)
+        if [ "$(uname -m)" != "arm64" ]; then
+            echo "error: the macOS build of redux-launcher-cli needs an Apple Silicon Mac." >&2
+            exit 1
+        fi
+        ASSET_NAME="redux-cli-macos-arm64"
+        ;;
+    *) ASSET_NAME="redux-cli-x64" ;;
+esac
 EXECUTABLE_NAME="redux-launcher-cli"
 TAG_PREFIX="updater-v"
 INSTALL_DIRECTORY="${REDUX_CLI_HOME:-$HOME/.local/bin}"
@@ -52,8 +62,8 @@ need() {
 
 need curl
 
-# python is only used to read the releases JSON. Every distro that can run the game has it, and it
-# beats asking for jq or parsing JSON with a regex.
+# python is only used to read the releases JSON. Every distro that can run the game has it, macOS
+# offers it with the command line developer tools, and it beats asking for jq or parsing JSON with a regex.
 PYTHON=""
 for candidate in python3 python; do
     # Actually run it rather than trusting that it resolves. Windows ships a python shim that exists

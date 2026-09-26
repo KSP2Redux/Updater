@@ -131,6 +131,13 @@ public class UpdateService : IUpdateService
 
     private async Task<bool> CheckAndPerformUpdateCoreAsync()
     {
+        // The platform-keyword match below would otherwise hand a macOS build the Linux binary.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            _log.Info("Self-update is not available on macOS (no macOS release assets are published). Skipping check.");
+            return true;
+        }
+
         var releasesUrl = $"https://api.github.com/repos/{_owner}/{_repo}/releases";
         _log.Info($"Checking for launcher updates from {releasesUrl} (current version {_version}).");
 
@@ -189,7 +196,7 @@ public class UpdateService : IUpdateService
             {
                 _log.Warn("Running in non-single-file build, refusing to self-update.");
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
-                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.", ButtonEnum.Ok,
+                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.",
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
                 return false;
             }
@@ -267,7 +274,7 @@ public class UpdateService : IUpdateService
         var repo = _launcherConfigService.Config.LauncherRepo.TrimEnd('/');
         var releasesUrl = $"{repo}/releases";
         await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
-            $"Please download the latest version of the launcher from\n{releasesUrl}", ButtonEnum.Ok,
+            $"Please download the latest version of the launcher from\n{releasesUrl}",
             windowStartupLocation: WindowStartupLocation.CenterOwner);
         try
         {
@@ -282,7 +289,7 @@ public class UpdateService : IUpdateService
     private void TriggerRestart(string newFilesPath)
     {
         var whereAmI = _environmentProvider.ProcessPath!;
-        var args = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\"";
+        var args = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\" {Program.RenderingFlags}".TrimEnd();
         var startInfo = new ProcessStartInfo
         {
             UseShellExecute = false,

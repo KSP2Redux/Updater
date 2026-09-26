@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -25,12 +26,14 @@ public partial class MainWindow : Window
         // fields permanently null, so any code referencing them (e.g. the backdrop-blur
         // clip calculations below) silently no-ops.
         InitializeComponent();
+        if (_isMac) ApplyMacChrome();
         Opened += (_, _) =>
         {
             ApplyNativeRoundedCorners();
             RestoreWindowPlacement();
             UpdateMaximizedState();
             RefreshBackdropClips();
+            (DataContext as MainWindowViewModel)?.OnMainWindowOpened();
         };
         PositionChanged += (_, e) =>
         {
@@ -63,6 +66,17 @@ public partial class MainWindow : Window
     // snap to a full-screen-sized "normal" window.
     private PixelPoint _lastNormalPosition;
     private Size _lastNormalSize;
+
+    private readonly bool _isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
+    // Native traffic lights replace the drawn caption buttons and resize grips on macOS.
+    private void ApplyMacChrome()
+    {
+        WindowDecorations = WindowDecorations.Full;
+        MinimizeButton.IsVisible = false;
+        MaximizeButton.IsVisible = false;
+        CloseButton.IsVisible = false;
+    }
 
     private void RestoreWindowPlacement()
     {
@@ -110,7 +124,7 @@ public partial class MainWindow : Window
         OuterFrame?.Classes.Set("maximized", maximized);
         InnerChrome?.Classes.Set("maximized", maximized);
         this.FindControl<Border>("TitleBar")?.Classes.Set("maximized", maximized);
-        if (ResizeGrips is not null) ResizeGrips.IsVisible = !maximized;
+        if (ResizeGrips is not null) ResizeGrips.IsVisible = !maximized && !_isMac;
         if (MaximizeGlyph is not null) MaximizeGlyph.Text = maximized ? "❐" : "◻";
         if (MaximizeButton is not null) ToolTip.SetTip(MaximizeButton, maximized ? "Restore" : "Maximize");
     }
@@ -205,6 +219,20 @@ public partial class MainWindow : Window
     private void ToggleMaximized()
     {
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+
+    private void SteamIndicator_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || sender is not Control indicator) return;
+
+        if (viewModel.SettingsTab.IsSteamConnected)
+        {
+            FlyoutBase.ShowAttachedFlyout(indicator);
+        }
+        else
+        {
+            viewModel.SettingsTab.ConnectSteamCommand.Execute(null);
+        }
     }
 
     private void Close_Click(object? sender, RoutedEventArgs e)

@@ -75,6 +75,27 @@ public class SettingsInputHardeningTest
     }
 
     [AvaloniaTest]
+    public async Task RemoveSelectedInstall_OnlyInstall_CanBeRemoved()
+    {
+        // Arrange
+        var settingsTabViewModel = await BootstrapAsync();
+        var ksp2InstallService = TestAppBuilder.ServiceProvider.GetRequiredService<IKsp2InstallService>();
+        Assert.That(ksp2InstallService.Entries, Has.Count.EqualTo(1));
+        Assert.That(settingsTabViewModel.CanRemoveSelectedInstall, Is.True);
+
+        TestAppBuilder.MessageBoxService.Setup(m => m.ShowMessageBoxAsOwnedAsync(
+                "Confirm", It.IsAny<string>(), It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()))
+            .ReturnsAsync(ButtonResult.Yes);
+
+        // Act
+        await settingsTabViewModel.RemoveSelectedInstallCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.That(ksp2InstallService.Entries, Is.Empty);
+        Assert.That(ksp2InstallService.ActiveEntry, Is.Null);
+    }
+
+    [AvaloniaTest]
     public async Task AddInstall_AlreadyInProgress_ReturnsWithoutTouchingTheFilePicker()
     {
         // Arrange - simulate a fast double-click by marking the flow as already in progress.

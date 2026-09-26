@@ -9,6 +9,7 @@
     <Color x:Key="BrandRedColor">#DC1501</Color>
     <Color x:Key="BrandOrangeColor">#FC7600</Color>
     <SolidColorBrush x:Key="BrandRedBrush" Color="{StaticResource BrandRedColor}" />
+    <SolidColorBrush x:Key="BrandOrangeBrush" Color="{StaticResource BrandOrangeColor}" />
     <SolidColorBrush x:Key="BrandRedHoverBrush" Color="{StaticResource BrandRedColor}" Opacity="0.63" />
     <SolidColorBrush x:Key="BrandRedPressedBrush" Color="{StaticResource BrandRedColor}" Opacity="0.75" />
 

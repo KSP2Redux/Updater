@@ -4,6 +4,8 @@ using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -47,7 +49,14 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IOperatingSystemService, OperatingSystemService>();
         serviceCollection.AddSingleton<IDiskSpaceService, DiskSpaceService>();
         serviceCollection.AddSingleton<IGameDataFolderService, GameDataFolderService>();
+        serviceCollection.AddSingleton<IKsp2GameUninstallService, Ksp2GameUninstallService>();
         serviceCollection.AddSingleton<IWindowPlacementService, WindowPlacementService>();
+        serviceCollection.AddSingleton<IProcessRunner, ProcessRunner>();
+        serviceCollection.AddSingleton<IWineRuntimeService, WineRuntimeService>();
+        serviceCollection.AddSingleton<ISteamLoginStore, SteamLoginStore>();
+        serviceCollection.AddSingleton<ISteamSessionService, SteamSessionService>();
+        serviceCollection.AddSingleton<ISteamDepotDownloader, SteamDepotDownloader>();
+        serviceCollection.AddSingleton<ISteamDialogService, SteamDialogService>();
         return serviceCollection.BuildServiceProvider();
     }
 }

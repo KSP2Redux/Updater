@@ -15,6 +15,42 @@
 		<Style Selector="NumericUpDown.chunk-download-spinner /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton#PART_DecreaseButton /template/ ContentPresenter#PART_ContentPresenter">
 			<Setter Property="CornerRadius" Value="0,7,7,0" />
 		</Style>
+		<Style Selector="StackPanel.form">
+			<Setter Property="Spacing" Value="10" />
+		</Style>
+		<Style Selector="TextBlock.section-title">
+			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoLight}" />
+			<Setter Property="FontSize" Value="12" />
+		</Style>
+		<Style Selector="Grid.field">
+			<Setter Property="ColumnSpacing" Value="12" />
+		</Style>
+		<!-- TextBox height, so checkbox-only rows space out the same. -->
+		<Style Selector="Grid.field > :is(Control)">
+			<Setter Property="MinHeight" Value="32" />
+		</Style>
+		<Style Selector="Grid.field > TextBlock.label">
+			<Setter Property="VerticalAlignment" Value="Center" />
+			<Setter Property="MinHeight" Value="0" />
+		</Style>
+		<Style Selector="Grid.field > TextBlock.error">
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+			<Setter Property="TextWrapping" Value="Wrap" />
+			<Setter Property="Margin" Value="0,4,0,0" />
+			<Setter Property="MinHeight" Value="0" />
+		</Style>
+		<Style Selector="Grid.field Button.icon, Grid.field Button.icon-text">
+			<Setter Property="VerticalAlignment" Value="Stretch" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+		</Style>
+		<Style Selector="Grid.field Button.icon">
+			<Setter Property="Padding" Value="9,0" />
+		</Style>
+		<Style Selector="Grid.field Button PathIcon">
+			<Setter Property="Width" Value="14" />
+			<Setter Property="Height" Value="14" />
+		</Style>
 	</UserControl.Styles>
 
 	<Grid VerticalAlignment="Stretch">
@@ -32,127 +68,203 @@
 				SETTINGS
 			</TextBlock>
 
-			<Grid Grid.Row="1"
-			      ColumnDefinitions="Auto,*"
-			      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
-			      ColumnSpacing="10" RowSpacing="6">
-
-				<TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">Editing install</TextBlock>
-				<ComboBox Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch"
-				          MaxDropDownHeight="200"
-				          ItemsSource="{Binding Installs}"
-				          SelectedItem="{Binding SelectedInstall, Mode=TwoWay}">
-					<ComboBox.ItemTemplate>
-						<DataTemplate DataType="settings:Ksp2InstallRowViewModel">
-							<TextBlock Text="{Binding Name}" />
-						</DataTemplate>
-					</ComboBox.ItemTemplate>
-				</ComboBox>
-
-				<StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
-					<Button Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
-					        ToolTip.Tip="Add a KSP2 install">Add</Button>
-					<Button Classes="danger"
-					        Command="{Binding RemoveSelectedInstallCommand}"
-					        IsEnabled="{Binding CanRemoveSelectedInstall}"
-					        ToolTip.Tip="Remove this install. At least one install must remain.">Remove</Button>
-					<Button Command="{Binding OpenInstallFolderCommand}"
-					        IsEnabled="{Binding HasSelectedInstall}"
-					        ToolTip.Tip="Open this install's folder in your file browser.">Open Folder</Button>
-				</StackPanel>
-
-				<TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"
-				           IsVisible="{Binding HasSelectedInstall}">Name</TextBlock>
-				<TextBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch"
-				         IsVisible="{Binding HasSelectedInstall}"
-				         Text="{Binding SelectedInstall.Name, Mode=TwoWay}"
-				         PlaceholderText="Name" />
-
-				<TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"
-				           IsVisible="{Binding HasSelectedInstall}">Install path</TextBlock>
-				<TextBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch"
-				         IsVisible="{Binding HasSelectedInstall}"
-				         Text="{Binding SelectedInstall.ExePath, Mode=TwoWay}"
-				         PlaceholderText="C:\Steam\SteamGames\KSP2\KSP2_x64.exe"
-				         FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11" />
-
-				<TextBlock Grid.Row="4" Grid.Column="1" FontSize="11" Foreground="{StaticResource DangerBrush}"
-				           IsVisible="{Binding SelectedInstall.ExePathError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
-				           Text="{Binding SelectedInstall.ExePathError}" TextWrapping="Wrap" />
-
-				<TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center"
-				           IsVisible="{Binding HasSelectedInstall}">Release channel</TextBlock>
-				<ComboBox Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch"
-				          Name="ReleaseChannelSelector"
-				          IsVisible="{Binding HasSelectedInstall}"
-				          MaxDropDownHeight="200"
-				          SelectedValue="{Binding SelectedInstall.ReleaseChannel, Mode=TwoWay}"
-				          ItemsSource="{Binding ValidChannels}" />
-
-				<TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center"
-				           IsVisible="{Binding HasSelectedInstall}">Launch through Steam</TextBlock>
-				<CheckBox Grid.Row="6" Grid.Column="1" HorizontalAlignment="Left"
-				          IsVisible="{Binding HasSelectedInstall}"
-				          IsChecked="{Binding SelectedInstall.LaunchThroughSteam, Mode=TwoWay}" />
-
-				<TextBlock Grid.Row="7" Grid.Column="0" VerticalAlignment="Center"
-				           IsVisible="{Binding HasSelectedInstall}"
-				           ToolTip.Tip="Override to launch a Steam 'Add a Non-Steam Game' shortcut for KSP2. Leave as 954850 for the normal Steam release.">Steam app id</TextBlock>
-				<TextBox Grid.Row="7" Grid.Column="1" HorizontalAlignment="Stretch"
-				         IsVisible="{Binding HasSelectedInstall}"
-				         PlaceholderText="954850"
-				         Text="{Binding SelectedInstall.SteamAppId, Mode=TwoWay}"
-				         IsEnabled="{Binding SelectedInstall.LaunchThroughSteam}" />
-
-				<TextBlock Grid.Row="8" Grid.Column="1" FontSize="11" Foreground="{StaticResource DangerBrush}"
-				           IsVisible="{Binding SelectedInstall.SteamAppIdError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
-				           Text="{Binding SelectedInstall.SteamAppIdError}" TextWrapping="Wrap" />
-
-				<TextBlock Grid.Row="9" Grid.Column="0" VerticalAlignment="Center"
-				           IsVisible="{Binding HasSelectedInstall}"
-				           ToolTip.Tip="Arguments passed to KSP2_x64.exe on launch. Ignored when 'Launch through Steam' is enabled.">Launch arguments</TextBlock>
-				<TextBox Grid.Row="9" Grid.Column="1" HorizontalAlignment="Stretch"
-				         IsVisible="{Binding HasSelectedInstall}"
-				         Text="{Binding SelectedInstall.LaunchArguments, Mode=TwoWay}"
-				         IsEnabled="{Binding !SelectedInstall.LaunchThroughSteam}" />
-
-				<TextBlock Grid.Row="10" Grid.Column="0" VerticalAlignment="Center"
-				           IsVisible="{Binding HasSelectedInstall}"
-				           ToolTip.Tip="Sets gfx-enable-gfx-jobs=0 in boot.config. Workaround for crashes on some hardware.">Disable graphics jobs</TextBlock>
-				<CheckBox Grid.Row="10" Grid.Column="1" HorizontalAlignment="Left"
-				          IsVisible="{Binding HasSelectedInstall}"
-				          IsChecked="{Binding SelectedInstall.DisableGraphicsJobs, Mode=TwoWay}" />
-
-				<Separator Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0 4 0 4"
-				           IsVisible="{Binding HasSelectedInstall}" />
-
-				<Grid Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="2"
-				      ColumnDefinitions="*,*" ColumnSpacing="10"
-				      IsVisible="{Binding HasSelectedInstall}">
-					<Button Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-					        Click="InstallFromPatchFile">Install From Patch File</Button>
-					<Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-					        Classes="danger" Click="UninstallReduxClick">Uninstall Redux</Button>
-				</Grid>
-			</Grid>
-
-			<Border Grid.Row="2" Margin="0,12,0,0" Padding="10"
+			<Border Grid.Row="1" Margin="0,4,0,0" Padding="14"
 			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
 			        CornerRadius="{StaticResource RadiusMedium}">
-				<Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10" RowDefinitions="Auto,Auto" RowSpacing="6">
-					<TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4"
-					           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="12">ADVANCED DOWNLOADS</TextBlock>
-					<TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center">Patch source</TextBlock>
-					<ComboBox Grid.Row="1" Grid.Column="1" MinWidth="120"
-					          ItemsSource="{Binding PatchDownloadSources}"
-					          SelectedItem="{Binding PatchDownloadSource, Mode=TwoWay}"
-					          ToolTip.Tip="R2 is the primary download service. Select GitHub to use the permanent backup copies." />
-					<TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center">Concurrent chunks</TextBlock>
-					<NumericUpDown Grid.Row="1" Grid.Column="3" Classes="chunk-download-spinner"
-					               Width="112" Minimum="1" Maximum="8" Increment="1"
-					               Value="{Binding MaxConcurrentChunkDownloads, Mode=TwoWay}"
-					               ToolTip.Tip="Maximum simultaneous patch-part downloads (1-8)." />
-				</Grid>
+				<!-- A Grid spends RowSpacing on hidden rows, a StackPanel does not. -->
+				<StackPanel Classes="form" Grid.IsSharedSizeScope="True">
+					<TextBlock Classes="section-title">INSTALL PROFILE</TextBlock>
+
+					<Grid Classes="field" RowDefinitions="Auto,Auto">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label">Profile</TextBlock>
+						<Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+							<ComboBox HorizontalAlignment="Stretch"
+							          MaxDropDownHeight="200"
+							          IsVisible="{Binding !IsRenamingInstall}"
+							          ItemsSource="{Binding Installs}"
+							          SelectedItem="{Binding SelectedInstall, Mode=TwoWay}">
+								<ComboBox.ItemTemplate>
+									<DataTemplate DataType="settings:Ksp2InstallRowViewModel">
+										<TextBlock Text="{Binding Name}" />
+									</DataTemplate>
+								</ComboBox.ItemTemplate>
+							</ComboBox>
+							<TextBox Name="RenameBox" HorizontalAlignment="Stretch"
+							         IsVisible="{Binding IsRenamingInstall}"
+							         Text="{Binding RenameText, Mode=TwoWay}"
+							         PlaceholderText="Profile name"
+							         LostFocus="RenameBox_LostFocus" />
+							<Button Grid.Column="1" Classes="icon"
+							        IsVisible="{Binding !IsRenamingInstall}"
+							        IsEnabled="{Binding HasSelectedInstall}"
+							        Command="{Binding BeginRenameInstallCommand}"
+							        ToolTip.Tip="Rename this profile">
+								<PathIcon Data="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18.17,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z" />
+							</Button>
+							<Button Grid.Column="1" Classes="icon"
+							        IsVisible="{Binding IsRenamingInstall}"
+							        Command="{Binding CommitRenameInstallCommand}"
+							        ToolTip.Tip="Save the name (Enter). Esc cancels.">
+								<PathIcon Data="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />
+							</Button>
+						</Grid>
+
+						<!-- The negative bottom margin cancels the last line's button margin. -->
+						<WrapPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,-6">
+							<Button Margin="0,0,6,6" Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
+							        ToolTip.Tip="Add a profile for another KSP2 install on this computer">Add</Button>
+							<Button Margin="0,0,6,6" Classes="danger"
+							        Command="{Binding RemoveSelectedInstallCommand}"
+							        IsEnabled="{Binding CanRemoveSelectedInstall}"
+							        ToolTip.Tip="Remove this profile from the launcher. The game files are left where they are.">Remove</Button>
+							<Button Margin="0,0,6,6" Command="{Binding OpenInstallFolderCommand}"
+							        IsEnabled="{Binding HasSelectedInstall}"
+							        ToolTip.Tip="Open this install's folder in your file browser.">Open Folder</Button>
+							<!-- The tooltip explains the disabled state, so it must show while disabled. -->
+							<Button Margin="0,0,6,6" Command="{Binding DownloadFromSteamCommand}"
+							        IsEnabled="{Binding CanDownloadFromSteam}"
+							        ToolTip.ShowOnDisabled="True"
+							        ToolTip.Tip="{Binding DownloadFromSteamTooltip}">Download KSP2</Button>
+						</WrapPanel>
+					</Grid>
+
+					<Separator Margin="0" IsVisible="{Binding HasSelectedInstall}" />
+
+					<Grid Classes="field" RowDefinitions="Auto,Auto" IsVisible="{Binding HasSelectedInstall}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label">Game executable</TextBlock>
+						<Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+							<TextBox HorizontalAlignment="Stretch"
+							         Text="{Binding SelectedInstall.ExePath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							         PlaceholderText="C:\Steam\SteamGames\KSP2\KSP2_x64.exe" />
+							<Button Grid.Column="1" Classes="icon-text"
+							        Command="{Binding BrowseExePathCommand}"
+							        ToolTip.Tip="Find KSP2_x64.exe with the file browser">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<PathIcon Data="M6.1,10L4,18V8H21A2,2 0 0,0 19,6H12L10,4H4A2,2 0 0,0 2,6V18A2,2 0 0,0 4,20H19C19.9,20 20.7,19.4 20.9,18.5L23.2,10H6.1M19,18H6L7.6,12H20.6L19,18Z" />
+									<TextBlock VerticalAlignment="Center">Browse</TextBlock>
+								</StackPanel>
+							</Button>
+						</Grid>
+						<TextBlock Grid.Row="1" Grid.Column="1" Classes="error"
+						           IsVisible="{Binding SelectedInstall.ExePathError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
+						           Text="{Binding SelectedInstall.ExePathError}" />
+					</Grid>
+
+					<Grid Classes="field" IsVisible="{Binding HasSelectedInstall}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label">Release channel</TextBlock>
+						<ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+						          Name="ReleaseChannelSelector"
+						          MaxDropDownHeight="200"
+						          SelectedValue="{Binding SelectedInstall.ReleaseChannel, Mode=TwoWay}"
+						          ItemsSource="{Binding ValidChannels}" />
+					</Grid>
+
+					<Grid Classes="field" IsVisible="{Binding ShowSteamLaunchOptions}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label"
+						           ToolTip.Tip="Start KSP2 through the Steam client instead of running KSP2_x64.exe directly.">Launch via Steam</TextBlock>
+						<CheckBox Grid.Column="1" HorizontalAlignment="Left"
+						          IsChecked="{Binding SelectedInstall.LaunchThroughSteam, Mode=TwoWay}" />
+					</Grid>
+
+					<Grid Classes="field" RowDefinitions="Auto,Auto" IsVisible="{Binding ShowSteamLaunchOptions}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label"
+						           ToolTip.Tip="Override to launch a Steam 'Add a Non-Steam Game' shortcut for KSP2. Leave as 954850 for the normal Steam release.">Steam app id</TextBlock>
+						<TextBox Grid.Column="1" HorizontalAlignment="Stretch"
+						         PlaceholderText="954850"
+						         Text="{Binding SelectedInstall.SteamAppId, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+						         IsEnabled="{Binding SelectedInstall.LaunchThroughSteam}" />
+						<TextBlock Grid.Row="1" Grid.Column="1" Classes="error"
+						           IsVisible="{Binding SelectedInstall.SteamAppIdError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
+						           Text="{Binding SelectedInstall.SteamAppIdError}" />
+					</Grid>
+
+					<Grid Classes="field" IsVisible="{Binding HasSelectedInstall}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label"
+						           ToolTip.Tip="Arguments passed to KSP2_x64.exe on launch. Ignored when 'Launch via Steam' is enabled.">Launch arguments</TextBlock>
+						<TextBox Grid.Column="1" HorizontalAlignment="Stretch"
+						         Text="{Binding SelectedInstall.LaunchArguments, Mode=TwoWay, UpdateSourceTrigger=LostFocus}">
+							<!-- Editable where Steam launching is unsupported, even if the config still ticks it. -->
+							<TextBox.IsEnabled>
+								<MultiBinding Converter="{x:Static BoolConverters.Or}">
+									<Binding Path="!SelectedInstall.LaunchThroughSteam" />
+									<Binding Path="!IsSteamLaunchSupported" />
+								</MultiBinding>
+							</TextBox.IsEnabled>
+						</TextBox>
+					</Grid>
+
+					<Grid Classes="field" IsVisible="{Binding HasSelectedInstall}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label"
+						           ToolTip.Tip="Disable Unity graphics jobs by setting gfx-enable-gfx-jobs=0 in boot.config. Workaround for crashes on some hardware.">Disable gfx jobs</TextBlock>
+						<CheckBox Grid.Column="1" HorizontalAlignment="Left"
+						          IsChecked="{Binding SelectedInstall.DisableGraphicsJobs, Mode=TwoWay}" />
+					</Grid>
+
+					<Separator Margin="0" IsVisible="{Binding HasSelectedInstall}" />
+
+					<Grid ColumnDefinitions="*,*,*" ColumnSpacing="10"
+					      IsVisible="{Binding HasSelectedInstall}">
+						<Button Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+						        Click="InstallFromPatchFile"
+						        ToolTip.Tip="Install Redux from a .patch file you already have">Install Patch File</Button>
+						<Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+						        Classes="danger" Click="UninstallReduxClick"
+						        ToolTip.Tip="Put the game back to stock KSP2">Uninstall Redux</Button>
+						<Button Grid.Column="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+						        Classes="danger" Command="{Binding UninstallKsp2Command}"
+						        IsEnabled="{Binding !IsUninstallingKsp2}"
+						        Content="{Binding UninstallKsp2ButtonText}"
+						        ToolTip.Tip="Delete this copy of KSP2 from the computer and remove its profile. Saves are kept." />
+					</Grid>
+				</StackPanel>
+			</Border>
+
+			<Border Grid.Row="2" Margin="0,12,0,0" Padding="14"
+			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
+			        CornerRadius="{StaticResource RadiusMedium}">
+				<StackPanel Classes="form">
+					<TextBlock Classes="section-title">ADVANCED DOWNLOADS</TextBlock>
+					<Grid Classes="field" ColumnDefinitions="Auto,*,Auto,Auto">
+						<TextBlock Grid.Column="0" Classes="label">Patch source</TextBlock>
+						<ComboBox Grid.Column="1" MinWidth="120"
+						          ItemsSource="{Binding PatchDownloadSources}"
+						          SelectedItem="{Binding PatchDownloadSource, Mode=TwoWay}"
+						          ToolTip.Tip="R2 is the primary download service. Select GitHub to use the permanent backup copies." />
+						<TextBlock Grid.Column="2" Classes="label">Concurrent chunks</TextBlock>
+						<NumericUpDown Grid.Column="3" Classes="chunk-download-spinner"
+						               Width="112" Minimum="1" Maximum="8" Increment="1"
+						               Value="{Binding MaxConcurrentChunkDownloads, Mode=TwoWay}"
+						               ToolTip.Tip="Maximum simultaneous patch-part downloads (1-8)." />
+					</Grid>
+				</StackPanel>
 			</Border>
 
 			<Grid Grid.Row="3" RowDefinitions="Auto,Auto" Margin="0,12,0,0">

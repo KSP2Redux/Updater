@@ -132,7 +132,7 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
     }
 
     // Windows will not let a running executable be overwritten, but it will let it be renamed, so
-    // the old build is parked beside the new one and cleaned up the next time this runs. On Linux
+    // the old build is parked beside the new one and cleaned up the next time this runs. On Linux and macOS
     // the rename replaces the directory entry while the running process keeps its open inode.
     private static async Task ReplaceAsync(CliContext context, string executable, byte[] bytes)
     {
@@ -141,7 +141,7 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
 
         await fileSystem.File.WriteAllBytesAsync(staging, bytes);
 
-        if (context.OperatingSystemService.IsLinux())
+        if (!context.OperatingSystemService.IsWindows())
         {
             await MarkExecutableAsync(staging);
             fileSystem.File.Move(staging, executable, overwrite: true);

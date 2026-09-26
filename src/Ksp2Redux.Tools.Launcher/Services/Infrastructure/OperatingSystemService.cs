@@ -3,12 +3,19 @@
 public interface IOperatingSystemService
 {
     bool IsLinux();
+
+    bool IsMacOS();
+
+    bool IsWindows();
 }
 
 public class OperatingSystemService : IOperatingSystemService
 {
-    public bool IsLinux()
 #pragma warning disable RS0030
-        => OperatingSystem.IsLinux();
+    public bool IsLinux() => OperatingSystem.IsLinux();
+
+    public bool IsMacOS() => OperatingSystem.IsMacOS();
+
+    public bool IsWindows() => OperatingSystem.IsWindows();
 #pragma warning restore RS0030
 }

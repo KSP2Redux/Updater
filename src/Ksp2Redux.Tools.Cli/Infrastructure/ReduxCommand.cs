@@ -93,4 +93,14 @@ public abstract class ReduxCommand<TSettings> : AsyncCommand<TSettings>
     /// <param name="cancellationToken">Token cancelled when the user interrupts the process.</param>
     /// <returns>One of the values on <see cref="ExitCode" />.</returns>
     protected abstract Task<int> RunAsync(CliContext context, TSettings settings, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs the command against a context the caller built, skipping the console and container setup.
+    /// </summary>
+    /// <param name="context">The context to run against, normally over test doubles.</param>
+    /// <param name="settings">The parsed settings for this command.</param>
+    /// <param name="cancellationToken">Token to stop the command with.</param>
+    /// <returns>One of the values on <see cref="ExitCode" />.</returns>
+    internal Task<int> RunWithContextAsync(CliContext context, TSettings settings, CancellationToken cancellationToken = default) =>
+        RunAsync(context, settings, cancellationToken);
 }

@@ -6,7 +6,7 @@
         <LangVersion>preview</LangVersion>
         <AssemblyName>redux-launcher-cli</AssemblyName>
         <RootNamespace>Ksp2Redux.Tools.Cli</RootNamespace>
-        <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+        <RuntimeIdentifiers>win-x64;linux-x64;osx-arm64</RuntimeIdentifiers>
         <!-- The launcher project is SelfContained, and NETSDK1151 forbids a framework dependent exe
              from referencing a self contained one. Matching it means every build needs a runtime
              identifier. -->

@@ -62,8 +62,50 @@ public static class Program
 
                     installs.AddCommand<InstallsChannelCommand>("set-channel")
                         .WithDescription("Move a KSP2 install to another release channel.");
+                    installs.AddCommand<InstallsShowCommand>("show")
+                        .WithDescription("Show every setting of a KSP2 install profile.");
+                    installs.AddCommand<InstallsSetCommand>("set")
+                        .WithDescription("Change a KSP2 install's path, launch arguments, graphics jobs or Steam launch.")
+                        .WithExample("installs", "set", "Testing", "--args=\"-popupwindow\"", "--graphics-jobs", "off");
+                    installs.AddCommand<InstallsDeleteCommand>("delete")
+                        .WithDescription("Delete a KSP2 install's game files from disk and remove its profile.");
                 })
                 .WithAlias("list-installs");
+
+            config.AddBranch("steam", steam =>
+            {
+                steam.SetDescription("Sign in to Steam and download KSP2 with your own account. No Steam client needed.");
+                steam.SetDefaultCommand<SteamStatusCommand>();
+
+                steam.AddCommand<SteamStatusCommand>("status")
+                    .WithDescription("Report which Steam account is signed in.")
+                    .WithExample("steam", "status", "--check");
+                steam.AddCommand<SteamLoginCommand>("login")
+                    .WithDescription("Sign in to Steam by scanning a QR code, or with --password.")
+                    .WithExample("steam", "login", "--password");
+                steam.AddCommand<SteamLogoutCommand>("logout")
+                    .WithDescription("Sign out of Steam and forget the saved login.");
+                steam.AddCommand<SteamDownloadCommand>("download")
+                    .WithDescription("Download KSP2 from Steam and add it as the active install profile.")
+                    .WithExample("steam", "download", "~/Games");
+            });
+
+            config.AddBranch("settings", launcherSettings =>
+            {
+                launcherSettings.SetDescription("Show and change the launcher-wide settings: patch source, concurrent chunks and verbose logging.");
+                launcherSettings.SetDefaultCommand<LauncherSettingsCommand>();
+
+                launcherSettings.AddCommand<LauncherSettingsSetCommand>("set")
+                    .WithDescription("Change the patch source, concurrent chunk downloads or verbose logging.")
+                    .WithExample("settings", "set", "--patch-source", "github", "--concurrent-chunks", "8");
+            });
+
+            config.AddCommand<OpenCommand>("open")
+                .WithDescription("Open the install, logs, game data or launcher storage folder in the file browser.")
+                .WithExample("open", "game-data");
+
+            config.AddCommand<NewsCommand>("news")
+                .WithDescription("List the latest KSP2 Redux news posts.");
 
             config.AddCommand<DetectCommand>("detect")
                 .WithDescription("Scan the usual Steam and Epic locations for a KSP2 install.");

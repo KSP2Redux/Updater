@@ -9,13 +9,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
-        Width="1280" Height="800" MinWidth="1000" MinHeight="700" CanResize="True"
+        Width="1280" Height="800" MinWidth="1040" MinHeight="700" CanResize="True"
         x:Class="Ksp2Redux.Tools.Launcher.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Background="Transparent"
         ExtendClientAreaToDecorationsHint="True"
         TransparencyLevelHint="Transparent"
-        TransparencyBackgroundFallback="Transparent"
+        TransparencyBackgroundFallback="Black"
         WindowDecorations="None"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/favicon.ico"
@@ -31,6 +31,11 @@
         <KeyBinding Gesture="Ctrl+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
         <KeyBinding Gesture="Ctrl+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
         <KeyBinding Gesture="Ctrl+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
+        <!-- macOS: Cmd+1..4 -->
+        <KeyBinding Gesture="Meta+D1" Command="{Binding GoToTabCommand}" CommandParameter="0" />
+        <KeyBinding Gesture="Meta+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="Meta+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="Meta+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
     </Window.KeyBindings>
 
     <!-- ReSharper disable Xaml.RedundantResource -->
@@ -88,6 +93,33 @@
                     <Setter Property="Background" Value="{StaticResource BrandRedBrush}" />
                 </Style>
             </Style>
+        </Style>
+
+        <Style Selector="Button#SteamIndicator">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button#SteamIndicator:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource OverlayHighlightBrush}" />
+        </Style>
+        <Style Selector="Button#SteamIndicator PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        </Style>
+        <Style Selector="Button#SteamIndicator:pointerover PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+        <!-- Steady rather than pulsing: the icon sits over the backdrop blurs, and any animation there re-renders them every frame. -->
+        <Style Selector="Button#SteamIndicator.connecting PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+        </Style>
+        <Style Selector="Button#SteamIndicator.connected PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource SuccessHoverBrush}" />
         </Style>
 
         <Style Selector="TabItem">
@@ -175,7 +207,7 @@
                 <Border Name="TitleBar">
                     <Grid Height="32" Background="Black" PointerPressed="TitleBar_PointerPressed"
                           ColumnDefinitions="*,32,32,32">
-                        <Button Classes="titlebar-button"
+                        <Button Name="MinimizeButton" Classes="titlebar-button"
                                 Grid.Column="1"
                                 Width="32"
                                 Height="32"
@@ -271,6 +303,41 @@
                         </TabControl>
                     </Border>
                 </Grid>
+
+                <Button Name="SteamIndicator" Grid.Row="1"
+                        Classes.connected="{Binding SettingsTab.IsSteamConnected}"
+                        Classes.connecting="{Binding SettingsTab.IsSteamConnecting}"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Margin="0,0,2,2"
+                        Click="SteamIndicator_Click"
+                        ToolTip.Tip="{Binding SettingsTab.SteamIndicatorTooltip}">
+                    <!-- Opened from SteamIndicator_Click, only while connected. -->
+                    <FlyoutBase.AttachedFlyout>
+                        <!-- Menu icons are Material Design Icons (Apache-2.0): account-check-outline, download, logout. -->
+                        <MenuFlyout Placement="TopEdgeAlignedRight">
+                            <MenuItem Header="{Binding SettingsTab.SteamStatus}" IsEnabled="False">
+                                <MenuItem.Icon>
+                                    <PathIcon Width="14" Height="14"
+                                              Data="M21.1,12.5L22.5,13.91L15.97,20.5L12.5,17L13.9,15.59L15.97,17.67L21.1,12.5M11,4A4,4 0 0,1 15,8A4,4 0 0,1 11,12A4,4 0 0,1 7,8A4,4 0 0,1 11,4M11,6A2,2 0 0,0 9,8A2,2 0 0,0 11,10A2,2 0 0,0 13,8A2,2 0 0,0 11,6M11,13C11.68,13 12.5,13.09 13.41,13.26L11.74,14.93L11,14.9C8.03,14.9 4.9,16.36 4.9,17V18.1H11.1L13,20H3V17C3,14.34 8.33,13 11,13Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="Download KSP2" Command="{Binding SettingsTab.DownloadFromSteamCommand}">
+                                <MenuItem.Icon>
+                                    <PathIcon Width="14" Height="14" Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Sign out of Steam" Command="{Binding SettingsTab.SignOutOfSteamCommand}">
+                                <MenuItem.Icon>
+                                    <PathIcon Width="14" Height="14"
+                                              Data="M17 7L15.59 8.41L18.17 11H8V13H18.17L15.59 15.58L17 17L22 12M4 5H12V3H4C2.9 3 2 3.9 2 5V19C2 20.1 2.9 21 4 21H12V19H4V5Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </FlyoutBase.AttachedFlyout>
+                    <!-- Steam logo path from Simple Icons (CC0). -->
+                    <PathIcon Width="14" Height="14" Data="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z" />
+                </Button>
 
                 <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="{StaticResource ScrimMediumBrush}">
                     <TextBlock Text="Update Downloading..."

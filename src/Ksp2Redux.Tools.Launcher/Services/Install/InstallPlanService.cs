@@ -300,7 +300,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                                    !fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip"));
         if (needsCacheSnapshot)
         {
-            requiredBytes += GetDirectorySize(install);
+            requiredBytes += GetSnapshotSize(install, "", cacheService.IgnoredDirectories);
         }
 
         requiredBytes = (long)(requiredBytes * RequiredSpaceSafetyMargin);
@@ -321,19 +321,29 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
         if (availableBytes < requiredBytes)
         {
-            throw new InvalidOperationException(
+            throw new InsufficientDiskSpaceException(
                 $"Not enough free disk space for {purpose}: need approximately {FormatBytes(requiredBytes)}, " +
-                $"but only {FormatBytes(availableBytes.Value)} is available. Free up some space and try again.");
+                $"but only {FormatBytes(availableBytes.Value)} is available. Free up some space and try again.",
+                path, requiredBytes, availableBytes.Value);
         }
     }
 
-    private long GetDirectorySize(string directory)
+    private long GetSnapshotSize(string directory, string prefix, List<string> ignoredDirectories)
     {
+        if (ignoredDirectories.Contains(prefix)) return 0;
+
         long total = 0;
-        foreach (var file in fileSystem.Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+        var dir = fileSystem.DirectoryInfo.New(directory);
+        foreach (var file in dir.GetFiles())
         {
-            try { total += fileSystem.FileInfo.New(file).Length; }
+            if (file.Name == "uninstall.zip" && prefix == "") continue;
+            try { total += file.Length; }
             catch (IOException) { /* file may have been removed/locked concurrently; ignore for this estimate */ }
+        }
+
+        foreach (var subDir in dir.GetDirectories())
+        {
+            total += GetSnapshotSize(subDir.FullName, fileSystem.Path.Combine(prefix, subDir.Name), ignoredDirectories);
         }
         return total;
     }

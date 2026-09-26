@@ -68,4 +68,24 @@ public static class ExitCode
     /// A running game was found but could not be stopped.
     /// </summary>
     public const int KILL_FAILED = 11;
+
+    /// <summary>
+    /// The command needs a Steam account and none is signed in.
+    /// </summary>
+    public const int STEAM_NOT_SIGNED_IN = 12;
+
+    /// <summary>
+    /// Steam refused the sign-in or could not be reached.
+    /// </summary>
+    public const int STEAM_FAILED = 13;
+
+    /// <summary>
+    /// Downloading the game from Steam failed partway. Running the command again resumes it.
+    /// </summary>
+    public const int DOWNLOAD_FAILED = 14;
+
+    /// <summary>
+    /// The folder asked for does not exist, for example the game data folder before KSP2 has run once.
+    /// </summary>
+    public const int PATH_NOT_FOUND = 15;
 }

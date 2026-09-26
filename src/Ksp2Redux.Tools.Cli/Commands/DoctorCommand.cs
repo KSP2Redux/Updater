@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Spectre.Console;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
@@ -61,6 +62,9 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         }
 
         var detected = context.DetectorService.DetectKsp2InstallLocation();
+        var wineRuntime = context.OperatingSystemService.IsMacOS() ? context.WineRuntimeService.Detect() : null;
+        // The login name is half of the credentials, and this report is meant for pasting into support threads.
+        var steamSignedIn = context.SteamSession.HasSavedLogin;
         var cacheDirectory = context.DownloadCacheDirectory;
         var cacheBytes = DirectorySize(context, cacheDirectory);
 
@@ -76,11 +80,18 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
                 downloadCacheBytes = cacheBytes,
                 detectedInstall = detected,
                 gameDataFolder = context.GameDataFolderService.Resolve(context.InstallService.ActiveEntry),
+                wineRuntime = wineRuntime is null ? null : new { kind = wineRuntime.Kind.ToString(), wine = wineRuntime.WineBinary, prefix = wineRuntime.PrefixPath },
+                rosettaInstalled = context.OperatingSystemService.IsMacOS() ? context.WineRuntimeService.IsRosettaInstalled() : (bool?)null,
+                steamSignedIn,
                 installs,
                 feeds,
                 feedsChecked = !settings.IsOffline,
             },
-            () => WriteReport(context, settings, installs, feeds, detected, cacheDirectory, cacheBytes));
+            () =>
+            {
+                WriteReport(context, settings, installs, feeds, detected, cacheDirectory, cacheBytes);
+                WriteMacAndSteam(context, wineRuntime, steamSignedIn);
+            });
 
         return ExitCode.SUCCESS;
     }
@@ -138,12 +149,40 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
             context.Output.Result("  (the launcher config lists none)");
         }
 
+        var channelWidth = feeds.Max(feed => feed.Channel?.Length ?? 0);
         foreach (var feed in feeds)
         {
             context.Output.Result(feed.Ok
-                ? $"  ok      {feed.Channel}  {feed.Repository} / {feed.Filename}"
+                ? $"  ok      {(feed.Channel ?? "").PadRight(channelWidth)}  {feed.Repository} / {feed.Filename}"
                 : $"  FAILED  {feed.Repository} / {feed.Filename}: {feed.Error}");
         }
+    }
+
+    private static void WriteMacAndSteam(CliContext context, WineRuntime? wineRuntime, bool steamSignedIn)
+    {
+        if (context.OperatingSystemService.IsMacOS())
+        {
+            context.Output.Section("macOS");
+            if (wineRuntime is null)
+            {
+                context.Output.Result("  no Wine runtime found: install the macOS launcher into Applications, or CrossOver");
+            }
+            else
+            {
+                context.Output.Result($"  {"runtime:",-16}" + (wineRuntime.Kind == WineRuntimeKind.Bundled
+                    ? $"bundled with the launcher ({wineRuntime.DisplayName})"
+                    : "the CrossOver app"));
+                WritePath(context, "wine", wineRuntime.WineBinary);
+                WritePath(context, "prefix", wineRuntime.PrefixPath);
+            }
+
+            context.Output.Result($"  {"rosetta:",-16}" + (context.WineRuntimeService.IsRosettaInstalled()
+                ? "installed"
+                : "missing, run: softwareupdate --install-rosetta --agree-to-license"));
+        }
+
+        context.Output.Section("Steam");
+        context.Output.Result(steamSignedIn ? "  signed in" : "  not signed in");
     }
 
     // A path is the one value here long enough to wrap, so on a terminal it is drawn as a path that
@@ -165,7 +204,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         }
 
         Grid grid = new();
-        grid.AddColumn(new GridColumn().NoWrap().Width(LABEL_WIDTH + 4));
+        grid.AddColumn(new GridColumn().NoWrap().Width(LABEL_WIDTH + 4).PadLeft(0).PadRight(0));
         grid.AddColumn();
         grid.AddRow(new Markup($"  [{CliTheme.DETAIL_STYLE}]{Markup.Escape(caption)}[/]"), CliOutput.Render(CliCell.Path(path)));
         context.Output.ResultConsole.Write(grid);
