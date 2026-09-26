@@ -147,10 +147,11 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
             context.Output.Result("  (the launcher config lists none)");
         }
 
+        var channelWidth = feeds.Max(feed => feed.Channel?.Length ?? 0);
         foreach (var feed in feeds)
         {
             context.Output.Result(feed.Ok
-                ? $"  ok      {feed.Channel}  {feed.Repository} / {feed.Filename}"
+                ? $"  ok      {(feed.Channel ?? "").PadRight(channelWidth)}  {feed.Repository} / {feed.Filename}"
                 : $"  FAILED  {feed.Repository} / {feed.Filename}: {feed.Error}");
         }
     }
@@ -197,7 +198,8 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         }
 
         Grid grid = new();
-        grid.AddColumn(new GridColumn().NoWrap().Width(LABEL_WIDTH + 4));
+        // No padding, so the path starts in the same column as the plain values written beside it.
+        grid.AddColumn(new GridColumn().NoWrap().Width(LABEL_WIDTH + 4).PadLeft(0).PadRight(0));
         grid.AddColumn();
         grid.AddRow(new Markup($"  [{CliTheme.DETAIL_STYLE}]{Markup.Escape(caption)}[/]"), CliOutput.Render(CliCell.Path(path)));
         context.Output.ResultConsole.Write(grid);

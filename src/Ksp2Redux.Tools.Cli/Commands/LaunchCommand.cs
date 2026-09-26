@@ -61,7 +61,7 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
             startInfo.Arguments = entry.LaunchArguments;
         }
 
-        return await StartAndReportAsync(context, startInfo, install.ExePath, settings, null, cancellationToken);
+        return await StartAndReportAsync(context, startInfo, install.ExePath, settings, null, cancellationToken, null);
     }
 
     private static async Task<int> LaunchThroughWineAsync(
@@ -99,9 +99,9 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
             context.WineRuntimeService.CreateLaunchInfo(runtime, install.ExePath, install.InstallDir!, entry.LaunchArguments),
             gameOutput);
 
-        context.Output.Detail($"  Wine and game output goes to {gameOutput}");
         var runtimeName = runtime.Kind == WineRuntimeKind.Bundled ? "the launcher's Wine runtime" : "CrossOver";
-        return await StartAndReportAsync(context, startInfo, $"{install.ExePath} through {runtimeName}", settings, runtime.DisplayName, cancellationToken);
+        return await StartAndReportAsync(context, startInfo, $"{install.ExePath} through {runtimeName}", settings, runtime.DisplayName, cancellationToken,
+            $"  Wine and game output goes to {gameOutput}");
     }
 
     private static async Task<int> StartAndReportAsync(
@@ -110,13 +110,18 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
         string description,
         LaunchSettings settings,
         string? runtime,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? detail)
     {
         try
         {
             using Process process = new() { StartInfo = startInfo };
             process.Start();
             context.Output.Heading($"Started {description} (pid {process.Id}).");
+            if (detail is not null)
+            {
+                context.Output.Detail(detail);
+            }
 
             if (!settings.ShouldWait)
             {
