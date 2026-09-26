@@ -58,6 +58,11 @@ public interface IWineRuntimeService
     ProcessStartInfo CreateStopInfo(WineRuntime runtime);
 
     /// <summary>
+    /// Says whether Rosetta 2 is installed. Both runtimes are Intel builds of Wine, so neither starts without it.
+    /// </summary>
+    bool IsRosettaInstalled();
+
+    /// <summary>
     /// Works out where KSP2 keeps its saves inside the detected runtime's prefix.
     /// </summary>
     /// <returns>The folder path, which may not exist yet, or null when no runtime is available.</returns>
@@ -82,6 +87,12 @@ public class WineRuntimeService(
     public const string CROSSOVER_BOTTLE = "KSP2Redux";
     public const string CROSSOVER_APP = "/Applications/CrossOver.app";
     public const string LAUNCHER_APP = "KSP2 Redux.app";
+    public const string ROSETTA_MARKER = "/Library/Apple/usr/share/rosetta/rosetta";
+
+    /// <summary>Tells the player how to install Rosetta 2 when it is missing.</summary>
+    public const string ROSETTA_MISSING_MESSAGE =
+        "KSP2 runs through an Intel build of Wine, which needs Rosetta 2, and Rosetta is not installed on this Mac. " +
+        "Install it by running this in Terminal, then try again:\n\nsoftwareupdate --install-rosetta --agree-to-license";
     private const string CROSSOVER_BIN = "Contents/SharedSupport/CrossOver/bin";
     private const string CROSSOVER_WINDOWS_USER = "crossover";
     private const string PUBLISHER_FOLDER = "Intercept Games";
@@ -187,6 +198,8 @@ public class WineRuntimeService(
 
         return startInfo;
     }
+
+    public bool IsRosettaInstalled() => fileSystem.File.Exists(ROSETTA_MARKER);
 
     public ProcessStartInfo CreateStopInfo(WineRuntime runtime)
     {

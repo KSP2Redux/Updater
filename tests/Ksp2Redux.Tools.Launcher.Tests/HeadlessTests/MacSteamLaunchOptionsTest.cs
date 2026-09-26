@@ -71,4 +71,26 @@ public class MacSteamLaunchOptionsTest
                 It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()),
             Times.Once);
     }
+
+    // The runtime is an Intel build, and macOS only offers to install Rosetta for apps opened from Finder.
+    [AvaloniaTest]
+    public async Task LaunchGame_OnMacOSWithoutRosetta_SaysHowToInstallItAndStartsNothing()
+    {
+        // Arrange
+        Start(isMacOS: true);
+        TestAppBuilder.WineRuntimeService.Setup(w => w.Detect())
+            .Returns(new WineRuntime(WineRuntimeKind.Bundled, "Wine", "/runtime/wine/bin/wine", "/runtime", "/prefix"));
+        TestAppBuilder.WineRuntimeService.Setup(w => w.IsRosettaInstalled()).Returns(false);
+        var home = TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
+
+        // Act
+        await home.LaunchGameCommand.ExecuteAsync(null);
+
+        // Assert
+        TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(
+                "Rosetta Needed", WineRuntimeService.ROSETTA_MISSING_MESSAGE,
+                It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()),
+            Times.Once);
+        TestAppBuilder.WineRuntimeService.Verify(w => w.PrepareAsync(It.IsAny<WineRuntime>(), It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

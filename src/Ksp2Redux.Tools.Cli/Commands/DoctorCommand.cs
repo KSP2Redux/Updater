@@ -81,6 +81,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
                 detectedInstall = detected,
                 gameDataFolder = context.GameDataFolderService.Resolve(context.InstallService.ActiveEntry),
                 wineRuntime = wineRuntime is null ? null : new { kind = wineRuntime.Kind.ToString(), wine = wineRuntime.WineBinary, prefix = wineRuntime.PrefixPath },
+                rosettaInstalled = context.OperatingSystemService.IsMacOS() ? context.WineRuntimeService.IsRosettaInstalled() : (bool?)null,
                 steamSignedIn,
                 installs,
                 feeds,
@@ -174,6 +175,10 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
                 WritePath(context, "wine", wineRuntime.WineBinary);
                 WritePath(context, "prefix", wineRuntime.PrefixPath);
             }
+
+            context.Output.Result($"  {"rosetta:",-16}" + (context.WineRuntimeService.IsRosettaInstalled()
+                ? "installed"
+                : "missing, run: softwareupdate --install-rosetta --agree-to-license"));
         }
 
         context.Output.Section("Steam");

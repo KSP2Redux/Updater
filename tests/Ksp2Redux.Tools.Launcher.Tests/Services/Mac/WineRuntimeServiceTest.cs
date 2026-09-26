@@ -313,4 +313,23 @@ public class WineRuntimeServiceTest
         Assert.That(stop.FileName, Is.EqualTo(CROSSOVER_WINE));
         Assert.That(stop.ArgumentList, Is.EqualTo(new[] { "--bottle", WineRuntimeService.CROSSOVER_BOTTLE, "--", "wineboot", "--kill" }));
     }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void IsRosettaInstalled_FollowsRosettasMarkerFile(bool installed)
+    {
+        // Arrange
+        var fileSystem = NewMacFileSystem();
+        if (installed)
+        {
+            fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(WineRuntimeService.ROSETTA_MARKER)!);
+            fileSystem.File.WriteAllText(WineRuntimeService.ROSETTA_MARKER, "");
+        }
+
+        // Act
+        var result = Build(fileSystem).IsRosettaInstalled();
+
+        // Assert
+        Assert.That(result, Is.EqualTo(installed));
+    }
 }

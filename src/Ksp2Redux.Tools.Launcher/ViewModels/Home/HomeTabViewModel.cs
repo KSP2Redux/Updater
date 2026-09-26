@@ -325,6 +325,13 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
+        if (!_wineRuntimeService.IsRosettaInstalled())
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Rosetta Needed", WineRuntimeService.ROSETTA_MISSING_MESSAGE,
+                icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+
         MainButtonEnabled = false;
         try
         {

@@ -78,6 +78,11 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
                 "Install the macOS KSP2 Redux launcher into Applications, which carries one, or install CrossOver.");
         }
 
+        if (!context.WineRuntimeService.IsRosettaInstalled())
+        {
+            return context.Output.Fail(ExitCode.LAUNCH_FAILED, WineRuntimeService.ROSETTA_MISSING_MESSAGE);
+        }
+
         try
         {
             await context.WineRuntimeService.PrepareAsync(runtime, context.Output.Progress, cancellationToken);
