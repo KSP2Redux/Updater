@@ -3,6 +3,8 @@ name: Build and Release
 on:
     push:
         branches: [ "main" ]
+    # Rebuilds the macOS assets for a release that already exists, when the macOS job failed after publishing.
+    workflow_dispatch:
 
 jobs:
     build:
@@ -109,12 +111,12 @@ jobs:
     # the macOS asset names contain neither.
     macos-runtime:
         needs: build
-        if: needs.build.outputs.tag_exists == 'false'
+        if: needs.build.outputs.tag_exists == 'false' || github.event_name == 'workflow_dispatch'
         uses: ./.github/workflows/macos-runtime.yml
 
     macos:
         needs: [ build, macos-runtime ]
-        if: needs.build.outputs.tag_exists == 'false'
+        if: needs.build.outputs.tag_exists == 'false' || github.event_name == 'workflow_dispatch'
         runs-on: macos-15
         permissions:
             contents: write
@@ -155,6 +157,10 @@ jobs:
                     dxmt="$(jq -r .dxmt <<< "$runtime_json")"
 
                     notes="$(gh release view "$TAG" --json body --jq .body)"
+                    if grep -q '^### macOS runtime' <<< "$notes"; then
+                        echo "The release notes already have the macOS section."
+                        exit 0
+                    fi
                     {
                         printf '%s\n\n' "$notes"
                         printf '### macOS\n\n'
