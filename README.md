@@ -1,6 +1,26 @@
 # KSP2 Redux Updater
 This is the installer, updater and uninstaller application for KSP2 Redux.
 
+## macOS
+
+KSP2 never shipped for the Mac, so the macOS launcher (`KSP2-Redux-macOS-arm64.dmg`, Apple Silicon)
+carries a Wine runtime that runs the Windows game, and can download your copy of KSP2 from Steam.
+
+The launcher is not signed by Apple yet, so macOS asks you to approve it the first time:
+
+1. Open the `.dmg` and drag **KSP2 Redux** into **Applications**.
+2. Open KSP2 Redux. When macOS says it could not verify the app, click **Done**.
+3. Open **System Settings**, go to **Privacy & Security**, and scroll down to **Security**. Next to
+   the message about KSP2 Redux, click **Open Anyway**, then confirm with your password or Touch ID.
+4. Click **Open Anyway** once more when macOS asks. From then on the launcher opens normally, until
+   you download a new version.
+
+If the launcher opens but the game does not start, run this once in Terminal, then try again:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/KSP2 Redux.app"
+```
+
 ## Command line
 
 `redux-launcher-cli` drives the same install path as the launcher window, from a terminal. It reads

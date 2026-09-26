@@ -153,6 +153,23 @@ jobs:
                         printf -- '- `KSP2-Redux-macOS-arm64.dmg`: the launcher for Apple Silicon Macs, with the Wine runtime and the CLI inside\n'
                         # shellcheck disable=SC2016
                         printf -- '- `redux-cli-macos-arm64`: the command line tool on its own, for Apple Silicon Macs\n\n'
+                        cat <<'MACOS_APPROVAL'
+                    #### Opening the launcher the first time
+
+                    The macOS launcher is not signed by Apple yet, so macOS asks you to approve it once:
+
+                    1. Open the `.dmg` and drag **KSP2 Redux** into **Applications**.
+                    2. Open KSP2 Redux. When macOS says it could not verify the app, click **Done**.
+                    3. Open **System Settings**, go to **Privacy & Security**, and scroll down to **Security**. Next to the message about KSP2 Redux, click **Open Anyway**, then confirm with your password or Touch ID.
+                    4. Click **Open Anyway** once more when macOS asks. From then on the launcher opens normally, until you download a new version.
+
+                    If the launcher opens but the game does not start, run this once in Terminal, then try again:
+
+                    ```
+                    xattr -dr com.apple.quarantine "/Applications/KSP2 Redux.app"
+                    ```
+
+                    MACOS_APPROVAL
                         printf '### macOS runtime\n\n'
                         printf 'The macOS download bundles Wine (%s) and DXMT %s, both under the LGPL-2.1.\n\n' "$wine" "$dxmt"
                         # shellcheck disable=SC2016 # the backticks are a Markdown code span
