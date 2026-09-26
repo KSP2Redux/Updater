@@ -62,6 +62,10 @@ public partial class SteamDownloadViewModel : ViewModelBase
 
     public string CloseButtonText => IsRunning ? "Cancel" : "Close";
 
+    /// <summary>
+    /// Downloads KSP2 into <see cref="TargetDirectory"/>, registers it as the active install and raises
+    /// <see cref="Completed"/>. Failures are reported through <see cref="ErrorMessage"/>, not thrown.
+    /// </summary>
     public async Task StartAsync()
     {
         var progress = new Progress<SteamDownloadProgress>(OnProgress);
@@ -101,6 +105,7 @@ public partial class SteamDownloadViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Cancels a running download, or closes the window once it has stopped.</summary>
     [RelayCommand]
     public void Close()
     {
@@ -135,8 +140,6 @@ public partial class SteamDownloadViewModel : ViewModelBase
         var now = _clock.Elapsed;
         _rate.Sample(progress.DownloadedBytes, now);
 
-        // Progress arrives once per chunk, often dozens of times a second. Rewriting the text that often only
-        // makes it churn, so it is refreshed ten times a second, and always for the final report.
         var finished = progress.Stage == "Finished";
         if (!finished && _lastDetailRefresh is { } last && now - last < DETAIL_REFRESH_INTERVAL) return;
         _lastDetailRefresh = now;
@@ -144,7 +147,6 @@ public partial class SteamDownloadViewModel : ViewModelBase
         DetailText = FormatDetail(progress, _rate.BytesPerSecond);
     }
 
-    // The speed keeps its place in the line once measured, so the text doesn't shift about.
     internal static string FormatDetail(SteamDownloadProgress progress, double? bytesPerSecond)
     {
         var speed = bytesPerSecond is { } rate ? $"{FormatBytes((long)Math.Max(0, rate))}/s" : "measuring...";

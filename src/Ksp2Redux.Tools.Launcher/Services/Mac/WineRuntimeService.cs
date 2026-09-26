@@ -6,24 +6,24 @@ using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Mac;
 
+/// <summary>Where a <see cref="WineRuntime"/> comes from.</summary>
 public enum WineRuntimeKind
 {
-    /// <summary>The Wine + DXMT runtime shipped inside the macOS launcher download.</summary>
+    /// <summary>The Wine and DXMT runtime shipped with the macOS launcher.</summary>
     Bundled,
 
-    /// <summary>A CrossOver install the player already has, used through a dedicated bottle.</summary>
+    /// <summary>The player's own CrossOver install, using a dedicated bottle.</summary>
     CrossOver
 }
 
 /// <summary>
 /// A way to run the Windows build of KSP2 on macOS.
 /// </summary>
-/// <param name="Kind">Where the runtime comes from.</param>
 /// <param name="DisplayName">A short name to show the player.</param>
 /// <param name="WineBinary">The <c>wine</c> executable to launch the game with.</param>
-/// <param name="RuntimeRoot">The folder holding the runtime, used to find files it ships for the prefix.</param>
-/// <param name="PrefixPath">The Wine prefix (or CrossOver bottle) the game runs in.</param>
-/// <param name="Environment">Extra environment variables the runtime asks for, from its runtime.json.</param>
+/// <param name="RuntimeRoot">The folder holding the runtime's files.</param>
+/// <param name="PrefixPath">The Wine prefix or CrossOver bottle the game runs in.</param>
+/// <param name="Environment">Extra environment variables from the runtime's <c>runtime.json</c>.</param>
 public sealed record WineRuntime(
     WineRuntimeKind Kind,
     string DisplayName,
@@ -43,11 +43,13 @@ public interface IWineRuntimeService
     /// <summary>
     /// Creates the Wine prefix or CrossOver bottle on first use. Safe to call before every launch.
     /// </summary>
+    /// <exception cref="InvalidOperationException">Setting up the prefix or bottle failed.</exception>
     Task PrepareAsync(WineRuntime runtime, Action<string> log, CancellationToken cancellationToken);
 
     /// <summary>
     /// Builds the process that starts KSP2 inside the runtime.
     /// </summary>
+    /// <param name="arguments">Game arguments, split on spaces. Quoting is not supported.</param>
     ProcessStartInfo CreateLaunchInfo(WineRuntime runtime, string exePath, string workingDirectory, string? arguments);
 
     /// <summary>
@@ -56,7 +58,7 @@ public interface IWineRuntimeService
     ProcessStartInfo CreateStopInfo(WineRuntime runtime);
 
     /// <summary>
-    /// Works out where KSP2 keeps its saves inside the runtime's prefix.
+    /// Works out where KSP2 keeps its saves inside the detected runtime's prefix.
     /// </summary>
     /// <returns>The folder path, which may not exist yet, or null when no runtime is available.</returns>
     string? GetGameDataFolder();
@@ -65,11 +67,8 @@ public interface IWineRuntimeService
 /// <summary>
 /// Runs KSP2 through Wine and DXMT on macOS.
 /// </summary>
-// The bundled runtime lives at Contents/Resources/wine-runtime inside the .app, laid out as the
-// packaging script builds it: wine/ (bin, lib, share, with DXMT already installed into lib/wine),
-// prefix-files/ (copied into drive_c/windows on first run, as DXMT needs winemetal.dll in system32),
-// and runtime.json. A runtime dropped into the launcher's storage folder is picked up as well, which
-// is how a runtime can be tried without rebuilding the app.
+// Bundled runtime layout, set by the packaging script: wine/ with DXMT in lib/wine, runtime.json, and
+// prefix-files/ copied into drive_c/windows because DXMT needs winemetal.dll in system32.
 public class WineRuntimeService(
     IFileSystem fileSystem,
     IEnvironmentProvider environmentProvider,
@@ -126,8 +125,7 @@ public class WineRuntimeService(
                      {
                          "--bottle", CROSSOVER_BOTTLE, "--create", "--template", "win10_64",
                          "--description", "KSP2 Redux",
-                         // DXMT is the open-source Direct3D 11 to Metal layer. It runs KSP2 cleanly and is
-                         // the same backend the bundled runtime uses, so both paths behave alike.
+                         // Same Direct3D 11 to Metal backend as the bundled runtime.
                          "--param", "EnvironmentVariables:CX_GRAPHICS_BACKEND=dxmt"
                      })
             {
@@ -192,8 +190,7 @@ public class WineRuntimeService(
 
     public ProcessStartInfo CreateStopInfo(WineRuntime runtime)
     {
-        // CrossOver keeps its wineserver behind its own wrapper, so its bottle is ended through wineboot,
-        // which the wrapper runs inside the right bottle. The bundled runtime has wineserver beside wine.
+        // CrossOver hides wineserver behind its wrapper, so its bottle is stopped through wineboot.
         if (runtime.Kind == WineRuntimeKind.CrossOver)
         {
             var crossOver = new ProcessStartInfo(runtime.WineBinary) { UseShellExecute = false };
@@ -220,8 +217,7 @@ public class WineRuntimeService(
             "AppData", "LocalLow", PUBLISHER_FOLDER, GAME_FOLDER);
     }
 
-    // Wine names the prefix's Windows user after the macOS account, but builds from CrossOver's
-    // sources (and CrossOver itself) always use "crossover". The prefix knows best once it exists.
+    // Wine names the Windows user after the macOS account, but CrossOver-derived builds always use "crossover".
     private string FindWindowsUser(WineRuntime runtime)
     {
         var users = fileSystem.Path.Combine(runtime.PrefixPath, "drive_c", "users");
@@ -236,8 +232,7 @@ public class WineRuntimeService(
         return runtime.Kind == WineRuntimeKind.CrossOver ? CROSSOVER_WINDOWS_USER : environmentProvider.UserName;
     }
 
-    // wineboot returns before the prefix has finished writing its registry, so wait for the wine
-    // server to settle before the game is started into it.
+    // wineboot returns before the prefix has finished writing its registry.
     private ProcessStartInfo WineServerWait(WineRuntime runtime)
     {
         var wineServer = fileSystem.Path.Combine(fileSystem.Path.GetDirectoryName(runtime.WineBinary)!, "wineserver");
@@ -259,8 +254,6 @@ public class WineRuntimeService(
 
         yield return (fileSystem.Path.Combine(launcherConfigService.GetLocalStorageDirectory(), RUNTIME_FOLDER), false);
 
-        // The standalone CLI lives outside the .app, so it borrows the runtime of the launcher: wherever the
-        // launcher last ran from, then the usual install locations.
         if (!string.IsNullOrWhiteSpace(launcherConfigService.Config.WineRuntimePath))
         {
             yield return (launcherConfigService.Config.WineRuntimePath, false);
@@ -306,14 +299,11 @@ public class WineRuntimeService(
         }
     }
 
-    // Plain Wine takes its configuration from the environment rather than a bottle file.
     private static void ApplyBundledEnvironment(ProcessStartInfo startInfo, WineRuntime runtime)
     {
         startInfo.Environment["WINEDEBUG"] = "-all";
         startInfo.Environment["WINEMSYNC"] = "1";
 
-        // The runtime's own settings go on top. The one that matters today switches off Wine's Mono and
-        // Gecko installers, which otherwise stop the first run on a dialog waiting for a click.
         foreach (var (key, value) in runtime.Environment ?? new Dictionary<string, string>())
         {
             startInfo.Environment[key] = value;

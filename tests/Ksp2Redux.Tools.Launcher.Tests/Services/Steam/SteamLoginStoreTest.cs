@@ -33,7 +33,6 @@ public class SteamLoginStoreTest
         Assert.That(store.Load(), Is.EqualTo(login));
     }
 
-    // Signing out must not leave the refresh token behind on disk.
     [Test]
     public void Clear_RemovesTheSavedToken()
     {
@@ -65,7 +64,6 @@ public class SteamLoginStoreTest
         Assert.That(login, Is.Null);
     }
 
-    // Sizes follow the player's own number format, so the expected strings are pinned to one culture.
     [SetCulture("en-US")]
     [TestCase(512L, "512 B")]
     [TestCase(1536L, "1.5 KB")]

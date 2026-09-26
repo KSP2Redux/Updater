@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 
@@ -168,7 +168,6 @@ public class CliReleaseServiceTest
         Assert.That(release!.AssetName, Is.EqualTo(LINUX_ASSET));
     }
 
-    // Any platform that was not Linux used to get the Windows asset, so a Mac self-update installed an exe.
     [Test]
     public async Task FindLatestAsync_OnMacOS_PicksTheMacAssetOverTheOthers()
     {

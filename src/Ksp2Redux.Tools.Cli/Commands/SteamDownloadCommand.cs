@@ -8,9 +8,7 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// <summary>
 /// Downloads the signed-in player's own copy of KSP2 from Steam and adds it as an install profile.
 /// </summary>
-// This does not need the Steam client, which is what makes it work on macOS, where Steam will not
-// download KSP2 at all. Stopping part way is safe: files already on disk are checked against Steam's
-// manifest and skipped, so running the command again picks up where it left off.
+// Bypasses the Steam client, which will not download KSP2 on macOS.
 public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
 {
     private const string DEFAULT_PROFILE_NAME = "KSP2 (Steam download)";
@@ -57,8 +55,6 @@ public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
         context.Output.Detail($"  into {target}");
         WarnIfShortOfSpace(context, target, size);
 
-        // Tens of gigabytes is not something a script should start by accident, so without a terminal to ask
-        // on it takes --yes.
         switch (CliConfirm.Ask(context.Output, settings.AssumeYes, $"Download {CliFormat.Bytes((long)size)} into {target}?", requireAnswer: true))
         {
             case ConfirmAnswer.Declined:
@@ -74,9 +70,6 @@ public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
         {
             context.FileSystem.Directory.CreateDirectory(target);
 
-            // A progress bar redraws in place, so it can show the file count on every report. As plain lines
-            // that would be one line per file, so there only a change of stage is printed, and the byte
-            // count every so often.
             var animated = context.Output.Capabilities.CanAnimate;
             string? lastStage = null;
             await CliProgressDisplay.RunAsync(context.Output, (log, bytes, _) =>
@@ -126,8 +119,6 @@ public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
         return RegisterProfile(context, settings, exePath);
     }
 
-    // The profile the player just downloaded is the one every following command should act on, so it is
-    // made active whether it is new or was already listed.
     private static int RegisterProfile(CliContext context, SteamDownloadSettings settings, string exePath)
     {
         context.InstallService.TryLoadKsp2Install();
@@ -173,12 +164,12 @@ public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
     }
 
     /// <summary>
-    /// Works out the folder a download goes to.
+    /// Resolves the folder a download goes to.
     /// </summary>
-    /// <param name="context">The context whose file system and home folder are used.</param>
-    /// <param name="folder">The folder the user gave, or null for the Games folder in their home.</param>
+    /// <param name="context">The context supplying the file system and home folder.</param>
+    /// <param name="folder">The folder the user gave, or null for ~/Games.</param>
     /// <returns>An absolute "Kerbal Space Program 2" folder.</returns>
-    // A quoted "~/Games" reaches the command unexpanded, so the tilde is handled here as the shell would.
+    // A quoted "~/Games" reaches the command unexpanded.
     internal static string ResolveTarget(CliContext context, string? folder)
     {
         var fileSystem = context.FileSystem;
@@ -197,7 +188,7 @@ public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
         return SteamDepotDownloader.GameFolderIn(fileSystem, fileSystem.Path.GetFullPath(chosen));
     }
 
-    // Files already in the folder count towards the total, so this only warns rather than refusing.
+    // Only warns, as files already in the folder count towards the size.
     private static void WarnIfShortOfSpace(CliContext context, string target, ulong size)
     {
         var probe = target;
@@ -212,8 +203,7 @@ public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
         }
     }
 
-    // Progress<T> hands each report to the thread pool, where they can arrive out of order and after the
-    // download has finished. Reporting inline keeps the bar in step with the download.
+    // Progress<T> posts to the thread pool, which reorders reports.
     private sealed class ImmediateProgress<T>(Action<T> report) : IProgress<T>
     {
         public void Report(T value) => report(value);

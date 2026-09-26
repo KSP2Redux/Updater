@@ -259,8 +259,7 @@ public partial class HomeTabViewModel : ViewModelBase
         var activeEntry = _ksp2InstallService.ActiveEntry;
         if (activeEntry is null) return;
 
-        // Checked before the Steam option: Steam on macOS cannot run KSP2, so a config that ticked "Launch
-        // through Steam" (on another OS, or before the option was hidden) must not send the launch there.
+        // Before the Steam check: a config may still have LaunchThroughSteam set, and Steam on macOS cannot run KSP2.
         if (_operatingSystemService.IsMacOS())
         {
             await LaunchThroughWine(_ksp2InstallService.Ksp2, activeEntry.LaunchArguments);
@@ -315,9 +314,6 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
-    // KSP2 has no macOS build, so the Windows build runs through Wine with DXMT translating Direct3D 11
-    // to Metal. The first launch creates the prefix, which takes a little while, so progress goes to the
-    // install log panel the same way an install does.
     private async Task LaunchThroughWine(Ksp2Install ksp2, string? launchArguments)
     {
         if (_wineRuntimeService.Detect() is not { } runtime)

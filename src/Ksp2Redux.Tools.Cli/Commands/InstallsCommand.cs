@@ -1,4 +1,4 @@
-﻿using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 
 namespace Ksp2Redux.Tools.Cli.Commands;

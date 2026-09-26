@@ -16,7 +16,7 @@
 set -euo pipefail
 
 REPOSITORY="KSP2Redux/Updater"
-# macOS only has an Apple Silicon build: the Wine runtime the game needs there is Apple Silicon only.
+# The macOS Wine runtime is Apple Silicon only, so there is no Intel macOS build.
 case "$(uname -s)" in
     Darwin)
         if [ "$(uname -m)" != "arm64" ]; then

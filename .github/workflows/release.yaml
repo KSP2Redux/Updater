@@ -96,9 +96,8 @@ jobs:
 
                     gh release edit "$TAG" --draft=false
 
-    # The macOS download is added to the release once it has been published. Launchers only update
-    # themselves on Windows and Linux, and pick their download by "win" or "linux" in the asset name,
-    # so a later asset whose name contains neither can never be offered to them as an update.
+    # Safe to add after publishing: launchers pick updates by "win" or "linux" in the asset name, and
+    # the macOS asset names contain neither.
     macos-runtime:
         needs: build
         if: needs.build.outputs.tag_exists == 'false'

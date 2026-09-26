@@ -6,8 +6,6 @@ using Moq;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
-// The CLI had no way to reach Steam, so on macOS, where Steam will not download KSP2, a CLI user had
-// no way to get the game at all.
 public class SteamCommandsTest
 {
     private const string TARGET = CliCommandHarness.HOME + @"\Games\Kerbal Space Program 2";
@@ -24,7 +22,7 @@ public class SteamCommandsTest
         return harness;
     }
 
-    // Stands in for Steam: writes the game into the folder it was given, as the real download does.
+    // Writes the game files where the real download would.
     private static void DownloadWritesTheGame(CliCommandHarness harness) =>
         harness.Downloader
             .Setup(d => d.DownloadAsync(It.IsAny<uint>(), It.IsAny<string>(), It.IsAny<IProgress<SteamDownloadProgress>>(), It.IsAny<CancellationToken>()))
@@ -64,7 +62,6 @@ public class SteamCommandsTest
         harness.Steam.Verify(s => s.TryResumeAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // No network is not the same as a revoked login: the saved login still works once Steam is back.
     [Test]
     public async Task StatusCheck_SteamUnreachable_IsNotReportedAsSignedOut()
     {
@@ -79,7 +76,7 @@ public class SteamCommandsTest
         Assert.That(exit, Is.EqualTo(ExitCode.STEAM_FAILED));
     }
 
-    // TryResumeAsync forgets a login Steam has revoked, so the saved account is gone afterwards.
+    // The real TryResumeAsync forgets a login Steam has revoked.
     [Test]
     public async Task StatusCheck_LoginRevoked_IsReportedAsSignedOut()
     {
@@ -139,7 +136,6 @@ public class SteamCommandsTest
         harness.Downloader.Verify(d => d.DownloadAsync(It.IsAny<uint>(), It.IsAny<string>(), It.IsAny<IProgress<SteamDownloadProgress>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // A script left running without --yes once started a 30 GB download nobody had agreed to.
     [Test]
     public async Task Download_NoTerminalAndNoYes_DownloadsNothing()
     {
@@ -174,7 +170,6 @@ public class SteamCommandsTest
         Assert.That(harness.Json.GetProperty("added").GetBoolean(), Is.True);
     }
 
-    // Downloading into a folder that already has a profile repairs that copy rather than adding a twin.
     [Test]
     public async Task Download_IntoAnExistingProfile_ReusesItAndMakesItActive()
     {

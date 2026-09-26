@@ -4,7 +4,7 @@ using Ksp2Redux.Tools.Cli.Settings;
 namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
-/// Shows every setting of one install profile, the ones the launcher's Settings tab edits.
+/// Shows every setting of one install profile.
 /// </summary>
 public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
 {

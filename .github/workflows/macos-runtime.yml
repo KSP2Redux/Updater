@@ -1,9 +1,5 @@
-# Builds the Wine + DXMT runtime bundled into the macOS launcher, and hands it on as an artifact.
-#
-# Called by the release workflow, run on its own when the runtime build changes, and startable by
-# hand. Compiling Wine takes the best part of an hour on a hosted runner, so the result is cached,
-# keyed on the build script. build-runtime.sh pins every source by version and checksum, so the same
-# script always produces the same runtime.
+# Wine takes about an hour to compile here, so the result is cached on the build script's hash. That
+# is safe because build-runtime.sh pins every source by version and checksum.
 name: macOS runtime
 
 on:
@@ -38,8 +34,7 @@ jobs:
                     path: artifacts/macos/redux-mac-runtime.tar.xz
                     key: redux-mac-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packaging/macos/build-runtime.sh') }}
 
-            # KSP2 and the Wine built for it are x86_64, so both the build and the checks in it run
-            # under Rosetta, which the hosted images do not always ship with.
+            # The x86_64 Wine build needs Rosetta, which the hosted images do not always include.
             -   name: Make sure Rosetta is installed
                 if: steps.cache.outputs.cache-hit != 'true'
                 run: arch -x86_64 /usr/bin/true 2>/dev/null || sudo softwareupdate --install-rosetta --agree-to-license

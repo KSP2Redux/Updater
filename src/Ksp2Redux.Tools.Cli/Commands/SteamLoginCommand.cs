@@ -60,14 +60,12 @@ public sealed class SteamLoginCommand : ReduxCommand<SteamLoginSettings>
             : settings.Username;
         var password = console.Prompt(new TextPrompt<string>("Password:").Secret());
 
-        // No spinner here: Steam Guard may need to ask for a code partway, and a prompt cannot be drawn
-        // while a spinner holds the terminal.
+        // No spinner: Steam Guard may prompt partway, and a prompt cannot draw while a spinner holds the terminal.
         context.Output.Progress("Signing in to Steam...");
         await context.SteamSession.SignInWithCredentialsAsync(username.Trim(), password, new CliSteamGuardPrompt(context.Output), cancellationToken);
     }
 
-    // Steam replaces the code every so often while it waits, so on a terminal that can redraw the code is
-    // swapped in place. Anywhere else each new code is printed below the last.
+    // Steam rotates the QR code while it waits.
     private static async Task SignInWithQrAsync(CliContext context, CancellationToken cancellationToken)
     {
         var output = context.Output;

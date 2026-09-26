@@ -8,6 +8,7 @@ using QRCoder;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 
+/// <summary>The step the Steam sign-in window is showing.</summary>
 public enum SteamSignInStage
 {
     /// <summary>The QR code and the password form are both on offer.</summary>
@@ -41,7 +42,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         _log = log;
     }
 
-    /// <summary>Raised once the player is signed in, or has closed the window.</summary>
+    /// <summary>Raised when sign-in ends. The argument is true if the player signed in.</summary>
     public event EventHandler<bool>? Completed;
 
     [ObservableProperty]
@@ -74,9 +75,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
 
     public bool IsAwaitingApproval => Stage == SteamSignInStage.AwaitingApproval;
 
-    /// <summary>
-    /// Starts the QR sign-in. Called when the window opens.
-    /// </summary>
+    /// <summary>Starts the QR sign-in, which renews its code until sign-in ends.</summary>
     public void Start() => _ = RunQrSignInAsync();
 
     [RelayCommand]
@@ -88,8 +87,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
             return;
         }
 
-        // Only one sign-in can talk to Steam at a time, so the QR session steps aside while the
-        // password is tried, and comes back if it fails.
+        // Steam allows one sign-in at a time. The QR session restarts if the password fails.
         _qrCancellation?.Cancel();
         _credentialsCancellation = new CancellationTokenSource();
         ErrorMessage = null;
@@ -124,6 +122,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         _guardCode?.TrySetResult(code);
     }
 
+    /// <summary>Abandons sign-in and raises <see cref="Completed"/> with false.</summary>
     [RelayCommand]
     public void Cancel()
     {
@@ -133,16 +132,19 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         Finish(false);
     }
 
+    /// <inheritdoc />
     public Task<string> GetEmailCodeAsync(string email, bool previousCodeWasIncorrect) =>
         AskForCode(previousCodeWasIncorrect
             ? $"That code didn't work. Enter the new code Steam sent to {email}."
             : $"Steam sent a code to {email}. Enter it below.");
 
+    /// <inheritdoc />
     public Task<string> GetDeviceCodeAsync(bool previousCodeWasIncorrect) =>
         AskForCode(previousCodeWasIncorrect
             ? "That code didn't work. Enter the current code from your Steam Mobile App."
             : "Enter the code shown in your Steam Mobile App.");
 
+    /// <inheritdoc />
     public async Task<bool> AcceptDeviceConfirmationAsync()
     {
         // Shown before answering, because Steam starts waiting for the approval as soon as this returns.
@@ -186,7 +188,6 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
             }
             catch (Exception ex)
             {
-                // A QR session that expires or is declined on the phone just starts over with a new code.
                 _log.Info($"Steam QR sign-in restarted: {ex.Message}");
                 await Dispatcher.UIThread.InvokeAsync(() => QrCode = null);
                 try
@@ -207,9 +208,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         Completed?.Invoke(this, signedIn);
     }
 
-    /// <summary>
-    /// Draws the Steam challenge URL as a QR code, dark modules on white so any phone camera reads it.
-    /// </summary>
+    /// <summary>Renders <paramref name="url"/> as a dark-on-white QR code.</summary>
     internal static Bitmap RenderQrCode(string url)
     {
         using var generator = new QRCodeGenerator();

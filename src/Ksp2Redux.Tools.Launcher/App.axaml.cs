@@ -64,7 +64,6 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    // Handlers for the macOS application menu defined in App.axaml.
     private async void AboutMenuItem_OnClick(object? sender, EventArgs e)
     {
         if (_serviceProvider is null) return;

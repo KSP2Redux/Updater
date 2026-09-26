@@ -74,8 +74,6 @@ public class SettingsInputHardeningTest
         Assert.That(ksp2InstallService.Entries, Has.Count.EqualTo(countBefore - 1));
     }
 
-    // Removing the only install used to be blocked. Having none is a valid state the launcher already
-    // handles like a first run, so it is allowed.
     [AvaloniaTest]
     public async Task RemoveSelectedInstall_OnlyInstall_CanBeRemoved()
     {

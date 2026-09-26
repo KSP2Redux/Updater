@@ -7,7 +7,7 @@ using Ksp2Redux.Tools.Launcher.Services.Install;
 namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
-/// Deletes a KSP2 install's game files from disk and removes its profile, the CLI's Uninstall KSP2.
+/// Deletes a KSP2 install's game files from disk and removes its profile.
 /// </summary>
 public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
 {

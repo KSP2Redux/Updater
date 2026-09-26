@@ -1,4 +1,4 @@
-﻿namespace Ksp2Redux.Tools.Cli.Infrastructure;
+namespace Ksp2Redux.Tools.Cli.Infrastructure;
 
 /// <summary>
 /// Process exit codes returned by the CLI commands.

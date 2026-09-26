@@ -2,8 +2,7 @@ using Ksp2Redux.Tools.Cli.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
-// The first terminal QR code came out inverted, dark modules drawn white, which phone scanners reject.
-// The light modules, quiet zone included, are the ones drawn, so they show white on black.
+// Light modules, quiet zone included, are the drawn ones, so the code shows white on black.
 public class CliQrCodeTest
 {
     private const string URL = "https://s.team/q/1/7394829384729384729";

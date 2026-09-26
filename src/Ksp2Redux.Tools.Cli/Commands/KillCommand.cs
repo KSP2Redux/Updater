@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -116,9 +116,7 @@ public sealed class KillCommand : ReduxCommand<KillSettings>
         return Task.FromResult(failures.Count == 0 ? ExitCode.SUCCESS : ExitCode.KILL_FAILED);
     }
 
-    // The game runs inside a Wine session with helper processes of its own, and ending the session is what
-    // actually frees the game's files and the prefix. The pids are killed directly only when there is no
-    // runtime to end the session with, or it did not work.
+    // Only ending the Wine session frees the game's files and prefix. Killing pids is the fallback.
     private static async Task<int> KillUnderWineAsync(CliContext context, KillSettings settings, CancellationToken cancellationToken)
     {
         var pids = CliWineProcesses.FindGame();

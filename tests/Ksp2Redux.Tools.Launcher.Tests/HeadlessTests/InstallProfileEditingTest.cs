@@ -16,8 +16,6 @@ using Moq;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 
-// The profile name was a text box saving on every keystroke with no way to leave it, hidden settings rows
-// left uneven gaps, and text fields had no way to commit short of clicking another control.
 public class InstallProfileEditingTest
 {
     private static (MainWindow Window, SettingsTabViewModel Settings) Start(bool isMacOS = true)
@@ -176,7 +174,6 @@ public class InstallProfileEditingTest
         Assert.That(settings.SelectedInstall.LaunchArguments, Is.EqualTo("-popupwindow -force-d3d11"));
     }
 
-    // Hidden rows (the Steam ones on macOS, an empty error line) used to still take up row spacing.
     [AvaloniaTest]
     public void FieldRows_WithHiddenRowsBetween_AreEvenlySpaced()
     {
@@ -203,7 +200,7 @@ public class InstallProfileEditingTest
         Assert.That(gaps, Is.All.EqualTo(panel.Spacing).Within(0.01));
     }
 
-    // The label column is as wide as the longest label, and a long one pushed Download KSP2 onto a second line.
+    // The label column is as wide as the longest label.
     [AvaloniaTest]
     public void ProfileButtons_AtMinimumWindowWidth_FitOnOneLine([Values(true, false)] bool isMacOS)
     {

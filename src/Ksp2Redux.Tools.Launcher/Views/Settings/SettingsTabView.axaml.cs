@@ -24,7 +24,6 @@ public partial class SettingsTabView : UserControl
         Focusable = true;
 
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
-        // Clicking empty space is how people expect to leave a text field. Nothing else takes focus from it here.
         AddHandler(PointerPressedEvent, OnPointerPressedAnywhere, RoutingStrategies.Tunnel);
     }
 
@@ -40,7 +39,7 @@ public partial class SettingsTabView : UserControl
     {
         if (e.PropertyName != nameof(SettingsTabViewModel.IsRenamingInstall) || !Model.IsRenamingInstall) return;
 
-        // The box only becomes focusable once the binding has made it visible, which happens after this handler.
+        // Posted because the box is not focusable until its visibility binding updates, after this handler.
         Dispatcher.UIThread.Post(() =>
         {
             if (this.FindControl<TextBox>("RenameBox") is not { } box) return;
@@ -49,8 +48,7 @@ public partial class SettingsTabView : UserControl
         });
     }
 
-    // Escape never gets here: the window's key bindings run first, and MainWindowViewModel.HandleEscape cancels
-    // a rename there.
+    // Escape never arrives: window key bindings run first, and MainWindowViewModel.HandleEscape cancels the rename.
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter || e.Source is not TextBox { AcceptsReturn: false } box) return;

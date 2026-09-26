@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Ksp2Redux.Tools.Cli.Commands;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;

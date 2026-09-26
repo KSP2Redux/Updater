@@ -9,7 +9,7 @@
         <local:ViewLocator/>
     </Application.DataTemplates>
 
-    <!-- macOS application menu (ignored on Windows/Linux, which use no menu bar) -->
+    <!-- macOS application menu. Other platforms ignore it. -->
     <NativeMenu.Menu>
         <NativeMenu>
             <NativeMenuItem Header="About KSP2 Redux" Click="AboutMenuItem_OnClick" />

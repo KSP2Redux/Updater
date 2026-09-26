@@ -13,10 +13,7 @@ using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
-/// <summary>
-/// A CLI context over a mock file system, with the real config and install services and everything that
-/// reaches outside the process mocked. Commands run in JSON mode with no terminal, as a script would run them.
-/// </summary>
+/// <summary>A CLI context over a mock file system with real config and install services, run in JSON mode with no terminal.</summary>
 internal sealed class CliCommandHarness
 {
     public const string STORAGE = @"C:\AppDataLocal";
@@ -55,7 +52,6 @@ internal sealed class CliCommandHarness
 
     public IKsp2InstallService Installs => Context.InstallService;
 
-    /// <summary>The JSON document the command wrote to stdout.</summary>
     public JsonElement Json => JsonDocument.Parse(Results.ToString()).RootElement;
 
     /// <summary>Lays out a KSP2 folder the launcher recognises as an install and returns its exe path.</summary>

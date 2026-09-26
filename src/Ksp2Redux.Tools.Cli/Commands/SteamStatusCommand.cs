@@ -31,8 +31,7 @@ public sealed class SteamStatusCommand : ReduxCommand<SteamStatusSettings>
 
         var connected = await context.Output.StatusAsync("Connecting to Steam", _ => session.TryResumeAsync(cancellationToken));
 
-        // TryResumeAsync forgets a login Steam has revoked, so a missing saved login afterwards tells a
-        // refused login apart from a Steam that could not be reached.
+        // TryResumeAsync forgets a revoked login, which tells a refusal apart from Steam being unreachable.
         if (!connected && !session.HasSavedLogin)
         {
             context.Output.Warn($"Steam no longer accepts the saved login for {account}.");

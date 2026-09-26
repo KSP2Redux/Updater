@@ -28,8 +28,7 @@ public sealed class CliSteamGuardPrompt(CliOutput output) : ISteamGuardPrompt
         return Task.FromResult(true);
     }
 
-    // Steam Guard codes are five letters and digits and are case-insensitive, but Steam expects them
-    // upper case.
+    // Steam expects Steam Guard codes upper case.
     private string AskCode(string question, string where)
     {
         TextPrompt<string> prompt = new($"{Markup.Escape(question)} [bold]{Markup.Escape(where)}[/]:");

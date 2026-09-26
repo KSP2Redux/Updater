@@ -27,6 +27,7 @@ public interface ISteamGuardPrompt
 /// </summary>
 public sealed record SteamAccount(string AccountName, string? PersonaName)
 {
+    /// <summary>The persona name, or the account name when there is none.</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(PersonaName) ? AccountName : PersonaName;
 }
 
@@ -41,6 +42,7 @@ public sealed record SteamConnection(SteamClient Client, SteamApps Apps, SteamCo
 public class SteamSignInException(string message, EResult result = EResult.Fail, Exception? inner = null)
     : Exception(message, inner)
 {
+    /// <summary>Steam's result code for the failure.</summary>
     public EResult Result { get; } = result;
 }
 
@@ -48,6 +50,7 @@ public interface ISteamSessionService
 {
     bool IsSignedIn { get; }
 
+    /// <summary>The signed-in account, or null when not signed in.</summary>
     SteamAccount? Account { get; }
 
     /// <summary>The live connection, or null when not signed in.</summary>
@@ -59,17 +62,20 @@ public interface ISteamSessionService
     /// <summary>The account name of the saved login, or null when there is none.</summary>
     string? SavedAccountName { get; }
 
+    /// <summary>Raised after signing in or out, and when the connection drops. May be raised on a background thread.</summary>
     event EventHandler? SignInChanged;
 
     /// <summary>
     /// Signs in by having the player scan a QR code with the Steam Mobile App.
     /// </summary>
     /// <param name="onChallengeUrl">Receives the URL to encode as a QR code, again each time Steam rotates it.</param>
+    /// <exception cref="SteamSignInException">Steam refused the sign-in.</exception>
     Task SignInWithQrAsync(Action<string> onChallengeUrl, CancellationToken cancellationToken);
 
     /// <summary>
     /// Signs in with an account name and password, answering Steam Guard through <paramref name="guard"/>.
     /// </summary>
+    /// <exception cref="SteamSignInException">Steam refused the sign-in.</exception>
     Task SignInWithCredentialsAsync(string accountName, string password, ISteamGuardPrompt guard, CancellationToken cancellationToken);
 
     /// <summary>
@@ -83,11 +89,8 @@ public interface ISteamSessionService
 }
 
 /// <summary>
-/// Signs in to Steam with SteamKit2, the same protocol the Steam client uses.
+/// Signs in to Steam with SteamKit2, without needing the Steam client installed.
 /// </summary>
-// Nothing here needs the Steam client to be installed, which is the point: on macOS Steam will not
-// download KSP2 at all, and on Windows and Linux this lets the launcher fetch a clean copy that
-// Steam's own updates never touch.
 public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) : ISteamSessionService
 {
     private const string DEVICE_NAME = "KSP2 Redux Launcher";
@@ -299,8 +302,7 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
             throw new SteamSignInException(DescribeFailure(loggedOn.Result), loggedOn.Result);
         }
 
-        // The persona name arrives in its own callback shortly after logon. It is only cosmetic, so give
-        // it a moment rather than making the whole sign-in wait on it.
+        // The persona name arrives in a separate callback. Give it a moment without blocking sign-in on it.
         for (var i = 0; i < 20 && _personaName is null; i++)
         {
             await Task.Delay(50, cancellationToken);

@@ -65,7 +65,6 @@ public class WineRuntimeServiceTest
         Assert.That(runtime.DisplayName, Is.EqualTo("Wine 10.10 + DXMT"));
     }
 
-    // Lets a runtime be tried by dropping it into the storage folder, without rebuilding the app.
     [Test]
     public void Detect_RuntimeInStorageFolder_IsFound()
     {
@@ -96,7 +95,6 @@ public class WineRuntimeServiceTest
             Is.EqualTo("/Users/player/Library/Application Support/CrossOver/Bottles/KSP2Redux"));
     }
 
-    // A runtime.json pointing at a missing wine binary is a broken runtime, not one to launch with.
     [Test]
     public void Detect_ManifestWithoutWineBinary_IsIgnored()
     {
@@ -197,7 +195,7 @@ public class WineRuntimeServiceTest
         Assert.That(fileSystem.File.ReadAllText(copied), Is.EqualTo("dxmt"));
     }
 
-    // Without this the first run stops on Wine's Mono installer dialog, waiting for a click.
+    // Disabling mscoree stops Wine's Mono installer dialog from blocking the first run.
     [Test]
     public void CreateLaunchInfo_Bundled_AppliesTheRuntimesEnvironment()
     {
@@ -231,8 +229,7 @@ public class WineRuntimeServiceTest
         Assert.That(folder, Does.Contain("/drive_c/users/crossover/AppData/LocalLow/"));
     }
 
-    // The standalone CLI is not inside the .app, so it has to be told where the launcher's runtime is,
-    // or it falls back to CrossOver and a different prefix with none of the launcher's saves.
+    // The standalone CLI lives outside the .app and would otherwise fall back to CrossOver's prefix.
     [Test]
     public void Detect_FromTheApp_RemembersWhereTheRuntimeIs()
     {

@@ -6,9 +6,7 @@ namespace Ksp2Redux.Tools.Cli.Infrastructure;
 /// <summary>
 /// Finds KSP2 and gives it somewhere to write when it runs under Wine on macOS.
 /// </summary>
-// Under Wine every process is named "wine" as far as .NET can see, so looking the game up by name
-// finds nothing. Wine does set each process's command name to the Windows program it runs, which ps
-// reports, so that is what the game is found by.
+// Under Wine every process is named "wine" to .NET, but ps reports the Windows program as the command.
 public static class CliWineProcesses
 {
     /// <summary>
@@ -72,8 +70,7 @@ public static class CliWineProcesses
     /// <param name="launch">The launch to wrap.</param>
     /// <param name="logPath">The file to write, replaced on every launch.</param>
     /// <returns>A launch that runs the same program with the same pid, arguments and environment.</returns>
-    // The game outlives the CLI that started it, and without this Unity and DXMT keep writing into
-    // whatever terminal that was, long after its prompt came back. exec keeps the pid the game's own.
+    // The game outlives the CLI and would keep writing into its terminal. exec keeps the game's pid.
     public static ProcessStartInfo WithOutputTo(ProcessStartInfo launch, string logPath)
     {
         ProcessStartInfo wrapped = new("/bin/sh")

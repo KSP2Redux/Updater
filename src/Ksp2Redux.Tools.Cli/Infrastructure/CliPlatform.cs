@@ -25,7 +25,6 @@ public static class CliPlatforms
     /// <summary>
     /// Gets the platform the operating system service reports.
     /// </summary>
-    /// <param name="operatingSystem">The service answering which platform this is.</param>
     /// <returns>The running platform, Windows when it is neither Linux nor macOS.</returns>
     public static CliPlatform Current(IOperatingSystemService operatingSystem) =>
         operatingSystem.IsLinux() ? CliPlatform.Linux

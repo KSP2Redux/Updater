@@ -2,7 +2,7 @@ using Ksp2Redux.Tools.Cli.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
-// Under Wine every process is "wine" to .NET, so kill on macOS found nothing even with the game running.
+// Under Wine, .NET sees every process as "wine".
 public class CliWineProcessesTest
 {
     [Test]

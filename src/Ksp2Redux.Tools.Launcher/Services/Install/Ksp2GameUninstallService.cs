@@ -4,21 +4,23 @@ using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
+/// <summary>How a KSP2 install can be removed.</summary>
 public enum Ksp2GameRemovalKind
 {
     /// <summary>The folder is a KSP2 install the launcher can delete itself.</summary>
     DeleteFolder,
 
-    /// <summary>The folder belongs to a Steam library, so Steam has to uninstall it or it goes on thinking it is installed.</summary>
+    /// <summary>The install belongs to a Steam library and must be uninstalled through Steam.</summary>
     UninstallThroughSteam,
 
     /// <summary>The folder is already gone.</summary>
     Missing,
 
-    /// <summary>The folder does not look like a KSP2 install, so nothing may be deleted.</summary>
+    /// <summary>The folder does not look like a KSP2 install.</summary>
     NotAGameFolder
 }
 
+/// <summary>The outcome of inspecting a KSP2 install for removal.</summary>
 /// <param name="Kind">How the game can be removed.</param>
 /// <param name="Folder">The install folder, the one holding KSP2_x64.exe.</param>
 public sealed record Ksp2GameRemoval(Ksp2GameRemovalKind Kind, string Folder);
@@ -38,8 +40,7 @@ public interface IKsp2GameUninstallService
 }
 
 /// <summary>
-/// Removes a KSP2 install from disk. Saves and settings live in the game data folder, not the install
-/// folder, so they survive it.
+/// Removes KSP2 installs from disk. Saves live in the game data folder and are kept.
 /// </summary>
 public class Ksp2GameUninstallService(IFileSystem fileSystem, ILogService log) : IKsp2GameUninstallService
 {
@@ -54,9 +55,7 @@ public class Ksp2GameUninstallService(IFileSystem fileSystem, ILogService log) :
             return new Ksp2GameRemoval(Ksp2GameRemovalKind.Missing, folder ?? string.Empty);
         }
 
-        // A recursive delete of whatever folder a profile points at is only safe when that folder is
-        // unmistakably the game. Someone pointing a profile at an exe dropped in their Downloads folder
-        // must not lose the rest of Downloads.
+        // Refuse anything that is not unmistakably a KSP2 folder: this is a recursive delete.
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(folder, Ksp2Install.KSP2_EXE_NAME)) ||
             !fileSystem.Directory.Exists(fileSystem.Path.Combine(folder, DATA_FOLDER_NAME)))
         {
@@ -76,7 +75,7 @@ public class Ksp2GameUninstallService(IFileSystem fileSystem, ILogService log) :
         log.Info($"Deleting KSP2 install at {removal.Folder}.");
         await Task.Run(() =>
         {
-            // Directory.Delete refuses read-only files on Windows, and some game files ship read-only.
+            // Directory.Delete refuses read-only files on Windows.
             foreach (var file in fileSystem.Directory.EnumerateFiles(removal.Folder, "*", SearchOption.AllDirectories))
             {
                 var attributes = fileSystem.File.GetAttributes(file);

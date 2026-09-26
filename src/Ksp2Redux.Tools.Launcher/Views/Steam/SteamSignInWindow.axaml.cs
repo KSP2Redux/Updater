@@ -4,6 +4,7 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 
 namespace Ksp2Redux.Tools.Launcher.Views.Steam;
 
+/// <summary>Signs the player in to Steam. Closes with true if sign-in succeeded.</summary>
 public partial class SteamSignInWindow : Window
 {
     private bool _completed;
@@ -33,7 +34,6 @@ public partial class SteamSignInWindow : Window
         };
         Closing += (_, _) =>
         {
-            // Closing with the window's own button has to stop the sign-in that is still waiting on Steam.
             if (_completed) return;
             _completed = true;
             viewModel.Cancel();

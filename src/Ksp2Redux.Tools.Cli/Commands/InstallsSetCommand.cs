@@ -4,7 +4,7 @@ using Ksp2Redux.Tools.Cli.Settings;
 namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
-/// Changes an install profile's path and launch settings, the ones the launcher's Settings tab edits.
+/// Changes an install profile's path and launch settings.
 /// </summary>
 public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
 {

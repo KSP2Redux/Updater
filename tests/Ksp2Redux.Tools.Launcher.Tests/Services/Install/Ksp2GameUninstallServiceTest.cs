@@ -40,7 +40,6 @@ public class Ksp2GameUninstallServiceTest
         Assert.That(removal, Is.EqualTo(new Ksp2GameRemoval(Ksp2GameRemovalKind.DeleteFolder, GAME)));
     }
 
-    // A profile pointed at a lone exe in Downloads must never take the rest of Downloads with it.
     [Test]
     public void Inspect_ExeWithoutTheGameDataBesideIt_IsNotDeletable()
     {
@@ -81,7 +80,6 @@ public class Ksp2GameUninstallServiceTest
         Assert.That(removal.Kind, Is.EqualTo(Ksp2GameRemovalKind.UninstallThroughSteam));
     }
 
-    // Copied into a Steam library by hand: Steam does not know about it, so the launcher deletes it itself.
     [Test]
     public void Inspect_InSteamLibraryWithoutSteamManifest_CanBeDeleted()
     {

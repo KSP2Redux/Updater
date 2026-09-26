@@ -31,7 +31,7 @@
         <KeyBinding Gesture="Ctrl+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
         <KeyBinding Gesture="Ctrl+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
         <KeyBinding Gesture="Ctrl+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
-        <!-- macOS equivalents (Cmd+1..4); Meta is unbound on Windows/Linux keyboards in practice -->
+        <!-- macOS: Cmd+1..4 -->
         <KeyBinding Gesture="Meta+D1" Command="{Binding GoToTabCommand}" CommandParameter="0" />
         <KeyBinding Gesture="Meta+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
         <KeyBinding Gesture="Meta+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
@@ -95,8 +95,6 @@
             </Style>
         </Style>
 
-        <!-- Steam connection indicator in the bottom-right corner: grey when signed out or
-             offline, pulsing amber while connecting, green once connected. -->
         <Style Selector="Button#SteamIndicator">
             <Setter Property="Width" Value="24" />
             <Setter Property="Height" Value="24" />
@@ -315,7 +313,6 @@
                     </Border>
                 </Grid>
 
-                <!-- Steam connection indicator, in the corner of the window's content margin. -->
                 <Button Name="SteamIndicator" Grid.Row="1"
                         Classes.connected="{Binding SettingsTab.IsSteamConnected}"
                         Classes.connecting="{Binding SettingsTab.IsSteamConnecting}"
@@ -323,7 +320,7 @@
                         Margin="0,0,2,2"
                         Click="SteamIndicator_Click"
                         ToolTip.Tip="{Binding SettingsTab.SteamIndicatorTooltip}">
-                    <!-- Shown by SteamIndicator_Click while connected. Otherwise a click reconnects. -->
+                    <!-- Opened from SteamIndicator_Click, only while connected. -->
                     <FlyoutBase.AttachedFlyout>
                         <!-- Menu icons are Material Design Icons (Apache-2.0): account-check-outline, download, logout. -->
                         <MenuFlyout Placement="TopEdgeAlignedRight">

@@ -2,8 +2,7 @@
 #
 # Builds the macOS download of the KSP2 Redux launcher: an Apple Silicon .app with the Wine + DXMT
 # runtime inside it, packed into a .dmg, plus the command line tool (inside the app, and on its own as
-# redux-cli-macos-arm64). Only the macOS download carries the runtime. The Windows and
-# Linux builds are unchanged.
+# redux-cli-macos-arm64).
 #
 #   packaging/macos/build-mac-app.sh --runtime path/to/redux-mac-runtime.tar.xz
 #   packaging/macos/build-mac-app.sh --runtime path/to/wine-runtime-folder --no-dmg
@@ -27,7 +26,7 @@ while [ $# -gt 0 ]; do
         --runtime) RUNTIME="${2:-}"; shift 2 ;;
         --output) OUTPUT="${2:-}"; shift 2 ;;
         --no-dmg) MAKE_DMG="false"; shift ;;
-        -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "error: unknown argument $1" >&2; exit 1 ;;
     esac
 done
@@ -59,29 +58,26 @@ else
     echo "==> No runtime given: this build launches the game through CrossOver when it is installed"
 fi
 
-# The CLI rides inside the app so it finds the runtime beside it, the same way the launcher does, and is
-# also written out on its own as the release asset. That name must avoid "win" and "linux" as well.
+# The CLI also goes inside the app so it finds the bundled runtime the same way the launcher does.
 echo "==> Building the command line tool ($RID)"
 CLI_PUBLISH="$OUTPUT/cli-publish"
 rm -rf "$CLI_PUBLISH"
 dotnet publish "$CLI_PROJECT" -c Release -r "$RID" --self-contained true -p:PublishSingleFile=true \
     -o "$CLI_PUBLISH" -v:minimal -nologo
 cp "$CLI_PUBLISH/redux-launcher-cli" "$APP/Contents/MacOS/redux-launcher-cli"
-# Removed first rather than copied over: macOS caches a binary's signature against the file, and one
-# overwritten in place is killed on its next launch.
+# macOS kills a signed binary that was overwritten in place, so replace it instead.
 rm -f "$OUTPUT/redux-cli-macos-arm64"
 cp "$CLI_PUBLISH/redux-launcher-cli" "$OUTPUT/redux-cli-macos-arm64"
 codesign --force --sign - "$OUTPUT/redux-cli-macos-arm64"
 rm -rf "$CLI_PUBLISH"
 
-# Ad-hoc signing lets the app run on Apple Silicon. A release build should be signed with the team's
-# Developer ID and notarized instead, or Gatekeeper warns on first open.
+# Ad-hoc only: without a Developer ID signature and notarization, Gatekeeper warns on first open.
 echo "==> Signing (ad-hoc)"
 codesign --force --deep --sign - "$APP"
 
 if [ "$MAKE_DMG" = "true" ]; then
-    # The launcher's self-updater picks release assets by name and matches "win" and "linux" anywhere
-    # in it, so the file name must avoid both (which rules out "darwin").
+    # The launcher's updater matches asset names containing "win" or "linux", so release asset names
+    # must avoid both, including "darwin".
     DMG="$OUTPUT/KSP2-Redux-macOS-arm64.dmg"
     echo "==> Creating $DMG"
     rm -f "$DMG"

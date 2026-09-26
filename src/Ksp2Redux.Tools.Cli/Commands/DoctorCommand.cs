@@ -198,7 +198,6 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         }
 
         Grid grid = new();
-        // No padding, so the path starts in the same column as the plain values written beside it.
         grid.AddColumn(new GridColumn().NoWrap().Width(LABEL_WIDTH + 4).PadLeft(0).PadRight(0));
         grid.AddColumn();
         grid.AddRow(new Markup($"  [{CliTheme.DETAIL_STYLE}]{Markup.Escape(caption)}[/]"), CliOutput.Render(CliCell.Path(path)));

@@ -8,8 +8,7 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Services.Steam;
 
 public class SteamDepotDownloaderTest
 {
-    // The depots section as Steam returned it for app 954850 on 2026-09-23: one real Windows depot and
-    // empty macOS and Linux placeholders.
+    // The depots section Steam returned for app 954850 on 2026-09-23.
     private static KeyValue Ksp2DepotsSection()
     {
         var depots = new KeyValue("depots");
@@ -113,7 +112,7 @@ public class SteamDepotDownloaderTest
         Assert.That(path, Is.EqualTo(fileSystem.Path.Combine("/games/ksp2", "KSP2_x64_Data", "Plugins", "steam_api64.dll")));
     }
 
-    // A manifest is data from the network, so a file name must never be able to write outside the install.
+    // Manifest file names come from the network.
     [Test]
     public void ResolveInside_PathEscapingTheInstall_Throws()
     {
@@ -130,7 +129,6 @@ public class SteamDepotDownloaderTest
         return new SteamDepotDownloader(new Mock<ISteamSessionService>().Object, fileSystem, new Mock<ILogService>().Object);
     }
 
-    // Picking a parent folder such as Games must not scatter the game's files across it.
     [TestCase(@"C:\Games", @"C:\Games\Kerbal Space Program 2")]
     [TestCase(@"C:\Games\", @"C:\Games\Kerbal Space Program 2")]
     [TestCase(@"C:\Games\Kerbal Space Program 2", @"C:\Games\Kerbal Space Program 2")]

@@ -54,9 +54,7 @@ jobs:
                     # No command means usage, which is exit code 1 rather than a crash.
                     ./publish/cli/redux-launcher-cli && exit 1 || test $? -eq 1
 
-    # The launcher also ships as a macOS app, which the Linux job above never builds. This runs the
-    # tests on macOS, where file permissions and paths behave differently, and builds the .app the same
-    # way the release does, without the Wine runtime, which has its own workflow.
+    # The Wine runtime is left out here, as it has its own workflow.
     macos:
         runs-on: macos-15
 

@@ -25,7 +25,7 @@
 		<Style Selector="Grid.field">
 			<Setter Property="ColumnSpacing" Value="12" />
 		</Style>
-		<!-- Every field row is at least as tall as a text box, so rows holding only a checkbox space out the same. -->
+		<!-- TextBox height, so checkbox-only rows space out the same. -->
 		<Style Selector="Grid.field > :is(Control)">
 			<Setter Property="MinHeight" Value="32" />
 		</Style>
@@ -71,8 +71,7 @@
 			<Border Grid.Row="1" Margin="0,4,0,0" Padding="14"
 			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
 			        CornerRadius="{StaticResource RadiusMedium}">
-				<!-- A stack rather than one grid: a grid still spends its row spacing on rows whose contents are
-				     hidden, which is what made the gaps between fields uneven. -->
+				<!-- A Grid spends RowSpacing on hidden rows, a StackPanel does not. -->
 				<StackPanel Classes="form" Grid.IsSharedSizeScope="True">
 					<TextBlock Classes="section-title">INSTALL PROFILE</TextBlock>
 
@@ -114,8 +113,7 @@
 							</Button>
 						</Grid>
 
-						<!-- Wraps rather than spilling past the column when the window or the font is narrower than expected.
-						     The negative bottom margin cancels the last line's button margin. -->
+						<!-- The negative bottom margin cancels the last line's button margin. -->
 						<WrapPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,-6">
 							<Button Margin="0,0,6,6" Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
 							        ToolTip.Tip="Add a profile for another KSP2 install on this computer">Add</Button>
@@ -126,8 +124,7 @@
 							<Button Margin="0,0,6,6" Command="{Binding OpenInstallFolderCommand}"
 							        IsEnabled="{Binding HasSelectedInstall}"
 							        ToolTip.Tip="Open this install's folder in your file browser.">Open Folder</Button>
-							<!-- Disabled buttons do not show tooltips by default, and the disabled one is the one
-							     that needs explaining. -->
+							<!-- The tooltip explains the disabled state, so it must show while disabled. -->
 							<Button Margin="0,0,6,6" Command="{Binding DownloadFromSteamCommand}"
 							        IsEnabled="{Binding CanDownloadFromSteam}"
 							        ToolTip.ShowOnDisabled="True"
@@ -210,7 +207,7 @@
 						           ToolTip.Tip="Arguments passed to KSP2_x64.exe on launch. Ignored when 'Launch via Steam' is enabled.">Launch arguments</TextBlock>
 						<TextBox Grid.Column="1" HorizontalAlignment="Stretch"
 						         Text="{Binding SelectedInstall.LaunchArguments, Mode=TwoWay, UpdateSourceTrigger=LostFocus}">
-							<!-- Always editable where Steam launching is not offered, even if an old config ticked it. -->
+							<!-- Editable where Steam launching is unsupported, even if the config still ticks it. -->
 							<TextBox.IsEnabled>
 								<MultiBinding Converter="{x:Static BoolConverters.Or}">
 									<Binding Path="!SelectedInstall.LaunchThroughSteam" />

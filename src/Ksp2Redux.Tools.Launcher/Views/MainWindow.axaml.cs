@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -69,10 +69,7 @@ public partial class MainWindow : Window
 
     private readonly bool _isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
-    // macOS gets the native traffic lights (always top-left - an OS convention) layered
-    // over our custom titlebar via ExtendClientArea; the hand-drawn Windows-style caption
-    // buttons and the manual resize grips only exist because the other platforms run with
-    // no system decorations at all.
+    // Native traffic lights replace the drawn caption buttons and resize grips on macOS.
     private void ApplyMacChrome()
     {
         WindowDecorations = WindowDecorations.Full;
@@ -224,8 +221,6 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }
 
-    // While connected the Steam icon opens its menu (download, sign out). Otherwise it reconnects or
-    // signs in straight away, since that is the only useful thing to do.
     private void SteamIndicator_Click(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel || sender is not Control indicator) return;

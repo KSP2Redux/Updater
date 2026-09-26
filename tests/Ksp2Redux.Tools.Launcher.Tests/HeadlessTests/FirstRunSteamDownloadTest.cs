@@ -14,9 +14,6 @@ using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 
-// Starting with no installs asked "Download it now?" before the main window existed, so the prompt had no
-// owner and opened behind the launcher. Startup waited on it before loading the release feeds, which left
-// the Install dropdown and the release channels empty until a restart.
 public class FirstRunSteamDownloadTest
 {
     private const string EXE = @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64.exe";
@@ -83,7 +80,6 @@ public class FirstRunSteamDownloadTest
         Assert.That(TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>().ValidChannels, Is.Not.Empty);
     }
 
-    // What the player actually did: ignored the hidden prompt and downloaded from the Settings tab instead.
     [AvaloniaTest]
     public void Startup_PromptLeftUnanswered_InstallAddedElsewhereIsSelectedEverywhere()
     {
@@ -106,7 +102,6 @@ public class FirstRunSteamDownloadTest
         Assert.That((dropdown.SelectedItem as Ksp2InstallRowViewModel)?.Id, Is.EqualTo(installId));
     }
 
-    // Loading the release channels must not wait for a download that takes many minutes.
     [AvaloniaTest]
     public void FirstRunDownload_WhileDownloading_ReleaseChannelsAreAlreadyLoaded()
     {

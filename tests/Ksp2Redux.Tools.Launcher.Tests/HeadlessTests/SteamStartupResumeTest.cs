@@ -9,8 +9,6 @@ using Moq;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 
-// The launcher used to show "Signed in (not connected)" with a Sign in button until the player
-// clicked it, even though the saved login was still good. It now reconnects on its own at startup.
 public class SteamStartupResumeTest
 {
     private static TaskCompletionSource<bool> StartLauncherWithSavedLogin()
@@ -47,7 +45,6 @@ public class SteamStartupResumeTest
         TestAppBuilder.SteamSessionService.Verify(s => s.TryResumeAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // No network is not a reason to sign the player out: the saved login still works once Steam is back.
     [AvaloniaTest]
     public void Startup_SteamUnreachable_StaysSignedInAndSaysOffline()
     {
@@ -64,7 +61,7 @@ public class SteamStartupResumeTest
         Assert.That(settings.SteamStatus, Is.EqualTo("Signed in as ewyboy (offline)"));
     }
 
-    // TryResumeAsync forgets a login Steam has revoked, so the saved account is gone afterwards.
+    // The real TryResumeAsync forgets a login Steam has revoked.
     [AvaloniaTest]
     public void Startup_SavedLoginRevoked_ShowsNotSignedIn()
     {
@@ -83,7 +80,6 @@ public class SteamStartupResumeTest
         Assert.That(settings.SteamStatus, Is.EqualTo("Not signed in"));
     }
 
-    // The title bar icon pulses amber while the startup reconnect is under way.
     [AvaloniaTest]
     public void Startup_WhileReconnecting_IndicatorShowsConnecting()
     {
@@ -97,7 +93,6 @@ public class SteamStartupResumeTest
         Assert.That(settings.SteamIndicatorTooltip, Is.EqualTo("Connecting to Steam..."));
     }
 
-    // Clicking the grey icon after a failed reconnect tries again with the saved login, no sign-in window.
     [AvaloniaTest]
     public async Task ClickingIndicator_WhenOffline_ReconnectsWithTheSavedLogin()
     {
@@ -117,7 +112,6 @@ public class SteamStartupResumeTest
         TestAppBuilder.SteamDialogService.Verify(d => d.ShowSignInAsync(), Times.Never);
     }
 
-    // With no saved login there is nothing to reconnect, so the click opens the sign-in window.
     [AvaloniaTest]
     public async Task ClickingIndicator_WithoutSavedLogin_OpensTheSignInWindow()
     {
@@ -140,8 +134,6 @@ public class SteamStartupResumeTest
         TestAppBuilder.SteamDialogService.Verify(d => d.ShowSignInAsync(), Times.Once);
     }
 
-    // Download KSP2 needs a Steam account, so it stays greyed out until one is signed in, and its
-    // tooltip says how to sign in rather than what the button does.
     [AvaloniaTest]
     public void DownloadButton_WithoutSteam_IsDisabledAndExplainsWhy()
     {

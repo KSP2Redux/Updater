@@ -19,8 +19,7 @@ public static class CliQrCode
     /// </summary>
     /// <param name="text">The text to encode.</param>
     /// <returns>One string per terminal row, all the same length, quiet zone included.</returns>
-    // The light modules, quiet zone included, are the ones drawn, so the code comes out the right way
-    // round when those characters are painted white on black. Scanners want dark modules on light.
+    // Light modules are drawn, so white-on-black output scans as dark-on-light.
     public static IReadOnlyList<string> Lines(string text)
     {
         using QRCodeGenerator generator = new();

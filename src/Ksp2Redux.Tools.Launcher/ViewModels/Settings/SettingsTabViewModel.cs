@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System.Collections.ObjectModel;
@@ -49,10 +49,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ShowSteamLaunchOptions))]
     public partial bool HasSelectedInstall { get; set; }
 
-    /// <summary>
-    /// False on macOS, where Steam cannot run KSP2, so the game always starts through the launcher's own
-    /// Wine runtime and the Steam launch settings do not apply.
-    /// </summary>
+    /// <summary>False on macOS, where the game always starts through the launcher's Wine runtime.</summary>
     public bool IsSteamLaunchSupported { get; }
 
     public bool ShowSteamLaunchOptions => HasSelectedInstall && IsSteamLaunchSupported;
@@ -84,6 +81,10 @@ public partial class SettingsTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial string RenameText { get; set; } = string.Empty;
 
+    /// <summary>
+    /// True with a live session or a saved login. A saved login stays valid until Steam revokes it, and the
+    /// download reconnects with it on its own.
+    /// </summary>
     [ObservableProperty]
     public partial bool IsSteamSignedIn { get; set; }
 
@@ -93,7 +94,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsSteamBusy { get; set; }
 
-    /// <summary>True while a live Steam connection is up, which lights the title bar icon green.</summary>
+    /// <summary>True while a live Steam connection is up, as opposed to only a saved login.</summary>
     [ObservableProperty]
     public partial bool IsSteamConnected { get; set; }
 
@@ -104,7 +105,6 @@ public partial class SettingsTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial string SteamIndicatorTooltip { get; set; } = "Not signed in to Steam. Click to sign in.";
 
-    /// <summary>True once Steam is set up, which is what the Download KSP2 button needs.</summary>
     [ObservableProperty]
     public partial bool CanDownloadFromSteam { get; set; }
 
@@ -427,10 +427,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Reconnects the saved Steam login in the background, so the player shows as signed in without
-    /// pressing anything. Called once when the launcher starts.
-    /// </summary>
+    /// <summary>Reconnects the saved Steam login, if any. Does nothing while connected or already reconnecting.</summary>
     public async Task ResumeSteamSessionAsync()
     {
         if (_steamSession.IsSignedIn || !_steamSession.HasSavedLogin || _isResumingSteam) return;
@@ -439,8 +436,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         SyncSteamStatus();
         try
         {
-            // A login Steam has revoked is forgotten by TryResumeAsync, which drops the status back to
-            // "Not signed in". One that is still saved but couldn't connect is just offline for now.
+            // TryResumeAsync forgets a revoked login, so one still saved after a failure is only offline.
             var resumed = await _steamSession.TryResumeAsync(CancellationToken.None);
             _steamResumeFailed = !resumed && _steamSession.HasSavedLogin;
         }
@@ -456,10 +452,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Handles a click on the Steam icon in the title bar: reconnects a saved login, or opens the sign-in
-    /// window when there is none. Does nothing while already connected or connecting.
-    /// </summary>
+    /// <summary>Reconnects a saved Steam login, or opens the sign-in window when there is none.</summary>
     [RelayCommand]
     public async Task ConnectSteam()
     {
@@ -475,8 +468,6 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 
-    // A saved login counts as signed in: the token is still valid until Steam says otherwise, and the
-    // download reconnects with it on its own, so there is nothing for the player to sign in to again.
     private void SyncSteamStatus()
     {
         var savedAccount = _steamSession.SavedAccountName;
@@ -504,8 +495,6 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task RemoveSelectedInstall()
     {
-        // Removing the last install is allowed: the launcher treats having none like a first run, and
-        // offers to find or download the game again.
         if (SelectedInstall is not { } row) return;
 
         var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Confirm",

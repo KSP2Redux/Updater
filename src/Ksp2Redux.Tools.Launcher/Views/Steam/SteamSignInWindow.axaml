@@ -48,7 +48,6 @@
 		</StackPanel>
 
 		<Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
-			<!-- QR code: the quickest route, no password typed at all -->
 			<StackPanel Grid.Column="0" Width="240" Spacing="12">
 				<Border Width="232" Height="232" CornerRadius="{StaticResource RadiusLarge}" Background="White"
 				        BoxShadow="{StaticResource GlassPanelShadow}" HorizontalAlignment="Center">
@@ -75,7 +74,6 @@
 			</Grid>
 
 			<Panel Grid.Column="2" VerticalAlignment="Center">
-				<!-- Account name and password -->
 				<StackPanel Spacing="12" IsVisible="{Binding IsChoosing}">
 					<StackPanel>
 						<TextBlock Classes="label">STEAM ACCOUNT NAME</TextBlock>
@@ -97,7 +95,6 @@
 					<ProgressBar IsIndeterminate="True" Foreground="{StaticResource BrandOrangeBrush}" />
 				</StackPanel>
 
-				<!-- Steam Guard code, from email or the mobile authenticator -->
 				<StackPanel Spacing="12" IsVisible="{Binding IsEnteringGuardCode}">
 					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White">STEAM GUARD</TextBlock>
 					<TextBlock Text="{Binding GuardPrompt}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />

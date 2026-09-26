@@ -6,8 +6,6 @@ using Moq;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
-// The launcher's Settings tab edits a profile's launch arguments, graphics jobs and Steam launch and can
-// uninstall KSP2 itself, and the CLI could do none of it.
 public class InstallsProfileCommandsTest
 {
     private const string GAME = @"C:\Games\Kerbal Space Program 2";
@@ -155,7 +153,6 @@ public class InstallsProfileCommandsTest
         Assert.That(harness.Json.GetProperty("deleted").GetBoolean(), Is.True);
     }
 
-    // Deleting 30 GB is not something a script should do by accident.
     [Test]
     public async Task Delete_NoTerminalAndNoYes_DeletesNothing()
     {
@@ -187,7 +184,7 @@ public class InstallsProfileCommandsTest
         Assert.That(harness.Installs.Entries.Any(e => e.Id == id), Is.True);
     }
 
-    // Steam cannot run KSP2 on macOS, so a ticked Steam launch from an old config must not win there.
+    // Steam cannot run KSP2 on macOS.
     [Test]
     public async Task Launch_OnMacOSWithSteamLaunchTicked_GoesThroughWineAndSaysWhenThereIsNone()
     {

@@ -22,8 +22,9 @@ public sealed record SteamDownloadProgress(long DownloadedBytes, long TotalBytes
 public interface ISteamDepotDownloader
 {
     /// <summary>
-    /// Lists the Windows depots that make up the game and their total size, checking the account owns it.
+    /// Lists the Windows depots that make up the game, checking the signed-in account owns it.
     /// </summary>
+    /// <exception cref="SteamSignInException">Not signed in, or the account does not own the game.</exception>
     Task<IReadOnlyList<SteamDepot>> GetDepotsAsync(uint appId, CancellationToken cancellationToken);
 
     /// <summary>
@@ -36,10 +37,6 @@ public interface ISteamDepotDownloader
 /// <summary>
 /// Downloads a game's Windows depots straight from Steam's content servers.
 /// </summary>
-// The sequence is the one every SteamPipe client follows: read the depot list and manifest ids from
-// the app's product info, get each depot's decryption key (which Steam only hands out when the account
-// owns the game, so it doubles as the ownership check), fetch the manifest, then download each chunk
-// and write it at its offset in the file it belongs to.
 public class SteamDepotDownloader(ISteamSessionService session, IFileSystem fileSystem, ILogService log) : ISteamDepotDownloader
 {
     public const uint KSP2_APP_ID = 954850;
@@ -50,8 +47,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
     /// </summary>
     /// <returns>
     /// <paramref name="chosen"/> itself when it is already a "Kerbal Space Program 2" folder, otherwise a
-    /// "Kerbal Space Program 2" folder inside it, so picking a parent such as Games does not scatter the
-    /// game's files across it.
+    /// "Kerbal Space Program 2" folder inside it.
     /// </returns>
     public static string GameFolderIn(IFileSystem fileSystem, string chosen)
     {
@@ -85,6 +81,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
             throw new SteamSignInException("Steam didn't list any downloadable Windows content for Kerbal Space Program 2.");
         }
 
+        // Steam only issues depot keys to owners, so this doubles as the ownership check.
         foreach (var depot in depots)
         {
             var key = await connection.Apps.GetDepotDecryptionKey(depot.DepotId, appId);
@@ -202,8 +199,6 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
     /// <summary>
     /// Picks the depots a Windows install needs from an app's <c>depots</c> product-info section.
     /// </summary>
-    // Skips depots for other operating systems, shared redistributables that belong to another app
-    // (depotfromapp), DLC the account may not own, and entries with no manifest on the branch.
     internal static IReadOnlyList<SteamDepot> SelectWindowsDepots(KeyValue depotsSection, string branch)
     {
         var depots = new List<SteamDepot>();
@@ -273,8 +268,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
             : throw new SteamSignInException("Steam didn't return any content servers. Try again in a moment.");
     }
 
-    // Content servers fail now and then. A 403 means the server wants a CDN auth token for this depot,
-    // anything else moves on to the next server.
+    // A 403 means the server wants a CDN auth token for this depot.
     private async Task<T> WithServerRetry<T>(
         IReadOnlyList<Server> servers, SteamDepot depot, uint appId, SteamConnection connection,
         ConcurrentDictionary<(uint Depot, string Host), string?> authTokens, CancellationToken cancellationToken,

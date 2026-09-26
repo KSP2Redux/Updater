@@ -64,7 +64,6 @@ public class SteamDialogService(
         return await window.ShowDialog<string?>(owner);
     }
 
-    // Offers ~/Games (or the user profile's Games folder on Windows) as the starting point.
     private async Task<string?> PickTargetFolderAsync(Window owner)
     {
         var games = fileSystem.Path.Combine(environmentProvider.GetFolderPath(Environment.SpecialFolder.UserProfile), "Games");

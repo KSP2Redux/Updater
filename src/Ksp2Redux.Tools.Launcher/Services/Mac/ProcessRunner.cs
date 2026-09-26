@@ -6,6 +6,7 @@ public interface IProcessRunner
 {
     /// <summary>
     /// Runs a process to completion, forwarding each line it prints to <paramref name="log"/>.
+    /// Cancelling kills the whole process tree.
     /// </summary>
     /// <returns>The process exit code.</returns>
     Task<int> RunAsync(ProcessStartInfo startInfo, Action<string> log, CancellationToken cancellationToken);

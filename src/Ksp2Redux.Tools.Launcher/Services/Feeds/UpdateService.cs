@@ -131,8 +131,7 @@ public class UpdateService : IUpdateService
 
     private async Task<bool> CheckAndPerformUpdateCoreAsync()
     {
-        // No macOS release assets exist yet, and the win/linux platform-keyword match below
-        // would otherwise offer the *linux* binary to a mac build and overwrite it.
+        // The platform-keyword match below would otherwise hand a macOS build the Linux binary.
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             _log.Info("Self-update is not available on macOS (no macOS release assets are published). Skipping check.");

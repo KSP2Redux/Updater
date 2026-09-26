@@ -5,7 +5,7 @@ using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 namespace Ksp2Redux.Tools.Launcher.Services.Steam;
 
 /// <summary>
-/// What is kept between launcher sessions so the player does not sign in every time.
+/// A persisted Steam login, used to sign in again without prompting the player.
 /// </summary>
 /// <param name="AccountName">The Steam account name the token belongs to.</param>
 /// <param name="RefreshToken">The long-lived Steam refresh token. The password is never stored.</param>
@@ -14,8 +14,10 @@ public sealed record SavedSteamLogin(string AccountName, string RefreshToken, st
 
 public interface ISteamLoginStore
 {
+    /// <summary>Returns the saved login, or null when there is none or it cannot be read.</summary>
     SavedSteamLogin? Load();
 
+    /// <summary>Replaces any saved login.</summary>
     void Save(SavedSteamLogin login);
 
     void Clear();
@@ -24,10 +26,8 @@ public interface ISteamLoginStore
 /// <summary>
 /// Keeps the Steam refresh token in a file only the current user can read.
 /// </summary>
-// The launcher has no OS keychain integration yet, so the token sits in the launcher's storage folder
-// with owner-only permissions on macOS and Linux. On Windows the folder is already per-user under
-// LocalAppData. A refresh token only grants access to this account's Steam session, and signing out
-// deletes it.
+// No OS keychain: the token is protected by owner-only permissions on macOS and Linux, and by the
+// per-user LocalAppData folder on Windows.
 public class SteamLoginStore(
     IFileSystem fileSystem,
     ILauncherConfigService launcherConfigService,
@@ -58,9 +58,8 @@ public class SteamLoginStore(
     {
         fileSystem.Directory.CreateDirectory(launcherConfigService.GetLocalStorageDirectory());
 
-        // The file is created with owner-only permissions rather than tightened after writing, so the
-        // token is never readable by other users, not even for a moment. The create mode only applies
-        // to a new file, hence deleting any old one first.
+        // Created owner-only rather than tightened after writing, so the token is never briefly readable.
+        // UnixCreateMode only applies to a new file, hence the delete.
         if (fileSystem.File.Exists(FilePath)) fileSystem.File.Delete(FilePath);
         var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
         if (operatingSystemService.IsMacOS() || operatingSystemService.IsLinux())

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -43,8 +43,7 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
         // on startup, so a CLI launch has to do it too or the setting silently does not apply.
         context.InstallService.ApplyActiveInstallBootConfig();
 
-        // Steam on macOS cannot run KSP2, so a ticked "Launch via Steam" left over in the config is ignored
-        // there rather than opening a steam:// link that does nothing.
+        // Steam on macOS cannot run KSP2, so LaunchThroughSteam is ignored there.
         if (context.OperatingSystemService.IsMacOS())
         {
             return await LaunchThroughWineAsync(context, entry, install, settings, cancellationToken);

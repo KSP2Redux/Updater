@@ -193,16 +193,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task InitializeAsync()
     {
         _log.Info("MainWindow initializing.");
-        // Runs alongside the rest of startup rather than holding it up, since Steam can take a few
-        // seconds to answer and nothing else here depends on it.
+        // Not awaited: Steam can take seconds to answer and nothing below depends on it.
         _ = SettingsTab.ResumeSteamSessionAsync();
 
-        // First start the updater service
         if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
 
-        // This runs from the constructor, before the window is even assigned as the app's main window. A message
-        // box shown before then has no owner, opens as a loose window that lands behind the launcher, and leaves
-        // startup waiting on a prompt the player cannot see.
+        // Prompts need the main window as owner, or they open hidden behind it.
         await _mainWindowOpened.Task;
 
         await LoadReleaseFeedsAsync();
@@ -210,8 +206,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await HomeTab.UpdateVersionsList(false);
         _log.Info("MainWindow initialization complete.");
 
-        // Everything below waits on the player, possibly through a whole game download, so it comes after the
-        // release channels are in place rather than holding them back.
+        // Player prompts come last so they cannot hold back loading the channels.
         if (Program.PartialUpdate)
         {
             _log.Warn("Partial update detected from a prior launch.");
@@ -229,9 +224,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await CheckActiveInstallWarnings();
     }
 
-    /// <summary>
-    /// Lets startup show its prompts. Called by the main window once it is on screen.
-    /// </summary>
+    /// <summary>Unblocks the startup prompts. Call once the main window is shown.</summary>
     public void OnMainWindowOpened() => _mainWindowOpened.TrySetResult();
 
     private void SwitchFirstInstallToStableIfDue()
@@ -307,8 +300,6 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            // No install on this machine, which is always the case on macOS where Steam won't download
-            // KSP2. Offer to fetch the player's own copy straight from Steam instead.
             _log.Warn("KSP2 install was not auto-detected.");
             var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Not Found",
                 "No KSP2 install was found on this computer.\n\n" +

@@ -15,8 +15,6 @@ using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 
-// Settings could install KSP2 and install or uninstall Redux, but getting rid of the game itself meant
-// finding and deleting the folder by hand.
 public class UninstallKsp2Test
 {
     private const string GAME = @"C:\Games\Kerbal Space Program 2";
@@ -96,7 +94,6 @@ public class UninstallKsp2Test
             "Can't Uninstall KSP2", It.IsAny<string>(), It.IsAny<ButtonEnum>(), Icon.Warning, It.IsAny<object>(), It.IsAny<WindowStartupLocation>()), Times.Once);
     }
 
-    // Three buttons now share the row, so none of their labels may be cut off at the narrowest window.
     [AvaloniaTest]
     public void ActionButtons_AtMinimumWindowWidth_ShowTheirWholeLabel()
     {

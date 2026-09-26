@@ -1,12 +1,8 @@
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 
 /// <summary>
-/// Turns a running byte count into a steady download speed for display.
+/// Turns a running byte count into a download speed smoothed by an exponential moving average.
 /// </summary>
-// Chunks arrive in bursts, so the speed between two consecutive progress reports swings wildly.
-// Samples are taken at most every SAMPLE_INTERVAL and folded into an exponential moving average,
-// which never resets. So the number moves smoothly and does not drop to zero at a window boundary,
-// and a real stall still shows as the average easing down towards zero.
 internal sealed class TransferRateMeter
 {
     private static readonly TimeSpan SAMPLE_INTERVAL = TimeSpan.FromMilliseconds(200);

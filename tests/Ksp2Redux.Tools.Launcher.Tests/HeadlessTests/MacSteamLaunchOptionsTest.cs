@@ -13,8 +13,7 @@ using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 
-// Steam on macOS cannot run KSP2, so the Steam launch settings are hidden there and ignored if a
-// config still has them ticked.
+// Steam cannot run KSP2 on macOS.
 public class MacSteamLaunchOptionsTest
 {
     private static SettingsTabViewModel Start(bool isMacOS)
@@ -53,7 +52,6 @@ public class MacSteamLaunchOptionsTest
         Assert.That(settings.ShowSteamLaunchOptions, Is.True);
     }
 
-    // A ticked "Launch via Steam" used to win over the macOS path and open steam:// instead.
     [AvaloniaTest]
     public async Task LaunchGame_OnMacOSWithSteamLaunchTicked_UsesTheWineRuntime()
     {
