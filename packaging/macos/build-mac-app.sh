@@ -32,7 +32,7 @@ while [ $# -gt 0 ]; do
 done
 
 echo "==> Building the launcher .app ($RID)"
-dotnet msbuild "$PROJECT" -t:BundleApp -p:RuntimeIdentifier="$RID" -p:Configuration=Release \
+dotnet msbuild "$PROJECT" -restore -t:BundleApp -p:RuntimeIdentifier="$RID" -p:Configuration=Release \
     -p:SelfContained=true -p:PublishSingleFile=false -v:minimal -nologo
 
 PUBLISH_DIR="$REPO_ROOT/src/Ksp2Redux.Tools.Launcher/bin/Release/net10.0/$RID/publish"
