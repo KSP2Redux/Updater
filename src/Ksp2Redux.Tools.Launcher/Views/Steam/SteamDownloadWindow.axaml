@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:steam="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Steam"
+        xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+        x:Class="Ksp2Redux.Tools.Launcher.Views.Steam.SteamDownloadWindow"
+        x:DataType="steam:SteamDownloadViewModel"
+        Title="Downloading KSP2"
+        Width="560" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#181818"
+        FontFamily="{StaticResource JetBrainsMonoRegular}">
+	<StackPanel Margin="32,28,32,24" Spacing="16">
+		<StackPanel Spacing="4">
+			<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="20" Foreground="White"
+			           Text="{Binding StageText, Converter={StaticResource CaseConverter}}" />
+			<TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
+			           Text="{Binding TargetDirectory, StringFormat='Into {0}'}" />
+		</StackPanel>
+
+		<ProgressBar Height="10" CornerRadius="5" Minimum="0" Maximum="100"
+		             Value="{Binding ProgressPercent}" IsIndeterminate="{Binding IsIndeterminate}"
+		             Foreground="{StaticResource BrandOrangeBrush}"
+		             Background="{StaticResource InputSurfaceBrush}" />
+
+		<TextBlock FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="12"
+		           Foreground="{StaticResource TextMutedBrush}" Text="{Binding DetailText}" />
+
+		<TextBlock FontSize="12" Foreground="{StaticResource DangerHoverBrush}" TextWrapping="Wrap"
+		           Text="{Binding ErrorMessage}"
+		           IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+
+		<Grid ColumnDefinitions="*,Auto">
+			<TextBlock Grid.Column="0" FontSize="10" Foreground="{StaticResource TextFaintBrush}" TextWrapping="Wrap"
+			           VerticalAlignment="Center">
+				You can stop and come back later. Finished files are kept and the download picks up where it left off.
+			</TextBlock>
+			<Button Grid.Column="1" Margin="16,0,0,0" Padding="18,8"
+			        Command="{Binding CloseCommand}" Content="{Binding CloseButtonText}" />
+		</Grid>
+	</StackPanel>
+</Window>

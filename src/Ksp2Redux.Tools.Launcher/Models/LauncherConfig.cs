@@ -50,6 +50,11 @@ public class LauncherConfig(string storagePath)
     /// </summary>
     public WindowPlacement? WindowPlacement { get; set; }
 
+    /// <summary>
+    /// The Wine runtime folder inside the macOS launcher's .app, recorded so the standalone CLI can use it.
+    /// </summary>
+    public string? WineRuntimePath { get; set; }
+
     [JsonIgnore]
     public string StoragePath { get; set; } = storagePath;
 

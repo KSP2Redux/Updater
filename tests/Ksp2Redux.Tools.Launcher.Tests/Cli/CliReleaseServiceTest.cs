@@ -36,8 +36,8 @@ public class CliReleaseServiceTest
         }
         """;
 
-    private static CliReleaseService Build(string releasesJson, bool isLinux = false) =>
-        new(REPOSITORY, isLinux, "1.0.0", null, new StubHandler(_ => Json(releasesJson)));
+    private static CliReleaseService Build(string releasesJson, CliPlatform platform = CliPlatform.Windows) =>
+        new(REPOSITORY, platform, "1.0.0", null, new StubHandler(_ => Json(releasesJson)));
 
     [Test]
     public async Task FindLatestAsync_SeveralReleases_PicksTheNewest()
@@ -93,12 +93,13 @@ public class CliReleaseServiceTest
     // this same asset list, and launchers already installed cannot be fixed. A CLI asset that
     // matched either word would be handed to them as an update to themselves, so the names are
     // pinned here rather than left to whoever edits the release workflow next.
-    [TestCase(true)]
-    [TestCase(false)]
-    public void AssetName_NeverContainsAWordTheLauncherMatchesOn(bool isLinux)
+    [TestCase(CliPlatform.Windows)]
+    [TestCase(CliPlatform.Linux)]
+    [TestCase(CliPlatform.MacOS)]
+    public void AssetName_NeverContainsAWordTheLauncherMatchesOn(CliPlatform platform)
     {
         // Act
-        string name = new CliReleaseService(REPOSITORY, isLinux, "1.0.0").AssetName;
+        string name = new CliReleaseService(REPOSITORY, platform, "1.0.0").AssetName;
 
         // Assert
         Assert.That(name, Does.Not.Contain("win").IgnoreCase);
@@ -158,7 +159,7 @@ public class CliReleaseServiceTest
         // Arrange
         CliReleaseService service = Build($"""
             [{Release("updater-v0.4.2.2", LINUX_ASSET)}]
-            """, isLinux: true);
+            """, CliPlatform.Linux);
 
         // Act
         CliRelease? release = await service.FindLatestAsync(CancellationToken.None);
@@ -168,12 +169,30 @@ public class CliReleaseServiceTest
     }
 
     [Test]
+    public async Task FindLatestAsync_OnMacOS_PicksTheMacAssetOverTheOthers()
+    {
+        // Arrange
+        string Asset(string name) =>
+            $$"""{ "name": "{{name}}", "browser_download_url": "https://example.invalid/{{name}}", "digest": "sha256:abc" }""";
+        CliReleaseService service = Build($$"""
+            [{ "tag_name": "updater-v0.4.2.2", "prerelease": false, "body": "notes",
+               "assets": [{{Asset(WINDOWS_ASSET)}}, {{Asset(LINUX_ASSET)}}, {{Asset("redux-cli-macos-arm64")}}] }]
+            """, CliPlatform.MacOS);
+
+        // Act
+        CliRelease? release = await service.FindLatestAsync(CancellationToken.None);
+
+        // Assert
+        Assert.That(release!.AssetName, Is.EqualTo("redux-cli-macos-arm64"));
+    }
+
+    [Test]
     public async Task DownloadAsync_ChecksumMatches_ReturnsTheBytes()
     {
         // Arrange
         byte[] payload = [1, 2, 3, 4];
         var digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant();
-        CliReleaseService service = new(REPOSITORY, false, "1.0.0", null,
+        CliReleaseService service = new(REPOSITORY, CliPlatform.Windows, "1.0.0", null,
             new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }));
 
         CliRelease release = new(new Version(1, 0), WINDOWS_ASSET, "https://example.invalid/asset", digest, null);
@@ -189,7 +208,7 @@ public class CliReleaseServiceTest
     public void DownloadAsync_ChecksumDiffers_Throws()
     {
         // Arrange
-        CliReleaseService service = new(REPOSITORY, false, "1.0.0", null,
+        CliReleaseService service = new(REPOSITORY, CliPlatform.Windows, "1.0.0", null,
             new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([9, 9, 9]) }));
 
         CliRelease release = new(new Version(1, 0), WINDOWS_ASSET, "https://example.invalid/asset", "deadbeef", null);

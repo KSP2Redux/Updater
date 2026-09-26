@@ -8,6 +8,7 @@ using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
@@ -34,10 +35,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IManifestReleasesFeedProviderService _manifestReleasesFeedProviderService;
     private readonly IUpdateService _updateService;
     private readonly IKsp2DetectorService _ksp2DetectorService;
+    private readonly ISteamDialogService _steamDialogs;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly IMessageBoxService _messageBoxService;
     private readonly IWindowPlacementService _windowPlacementService;
     private readonly ILogService _log;
+    private readonly TaskCompletionSource _mainWindowOpened = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     [ObservableProperty]
     public partial InstallState CurrentInstallState { get; set; }
@@ -66,8 +69,10 @@ public partial class MainWindowViewModel : ViewModelBase
         INewsItemCollectionService newsCollectionService, ILauncherConfigService launcherConfigService,
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
         INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService,
-        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, IWindowPlacementService windowPlacementService, ILogService log)
+        IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, IWindowPlacementService windowPlacementService, ILogService log,
+        ISteamDialogService steamDialogs)
     {
+        _steamDialogs = steamDialogs;
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
         _windowPlacementService = windowPlacementService;
@@ -181,62 +186,56 @@ public partial class MainWindowViewModel : ViewModelBase
         Dispatcher.UIThread.Post(async () =>
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Startup Error",
-                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         });
     }
 
     private async Task InitializeAsync()
     {
         _log.Info("MainWindow initializing.");
+        // Not awaited: Steam can take seconds to answer and nothing below depends on it.
+        _ = SettingsTab.ResumeSteamSessionAsync();
+
+        if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
+
+        // Prompts need the main window as owner, or they open hidden behind it.
+        await _mainWindowOpened.Task;
+
+        await LoadReleaseFeedsAsync();
+        SwitchFirstInstallToStableIfDue();
+        await HomeTab.UpdateVersionsList(false);
+        _log.Info("MainWindow initialization complete.");
+
+        // Player prompts come last so they cannot hold back loading the channels.
         if (Program.PartialUpdate)
         {
             _log.Warn("Partial update detected from a prior launch.");
             var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Partial Update Complete",
-                $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
 
-        // First start the updater service
-        if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
-
-        // Now we want to check if any KSP2 installs are registered, and if not try and detect one
         if (_ksp2InstallService.Entries.Count == 0)
         {
-            _log.Info("No KSP2 installs registered, attempting auto-detection.");
-            if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
-            {
-                _log.Info($"Detected KSP2 install at {installLocation}, prompting user to add.");
-                var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Found",
-                    $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner);
-
-                if (option == ButtonResult.Yes)
-                {
-                    _ksp2InstallService.AddInstall(installLocation);
-                    _log.Info($"User added detected KSP2 install at {installLocation}.");
-                }
-                else
-                {
-                    _log.Info("User declined to add detected KSP2 install.");
-                }
-            }
-            else
-            {
-                _log.Warn("KSP2 install was not auto-detected.");
-                await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Not Found!",
-                    "Your KSP2 install was not detected, go to the settings tab to set it", ButtonEnum.Ok,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner);
-            }
+            await OfferFirstInstallAsync();
+            SwitchFirstInstallToStableIfDue();
         }
 
         await CheckActiveInstallWarnings();
+    }
 
-        // foreach (var feed in ReleasesFeed)
-        // {
-        //     await feed.Value.UpdateManifest();
-        // }
+    /// <summary>Unblocks the startup prompts. Call once the main window is shown.</summary>
+    public void OnMainWindowOpened() => _mainWindowOpened.TrySetResult();
+
+    private void SwitchFirstInstallToStableIfDue()
+    {
+        var stableHasReleases = _releasesFeedService.ReleasesFeed.TryGetValue("stable", out var stableFeed)
+                                && stableFeed.GetLatestVersion() is not null;
+        _ksp2InstallService.AutoSwitchToStableIfPending(stableHasReleases);
+    }
+
+    private async Task LoadReleaseFeedsAsync()
+    {
         var releaseDownloadCacheDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
         _fileSystem.Directory.CreateDirectory(releaseDownloadCacheDir);
         _log.Info($"Loading {_launcherConfigService.Config.Feeds.Count} release feed(s) into {releaseDownloadCacheDir}.");
@@ -277,15 +276,50 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
         SettingsTab.SetLoaded();
+    }
 
-        var stableHasReleases = _releasesFeedService.ReleasesFeed.TryGetValue("stable", out var stableFeed)
-                                && stableFeed.GetLatestVersion() is not null;
-        _ksp2InstallService.AutoSwitchToStableIfPending(stableHasReleases);
+    private async Task OfferFirstInstallAsync()
+    {
+        _log.Info("No KSP2 installs registered, attempting auto-detection.");
+        if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
+        {
+            _log.Info($"Detected KSP2 install at {installLocation}, prompting user to add.");
+            var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Found",
+                $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
 
-        await HomeTab.UpdateVersionsList(false);
-        _log.Info("MainWindow initialization complete.");
+            if (option == ButtonResult.Yes)
+            {
+                _ksp2InstallService.AddInstall(installLocation);
+                _log.Info($"User added detected KSP2 install at {installLocation}.");
+            }
+            else
+            {
+                _log.Info("User declined to add detected KSP2 install.");
+            }
+        }
+        else
+        {
+            _log.Warn("KSP2 install was not auto-detected.");
+            var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Not Found",
+                "No KSP2 install was found on this computer.\n\n" +
+                "Download it now with your Steam account? You can also add an existing install from the settings tab.",
+                ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
 
-        // Now schedule update checks every 10 minutes
+            if (option == ButtonResult.Yes)
+            {
+                try
+                {
+                    await _steamDialogs.DownloadGameAsync();
+                }
+                catch (Exception ex)
+                {
+                    _log.Error("Downloading KSP2 from Steam failed.", ex);
+                    await _messageBoxService.ShowMessageBoxAsOwnedAsync("Download Failed", ex.Message,
+                        windowStartupLocation: WindowStartupLocation.CenterOwner);
+                }
+            }
+        }
     }
 
     private static PatchDownloadException? FindPatchDownloadException(Exception? exception)
@@ -308,7 +342,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (!ksp2.IsValid)
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Invalid EXE",
-                $"The configured KSP2 EXE path is not valid:\n{ksp2.ExePath}", ButtonEnum.Ok,
+                $"The configured KSP2 EXE path is not valid:\n{ksp2.ExePath}",
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -320,8 +354,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "KSP2 Redux couldn't figure out which version of the game is installed. " +
                 "This can happen if the game files are missing, corrupted, or from an unsupported source.\n\n" +
                 "You can still try launching or installing, but update checks may be unreliable. " +
-                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.",
-                ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.", windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 
@@ -392,6 +425,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 break;
             case HomeTabId when HomeTab.IsInstallLogVisible:
                 HomeTab.IsInstallLogVisible = false;
+                break;
+            case SettingsTabId when SettingsTab.IsRenamingInstall:
+                SettingsTab.CancelRenameInstall();
                 break;
             case SettingsTabId:
                 CurrentTab = _lastNonSettingsTab;

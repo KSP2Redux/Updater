@@ -59,7 +59,7 @@ public class CliCommandCatalogTest
         IReadOnlyList<string> candidates = CliCommandCatalog.Candidates(["installs"], "");
 
         // Assert
-        Assert.That(candidates, Is.EqualTo(new[] { "add", "remove", "rename", "set-channel", "use" }));
+        Assert.That(candidates, Is.EqualTo(new[] { "add", "delete", "remove", "rename", "set", "set-channel", "show", "use" }));
     }
 
     // The alias is what a script or a habit types, and it has to complete like the real name.

@@ -79,7 +79,15 @@ jobs:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                     TAG: ${{ steps.get_version.outputs.TAG }}
                     TITLE: "KSP2 Redux Updater v${{ steps.get_version.outputs.VERSION }}"
+                    VERSION: ${{ steps.get_version.outputs.VERSION }}
                 run: |
+                    # A hand-written changelog in release-notes/ leads the release when there is one for this
+                    # version. GitHub's generated list of pull requests follows it either way.
+                    notes=()
+                    if [ -f "release-notes/v$VERSION.md" ]; then
+                        notes=(--notes-file "release-notes/v$VERSION.md")
+                    fi
+
                     # Create as a draft first: launchers in the wild poll the releases API every
                     # 10 minutes, and a release that becomes visible before its binaries finish
                     # uploading gets offered as an update that can't actually be downloaded.
@@ -90,8 +98,92 @@ jobs:
                       ./publish/redux-cli-x64.exe \
                       ./publish/redux-cli-x64 \
                       --title "$TITLE" \
+                      "${notes[@]}" \
                       --generate-notes \
                       --latest \
                       --draft
 
                     gh release edit "$TAG" --draft=false
+
+    # Safe to add after publishing: launchers pick updates by "win" or "linux" in the asset name, and
+    # the macOS asset names contain neither.
+    macos-runtime:
+        needs: build
+        if: needs.build.outputs.tag_exists == 'false'
+        uses: ./.github/workflows/macos-runtime.yml
+
+    macos:
+        needs: [ build, macos-runtime ]
+        if: needs.build.outputs.tag_exists == 'false'
+        runs-on: macos-15
+        permissions:
+            contents: write
+
+        steps:
+            -   uses: actions/checkout@v7
+
+            -   name: Setup .NET
+                uses: actions/setup-dotnet@v6
+                with:
+                    dotnet-version: 10.0.x
+
+            -   name: Download the runtime
+                uses: actions/download-artifact@v8
+                with:
+                    name: redux-mac-runtime
+                    path: artifacts/macos
+
+            -   name: Build the macOS app and disk image
+                run: packaging/macos/build-mac-app.sh --runtime artifacts/macos/redux-mac-runtime.tar.xz
+
+            -   name: Attach the disk image and the command line tool to the release
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    TAG: ${{ needs.build.outputs.tag }}
+                run: gh release upload "$TAG" artifacts/macos/KSP2-Redux-macOS-arm64.dmg artifacts/macos/redux-cli-macos-arm64 --clobber
+
+            # Wine and DXMT are LGPL-2.1, so every release that ships them has to point at their source.
+            -   name: Add the macOS files and the runtime's source to the release notes
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    TAG: ${{ needs.build.outputs.tag }}
+                run: |
+                    runtime_json="$(tar -xJOf artifacts/macos/redux-mac-runtime.tar.xz wine-runtime/runtime.json)"
+                    wine="$(jq -r .wine <<< "$runtime_json")"
+                    wine_source="$(jq -r .source <<< "$runtime_json")"
+                    wine_sha="$(jq -r .sourceSha256 <<< "$runtime_json")"
+                    dxmt="$(jq -r .dxmt <<< "$runtime_json")"
+
+                    notes="$(gh release view "$TAG" --json body --jq .body)"
+                    {
+                        printf '%s\n\n' "$notes"
+                        printf '### macOS\n\n'
+                        # shellcheck disable=SC2016 # the backticks are a Markdown code span
+                        printf -- '- `KSP2-Redux-macOS-arm64.dmg`: the launcher for Apple Silicon Macs, with the Wine runtime and the CLI inside\n'
+                        # shellcheck disable=SC2016
+                        printf -- '- `redux-cli-macos-arm64`: the command line tool on its own, for Apple Silicon Macs\n\n'
+                        cat <<'MACOS_APPROVAL'
+                    #### Opening the launcher the first time
+
+                    The macOS launcher is not signed by Apple yet, so macOS asks you to approve it once:
+
+                    1. Open the `.dmg` and drag **KSP2 Redux** into **Applications**.
+                    2. Open KSP2 Redux. When macOS says it could not verify the app, click **Done**.
+                    3. Open **System Settings**, go to **Privacy & Security**, and scroll down to **Security**. Next to the message about KSP2 Redux, click **Open Anyway**, then confirm with your password or Touch ID.
+                    4. Click **Open Anyway** once more when macOS asks. From then on the launcher opens normally, until you download a new version.
+
+                    If the launcher opens but the game does not start, run this once in Terminal, then try again:
+
+                    ```
+                    xattr -dr com.apple.quarantine "/Applications/KSP2 Redux.app"
+                    ```
+
+                    MACOS_APPROVAL
+                        printf '### macOS runtime\n\n'
+                        printf 'The macOS download bundles Wine (%s) and DXMT %s, both under the LGPL-2.1.\n\n' "$wine" "$dxmt"
+                        # shellcheck disable=SC2016 # the backticks are a Markdown code span
+                        printf -- '- Wine source: %s (SHA-256 `%s`)\n' "$wine_source" "$wine_sha"
+                        printf -- '- DXMT source: https://github.com/3Shain/dxmt/tree/%s\n' "$dxmt"
+                        printf -- '- Build script: https://github.com/%s/blob/%s/packaging/macos/build-runtime.sh\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA"
+                    } > release-notes.md
+                    gh release edit "$TAG" --notes-file release-notes.md

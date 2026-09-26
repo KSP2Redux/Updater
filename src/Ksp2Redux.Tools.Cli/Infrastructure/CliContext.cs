@@ -5,6 +5,9 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.News;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 
@@ -47,6 +50,11 @@ public sealed class CliContext
         AssemblyService = services.GetRequiredService<IAssemblyService>();
         DiskSpaceService = services.GetRequiredService<IDiskSpaceService>();
         GameDataFolderService = services.GetRequiredService<IGameDataFolderService>();
+        GameUninstallService = services.GetRequiredService<IKsp2GameUninstallService>();
+        WineRuntimeService = services.GetRequiredService<IWineRuntimeService>();
+        SteamSession = services.GetRequiredService<ISteamSessionService>();
+        SteamDownloader = services.GetRequiredService<ISteamDepotDownloader>();
+        NewsProvider = services.GetRequiredService<INewsProviderService>();
         FileSystem = services.GetRequiredService<IFileSystem>();
         _fileSystem = FileSystem;
         _moduleDefinitions = services.GetRequiredService<IModuleDefinitionService>();
@@ -91,7 +99,7 @@ public sealed class CliContext
     /// <returns>A release service pointed at the configured repository.</returns>
     public CliReleaseService CreateReleaseService(TimeSpan? timeout = null) => new(
         ConfigService.Config.LauncherRepo,
-        OperatingSystemService.IsLinux(),
+        CliPlatforms.Current(OperatingSystemService),
         RunningVersion.ToString(),
         timeout);
 
@@ -104,6 +112,31 @@ public sealed class CliContext
     /// Gets the service that finds where KSP2 keeps its saves, settings and its own log.
     /// </summary>
     public IGameDataFolderService GameDataFolderService { get; }
+
+    /// <summary>
+    /// Gets the service that removes a KSP2 install from disk.
+    /// </summary>
+    public IKsp2GameUninstallService GameUninstallService { get; }
+
+    /// <summary>
+    /// Gets the service that runs KSP2 through Wine on macOS.
+    /// </summary>
+    public IWineRuntimeService WineRuntimeService { get; }
+
+    /// <summary>
+    /// Gets the Steam sign-in, shared with the launcher through its saved login.
+    /// </summary>
+    public ISteamSessionService SteamSession { get; }
+
+    /// <summary>
+    /// Gets the service that downloads KSP2 from Steam.
+    /// </summary>
+    public ISteamDepotDownloader SteamDownloader { get; }
+
+    /// <summary>
+    /// Gets the KSP2 Redux blog feed the launcher's news list shows.
+    /// </summary>
+    public INewsProviderService NewsProvider { get; }
 
     /// <summary>
     /// Gets the file system the launcher services read and write through.
@@ -352,7 +385,7 @@ public sealed class CliContext
     public int FailInstallNotFound(string? selector)
     {
         var message = string.IsNullOrWhiteSpace(selector)
-            ? "No active KSP2 install is configured. Add one in the launcher, or name one explicitly."
+            ? "No active KSP2 install is configured. Add one with 'installs add' or 'steam download', or name one explicitly."
             : $"No KSP2 install matched '{selector}'.";
 
         Output.Error(message);
