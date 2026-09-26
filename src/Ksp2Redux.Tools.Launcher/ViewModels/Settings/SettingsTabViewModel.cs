@@ -395,8 +395,12 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task SignOutOfSteam()
     {
-        await _steamSession.SignOutAsync();
+        var revoked = await _steamSession.SignOutAsync();
         SyncSteamStatus();
+        if (revoked) return;
+
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Signed Out",
+            SteamSessionService.REVOKE_FAILED_MESSAGE, icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
     [RelayCommand]

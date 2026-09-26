@@ -1,5 +1,6 @@
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -15,13 +16,14 @@ public sealed class SteamLogoutCommand : ReduxCommand<SteamLogoutSettings>
         CancellationToken cancellationToken)
     {
         var account = context.SteamSession.SavedAccountName;
-        if (account is not null)
+        var revoked = account is null || await context.SteamSession.SignOutAsync();
+        if (!revoked)
         {
-            await context.SteamSession.SignOutAsync();
+            context.Output.Warn(SteamSessionService.REVOKE_FAILED_MESSAGE);
         }
 
         context.Output.Payload(
-            new { ok = true, signedOut = account },
+            new { ok = true, signedOut = account, revoked },
             () => context.Output.Result(account is null ? "Not signed in to Steam." : $"Signed out of {account}."));
         return ExitCode.SUCCESS;
     }

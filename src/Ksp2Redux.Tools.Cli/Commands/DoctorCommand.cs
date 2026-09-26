@@ -63,7 +63,8 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
 
         var detected = context.DetectorService.DetectKsp2InstallLocation();
         var wineRuntime = context.OperatingSystemService.IsMacOS() ? context.WineRuntimeService.Detect() : null;
-        var steamAccount = context.SteamSession.SavedAccountName;
+        // The login name is half of the credentials, and this report is meant for pasting into support threads.
+        var steamSignedIn = context.SteamSession.HasSavedLogin;
         var cacheDirectory = context.DownloadCacheDirectory;
         var cacheBytes = DirectorySize(context, cacheDirectory);
 
@@ -80,7 +81,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
                 detectedInstall = detected,
                 gameDataFolder = context.GameDataFolderService.Resolve(context.InstallService.ActiveEntry),
                 wineRuntime = wineRuntime is null ? null : new { kind = wineRuntime.Kind.ToString(), wine = wineRuntime.WineBinary, prefix = wineRuntime.PrefixPath },
-                steamAccount,
+                steamSignedIn,
                 installs,
                 feeds,
                 feedsChecked = !settings.IsOffline,
@@ -88,7 +89,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
             () =>
             {
                 WriteReport(context, settings, installs, feeds, detected, cacheDirectory, cacheBytes);
-                WriteMacAndSteam(context, wineRuntime, steamAccount);
+                WriteMacAndSteam(context, wineRuntime, steamSignedIn);
             });
 
         return ExitCode.SUCCESS;
@@ -156,7 +157,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         }
     }
 
-    private static void WriteMacAndSteam(CliContext context, WineRuntime? wineRuntime, string? steamAccount)
+    private static void WriteMacAndSteam(CliContext context, WineRuntime? wineRuntime, bool steamSignedIn)
     {
         if (context.OperatingSystemService.IsMacOS())
         {
@@ -176,7 +177,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
         }
 
         context.Output.Section("Steam");
-        context.Output.Result(steamAccount is null ? "  not signed in" : $"  signed in as {steamAccount}");
+        context.Output.Result(steamSignedIn ? "  signed in" : "  not signed in");
     }
 
     // A path is the one value here long enough to wrap, so on a terminal it is drawn as a path that

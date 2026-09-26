@@ -6,6 +6,8 @@ using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using MsBox.Avalonia.Enums;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 
@@ -172,12 +174,29 @@ public class SteamStartupResumeTest
         // Arrange
         StartLauncherWithSavedLogin();
         var settings = TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>();
-        TestAppBuilder.SteamSessionService.Setup(s => s.SignOutAsync()).Returns(Task.CompletedTask);
+        TestAppBuilder.SteamSessionService.Setup(s => s.SignOutAsync()).ReturnsAsync(true);
 
         // Act
         await settings.SignOutOfSteamCommand.ExecuteAsync(null);
 
         // Assert
         TestAppBuilder.SteamSessionService.Verify(s => s.SignOutAsync(), Times.Once);
+    }
+
+    [AvaloniaTest]
+    public async Task SignOut_SteamUnreachable_ExplainsHowToRevokeTheLogin()
+    {
+        // Arrange
+        StartLauncherWithSavedLogin();
+        var settings = TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>();
+        TestAppBuilder.SteamSessionService.Setup(s => s.SignOutAsync()).ReturnsAsync(false);
+
+        // Act
+        await settings.SignOutOfSteamCommand.ExecuteAsync(null);
+
+        // Assert
+        TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(
+            "Signed Out", SteamSessionService.REVOKE_FAILED_MESSAGE, It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(),
+            It.IsAny<Avalonia.Controls.WindowStartupLocation>()), Times.Once);
     }
 }

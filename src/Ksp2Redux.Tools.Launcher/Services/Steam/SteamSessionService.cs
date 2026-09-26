@@ -1,6 +1,7 @@
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using SteamKit2;
 using SteamKit2.Authentication;
+using SteamKit2.Internal;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Steam;
 
@@ -84,8 +85,11 @@ public interface ISteamSessionService
     /// <returns>False when there is no saved login or Steam no longer accepts it.</returns>
     Task<bool> TryResumeAsync(CancellationToken cancellationToken);
 
-    /// <summary>Signs out and forgets the saved login.</summary>
-    Task SignOutAsync();
+    /// <summary>
+    /// Signs out, revokes the saved login on Steam so no copy of it keeps working, and forgets it.
+    /// </summary>
+    /// <returns>False when Steam could not be reached to revoke the login. It is forgotten locally either way.</returns>
+    Task<bool> SignOutAsync();
 }
 
 /// <summary>
@@ -94,6 +98,11 @@ public interface ISteamSessionService
 public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) : ISteamSessionService
 {
     private const string DEVICE_NAME = "KSP2 Redux Launcher";
+
+    /// <summary>Tells the player how to cancel a saved login that signing out could not revoke.</summary>
+    public const string REVOKE_FAILED_MESSAGE =
+        "You are signed out here, but Steam could not be reached to cancel the saved login. To cancel it yourself, " +
+        "remove \"" + DEVICE_NAME + "\" from the devices in your Steam account's security settings.";
     private static readonly TimeSpan CONNECT_TIMEOUT = TimeSpan.FromSeconds(30);
 
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -194,11 +203,13 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
         }
     }
 
-    public async Task SignOutAsync()
+    public async Task<bool> SignOutAsync()
     {
+        bool revoked;
         await _gate.WaitAsync();
         try
         {
+            revoked = loginStore.Load() is not { } saved || await TryRevokeAsync(saved);
             loginStore.Clear();
             _client?.GetHandler<SteamUser>()?.LogOff();
             TearDown();
@@ -209,6 +220,46 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
         }
 
         SignInChanged?.Invoke(this, EventArgs.Empty);
+        return revoked;
+    }
+
+    private async Task<bool> TryRevokeAsync(SavedSteamLogin saved)
+    {
+        using var timeout = new CancellationTokenSource(CONNECT_TIMEOUT);
+        try
+        {
+            if (!IsSignedIn)
+            {
+                await ConnectAsync(timeout.Token);
+                await LogOnAsync(saved.AccountName, saved.RefreshToken, saved.GuardData, timeout.Token, remember: false);
+            }
+
+            var authentication = _client!.GetHandler<SteamUnifiedMessages>()!.CreateService<Authentication>();
+            var response = await authentication.RevokeToken(new CAuthentication_Token_Revoke_Request
+            {
+                token = saved.RefreshToken,
+                revoke_action = EAuthTokenRevokeAction.k_EAuthTokenRevokePermanent,
+            });
+
+            if (response.Result == EResult.OK)
+            {
+                log.Info("Revoked the saved Steam login.");
+                return true;
+            }
+
+            log.Warn($"Steam refused to revoke the saved login ({response.Result}).");
+            return false;
+        }
+        catch (SteamSignInException ex) when (ex.Result is EResult.InvalidPassword or EResult.AccessDenied
+                                                  or EResult.Expired or EResult.InvalidSignature or EResult.Revoked)
+        {
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Warn($"Couldn't revoke the saved Steam login: {ex.Message}");
+            return false;
+        }
     }
 
     private async Task RunExclusiveAsync(Func<Task> action, CancellationToken cancellationToken)
@@ -285,7 +336,8 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
         }
     }
 
-    private async Task LogOnAsync(string accountName, string refreshToken, string? guardData, CancellationToken cancellationToken)
+    private async Task LogOnAsync(string accountName, string refreshToken, string? guardData, CancellationToken cancellationToken,
+        bool remember = true)
     {
         var client = _client ?? throw new InvalidOperationException("Not connected to Steam.");
         _loggedOn = new TaskCompletionSource<SteamUser.LoggedOnCallback>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -308,10 +360,10 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
             await Task.Delay(50, cancellationToken);
         }
 
-        loginStore.Save(new SavedSteamLogin(accountName, refreshToken, guardData));
+        if (remember) loginStore.Save(new SavedSteamLogin(accountName, refreshToken, guardData));
         Account = new SteamAccount(accountName, _personaName);
         Connection = new SteamConnection(client, client.GetHandler<SteamApps>()!, client.GetHandler<SteamContent>()!);
-        log.Info($"Signed in to Steam as {accountName}.");
+        log.Info("Signed in to Steam.");
     }
 
     private void OnDisconnected(SteamClient.DisconnectedCallback callback)

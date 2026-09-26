@@ -44,6 +44,7 @@
         <PackageReference Include="Mono.Cecil" />
         <PackageReference Include="Octokit" />
         <PackageReference Include="QRCoder" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" />
         <PackageReference Include="SteamKit2" />
     </ItemGroup>
 

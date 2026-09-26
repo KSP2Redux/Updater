@@ -112,7 +112,7 @@ public class SteamCommandsTest
     {
         // Arrange
         var harness = SignedIn();
-        harness.Steam.Setup(s => s.SignOutAsync()).Returns(Task.CompletedTask);
+        harness.Steam.Setup(s => s.SignOutAsync()).ReturnsAsync(true);
 
         // Act
         var exit = await new SteamLogoutCommand().RunWithContextAsync(harness.Context, new SteamLogoutSettings());
@@ -120,6 +120,36 @@ public class SteamCommandsTest
         // Assert
         Assert.That(exit, Is.EqualTo(ExitCode.SUCCESS));
         harness.Steam.Verify(s => s.SignOutAsync(), Times.Once);
+    }
+
+    [Test]
+    public async Task Logout_SteamUnreachable_SaysHowToRevokeTheLogin()
+    {
+        // Arrange
+        var harness = SignedIn();
+        harness.Steam.Setup(s => s.SignOutAsync()).ReturnsAsync(false);
+
+        // Act
+        var exit = await new SteamLogoutCommand().RunWithContextAsync(harness.Context, new SteamLogoutSettings());
+
+        // Assert
+        Assert.That(exit, Is.EqualTo(ExitCode.SUCCESS));
+        Assert.That(harness.Json.GetProperty("revoked").GetBoolean(), Is.False);
+    }
+
+    [Test]
+    public async Task Doctor_SignedIn_DoesNotRevealTheLoginName()
+    {
+        // Arrange
+        var harness = SignedIn();
+        harness.Steam.Setup(s => s.HasSavedLogin).Returns(true);
+
+        // Act
+        await new DoctorCommand().RunWithContextAsync(harness.Context, new DoctorSettings { IsOffline = true });
+
+        // Assert
+        Assert.That(harness.Json.GetProperty("steamSignedIn").GetBoolean(), Is.True);
+        Assert.That(harness.Results.ToString(), Does.Not.Contain("ewyboy"));
     }
 
     [Test]
