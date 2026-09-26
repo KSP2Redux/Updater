@@ -42,9 +42,11 @@ The sign-in is shared with the launcher window. On macOS, `launch` runs the game
 runtime inside the launcher app (or CrossOver when that is all there is), in the same prefix the
 launcher uses, so saves are shared too. `kill` stops it.
 
-Each install profile carries its own launch settings, as in the launcher's Settings tab:
-`installs show` lists them, `installs set` changes them, and `installs delete` removes a copy of the
-game from disk along with its profile.
+Everything in the launcher's Settings tab is here too. Each install profile carries its own launch
+settings: `installs show` lists them, `installs set` changes them (including launching through Steam
+on Windows and Linux), and `installs delete` removes a copy of the game from disk along with its
+profile. `settings` shows and changes the patch source, concurrent chunks and verbose logging,
+`open install|logs|game-data|storage` opens those folders, and `news` lists the latest posts.
 
 It keeps itself current: `redux-launcher-cli self-update` installs the newest build, `version
 --check` reports whether one is published, and the CLI mentions a new release on its own once a day

@@ -6,6 +6,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -45,6 +46,10 @@ internal sealed class CliCommandHarness
 
     public Mock<IDiskSpaceService> DiskSpace { get; } = new();
 
+    public Mock<INewsProviderService> News { get; } = new();
+
+    public Mock<IGameDataFolderService> GameDataFolder { get; } = new();
+
     public StringWriter Results { get; } = new();
 
     /// <summary>The context, built on first use so a test can arrange files and mocks before the config loads.</summary>
@@ -79,7 +84,8 @@ internal sealed class CliCommandHarness
         services.AddSingleton(Mock.Of<IInstallPlanService>());
         services.AddSingleton(Mock.Of<IKsp2DetectorService>());
         services.AddSingleton(Mock.Of<IAssemblyService>());
-        services.AddSingleton(Mock.Of<IGameDataFolderService>());
+        services.AddSingleton(GameDataFolder.Object);
+        services.AddSingleton(News.Object);
         services.AddSingleton(Mock.Of<IManifestReleasesFeedProviderService>());
         services.AddSingleton(OperatingSystem.Object);
         services.AddSingleton(DiskSpace.Object);

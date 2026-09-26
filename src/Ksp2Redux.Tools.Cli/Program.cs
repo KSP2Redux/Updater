@@ -90,6 +90,23 @@ public static class Program
                     .WithExample("steam", "download", "~/Games");
             });
 
+            config.AddBranch("settings", launcherSettings =>
+            {
+                launcherSettings.SetDescription("Show and change the launcher-wide settings: patch source, concurrent chunks and verbose logging.");
+                launcherSettings.SetDefaultCommand<LauncherSettingsCommand>();
+
+                launcherSettings.AddCommand<LauncherSettingsSetCommand>("set")
+                    .WithDescription("Change the patch source, concurrent chunk downloads or verbose logging.")
+                    .WithExample("settings", "set", "--patch-source", "github", "--concurrent-chunks", "8");
+            });
+
+            config.AddCommand<OpenCommand>("open")
+                .WithDescription("Open the install, logs, game data or launcher storage folder in the file browser.")
+                .WithExample("open", "game-data");
+
+            config.AddCommand<NewsCommand>("news")
+                .WithDescription("List the latest KSP2 Redux news posts.");
+
             config.AddCommand<DetectCommand>("detect")
                 .WithDescription("Scan the usual Steam and Epic locations for a KSP2 install.");
 

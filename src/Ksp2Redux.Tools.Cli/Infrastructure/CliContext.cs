@@ -6,6 +6,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
@@ -53,6 +54,7 @@ public sealed class CliContext
         WineRuntimeService = services.GetRequiredService<IWineRuntimeService>();
         SteamSession = services.GetRequiredService<ISteamSessionService>();
         SteamDownloader = services.GetRequiredService<ISteamDepotDownloader>();
+        NewsProvider = services.GetRequiredService<INewsProviderService>();
         FileSystem = services.GetRequiredService<IFileSystem>();
         _fileSystem = FileSystem;
         _moduleDefinitions = services.GetRequiredService<IModuleDefinitionService>();
@@ -130,6 +132,11 @@ public sealed class CliContext
     /// Gets the service that downloads KSP2 from Steam.
     /// </summary>
     public ISteamDepotDownloader SteamDownloader { get; }
+
+    /// <summary>
+    /// Gets the KSP2 Redux blog feed the launcher's news list shows.
+    /// </summary>
+    public INewsProviderService NewsProvider { get; }
 
     /// <summary>
     /// Gets the file system the launcher services read and write through.

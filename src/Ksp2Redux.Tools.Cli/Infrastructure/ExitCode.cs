@@ -83,4 +83,9 @@ public static class ExitCode
     /// Downloading the game from Steam failed partway. Running the command again resumes it.
     /// </summary>
     public const int DOWNLOAD_FAILED = 14;
+
+    /// <summary>
+    /// The folder asked for does not exist, for example the game data folder before KSP2 has run once.
+    /// </summary>
+    public const int PATH_NOT_FOUND = 15;
 }

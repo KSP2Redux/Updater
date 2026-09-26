@@ -4,6 +4,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
 using Testably.Abstractions;
@@ -14,7 +15,7 @@ namespace Ksp2Redux.Tools.Cli.Infrastructure;
 /// Factory for the service container the CLI commands run against.
 /// </summary>
 // This is the launcher's DefaultServiceProviderProvider minus everything that needs a window: the
-// view models, news, tab navigation, window placement, and the launcher's own self update. What
+// view models, tab navigation, window placement, and the launcher's own self update. What
 // remains is exactly the set the launcher drives its install path with, so a CLI install exercises
 // the same code as the button in the UI. The dialog service is the one substitution, because
 // several of the remaining services raise dialogs on failure paths.
@@ -60,6 +61,7 @@ public static class CliServiceProvider
         services.AddSingleton<ISteamLoginStore, SteamLoginStore>();
         services.AddSingleton<ISteamSessionService, SteamSessionService>();
         services.AddSingleton<ISteamDepotDownloader, SteamDepotDownloader>();
+        services.AddSingleton<INewsProviderService, NewsProviderService>();
 
         return services.BuildServiceProvider();
     }

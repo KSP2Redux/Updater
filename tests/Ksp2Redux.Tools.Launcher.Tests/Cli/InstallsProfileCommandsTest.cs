@@ -112,7 +112,7 @@ public class InstallsProfileCommandsTest
     public void TryParseSwitch_OnOrOff_Parses(string value, bool expected)
     {
         // Act
-        var ok = InstallsSetCommand.TryParseSwitch(value, out var parsed);
+        var ok = CliSwitch.TryParse(value, out var parsed);
 
         // Assert
         Assert.That(ok, Is.True);

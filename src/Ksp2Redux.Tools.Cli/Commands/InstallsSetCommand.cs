@@ -28,7 +28,7 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
 
         var arguments = settings.ClearArguments ? "" : settings.Arguments?.Trim();
 
-        if (!TryParseSwitch(settings.GraphicsJobs, out var graphicsJobs) || !TryParseSwitch(settings.SteamLaunch, out var steamLaunch))
+        if (!CliSwitch.TryParse(settings.GraphicsJobs, out var graphicsJobs) || !CliSwitch.TryParse(settings.SteamLaunch, out var steamLaunch))
         {
             return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "--graphics-jobs and --steam-launch take on or off."));
         }
@@ -116,24 +116,5 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
             () => context.Output.Result(entry.Name));
 
         return Task.FromResult(ExitCode.SUCCESS);
-    }
-
-    /// <summary>
-    /// Reads an on or off switch value.
-    /// </summary>
-    /// <param name="value">The value given, or null when the option was left out.</param>
-    /// <param name="parsed">True for on, false for off, null when left out.</param>
-    /// <returns>False when a value was given that is neither on nor off.</returns>
-    internal static bool TryParseSwitch(string? value, out bool? parsed)
-    {
-        parsed = value?.Trim().ToLowerInvariant() switch
-        {
-            null => null,
-            "on" or "true" or "yes" or "1" => true,
-            "off" or "false" or "no" or "0" => false,
-            _ => null,
-        };
-
-        return value is null || parsed is not null;
     }
 }
