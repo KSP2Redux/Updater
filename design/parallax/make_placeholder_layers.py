@@ -4,8 +4,9 @@ from collections import deque
 import numpy as np
 from PIL import Image, ImageFilter
 
+from crop_layer import install_layer
+
 SRC = sys.argv[1]
-OUT = "src/Ksp2Redux.Tools.Launcher/Assets/Parallax"
 PREVIEW = sys.argv[2] if len(sys.argv) > 2 else None
 
 CX, CY, R = 1417.2, 1089.8, 521.4
@@ -129,14 +130,12 @@ color = np.where(core[..., None], planet_rgb, np.clip(color, 0, 1))
 planet_rgba = np.dstack([color, alpha_planet])
 
 
-def save(arr, name, **options):
-    Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(f"{OUT}/{name}", **options)
+def to_image(arr):
+    return Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
 
 
-import os
-os.makedirs(OUT, exist_ok=True)
-save(planet_rgba, "planet.webp", quality=95, method=6, exact=True)
-save(station_rgba, "station.webp", lossless=True, method=6)
+install_layer(to_image(planet_rgba), "planet")
+install_layer(to_image(station_rgba), "station", lossless=True)
 
 
 def over(dst, src):

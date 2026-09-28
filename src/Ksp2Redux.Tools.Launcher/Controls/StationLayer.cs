@@ -21,12 +21,16 @@ public class StationLayer : Control
     private static readonly IBrush NozzleCore = new ImmutableSolidColorBrush(Color.FromArgb(235, 255, 255, 255));
 
     private readonly Bitmap _bitmap;
+    private readonly ParallaxLayout _layout;
+    private readonly LayerPlacement _placement;
     private double _launchTime;
     private LaunchFrame _frame = LaunchFrame.Rest;
 
-    public StationLayer(Bitmap bitmap)
+    public StationLayer(Bitmap bitmap, ParallaxLayout layout, LayerPlacement placement)
     {
         _bitmap = bitmap;
+        _layout = layout;
+        _placement = placement;
         RenderOptions.SetBitmapInterpolationMode(this, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
     }
 
@@ -42,10 +46,8 @@ public class StationLayer : Control
 
     public override void Render(DrawingContext context)
     {
-        var width = _bitmap.PixelSize.Width;
-        var height = _bitmap.PixelSize.Height;
-        var scale = Math.Max(Bounds.Width / width, Bounds.Height / height);
-        var origin = new Point((Bounds.Width - width * scale) / 2, (Bounds.Height - height * scale) / 2);
+        var (scale, origin) = _layout.Fit(Bounds.Size);
+        var image = new Rect(_placement.X, _placement.Y, _bitmap.PixelSize.Width, _bitmap.PixelSize.Height);
 
         var t = _launchTime;
         var frame = _frame;
@@ -60,7 +62,7 @@ public class StationLayer : Control
         {
             var thrust = frame.Thrust * (1 + frame.Flash * 0.35);
             if (thrust > 0) DrawExhaust(context, t, thrust, frame.Burn);
-            context.DrawImage(_bitmap, new Rect(0, 0, width, height));
+            context.DrawImage(_bitmap, image);
             if (thrust > 0) DrawBloom(context, t, thrust, frame.Flash);
         }
     }

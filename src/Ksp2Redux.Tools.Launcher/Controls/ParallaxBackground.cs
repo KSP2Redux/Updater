@@ -20,19 +20,24 @@ public class ParallaxBackground : Panel
     public static readonly StyledProperty<bool> ShowStarsProperty =
         AvaloniaProperty.Register<ParallaxBackground, bool>(nameof(ShowStars), true);
 
-    private static readonly Lazy<Bitmap> PlanetBitmap = new(() => Load("planet.webp"));
-    private static readonly Lazy<Bitmap> StationBitmap = new(() => Load("station.webp"));
+    private static readonly Lazy<ParallaxLayout> Layout = new(() =>
+    {
+        using var json = Open("layers.json");
+        return ParallaxLayout.Load(json);
+    });
+    private static readonly Lazy<Bitmap> PlanetBitmap = new(() => LoadBitmap("planet.webp"));
+    private static readonly Lazy<Bitmap> StationBitmap = new(() => LoadBitmap("station.webp"));
 
     private readonly List<(Control Layer, TranslateTransform Translate, double Depth)> _layers = [];
     private readonly Starfield _stars = new();
-    private readonly StationLayer _station = new(StationBitmap.Value);
+    private readonly StationLayer _station = new(StationBitmap.Value, Layout.Value, Layout.Value.Station);
 
     public ParallaxBackground()
     {
         IsHitTestVisible = false;
         ClipToBounds = true;
         AddLayer(_stars, STAR_DEPTH);
-        AddLayer(new Image { Source = PlanetBitmap.Value, Stretch = Stretch.UniformToFill }, PLANET_DEPTH);
+        AddLayer(new CanvasImageLayer(PlanetBitmap.Value, Layout.Value, Layout.Value.Planet), PLANET_DEPTH);
         AddLayer(_station, STATION_DEPTH);
     }
 
@@ -78,8 +83,14 @@ public class ParallaxBackground : Panel
         Children.Add(layer);
     }
 
-    private static Bitmap Load(string name) =>
-        new(AssetLoader.Open(new Uri($"avares://Ksp2Redux.Tools.Launcher/Assets/Parallax/{name}")));
+    private static Bitmap LoadBitmap(string name)
+    {
+        using var stream = Open(name);
+        return new Bitmap(stream);
+    }
+
+    private static Stream Open(string name) =>
+        AssetLoader.Open(new Uri($"avares://Ksp2Redux.Tools.Launcher/Assets/Parallax/{name}"));
 
     private sealed class Starfield : Control
     {

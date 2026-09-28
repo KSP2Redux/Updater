@@ -1,0 +1,12 @@
+{
+  "canvasWidth": 2000,
+  "canvasHeight": 1400,
+  "station": {
+    "x": 1024,
+    "y": 416
+  },
+  "planet": {
+    "x": 1056,
+    "y": 544
+  }
+}

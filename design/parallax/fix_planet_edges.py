@@ -5,13 +5,14 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from crop_layer import install_layer
+
 LIMB_PROFILE = Path(__file__).with_name("limb_profile.csv")
 
 GLOW_COLOR = np.array([230, 145, 90], np.float32) / 255
 BAND_START, BAND_FULL = -20.0, -8.0
 GLOW_BASELINE_FROM = 40.0
 GLOW_FADE_FROM, GLOW_FADE_TO = 18.0, 34.0
-WEBP_QUALITY = 95
 
 
 def load(path):
@@ -74,7 +75,7 @@ def smoothstep(e0, e1, x):
     return t * t * (3 - 2 * t)
 
 
-def main(source, target):
+def main(source, full_canvas_copy=None):
     img = load(source)
     h, w, _ = img.shape
     cx, cy, surface_r = fit_surface_circle(img)
@@ -98,12 +99,13 @@ def main(source, target):
 
     rgba = np.dstack([color, alpha])
     image = Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
-    if target.lower().endswith(".webp"):
-        image.save(target, quality=WEBP_QUALITY, method=6, exact=True)
-    else:
-        image.save(target, optimize=True)
     print(f"circle centre=({cx:.1f},{cy:.1f}) radius={surface_r:.1f} brightened rows {dark_start}-{flat_start} and refilled from {flat_start}")
+    if full_canvas_copy:
+        image.save(full_canvas_copy, optimize=True)
+    install_layer(image, "planet")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    if len(sys.argv) < 2:
+        raise SystemExit("usage: fix_planet_edges.py <planet export> [full canvas copy.png]")
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
