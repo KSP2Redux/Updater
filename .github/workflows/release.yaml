@@ -142,7 +142,7 @@ jobs:
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                     TAG: ${{ needs.build.outputs.tag }}
-                run: gh release upload "$TAG" artifacts/macos/KSP2-Redux-macOS-arm64.dmg artifacts/macos/redux-cli-macos-arm64 --clobber
+                run: gh release upload "$TAG" artifacts/macos/Ksp2Redux-macos-arm64.dmg artifacts/macos/redux-cli-macos-arm64 --clobber
 
             # Wine and DXMT are LGPL-2.1, so every release that ships them has to point at their source.
             -   name: Add the macOS files and the runtime's source to the release notes
@@ -165,7 +165,7 @@ jobs:
                         printf '%s\n\n' "$notes"
                         printf '### macOS\n\n'
                         # shellcheck disable=SC2016 # the backticks are a Markdown code span
-                        printf -- '- `KSP2-Redux-macOS-arm64.dmg`: the launcher for Apple Silicon Macs, with the Wine runtime and the CLI inside\n'
+                        printf -- '- `Ksp2Redux-macos-arm64.dmg`: the launcher for Apple Silicon Macs, with the Wine runtime and the CLI inside\n'
                         # shellcheck disable=SC2016
                         printf -- '- `redux-cli-macos-arm64`: the command line tool on its own, for Apple Silicon Macs\n\n'
                         cat <<'MACOS_APPROVAL'

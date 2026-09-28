@@ -13,7 +13,7 @@
 }
 
 /* MainButton - the launcher's big LED-style sidebar action button.
-   Art (button-*.png) is inlined as data URLs at build time; see button-art.css. */
+   Art (button-*.webp) is inlined as data URLs at build time; see button-art.css. */
 .krx-main-button {
     position: relative;
     display: inline-block;

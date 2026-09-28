@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Spectre.Console;
 
@@ -125,7 +126,7 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
 
         foreach (var install in installs)
         {
-            context.Output.Result($"{(install.Active ? "*" : " ")} {install.Name}  [{install.Channel}]  {install.Id}");
+            context.Output.Result($"{(install.Active ? "*" : " ")} {install.Name}  [{ReleaseChannels.DisplayName(install.Channel)}]  {install.Id}");
             WritePath(context, "  path", install.ExePath);
             context.Output.Result($"    {"state:",-14}{(install.Valid ? install.Distribution : "not a valid KSP2 install")}");
             context.Output.Result($"    {"version:",-14}{install.Version ?? "(unknown)"}");
@@ -149,11 +150,11 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
             context.Output.Result("  (the launcher config lists none)");
         }
 
-        var channelWidth = feeds.Max(feed => feed.Channel?.Length ?? 0);
+        var channelWidth = feeds.Max(feed => ReleaseChannels.DisplayName(feed.Channel).Length);
         foreach (var feed in feeds)
         {
             context.Output.Result(feed.Ok
-                ? $"  ok      {(feed.Channel ?? "").PadRight(channelWidth)}  {feed.Repository} / {feed.Filename}"
+                ? $"  ok      {ReleaseChannels.DisplayName(feed.Channel).PadRight(channelWidth)}  {feed.Repository} / {feed.Filename}"
                 : $"  FAILED  {feed.Repository} / {feed.Filename}: {feed.Error}");
         }
     }

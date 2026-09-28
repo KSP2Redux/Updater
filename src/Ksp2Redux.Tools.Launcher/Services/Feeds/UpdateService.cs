@@ -27,6 +27,8 @@ public class UpdateService : IUpdateService
 {
     public event Action<bool>? DownloadingChanged;
 
+    internal const double UPDATE_DIALOG_MSBOX_MAX_HEIGHT = 730;
+
     private HttpClient _http;
     private string _owner;
     private string _repo;
@@ -62,7 +64,6 @@ public class UpdateService : IUpdateService
     public static string BuildUpdateFoundMessage(Version newVersion, string? releaseNotes)
     {
         const string actionMessage = "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.";
-        const int maxNotesLength = 500;
 
         // The body is markdown meant for the releases page. This dialog is a plain text control, so
         // it gets the words without the markup, and without the part of the page aimed at someone
@@ -74,12 +75,7 @@ public class UpdateService : IUpdateService
             return $"What's new in v{newVersion}:\n(No release notes provided.)\n\n{actionMessage}";
         }
 
-        var trimmed = plain.Trim();
-        var shown = trimmed.Length > maxNotesLength
-            ? trimmed[..maxNotesLength].TrimEnd() + "..."
-            : trimmed;
-
-        return $"What's new in v{newVersion}:\n{shown}\n\n{actionMessage}";
+        return $"What's new in v{newVersion}:\n{plain.Trim()}\n\n{actionMessage}";
     }
 
     public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log)
@@ -201,8 +197,8 @@ public class UpdateService : IUpdateService
                 return false;
             }
 
-            var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
-                BuildUpdateFoundMessage(latestRelease.Version, latestRelease.Release.Body), ButtonEnum.OkCancel,
+            var result = await _messageBoxService.ShowScrollableMessageBoxAsOwnedAsync("Update Found",
+                BuildUpdateFoundMessage(latestRelease.Version, latestRelease.Release.Body), UPDATE_DIALOG_MSBOX_MAX_HEIGHT, ButtonEnum.OkCancel,
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
 
             if (result != ButtonResult.Ok) return false;

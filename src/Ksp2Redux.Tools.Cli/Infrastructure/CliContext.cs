@@ -371,7 +371,7 @@ public sealed class CliContext
         };
 
         prompt.UseConverter(entry =>
-            $"{Markup.Escape(entry.Name)} [{CliTheme.DETAIL_STYLE}]{Markup.Escape(entry.ReleaseChannel)}  {Markup.Escape(entry.ExePath)}[/]");
+            $"{Markup.Escape(entry.Name)} [{CliTheme.DETAIL_STYLE}]{Markup.Escape(ReleaseChannels.DisplayName(entry.ReleaseChannel))}  {Markup.Escape(entry.ExePath)}[/]");
         prompt.AddChoices(entries);
 
         return Output.ProgressConsole.Prompt(prompt);
@@ -398,7 +398,7 @@ public sealed class CliContext
         Output.ErrorDetail("Configured installs:");
         foreach (var entry in InstallService.Entries)
         {
-            Output.ErrorDetail($"  {entry.Id}  {entry.Name}  [{entry.ReleaseChannel}]  {entry.ExePath}");
+            Output.ErrorDetail($"  {entry.Id}  {entry.Name}  [{ReleaseChannels.DisplayName(entry.ReleaseChannel)}]  {entry.ExePath}");
         }
 
         return ExitCode.INSTALL_NOT_FOUND;
@@ -412,9 +412,9 @@ public sealed class CliContext
     /// <returns>The feed not configured exit code.</returns>
     public int FailFeedNotConfigured(string channel, IReadOnlyList<FeedLoadResult> loaded)
     {
-        Output.Error($"No feed for channel '{channel}' in the launcher config.");
+        Output.Error($"No feed for channel '{ReleaseChannels.DisplayName(channel)}' in the launcher config.");
 
-        var available = loaded.Where(r => r.IsOk).Select(r => r.Channel!).ToList();
+        var available = loaded.Where(r => r.IsOk).Select(r => ReleaseChannels.DisplayName(r.Channel)).ToList();
         if (available.Count > 0)
         {
             Output.ErrorDetail($"Channels that loaded: {string.Join(", ", available)}");
@@ -448,7 +448,7 @@ public sealed class CliContext
     {
         if (!string.IsNullOrWhiteSpace(explicitChannel))
         {
-            return explicitChannel.Trim();
+            return ReleaseChannels.FromDisplayName(explicitChannel.Trim());
         }
 
         return string.IsNullOrWhiteSpace(entry?.ReleaseChannel) ? null : entry.ReleaseChannel;
@@ -462,7 +462,7 @@ public sealed class CliContext
     /// <returns>The version not found exit code.</returns>
     public int FailVersionNotFound(string selector, string channel)
     {
-        Output.Error($"Version '{selector}' is not published to channel '{channel}'.");
+        Output.Error($"Version '{selector}' is not published to channel '{ReleaseChannels.DisplayName(channel)}'.");
 
         foreach (var (otherChannel, feed) in FeedService.ReleasesFeed)
         {
@@ -477,7 +477,7 @@ public sealed class CliContext
                 continue;
             }
 
-            Output.ErrorDetail($"It exists in channel '{otherChannel}'. Name that channel explicitly if");
+            Output.ErrorDetail($"It exists in channel '{ReleaseChannels.DisplayName(otherChannel)}'. Name that channel explicitly if");
             Output.ErrorDetail("this install is meant to switch channels.");
             break;
         }

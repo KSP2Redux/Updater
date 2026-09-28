@@ -3,7 +3,7 @@ This is the installer, updater and uninstaller application for KSP2 Redux.
 
 ## macOS
 
-KSP2 never shipped for the Mac, so the macOS launcher (`KSP2-Redux-macOS-arm64.dmg`, Apple Silicon)
+KSP2 never shipped for the Mac, so the macOS launcher (`Ksp2Redux-macos-arm64.dmg`, Apple Silicon)
 carries a Wine runtime that runs the Windows game, and can download your copy of KSP2 from Steam.
 
 The launcher is not signed by Apple yet, so macOS asks you to approve it the first time:
@@ -120,7 +120,7 @@ both products (see `.github/workflows/release.yaml`):
 | Asset | What it is |
 |---|---|
 | `Ksp2Redux-win-x64.exe`, `Ksp2Redux-linux-x64` | the launcher |
-| `KSP2-Redux-macOS-arm64.dmg` | the macOS launcher, with the Wine runtime and the CLI inside |
+| `Ksp2Redux-macos-arm64.dmg` | the macOS launcher, with the Wine runtime and the CLI inside |
 | `redux-cli-x64.exe`, `redux-cli-x64`, `redux-cli-macos-arm64` | the command line tool |
 
 The CLI asset names must never contain `win` or `linux`. The launcher's

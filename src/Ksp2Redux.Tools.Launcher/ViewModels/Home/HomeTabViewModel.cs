@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 using MsBox.Avalonia.Enums;
@@ -25,6 +26,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IUpdateService _updateService;
     private readonly IOperatingSystemService _operatingSystemService;
     private readonly IWineRuntimeService _wineRuntimeService;
+    private readonly IGameProcessService _gameProcessService;
     private readonly IMessageBoxService _messageBoxService;
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly IFileSystem _fileSystem;
@@ -93,13 +95,22 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
+    private CancellationTokenSource? _gameSession;
+    private bool _stoppingGame;
+
+    private static readonly TimeSpan DirectStartTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan SlowStartTimeout = TimeSpan.FromSeconds(120);
+
+    public event EventHandler? GameLaunched;
+    public event EventHandler? GameExited;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
-        item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
+        item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService, IGameProcessService gameProcessService)
     {
+        _gameProcessService = gameProcessService;
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
         _releasesFeedService = releasesFeedService;
@@ -270,47 +281,103 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             var appId = activeEntry.SteamAppId;
             if (string.IsNullOrWhiteSpace(appId)) appId = "954850";
-            var startInfo = new ProcessStartInfo
+            var steamLaunch = new ProcessStartInfo
             {
                 FileName = $"steam://rungameid/{appId}",
                 UseShellExecute = true
             };
-            try
-            {
-                Process.Start(startInfo);
-            }
-            catch (Exception ex)
-            {
-                _log.Error("Failed to launch through Steam.", ex);
-                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                    $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.", windowStartupLocation: WindowStartupLocation.CenterOwner);
-            }
+            if (!await TryStartGame(steamLaunch, "Failed to launch through Steam.",
+                    ex => $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.")) return;
+            await TrackRunningGame(SlowStartTimeout);
             return;
         }
 
-        MainButtonEnabled = false;
+        var directLaunch = new ProcessStartInfo
+        {
+            FileName = _ksp2InstallService.Ksp2.ExePath,
+            WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir
+        };
+        if (!string.IsNullOrWhiteSpace(activeEntry.LaunchArguments))
+        {
+            directLaunch.Arguments = activeEntry.LaunchArguments;
+        }
+        if (!await TryStartGame(directLaunch, "Failed to launch KSP2.",
+                ex => $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.")) return;
+        await TrackRunningGame(DirectStartTimeout);
+    }
+
+    private async Task<bool> TryStartGame(ProcessStartInfo startInfo, string failureLog, Func<Exception, string> failureMessage)
+    {
         try
         {
-            using Process process = new();
-            process.StartInfo.FileName = _ksp2InstallService.Ksp2.ExePath;
-            process.StartInfo.WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir;
-            var launchArgs = activeEntry.LaunchArguments;
-            if (!string.IsNullOrWhiteSpace(launchArgs))
-            {
-                process.StartInfo.Arguments = launchArgs;
-            }
-            process.Start();
-            await process.WaitForExitAsync();
+            _gameProcessService.Start(startInfo);
+            return true;
         }
         catch (Exception ex)
         {
-            _log.Error("Failed to launch KSP2.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            _log.Error(failureLog, ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch", failureMessage(ex),
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return false;
+        }
+    }
+
+    private async Task TrackRunningGame(TimeSpan startTimeout)
+    {
+        _gameSession = new CancellationTokenSource();
+        var token = _gameSession.Token;
+        var appeared = false;
+        UpdateMainButtonState();
+        try
+        {
+            if (await _gameProcessService.WaitForStartAsync(startTimeout, token))
+            {
+                appeared = true;
+                GameLaunched?.Invoke(this, EventArgs.Empty);
+                await _gameProcessService.WaitForExitAsync(token);
+            }
+            else
+            {
+                _log.Warn($"KSP2 did not appear within {startTimeout.TotalSeconds:0} seconds of launching.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
         }
         finally
         {
-            MainButtonEnabled = true;
+            _gameSession.Dispose();
+            _gameSession = null;
+            _stoppingGame = false;
+            UpdateMainButtonState();
+            if (appeared) GameExited?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private async Task StopGame()
+    {
+        if (_stoppingGame || _gameSession is null) return;
+
+        var answer = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Stop KSP2",
+            "Stop the game? Anything unsaved is lost.", ButtonEnum.YesNo, Icon.Warning,
+            windowStartupLocation: WindowStartupLocation.CenterOwner);
+        if (answer != ButtonResult.Yes || _gameSession is null) return;
+
+        _stoppingGame = true;
+        UpdateMainButtonState();
+        try
+        {
+            await _gameProcessService.StopAsync();
+            _gameSession?.Cancel();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to stop KSP2.", ex);
+            _stoppingGame = false;
+            UpdateMainButtonState();
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Stop KSP2",
+                $"{ex.Message}\nClose the game from inside it instead.", icon: Icon.Error,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 
@@ -339,26 +406,29 @@ public partial class HomeTabViewModel : ViewModelBase
 
             var startInfo = _wineRuntimeService.CreateLaunchInfo(runtime, ksp2.ExePath, ksp2.InstallDir!, launchArguments);
             _log.Info($"Launching KSP2 through {runtime.DisplayName} ({runtime.WineBinary}).");
-            using var process = Process.Start(startInfo)
-                                ?? throw new InvalidOperationException($"{runtime.DisplayName} did not start.");
-            await process.WaitForExitAsync();
+            _gameProcessService.Start(startInfo);
         }
         catch (Exception ex)
         {
             _log.Error($"Failed to launch KSP2 through {runtime.DisplayName}.", ex);
+            UpdateMainButtonState();
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
                 $"Couldn't start the game through {runtime.DisplayName}: {ex.Message}",
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
         }
-        finally
-        {
-            MainButtonEnabled = true;
-        }
+
+        await TrackRunningGame(SlowStartTimeout);
     }
 
     [RelayCommand]
     public void CancelCurrentMainButtonAction()
     {
+        if (_gameSession is not null)
+        {
+            _ = StopGame();
+            return;
+        }
         _cancelCurrentOperation?.Cancel();
     }
 
@@ -383,6 +453,14 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void UpdateMainButtonState()
     {
+        if (_gameSession is not null)
+        {
+            MainButtonShown = MainButtonState.Cancel;
+            MainButtonEnabled = !_stoppingGame;
+            MainButtonTooltip = _stoppingGame ? "Stopping KSP2..." : "Stop KSP2. Anything unsaved is lost.";
+            return;
+        }
+
         _ksp2InstallService.TryLoadKsp2Install();
         var ksp2 = _ksp2InstallService.Ksp2;
         if (ksp2 is null || !ksp2.IsValid)

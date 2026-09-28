@@ -20,7 +20,7 @@
                         </TextBlock.Inlines></TextBlock>
                     <Button Grid.Column="1" Classes="link-button" ToolTip.Tip="View On Blog" Margin="0, 0, 20, 0" VerticalAlignment="Top" Click="NewsLink_OnClick">
                         <Canvas>
-                            <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-general.png" Canvas.Left="0"
+                            <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-general.webp" Canvas.Left="0"
                                    Canvas.Top="0" />
                             <Border Classes="button-tint" />
                         </Canvas>

@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:settings="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Settings"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:launcherConv="clr-namespace:Ksp2Redux.Tools.Launcher.Converters"
              x:DataType="settings:SettingsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Settings.SettingsTabView"
@@ -168,7 +169,13 @@
 						          Name="ReleaseChannelSelector"
 						          MaxDropDownHeight="200"
 						          SelectedValue="{Binding SelectedInstall.ReleaseChannel, Mode=TwoWay}"
-						          ItemsSource="{Binding ValidChannels}" />
+						          ItemsSource="{Binding ValidChannels}">
+							<ComboBox.ItemTemplate>
+								<DataTemplate x:DataType="x:String">
+									<TextBlock Text="{Binding Converter={x:Static launcherConv:ChannelConverters.DisplayName}}" />
+								</DataTemplate>
+							</ComboBox.ItemTemplate>
+						</ComboBox>
 					</Grid>
 
 					<Grid Classes="field" IsVisible="{Binding ShowSteamLaunchOptions}">
@@ -278,6 +285,11 @@
 				          IsChecked="{Binding VerboseLogging, Mode=TwoWay}"
 				          ToolTip.Tip="Write more detailed information to the log file. Useful when troubleshooting an issue.">
 					Verbose logging
+				</CheckBox>
+				<CheckBox Margin="16,0,0,6" FontSize="11" VerticalAlignment="Center"
+				          IsChecked="{Binding ParallaxMotion, Mode=TwoWay}"
+				          ToolTip.Tip="Shift the background slightly as the mouse moves. Turn this off if the motion is distracting or uncomfortable.">
+					Background motion
 				</CheckBox>
 				</WrapPanel>
 				<TextBlock Grid.Row="1" Margin="0,2,0,0"

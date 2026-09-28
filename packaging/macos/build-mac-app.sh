@@ -78,7 +78,7 @@ codesign --force --deep --sign - "$APP"
 if [ "$MAKE_DMG" = "true" ]; then
     # The launcher's updater matches asset names containing "win" or "linux", so release asset names
     # must avoid both, including "darwin".
-    DMG="$OUTPUT/KSP2-Redux-macOS-arm64.dmg"
+    DMG="$OUTPUT/Ksp2Redux-macos-arm64.dmg"
     echo "==> Creating $DMG"
     rm -f "$DMG"
     hdiutil create -volname "KSP2 Redux" -srcfolder "$APP" -ov -format UDZO "$DMG" >/dev/null

@@ -27,8 +27,8 @@ for (const f of fonts) {
 
 const artCss = (await Promise.all(
     ['install', 'update', 'launch', 'cancel'].map(async v => {
-        const png = await readFile(path.join(launcherAssets, `button-${v}.png`));
-        return `.krx-main-button--${v} { background-image: url("data:image/png;base64,${png.toString('base64')}"); }`;
+        const art = await readFile(path.join(launcherAssets, `button-${v}.webp`));
+        return `.krx-main-button--${v} { background-image: url("data:image/webp;base64,${art.toString('base64')}"); }`;
     }),
 )).join('\n');
 

@@ -1,5 +1,6 @@
 ﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -41,7 +42,7 @@ public sealed class InstallsUseCommand : ReduxCommand<InstallsUseSettings>
             () =>
             {
                 context.Output.Result(entry.Name);
-                context.Output.Detail($"  {entry.Id}  [{entry.ReleaseChannel}]  {entry.ExePath}");
+                context.Output.Detail($"  {entry.Id}  [{ReleaseChannels.DisplayName(entry.ReleaseChannel)}]  {entry.ExePath}");
             });
 
         return Task.FromResult(ExitCode.SUCCESS);

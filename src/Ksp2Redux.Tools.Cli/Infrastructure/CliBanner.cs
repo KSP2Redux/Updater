@@ -13,7 +13,7 @@ namespace Ksp2Redux.Tools.Cli.Infrastructure;
 // That is twice the vertical resolution of one pixel per cell, and it makes the pixels square.
 public static class CliBanner
 {
-    private const string RESOURCE_NAME = "Ksp2Redux.Tools.Cli.logo.png";
+    private const string RESOURCE_NAME = "Ksp2Redux.Tools.Cli.logo.webp";
     private const int MAX_COLUMNS = 64;
     private const int MINIMUM_COLUMNS = 16;
     private const int COLUMN_MARGIN = 2;

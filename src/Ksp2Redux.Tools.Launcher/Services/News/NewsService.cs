@@ -1,4 +1,5 @@
-﻿using CodeHollow.FeedReader;
+﻿using System.Text.RegularExpressions;
+using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.News;
@@ -10,7 +11,7 @@ public interface INewsService
     Task FetchNews();
 }
 
-public class NewsService(INewsProviderService newsProviderService, ILogService log) : INewsService
+public partial class NewsService(INewsProviderService newsProviderService, ILogService log) : INewsService
 {
     private List<Models.News> _newsList = [];
 
@@ -42,11 +43,22 @@ public class NewsService(INewsProviderService newsProviderService, ILogService l
                 Id = string.IsNullOrWhiteSpace(item.Link) ? Guid.NewGuid().ToString() : item.Link,
                 Title = item.Title,
                 Author = item.Author,
-                Content = item.Content,
+                Content = StripImageDimensions(item.Content),
                 Link = item.Link,
                 Date = date
             });
         }
         _newsList = newsList.OrderBy(n => n.Date).ToList();
     }
+
+    internal static string StripImageDimensions(string? html) =>
+        string.IsNullOrEmpty(html)
+            ? string.Empty
+            : ImageTag().Replace(html, tag => DimensionAttribute().Replace(tag.Value, ""));
+
+    [GeneratedRegex(@"<img\b[^>]*>", RegexOptions.IgnoreCase)]
+    private static partial Regex ImageTag();
+
+    [GeneratedRegex(@"\s+(?:width|height)\s*=\s*(?:""[^""]*""|'[^']*'|[^\s>]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex DimensionAttribute();
 }

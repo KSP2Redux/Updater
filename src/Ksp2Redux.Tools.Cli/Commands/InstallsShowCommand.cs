@@ -1,5 +1,6 @@
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -50,7 +51,7 @@ public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
                 Row(context, "path", entry.ExePath);
                 Row(context, "state", install is { IsValid: true } ? install.Distribution.ToString() : "not a valid KSP2 install");
                 Row(context, "version", version ?? "(unknown)");
-                Row(context, "channel", entry.ReleaseChannel);
+                Row(context, "channel", ReleaseChannels.DisplayName(entry.ReleaseChannel));
                 var arguments = string.IsNullOrWhiteSpace(entry.LaunchArguments) ? "(none)" : entry.LaunchArguments;
                 Row(context, "launch args", steamLaunchApplies && entry.LaunchThroughSteam ? $"{arguments} (not used while launching via Steam)" : arguments);
                 Row(context, "graphics jobs", entry.DisableGraphicsJobs ? "off" : "on");

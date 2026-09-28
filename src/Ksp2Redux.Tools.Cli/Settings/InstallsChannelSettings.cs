@@ -12,6 +12,6 @@ public sealed class InstallsChannelSettings : InstallsTargetSettings
     /// Gets the channel the install should follow.
     /// </summary>
     [CommandArgument(1, "<channel>")]
-    [Description("The release channel the install should follow, such as stable or beta.")]
+    [Description("The release channel the install should follow, such as stable or snapshot.")]
     public string Channel { get; init; } = "";
 }

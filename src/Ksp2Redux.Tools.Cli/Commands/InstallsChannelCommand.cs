@@ -1,5 +1,6 @@
 ﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -8,15 +9,13 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class InstallsChannelCommand : ReduxCommand<InstallsChannelSettings>
 {
-    private const string BETA_CHANNEL = "beta";
-
     /// <inheritdoc />
     protected override Task<int> RunAsync(
         CliContext context,
         InstallsChannelSettings settings,
         CancellationToken cancellationToken)
     {
-        var channel = settings.Channel.Trim();
+        var channel = ReleaseChannels.FromDisplayName(settings.Channel.Trim());
         if (channel.Length == 0)
         {
             return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "The channel cannot be blank."));
@@ -29,8 +28,8 @@ public sealed class InstallsChannelCommand : ReduxCommand<InstallsChannelSetting
         }
 
         var previous = entry.ReleaseChannel;
-        var switchingToBeta = string.Equals(channel, BETA_CHANNEL, StringComparison.OrdinalIgnoreCase)
-                              && !string.Equals(previous, BETA_CHANNEL, StringComparison.OrdinalIgnoreCase);
+        var switchingToSnapshot = string.Equals(channel, ReleaseChannels.SNAPSHOT, StringComparison.OrdinalIgnoreCase)
+                                  && !string.Equals(previous, ReleaseChannels.SNAPSHOT, StringComparison.OrdinalIgnoreCase);
 
         context.InstallService.UpdateInstallReleaseChannel(entry.Id, channel);
 
@@ -42,11 +41,11 @@ public sealed class InstallsChannelCommand : ReduxCommand<InstallsChannelSetting
         }
 
         // The launcher raises this as a dialog when the same switch is made in the settings tab.
-        if (switchingToBeta)
+        if (switchingToSnapshot)
         {
             context.Output.WarnPanel(
-                "Switching to beta",
-                "The beta channel is for QA testing. Builds are unstable and can break at any time.",
+                "Switching to snapshot",
+                "The snapshot channel is for QA testing. Builds are unstable and can break at any time.",
                 "We recommend not using it with existing campaigns.");
         }
 
@@ -59,7 +58,7 @@ public sealed class InstallsChannelCommand : ReduxCommand<InstallsChannelSetting
                 channel,
                 previousChannel = previous,
             },
-            () => context.Output.Result(channel));
+            () => context.Output.Result(ReleaseChannels.DisplayName(channel)));
 
         return Task.FromResult(ExitCode.SUCCESS);
     }

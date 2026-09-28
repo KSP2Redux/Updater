@@ -40,10 +40,10 @@ public class Ksp2InstallRowViewModelValidationTest
         return (row, fs, messageBoxService, entry);
     }
 
-    private static void VerifyBetaWarningCount(Mock<IMessageBoxService> messageBox, Times times)
+    private static void VerifySnapshotWarningCount(Mock<IMessageBoxService> messageBox, Times times)
         => messageBox.Verify(m => m.ShowMessageBoxAsOwnedAsync(
-            It.Is<string>(t => t.Contains("Beta")),
-            It.Is<string>(b => b.Contains("QA testing")),
+            It.Is<string>(t => t.Contains("Snapshot")),
+            It.Is<string>(b => b.Contains("snapshot channel is for QA testing")),
             It.IsAny<ButtonEnum>(),
             It.IsAny<Icon>(),
             It.IsAny<object?>(),
@@ -108,7 +108,7 @@ public class Ksp2InstallRowViewModelValidationTest
 
         row.ReleaseChannel = "beta";
 
-        VerifyBetaWarningCount(messageBox, Times.Once());
+        VerifySnapshotWarningCount(messageBox, Times.Once());
     }
 
     [Test]
@@ -116,7 +116,7 @@ public class Ksp2InstallRowViewModelValidationTest
     {
         var (_, _, messageBox, _) = MakeRowWithMocks(ValidExePath, "954850", "beta");
 
-        VerifyBetaWarningCount(messageBox, Times.Never());
+        VerifySnapshotWarningCount(messageBox, Times.Never());
     }
 
     [Test]
@@ -126,7 +126,7 @@ public class Ksp2InstallRowViewModelValidationTest
 
         row.ReleaseChannel = "stable";
 
-        VerifyBetaWarningCount(messageBox, Times.Never());
+        VerifySnapshotWarningCount(messageBox, Times.Never());
     }
 
     [Test]
@@ -137,6 +137,6 @@ public class Ksp2InstallRowViewModelValidationTest
         row.ReleaseChannel = "";
         row.ReleaseChannel = "beta";
 
-        VerifyBetaWarningCount(messageBox, Times.Never());
+        VerifySnapshotWarningCount(messageBox, Times.Never());
     }
 }

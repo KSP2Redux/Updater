@@ -23,6 +23,39 @@ public class LauncherParityCommandsTest
         Assert.That(harness.Json.GetProperty("patchSource").GetString(), Is.EqualTo("r2"));
         Assert.That(harness.Json.GetProperty("concurrentChunks").GetInt32(), Is.EqualTo(4));
         Assert.That(harness.Json.GetProperty("verboseLogging").GetBoolean(), Is.False);
+        Assert.That(harness.Json.GetProperty("backgroundMotion").GetBoolean(), Is.True);
+    }
+
+    [Test]
+    public async Task SettingsSet_BackgroundMotionOff_IsSavedToTheLauncherConfig()
+    {
+        // Arrange
+        var harness = new CliCommandHarness();
+
+        // Act
+        var exit = await new LauncherSettingsSetCommand().RunWithContextAsync(harness.Context,
+            new LauncherSettingsSetSettings { BackgroundMotion = "off" });
+
+        // Assert
+        Assert.That(exit, Is.EqualTo(ExitCode.SUCCESS));
+        var saved = harness.FileSystem.File.ReadAllText(harness.Context.ConfigService.Config.StoragePath);
+        Assert.That(saved, Does.Contain("\"ParallaxMotion\": false"));
+        Assert.That(harness.Json.GetProperty("backgroundMotion").GetBoolean(), Is.False);
+    }
+
+    [Test]
+    public async Task SettingsSet_InvalidBackgroundMotion_ChangesNothing()
+    {
+        // Arrange
+        var harness = new CliCommandHarness();
+
+        // Act
+        var exit = await new LauncherSettingsSetCommand().RunWithContextAsync(harness.Context,
+            new LauncherSettingsSetSettings { BackgroundMotion = "wobbly" });
+
+        // Assert
+        Assert.That(exit, Is.EqualTo(ExitCode.USAGE_ERROR));
+        Assert.That(harness.Context.ConfigService.Config.ParallaxMotion, Is.True);
     }
 
     [Test]

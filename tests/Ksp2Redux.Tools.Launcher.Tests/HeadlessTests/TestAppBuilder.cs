@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
@@ -33,6 +34,7 @@ public static class TestAppBuilder
     public static Mock<IOperatingSystemService> OperatingSystemService { get; private set; } = null!;
     public static Mock<IDiskSpaceService> DiskSpaceService { get; private set; } = null!;
     public static Mock<IWineRuntimeService> WineRuntimeService { get; private set; } = null!;
+    public static Mock<IGameProcessService> GameProcessService { get; private set; } = null!;
     public static Mock<ISteamSessionService> SteamSessionService { get; private set; } = null!;
     public static Mock<ISteamDialogService> SteamDialogService { get; private set; } = null!;
 
@@ -67,6 +69,7 @@ public static class TestAppBuilder
         UpdateService = new();
         DiskSpaceService = new();
         WineRuntimeService = new();
+        GameProcessService = new();
         SteamSessionService = new();
         SteamDialogService = new();
         DiskSpaceService.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
@@ -101,6 +104,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(OperatingSystemService.Object);
         serviceCollection.AddSingleton(DiskSpaceService.Object);
         serviceCollection.AddSingleton(WineRuntimeService.Object);
+        serviceCollection.AddSingleton(GameProcessService.Object);
         serviceCollection.AddSingleton(SteamSessionService.Object);
         serviceCollection.AddSingleton(SteamDialogService.Object);
         serviceCollection.AddSingleton<IWindowPlacementService, WindowPlacementService>();

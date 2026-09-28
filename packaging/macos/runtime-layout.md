@@ -22,7 +22,7 @@ copies the result into `KSP2 Redux.app/Contents/Resources/wine-runtime`.
   requests that touch the script, and can be started by hand.
 - `.github/workflows/dotnet.yml` has a `macos` job that runs the tests on macOS and builds the `.app`.
 - `.github/workflows/release.yaml` builds the runtime through the workflow above, packs
-  `KSP2-Redux-macOS-arm64.dmg`, attaches it to the new release, and adds the Wine and DXMT source
+  `Ksp2Redux-macos-arm64.dmg`, attaches it to the new release, and adds the Wine and DXMT source
   links to the release notes.
 
 CI cannot run `--test-game`, since there is no KSP2 install on a runner. Run it locally whenever the

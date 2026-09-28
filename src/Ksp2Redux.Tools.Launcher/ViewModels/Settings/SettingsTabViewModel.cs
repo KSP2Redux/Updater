@@ -61,6 +61,9 @@ public partial class SettingsTabViewModel : ViewModelBase
     public partial bool VerboseLogging { get; set; }
 
     [ObservableProperty]
+    public partial bool ParallaxMotion { get; set; }
+
+    [ObservableProperty]
     public partial PatchDownloadSource PatchDownloadSource { get; set; }
 
     [ObservableProperty]
@@ -177,6 +180,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         try
         {
             VerboseLogging = _launcherConfigService.Config.VerboseLogging;
+            ParallaxMotion = _launcherConfigService.Config.ParallaxMotion;
             PatchDownloadSource = _launcherConfigService.Config.PatchDownloadSource;
             MaxConcurrentChunkDownloads = _launcherConfigService.Config.MaxConcurrentChunkDownloads;
         }
@@ -194,6 +198,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         {
             PatchDownloadSource = _launcherConfigService.Config.PatchDownloadSource;
             MaxConcurrentChunkDownloads = _launcherConfigService.Config.MaxConcurrentChunkDownloads;
+            ParallaxMotion = _launcherConfigService.Config.ParallaxMotion;
         }
         finally
         {
@@ -208,6 +213,13 @@ public partial class SettingsTabViewModel : ViewModelBase
         _log.MinimumLevel = value ? LogLevel.Debug : LogLevel.Info;
         if (_suppressSettingsSave) return;
         _launcherConfigService.Config.VerboseLogging = value;
+        _launcherConfigService.Save();
+    }
+
+    partial void OnParallaxMotionChanged(bool value)
+    {
+        if (_suppressSettingsSave) return;
+        _launcherConfigService.Config.ParallaxMotion = value;
         _launcherConfigService.Save();
     }
 

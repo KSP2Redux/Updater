@@ -139,4 +139,15 @@ public class CliContextTest
         // Assert
         Assert.That(result, Is.EqualTo("beta"));
     }
+
+    [Test]
+    public void ResolveChannel_SnapshotDisplayName_ResolvesToTheBetaFeed(
+        [Values("snapshot", "Snapshot", " SNAPSHOT ")] string explicitChannel)
+    {
+        // Act
+        string? result = CliContext.ResolveChannel(explicitChannel, null);
+
+        // Assert
+        Assert.That(result, Is.EqualTo("beta"));
+    }
 }

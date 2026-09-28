@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -6,8 +7,12 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Threading;
+using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Ksp2Redux.Tools.Launcher.Views.Community;
 using Ksp2Redux.Tools.Launcher.Views.Home;
 using Ksp2Redux.Tools.Launcher.Views.Mods;
@@ -46,6 +51,119 @@ public partial class MainWindow : Window
         // we can hook. Recomputing on every layout pass keeps it in sync regardless of
         // what caused the layout change.
         LayoutUpdated += (_, _) => RefreshBackdropClips();
+
+        AddHandler(PointerMovedEvent, OnParallaxPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
+        PointerExited += (_, _) => SetParallaxTarget(default);
+        Deactivated += (_, _) => SetParallaxTarget(default);
+    }
+
+    private const double PARALLAX_EASING_PER_SECOND = 5;
+    private const double PARALLAX_SETTLED = 0.0005;
+
+    private Vector _parallaxTarget;
+    private Vector _parallaxCurrent;
+    private TimeSpan? _lastParallaxFrame;
+    private bool _parallaxFrameRequested;
+
+    private SettingsTabViewModel? _motionSource;
+
+    private bool ParallaxEnabled => _motionSource?.ParallaxMotion ?? true;
+
+    private void OnMotionSettingChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsTabViewModel.ParallaxMotion) && !ParallaxEnabled) SetParallaxTarget(default);
+    }
+
+    private void OnParallaxPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!ParallaxEnabled) return;
+        var size = Bounds.Size;
+        if (size.Width <= 0 || size.Height <= 0) return;
+        var point = e.GetPosition(this);
+        SetParallaxTarget(new Vector(
+            Math.Clamp(point.X / size.Width * 2 - 1, -1, 1),
+            Math.Clamp(point.Y / size.Height * 2 - 1, -1, 1)));
+    }
+
+    private void SetParallaxTarget(Vector target)
+    {
+        _parallaxTarget = target;
+        RequestParallaxFrame();
+    }
+
+    private void RequestParallaxFrame()
+    {
+        if (_parallaxFrameRequested) return;
+        _parallaxFrameRequested = true;
+        RequestAnimationFrame(OnParallaxFrame);
+    }
+
+    private void OnParallaxFrame(TimeSpan time)
+    {
+        _parallaxFrameRequested = false;
+        var seconds = _lastParallaxFrame is { } last ? Math.Min((time - last).TotalSeconds, 0.1) : 1.0 / 60;
+        _lastParallaxFrame = time;
+
+        var delta = _parallaxTarget - _parallaxCurrent;
+        var settled = delta.Length < PARALLAX_SETTLED;
+        _parallaxCurrent = settled
+            ? _parallaxTarget
+            : _parallaxCurrent + delta * (1 - Math.Exp(-PARALLAX_EASING_PER_SECOND * seconds));
+
+        BackgroundLayers.Offset = _parallaxCurrent;
+        ContentBackdropLayers.Offset = _parallaxCurrent;
+        SidebarBackdropLayers.Offset = _parallaxCurrent;
+
+        var launching = AdvanceLaunch(time);
+
+        if (settled && !launching)
+        {
+            _lastParallaxFrame = null;
+            return;
+        }
+        RequestParallaxFrame();
+    }
+
+    private readonly LaunchSequence _launch = new();
+    private HomeTabViewModel? _launchSource;
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_launchSource is not null)
+        {
+            _launchSource.GameLaunched -= OnGameLaunched;
+            _launchSource.GameExited -= OnGameExited;
+        }
+        _launchSource = (DataContext as MainWindowViewModel)?.HomeTab;
+        if (_launchSource is not null)
+        {
+            _launchSource.GameLaunched += OnGameLaunched;
+            _launchSource.GameExited += OnGameExited;
+        }
+
+        if (_motionSource is not null) _motionSource.PropertyChanged -= OnMotionSettingChanged;
+        _motionSource = (DataContext as MainWindowViewModel)?.SettingsTab;
+        if (_motionSource is not null) _motionSource.PropertyChanged += OnMotionSettingChanged;
+    }
+
+    private void OnGameLaunched(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        if (_launch.Launch()) RequestParallaxFrame();
+    });
+
+    private void OnGameExited(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        if (_launch.GameExited()) RequestParallaxFrame();
+    });
+
+    private bool AdvanceLaunch(TimeSpan time)
+    {
+        var step = _launch.Advance(time.TotalSeconds);
+        BackgroundLayers.SetLaunch(step.Time, step.Frame);
+        ContentBackdropLayers.SetLaunch(step.Time, step.Frame);
+        SidebarBackdropLayers.SetLaunch(step.Time, step.Frame);
+        return step.Animating;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

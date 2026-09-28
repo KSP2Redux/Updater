@@ -123,7 +123,7 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
         if (target is null)
         {
             return string.IsNullOrWhiteSpace(settings.Version)
-                ? (null, null, context.Output.Fail(ExitCode.VERSION_NOT_FOUND, $"Channel '{channel}' has published no versions."))
+                ? (null, null, context.Output.Fail(ExitCode.VERSION_NOT_FOUND, $"Channel '{ReleaseChannels.DisplayName(channel)}' has published no versions."))
                 : (null, null, context.FailVersionNotFound(settings.Version, channel));
         }
 

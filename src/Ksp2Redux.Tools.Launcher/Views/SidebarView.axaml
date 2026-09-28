@@ -125,7 +125,7 @@
     </UserControl.Styles>
 
     <Grid Width="260" RowDefinitions="Auto,*,Auto,Auto,Auto">
-        <Image Grid.Row="0" Source="avares://Ksp2Redux.Tools.Launcher/Assets/logo.png" Width="260" Margin="0,0,0,8"/>
+        <Image Grid.Row="0" Source="avares://Ksp2Redux.Tools.Launcher/Assets/logo.webp" Width="260" Margin="0,0,0,8"/>
 
         <shared:NewsCollectionView x:Name="NewsCollection" Grid.Row="1" DataContext="{Binding NewsCollectionViewModel}"/>
 
@@ -189,7 +189,7 @@
                     IsEnabled="{Binding MainButtonEnabled}"
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
                 <Canvas Width="260" Height="76">
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">INSTALL</TextBlock>
                 </Canvas>
@@ -198,7 +198,7 @@
                     IsEnabled="{Binding MainButtonEnabled}"
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
                 <Canvas Width="260" Height="76">
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">UPDATE</TextBlock>
                 </Canvas>
@@ -207,7 +207,7 @@
                     IsEnabled="{Binding MainButtonEnabled}"
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
                 <Canvas Width="260" Height="76">
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">CANCEL</TextBlock>
                 </Canvas>
@@ -216,7 +216,7 @@
                     IsEnabled="{Binding MainButtonEnabled}"
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
                 <Canvas Width="260" Height="76">
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.png" Canvas.Left="0" Canvas.Top="0" Width="260" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <TextBlock FontFamily="{StaticResource LedCounter7}">LAUNCH</TextBlock>
                 </Canvas>
@@ -228,43 +228,43 @@
                     VerticalAlignment="Bottom" Margin="0,14,0,0">
             <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Redux Website" Click="WebsiteLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-website.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-website.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="GitHub" Click="GithubLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-github.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="Reddit" Click="RedditLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-reddit.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-reddit.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="YouTube" Click="YoutubeLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-youtube.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
             <Button Classes="link-button sidebar-link" ToolTip.Tip="TikTok" Click="TikTokLink_OnClick">
                 <Canvas>
-                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-tiktok.png" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-tiktok.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>

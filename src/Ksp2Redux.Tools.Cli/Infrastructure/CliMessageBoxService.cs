@@ -36,6 +36,15 @@ public sealed class CliMessageBoxService : IMessageBoxService
         return Task.FromResult(DefaultResultFor(@enum));
     }
 
+    /// <inheritdoc />
+    public Task<ButtonResult> ShowScrollableMessageBoxAsOwnedAsync(
+        string title,
+        string text,
+        double maxHeight,
+        ButtonEnum @enum = ButtonEnum.Ok,
+        WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen)
+        => ShowMessageBoxAsOwnedAsync(title, text, @enum, windowStartupLocation: windowStartupLocation);
+
     // Mirrors the button a user gets by dismissing the dialog, so a caller branching on the result
     // takes its non destructive path rather than reading Ok as consent it never got.
     private static ButtonResult DefaultResultFor(ButtonEnum buttons) => buttons switch
