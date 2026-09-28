@@ -25,6 +25,7 @@ public class ParallaxBackground : Panel
 
     private readonly List<(Control Layer, TranslateTransform Translate, double Depth)> _layers = [];
     private readonly Starfield _stars = new();
+    private readonly StationLayer _station = new(StationBitmap.Value);
 
     public ParallaxBackground()
     {
@@ -32,7 +33,13 @@ public class ParallaxBackground : Panel
         ClipToBounds = true;
         AddLayer(_stars, STAR_DEPTH);
         AddLayer(new Image { Source = PlanetBitmap.Value, Stretch = Stretch.UniformToFill }, PLANET_DEPTH);
-        AddLayer(new Image { Source = StationBitmap.Value, Stretch = Stretch.UniformToFill }, STATION_DEPTH);
+        AddLayer(_station, STATION_DEPTH);
+    }
+
+    public double LaunchTime
+    {
+        get => _station.LaunchTime;
+        set => _station.LaunchTime = value;
     }
 
     public Vector Offset

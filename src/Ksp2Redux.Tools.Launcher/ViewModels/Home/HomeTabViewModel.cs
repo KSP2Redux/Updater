@@ -94,6 +94,8 @@ public partial class HomeTabViewModel : ViewModelBase
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
 
+    public event EventHandler? GameLaunched;
+
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
 
@@ -278,6 +280,7 @@ public partial class HomeTabViewModel : ViewModelBase
             try
             {
                 Process.Start(startInfo);
+                GameLaunched?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
@@ -300,6 +303,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 process.StartInfo.Arguments = launchArgs;
             }
             process.Start();
+            GameLaunched?.Invoke(this, EventArgs.Empty);
             await process.WaitForExitAsync();
         }
         catch (Exception ex)
@@ -341,6 +345,7 @@ public partial class HomeTabViewModel : ViewModelBase
             _log.Info($"Launching KSP2 through {runtime.DisplayName} ({runtime.WineBinary}).");
             using var process = Process.Start(startInfo)
                                 ?? throw new InvalidOperationException($"{runtime.DisplayName} did not start.");
+            GameLaunched?.Invoke(this, EventArgs.Empty);
             await process.WaitForExitAsync();
         }
         catch (Exception ex)

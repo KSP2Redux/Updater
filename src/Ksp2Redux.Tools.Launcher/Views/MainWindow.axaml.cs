@@ -6,8 +6,11 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Threading;
+using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.Views.Community;
 using Ksp2Redux.Tools.Launcher.Views.Home;
 using Ksp2Redux.Tools.Launcher.Views.Mods;
@@ -90,21 +93,61 @@ public partial class MainWindow : Window
         _lastParallaxFrame = time;
 
         var delta = _parallaxTarget - _parallaxCurrent;
-        if (delta.Length < PARALLAX_SETTLED)
-        {
-            _parallaxCurrent = _parallaxTarget;
-            _lastParallaxFrame = null;
-        }
-        else
-        {
-            _parallaxCurrent += delta * (1 - Math.Exp(-PARALLAX_EASING_PER_SECOND * seconds));
-        }
+        var settled = delta.Length < PARALLAX_SETTLED;
+        _parallaxCurrent = settled
+            ? _parallaxTarget
+            : _parallaxCurrent + delta * (1 - Math.Exp(-PARALLAX_EASING_PER_SECOND * seconds));
 
         BackgroundLayers.Offset = _parallaxCurrent;
         ContentBackdropLayers.Offset = _parallaxCurrent;
         SidebarBackdropLayers.Offset = _parallaxCurrent;
 
-        if (_lastParallaxFrame is not null) RequestParallaxFrame();
+        var launching = AdvanceLaunch(time);
+
+        if (settled && !launching)
+        {
+            _lastParallaxFrame = null;
+            return;
+        }
+        RequestParallaxFrame();
+    }
+
+    private TimeSpan? _launchStart;
+    private bool _launchRequested;
+    private HomeTabViewModel? _launchSource;
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_launchSource is not null) _launchSource.GameLaunched -= OnGameLaunched;
+        _launchSource = (DataContext as MainWindowViewModel)?.HomeTab;
+        if (_launchSource is not null) _launchSource.GameLaunched += OnGameLaunched;
+    }
+
+    private void OnGameLaunched(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        if (_launchStart is not null || _launchRequested) return;
+        _launchRequested = true;
+        RequestParallaxFrame();
+    });
+
+    private bool AdvanceLaunch(TimeSpan time)
+    {
+        if (_launchRequested)
+        {
+            _launchRequested = false;
+            _launchStart = time;
+        }
+        if (_launchStart is not { } start) return false;
+
+        var elapsed = (time - start).TotalSeconds;
+        var done = elapsed >= LaunchTimeline.DURATION;
+        var launchTime = done ? double.NaN : elapsed;
+        BackgroundLayers.LaunchTime = launchTime;
+        ContentBackdropLayers.LaunchTime = launchTime;
+        SidebarBackdropLayers.LaunchTime = launchTime;
+        if (done) _launchStart = null;
+        return !done;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
