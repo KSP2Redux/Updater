@@ -1,5 +1,6 @@
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -38,7 +39,7 @@ public sealed class ChannelsCommand : ReduxCommand<ChannelsSettings>
                 [
                     .. loaded.Select(result => (IReadOnlyList<CliCell>)
                     [
-                        new CliCell(result.Channel ?? "?", result.IsOk ? null : CliTheme.DETAIL_STYLE),
+                        new CliCell(result.Channel is null ? "?" : ReleaseChannels.DisplayName(result.Channel), result.IsOk ? null : CliTheme.DETAIL_STYLE),
                         new CliCell(result.IsOk ? "ok" : "FAILED", result.IsOk ? CliTheme.ACTIVE_STYLE : $"bold {CliTheme.DANGER.ToMarkup()}"),
                         result.Feed.Repository, new CliCell(result.Feed.Filename, CliTheme.DETAIL_STYLE),
                         new CliCell(result.Error ?? "", CliTheme.DETAIL_STYLE),

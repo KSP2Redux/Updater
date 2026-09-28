@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:settings="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Settings"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:launcherConv="clr-namespace:Ksp2Redux.Tools.Launcher.Converters"
              x:DataType="settings:SettingsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Settings.SettingsTabView"
@@ -168,7 +169,13 @@
 						          Name="ReleaseChannelSelector"
 						          MaxDropDownHeight="200"
 						          SelectedValue="{Binding SelectedInstall.ReleaseChannel, Mode=TwoWay}"
-						          ItemsSource="{Binding ValidChannels}" />
+						          ItemsSource="{Binding ValidChannels}">
+							<ComboBox.ItemTemplate>
+								<DataTemplate x:DataType="x:String">
+									<TextBlock Text="{Binding Converter={x:Static launcherConv:ChannelConverters.DisplayName}}" />
+								</DataTemplate>
+							</ComboBox.ItemTemplate>
+						</ComboBox>
 					</Grid>
 
 					<Grid Classes="field" IsVisible="{Binding ShowSteamLaunchOptions}">

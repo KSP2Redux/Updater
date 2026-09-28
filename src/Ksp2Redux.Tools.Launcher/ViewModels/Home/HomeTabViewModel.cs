@@ -95,7 +95,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private CancellationTokenSource? _cancelCurrentOperation;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
-        item => (item as GameVersionViewModel)?.Channel ?? string.Empty;
+        item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
         ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService)

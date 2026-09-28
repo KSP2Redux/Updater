@@ -14,11 +14,11 @@ public class GameVersionViewModel(GameVersion gameVersion) : ViewModelBase, IGro
             .Append(gameVersion.VersionNumber)
             .Append('.')
             .Append(gameVersion.BuildNumber)
-            .Append(gameVersion.Channel == "stable"
+            .Append(gameVersion.Channel == ReleaseChannels.STABLE
                 ? string.Empty
                 : new StringBuilder()
                     .Append('-')
-                    .Append(gameVersion.Channel.ToLower()).ToString())
+                    .Append(ReleaseChannels.DisplayName(gameVersion.Channel).ToLower()).ToString())
             .ToString();
 
     public string ReleaseDateString => gameVersion.ReleasedAt is { } dateTime

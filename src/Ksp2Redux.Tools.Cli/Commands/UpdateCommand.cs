@@ -1,5 +1,6 @@
 ﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -58,7 +59,7 @@ public sealed class UpdateCommand : ReduxCommand<UpdateSettings>
 
         if (newest is null)
         {
-            return context.Output.Fail(ExitCode.VERSION_NOT_FOUND, $"Channel '{channel}' has published no versions.");
+            return context.Output.Fail(ExitCode.VERSION_NOT_FOUND, $"Channel '{ReleaseChannels.DisplayName(channel)}' has published no versions.");
         }
 
         var installed = CliContext.FormatVersion(install.GameVersion);

@@ -97,5 +97,5 @@ public class GameVersion : IEquatable<GameVersion>
     }
 
     public override string ToString()
-        => $"{VersionNumber}.{BuildNumber} ({Channel})";
+        => $"{VersionNumber}.{BuildNumber} ({ReleaseChannels.DisplayName(Channel)})";
 }

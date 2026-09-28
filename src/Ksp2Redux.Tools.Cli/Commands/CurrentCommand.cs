@@ -1,5 +1,6 @@
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -54,7 +55,7 @@ public sealed class CurrentCommand : ReduxCommand<CurrentSettings>
             {
                 context.Output.Result(CliContext.FormatVersion(version));
                 context.Output.Detail($"  install:      {entry.Name} ({entry.Id})");
-                context.Output.Detail($"  channel:      {version.Channel}");
+                context.Output.Detail($"  channel:      {ReleaseChannels.DisplayName(version.Channel)}");
                 context.Output.Detail($"  commit:       {version.CommitHash}");
                 context.Output.Detail($"  distribution: {install.Distribution}");
                 context.Output.Detail($"  directory:    {install.InstallDir}");

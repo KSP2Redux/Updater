@@ -10,8 +10,6 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
 public partial class Ksp2InstallRowViewModel : ViewModelBase
 {
-    private const string BETA_CHANNEL = "beta";
-
     private readonly IFileSystem _fileSystem;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly IMessageBoxService _messageBoxService;
@@ -79,16 +77,16 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(value)) return;
 
-        var switchingToBeta = value == BETA_CHANNEL && _entry.ReleaseChannel != BETA_CHANNEL;
+        var switchingToSnapshot = value == ReleaseChannels.SNAPSHOT && _entry.ReleaseChannel != ReleaseChannels.SNAPSHOT;
 
         _ksp2InstallService.UpdateInstallReleaseChannel(_entry.Id, value);
 
-        if (switchingToBeta) _ = WarnAboutBetaChannelAsync();
+        if (switchingToSnapshot) _ = WarnAboutSnapshotChannelAsync();
     }
 
-    private Task WarnAboutBetaChannelAsync()
-        => _messageBoxService.ShowMessageBoxAsOwnedAsync("Switching to Beta",
-            "The beta channel is for QA testing. Builds are unstable and can break at any time.\n\n" +
+    private Task WarnAboutSnapshotChannelAsync()
+        => _messageBoxService.ShowMessageBoxAsOwnedAsync("Switching to Snapshot",
+            "The snapshot channel is for QA testing. Builds are unstable and can break at any time.\n\n" +
             "We recommend not using it with existing campaigns.",
             icon: Icon.Warning,
             windowStartupLocation: WindowStartupLocation.CenterOwner);

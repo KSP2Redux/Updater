@@ -1,5 +1,6 @@
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -47,7 +48,7 @@ public sealed class InstallsCommand : ReduxCommand<InstallsSettings>
                         new CliCell(isActive ? "*" : "", nameStyle),
                         new CliCell(ShortId(context, entry.Id), CliTheme.DETAIL_STYLE),
                         new CliCell(entry.Name, nameStyle),
-                        entry.ReleaseChannel,
+                        ReleaseChannels.DisplayName(entry.ReleaseChannel),
                         CliCell.Path(entry.ExePath),
                     ]);
                 }

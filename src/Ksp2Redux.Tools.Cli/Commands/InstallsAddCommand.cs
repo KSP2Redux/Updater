@@ -1,5 +1,6 @@
 ﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -46,7 +47,7 @@ public sealed class InstallsAddCommand : ReduxCommand<InstallsAddSettings>
 
         if (!string.IsNullOrWhiteSpace(settings.Channel))
         {
-            context.InstallService.UpdateInstallReleaseChannel(entry.Id, settings.Channel.Trim());
+            context.InstallService.UpdateInstallReleaseChannel(entry.Id, ReleaseChannels.FromDisplayName(settings.Channel.Trim()));
         }
 
         if (settings.ShouldActivate)
@@ -77,7 +78,7 @@ public sealed class InstallsAddCommand : ReduxCommand<InstallsAddSettings>
             {
                 context.Output.Result(entry.Id.ToString());
                 context.Output.Detail($"  name:     {entry.Name}");
-                context.Output.Detail($"  channel:  {entry.ReleaseChannel}");
+                context.Output.Detail($"  channel:  {ReleaseChannels.DisplayName(entry.ReleaseChannel)}");
                 context.Output.Detail($"  path:     {entry.ExePath}");
                 context.Output.Detail($"  active:   {isActive}");
             });

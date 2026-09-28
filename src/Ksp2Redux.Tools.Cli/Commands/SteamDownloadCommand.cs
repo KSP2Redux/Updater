@@ -129,7 +129,7 @@ public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
 
         if (added && !string.IsNullOrWhiteSpace(settings.Channel))
         {
-            context.InstallService.UpdateInstallReleaseChannel(entry.Id, settings.Channel.Trim());
+            context.InstallService.UpdateInstallReleaseChannel(entry.Id, ReleaseChannels.FromDisplayName(settings.Channel.Trim()));
         }
 
         context.InstallService.SetActiveInstall(entry.Id);
