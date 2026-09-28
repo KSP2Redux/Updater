@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -11,6 +12,7 @@ using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Ksp2Redux.Tools.Launcher.Views.Community;
 using Ksp2Redux.Tools.Launcher.Views.Home;
 using Ksp2Redux.Tools.Launcher.Views.Mods;
@@ -63,8 +65,18 @@ public partial class MainWindow : Window
     private TimeSpan? _lastParallaxFrame;
     private bool _parallaxFrameRequested;
 
+    private SettingsTabViewModel? _motionSource;
+
+    private bool ParallaxEnabled => _motionSource?.ParallaxMotion ?? true;
+
+    private void OnMotionSettingChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsTabViewModel.ParallaxMotion) && !ParallaxEnabled) SetParallaxTarget(default);
+    }
+
     private void OnParallaxPointerMoved(object? sender, PointerEventArgs e)
     {
+        if (!ParallaxEnabled) return;
         var size = Bounds.Size;
         if (size.Width <= 0 || size.Height <= 0) return;
         var point = e.GetPosition(this);
@@ -122,6 +134,10 @@ public partial class MainWindow : Window
         if (_launchSource is not null) _launchSource.GameLaunched -= OnGameLaunched;
         _launchSource = (DataContext as MainWindowViewModel)?.HomeTab;
         if (_launchSource is not null) _launchSource.GameLaunched += OnGameLaunched;
+
+        if (_motionSource is not null) _motionSource.PropertyChanged -= OnMotionSettingChanged;
+        _motionSource = (DataContext as MainWindowViewModel)?.SettingsTab;
+        if (_motionSource is not null) _motionSource.PropertyChanged += OnMotionSettingChanged;
     }
 
     private void OnGameLaunched(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>

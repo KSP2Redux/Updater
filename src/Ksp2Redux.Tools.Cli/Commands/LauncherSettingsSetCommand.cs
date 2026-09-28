@@ -18,11 +18,11 @@ public sealed class LauncherSettingsSetCommand : ReduxCommand<LauncherSettingsSe
         LauncherSettingsSetSettings settings,
         CancellationToken cancellationToken)
     {
-        if (settings is { PatchSource: null, ConcurrentChunks: null, VerboseLogging: null })
+        if (settings is { PatchSource: null, ConcurrentChunks: null, VerboseLogging: null, BackgroundMotion: null })
         {
             return Task.FromResult(context.Output.Fail(
                 ExitCode.USAGE_ERROR,
-                "Nothing to change. Pass at least one of --patch-source, --concurrent-chunks or --verbose-logging."));
+                "Nothing to change. Pass at least one of --patch-source, --concurrent-chunks, --verbose-logging or --background-motion."));
         }
 
         PatchDownloadSource? source = null;
@@ -48,16 +48,23 @@ public sealed class LauncherSettingsSetCommand : ReduxCommand<LauncherSettingsSe
             return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "--verbose-logging takes on or off."));
         }
 
+        if (!CliSwitch.TryParse(settings.BackgroundMotion, out var motion))
+        {
+            return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "--background-motion takes on or off."));
+        }
+
         var config = context.ConfigService.Config;
         if (source is { } newSource) config.PatchDownloadSource = newSource;
         if (settings.ConcurrentChunks is { } chunks) config.MaxConcurrentChunkDownloads = chunks;
         if (verbose is { } newVerbose) config.VerboseLogging = newVerbose;
+        if (motion is { } newMotion) config.ParallaxMotion = newMotion;
         context.ConfigService.Save();
 
         if (!context.ConfigPersisted(saved =>
                 (source is null || saved.PatchDownloadSource == source)
                 && (settings.ConcurrentChunks is null || saved.MaxConcurrentChunkDownloads == settings.ConcurrentChunks)
-                && (verbose is null || saved.VerboseLogging == verbose)))
+                && (verbose is null || saved.VerboseLogging == verbose)
+                && (motion is null || saved.ParallaxMotion == motion)))
         {
             return Task.FromResult(context.Output.Fail(
                 ExitCode.CONFIG_WRITE_FAILED,

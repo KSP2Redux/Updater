@@ -28,4 +28,11 @@ public sealed class LauncherSettingsSetSettings : LauncherSettingsSettings
     [CommandOption("--verbose-logging <ON_OR_OFF>")]
     [Description("Write more detail to the launcher's log file. Useful when troubleshooting.")]
     public string? VerboseLogging { get; init; }
+
+    /// <summary>
+    /// Gets whether the launcher background shifts with the mouse, or null to leave it.
+    /// </summary>
+    [CommandOption("--background-motion <ON_OR_OFF>")]
+    [Description("Shift the launcher background slightly as the mouse moves.")]
+    public string? BackgroundMotion { get; init; }
 }

@@ -45,6 +45,11 @@ public class LauncherConfig(string storagePath)
     public bool VerboseLogging { get; set; } = false;
 
     /// <summary>
+    /// When enabled, the background layers shift slightly with the mouse.
+    /// </summary>
+    public bool ParallaxMotion { get; set; } = true;
+
+    /// <summary>
     /// Last window geometry. Null until the window has been closed once (first run
     /// uses the built-in defaults and centers on screen).
     /// </summary>
