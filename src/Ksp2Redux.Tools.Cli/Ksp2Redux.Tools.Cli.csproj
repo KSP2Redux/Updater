@@ -38,7 +38,7 @@
 
     <ItemGroup>
         <!-- The launcher's logo, embedded so the banner works from a copied exe with no assets beside it. -->
-        <EmbeddedResource Include="..\Ksp2Redux.Tools.Launcher\Assets\logo.png" LogicalName="Ksp2Redux.Tools.Cli.logo.png" />
+        <EmbeddedResource Include="..\Ksp2Redux.Tools.Launcher\Assets\logo.webp" LogicalName="Ksp2Redux.Tools.Cli.logo.webp" />
     </ItemGroup>
 
     <ItemGroup>
