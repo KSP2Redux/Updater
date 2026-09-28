@@ -174,11 +174,30 @@ public class LaunchStopButtonTest
     }
 
     [AvaloniaTest]
+    public async Task GameAppears_RaisesGameLaunchedOnce()
+    {
+        var home = Start();
+        var raised = 0;
+        home.GameLaunched += (_, _) => raised++;
+
+        var launching = home.LaunchGameCommand.ExecuteAsync(null);
+        Pump();
+        _gameExited.SetResult();
+        await launching;
+
+        Assert.That(raised, Is.EqualTo(1));
+    }
+
+    [AvaloniaTest]
     public async Task GameNeverAppears_ButtonGoesBackToLaunch()
     {
         var home = Start(gameAppears: false);
+        var raised = 0;
+        home.GameLaunched += (_, _) => raised++;
 
         await home.LaunchGameCommand.ExecuteAsync(null);
+
+        Assert.That(raised, Is.Zero, "The station should not fly off for a game that never started.");
 
         Assert.That(home.MainButtonShown, Is.Not.EqualTo(HomeTabViewModel.MainButtonState.Cancel));
         TestAppBuilder.GameProcessService.Verify(g => g.WaitForExitAsync(It.IsAny<CancellationToken>()), Times.Never);

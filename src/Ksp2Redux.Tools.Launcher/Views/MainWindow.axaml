@@ -6,6 +6,7 @@
         xmlns:community="using:Ksp2Redux.Tools.Launcher.Views.Community"
         xmlns:mods="using:Ksp2Redux.Tools.Launcher.Views.Mods"
         xmlns:settings="using:Ksp2Redux.Tools.Launcher.Views.Settings"
+        xmlns:controls="using:Ksp2Redux.Tools.Launcher.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
@@ -154,14 +155,7 @@
              two borders form a properly nested concentric ring instead of a mismatched gap. -->
         <Border Name="InnerChrome" Background="Black" CornerRadius="10" ClipToBounds="True">
             <Grid RowDefinitions="Auto,*">
-                <Border Grid.RowSpan="2">
-                    <Border.Background>
-                        <!-- UniformToFill: the default Fill would distort the art once the window can be
-     any aspect ratio. All three copies (base + two blur layers) must use the same
-     stretch so the blurred copies stay pixel-aligned with the base. -->
-                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
-                    </Border.Background>
-                </Border>
+                <controls:ParallaxBackground Grid.RowSpan="2" Name="BackgroundLayers" />
 
                 <!--
                     Avalonia has no real backdrop-filter, so the "frosted glass" look behind
@@ -175,24 +169,20 @@
                 -->
                 <Border Grid.RowSpan="2" Name="ContentBackdropBlur" IsHitTestVisible="False"
                         IsVisible="{Binding IsContentPanelVisible}">
-                    <Border.Background>
-                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
-                    </Border.Background>
                     <Border.Effect>
                         <BlurEffect Radius="36" />
                     </Border.Effect>
+                    <controls:ParallaxBackground Name="ContentBackdropLayers" ShowStars="False" Background="Black" />
                 </Border>
 
                 <!-- Same trick as ContentBackdropBlur above, but clipped to the sidebar's
                      news panel instead, which is always shown (no IsContentPanelVisible
                      binding needed here). -->
                 <Border Grid.RowSpan="2" Name="SidebarBackdropBlur" IsHitTestVisible="False">
-                    <Border.Background>
-                        <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/background.png" Stretch="UniformToFill" />
-                    </Border.Background>
                     <Border.Effect>
                         <BlurEffect Radius="36" />
                     </Border.Effect>
+                    <controls:ParallaxBackground Name="SidebarBackdropLayers" ShowStars="False" Background="Black" />
                 </Border>
 
                 <Border Grid.RowSpan="2">

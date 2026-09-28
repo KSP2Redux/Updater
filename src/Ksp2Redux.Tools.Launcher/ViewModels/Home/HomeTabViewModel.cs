@@ -101,6 +101,8 @@ public partial class HomeTabViewModel : ViewModelBase
     private static readonly TimeSpan DirectStartTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan SlowStartTimeout = TimeSpan.FromSeconds(120);
 
+    public event EventHandler? GameLaunched;
+
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
 
@@ -328,6 +330,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             if (await _gameProcessService.WaitForStartAsync(startTimeout, token))
             {
+                GameLaunched?.Invoke(this, EventArgs.Empty);
                 await _gameProcessService.WaitForExitAsync(token);
             }
             else
