@@ -1,42 +1,26 @@
 import math
 import sys
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-REFERENCE = "src/Ksp2Redux.Tools.Launcher/Assets/background.png"
-REF_CX, REF_CY, REF_R = 1417.2, 1089.8, 521.4
-LIT_ANGLES = range(150, 236, 5)
+LIMB_PROFILE = Path(__file__).with_name("limb_profile.csv")
 
 GLOW_COLOR = np.array([230, 145, 90], np.float32) / 255
 BAND_START, BAND_FULL = -20.0, -8.0
-PROFILE_RANGE = (-24.0, 48.0, 0.25)
 GLOW_BASELINE_FROM = 40.0
 GLOW_FADE_FROM, GLOW_FADE_TO = 18.0, 34.0
+WEBP_QUALITY = 95
 
 
 def load(path):
     return np.asarray(Image.open(path).convert("RGB")).astype(np.float32) / 255
 
 
-def bilinear(img, x, y):
-    h, w, _ = img.shape
-    x = np.clip(x, 0, w - 1.001)
-    y = np.clip(y, 0, h - 1.001)
-    x0, y0 = x.astype(int), y.astype(int)
-    fx, fy = (x - x0)[..., None], (y - y0)[..., None]
-    return (img[y0, x0] * (1 - fx) * (1 - fy) + img[y0, x0 + 1] * fx * (1 - fy)
-            + img[y0 + 1, x0] * (1 - fx) * fy + img[y0 + 1, x0 + 1] * fx * fy)
-
-
 def reference_profile():
-    ref = load(REFERENCE)
-    d = np.arange(*PROFILE_RANGE)
-    samples = []
-    for angle in LIT_ANGLES:
-        t = math.radians(angle)
-        samples.append(bilinear(ref, REF_CX + (REF_R + d) * math.cos(t), REF_CY + (REF_R + d) * math.sin(t)))
-    return d, np.mean(samples, axis=0)
+    table = np.loadtxt(LIMB_PROFILE, delimiter=",", skiprows=1, dtype=np.float32)
+    return table[:, 0], table[:, 1:4]
 
 
 def fit_surface_circle(img):
@@ -113,7 +97,11 @@ def main(source, target):
     color[alpha == 0] = 0
 
     rgba = np.dstack([color, alpha])
-    Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(target, optimize=True)
+    image = Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
+    if target.lower().endswith(".webp"):
+        image.save(target, quality=WEBP_QUALITY, method=6, exact=True)
+    else:
+        image.save(target, optimize=True)
     print(f"circle centre=({cx:.1f},{cy:.1f}) radius={surface_r:.1f} brightened rows {dark_start}-{flat_start} and refilled from {flat_start}")
 
 

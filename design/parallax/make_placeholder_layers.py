@@ -4,9 +4,9 @@ from collections import deque
 import numpy as np
 from PIL import Image, ImageFilter
 
-SRC = "src/Ksp2Redux.Tools.Launcher/Assets/background.png"
+SRC = sys.argv[1]
 OUT = "src/Ksp2Redux.Tools.Launcher/Assets/Parallax"
-PREVIEW = sys.argv[1] if len(sys.argv) > 1 else None
+PREVIEW = sys.argv[2] if len(sys.argv) > 2 else None
 
 CX, CY, R = 1417.2, 1089.8, 521.4
 GLOW = 70
@@ -129,14 +129,14 @@ color = np.where(core[..., None], planet_rgb, np.clip(color, 0, 1))
 planet_rgba = np.dstack([color, alpha_planet])
 
 
-def save(arr, name):
-    Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(f"{OUT}/{name}", optimize=True)
+def save(arr, name, **options):
+    Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(f"{OUT}/{name}", **options)
 
 
 import os
 os.makedirs(OUT, exist_ok=True)
-save(planet_rgba, "planet.png")
-save(station_rgba, "station.png")
+save(planet_rgba, "planet.webp", quality=95, method=6, exact=True)
+save(station_rgba, "station.webp", lossless=True, method=6)
 
 
 def over(dst, src):

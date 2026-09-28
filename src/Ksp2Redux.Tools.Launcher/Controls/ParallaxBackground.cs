@@ -20,8 +20,8 @@ public class ParallaxBackground : Panel
     public static readonly StyledProperty<bool> ShowStarsProperty =
         AvaloniaProperty.Register<ParallaxBackground, bool>(nameof(ShowStars), true);
 
-    private static readonly Lazy<Bitmap> PlanetBitmap = new(() => Load("planet.png"));
-    private static readonly Lazy<Bitmap> StationBitmap = new(() => Load("station.png"));
+    private static readonly Lazy<Bitmap> PlanetBitmap = new(() => Load("planet.webp"));
+    private static readonly Lazy<Bitmap> StationBitmap = new(() => Load("station.webp"));
 
     private readonly List<(Control Layer, TranslateTransform Translate, double Depth)> _layers = [];
     private readonly Starfield _stars = new();
@@ -36,11 +36,9 @@ public class ParallaxBackground : Panel
         AddLayer(_station, STATION_DEPTH);
     }
 
-    public double LaunchTime
-    {
-        get => _station.LaunchTime;
-        set => _station.LaunchTime = value;
-    }
+    public LaunchFrame LaunchFrame => _station.Frame;
+
+    public void SetLaunch(double time, LaunchFrame frame) => _station.SetLaunch(time, frame);
 
     public Vector Offset
     {
