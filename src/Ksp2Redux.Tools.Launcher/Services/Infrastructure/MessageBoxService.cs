@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Base;
+using MsBox.Avalonia.Dto;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -15,6 +16,13 @@ public interface IMessageBoxService
         ButtonEnum @enum = ButtonEnum.Ok,
         Icon icon = Icon.None,
         object? context = null,
+        WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen);
+
+    Task<ButtonResult> ShowScrollableMessageBoxAsOwnedAsync(
+        string title,
+        string text,
+        double maxHeight,
+        ButtonEnum @enum = ButtonEnum.Ok,
         WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen);
 }
 
@@ -35,7 +43,33 @@ public class MessageBoxService : IMessageBoxService
         IMsBox<ButtonResult> box = MessageBoxManager.GetMessageBoxStandard(title, text, @enum, icon, context, windowStartupLocation);
         return await ShowAsOwnedAsync(box);
     }
-    
+
+    public async Task<ButtonResult> ShowScrollableMessageBoxAsOwnedAsync(
+        string title,
+        string text,
+        double maxHeight,
+        ButtonEnum @enum = ButtonEnum.Ok,
+        WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen)
+    {
+        IMsBox<ButtonResult> box = MessageBoxManager.GetMessageBoxStandard(
+            ScrollableParams(title, text, maxHeight, @enum, windowStartupLocation));
+        return await ShowAsOwnedAsync(box);
+    }
+
+    internal static MessageBoxStandardParams ScrollableParams(
+        string title,
+        string text,
+        double maxHeight,
+        ButtonEnum @enum,
+        WindowStartupLocation windowStartupLocation) => new()
+    {
+        ContentTitle = title,
+        ContentMessage = text,
+        ButtonDefinitions = @enum,
+        MaxHeight = maxHeight,
+        WindowStartupLocation = windowStartupLocation
+    };
+
     private async Task<T> ShowAsOwnedAsync<T>(IMsBox<T> box)
     {
         var owner = OwnerWindow;

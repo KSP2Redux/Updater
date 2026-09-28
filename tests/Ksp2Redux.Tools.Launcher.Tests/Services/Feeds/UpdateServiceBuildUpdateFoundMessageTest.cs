@@ -26,16 +26,17 @@ public class UpdateServiceBuildUpdateFoundMessageTest
     }
 
     [Test]
-    public void VeryLongReleaseNotes_TruncatesInsteadOfShowingAWallOfText()
+    public void VeryLongReleaseNotes_AreShownInFullForTheDialogToScroll()
     {
-        var longNotes = new string('a', 900);
+        var longNotes = string.Join("\n", Enumerable.Range(1, 80).Select(i => $"- Change number {i}"));
 
         var message = UpdateService.BuildUpdateFoundMessage(new Version(0, 2, 0), longNotes);
 
         Assert.Multiple(() =>
         {
-            Assert.That(message, Does.Contain(new string('a', 500) + "..."));
-            Assert.That(message, Does.Not.Contain(new string('a', 501)));
+            Assert.That(message, Does.Contain("- Change number 80"));
+            Assert.That(message, Does.Not.Contain("..."));
+            Assert.That(message, Does.EndWith("Without updating you cannot install new Redux versions."));
         });
     }
 }
