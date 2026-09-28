@@ -102,6 +102,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private static readonly TimeSpan SlowStartTimeout = TimeSpan.FromSeconds(120);
 
     public event EventHandler? GameLaunched;
+    public event EventHandler? GameExited;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
@@ -325,11 +326,13 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         _gameSession = new CancellationTokenSource();
         var token = _gameSession.Token;
+        var appeared = false;
         UpdateMainButtonState();
         try
         {
             if (await _gameProcessService.WaitForStartAsync(startTimeout, token))
             {
+                appeared = true;
                 GameLaunched?.Invoke(this, EventArgs.Empty);
                 await _gameProcessService.WaitForExitAsync(token);
             }
@@ -347,6 +350,7 @@ public partial class HomeTabViewModel : ViewModelBase
             _gameSession = null;
             _stoppingGame = false;
             UpdateMainButtonState();
+            if (appeared) GameExited?.Invoke(this, EventArgs.Empty);
         }
     }
 

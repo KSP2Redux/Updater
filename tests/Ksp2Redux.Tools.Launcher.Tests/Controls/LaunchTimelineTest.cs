@@ -6,17 +6,15 @@ public class LaunchTimelineTest
 {
     [TestCase(-1)]
     [TestCase(0)]
-    [TestCase(LaunchTimeline.DURATION)]
-    [TestCase(LaunchTimeline.DURATION + 5)]
-    public void OutsideTheLaunch_StationIsAtRestWithNoFlame(double t)
+    public void BeforeTheLaunch_StationIsAtRest(double t)
     {
-        Assert.That(LaunchTimeline.Evaluate(t), Is.EqualTo(new LaunchFrame(0, 0, 0, 0, 1)));
+        Assert.That(LaunchTimeline.Depart(t), Is.EqualTo(LaunchFrame.Rest));
     }
 
     [Test]
     public void Ignition_LightsTheEngineBeforeTheStationMoves()
     {
-        var frame = LaunchTimeline.Evaluate(LaunchTimeline.IGNITION * 0.9);
+        var frame = LaunchTimeline.Depart(LaunchTimeline.IGNITION * 0.9);
 
         Assert.Multiple(() =>
         {
@@ -29,8 +27,9 @@ public class LaunchTimelineTest
     [Test]
     public void Burn_AcceleratesTheStationAwayAtFullThrust()
     {
-        var times = Enumerable.Range(1, 9).Select(i => LaunchTimeline.IGNITION + LaunchTimeline.BURN * i / 10).ToList();
-        var frames = times.Select(LaunchTimeline.Evaluate).ToList();
+        var frames = Enumerable.Range(1, 9)
+            .Select(i => LaunchTimeline.Depart(LaunchTimeline.IGNITION + LaunchTimeline.BURN * i / 10))
+            .ToList();
         var steps = frames.Zip(frames.Skip(1), (a, b) => b.Travel - a.Travel).ToList();
 
         Assert.Multiple(() =>
@@ -41,18 +40,25 @@ public class LaunchTimelineTest
         });
     }
 
-    [Test]
-    public void AfterTheBurn_StationIsHiddenThenFadesBackInPlace()
+    [TestCase(LaunchTimeline.DEPARTURE)]
+    [TestCase(LaunchTimeline.DEPARTURE + 3600)]
+    public void AfterTheBurn_StationStaysHidden(double t)
     {
-        var gone = LaunchTimeline.Evaluate(LaunchTimeline.IGNITION + LaunchTimeline.BURN + LaunchTimeline.GONE / 2);
-        var returning = LaunchTimeline.Evaluate(LaunchTimeline.DURATION - LaunchTimeline.RETURN / 2);
+        Assert.That(LaunchTimeline.Depart(t), Is.EqualTo(LaunchFrame.Hidden));
+    }
+
+    [Test]
+    public void Return_FadesTheStationBackInPlace()
+    {
+        var halfway = LaunchTimeline.Return(LaunchTimeline.RETURN / 2);
 
         Assert.Multiple(() =>
         {
-            Assert.That(gone.StationOpacity, Is.Zero);
-            Assert.That(returning.Travel, Is.Zero);
-            Assert.That(returning.Thrust, Is.Zero);
-            Assert.That(returning.StationOpacity, Is.InRange(0.3, 0.7));
+            Assert.That(LaunchTimeline.Return(0).StationOpacity, Is.Zero);
+            Assert.That(halfway.Travel, Is.Zero);
+            Assert.That(halfway.Thrust, Is.Zero);
+            Assert.That(halfway.StationOpacity, Is.InRange(0.3, 0.7));
+            Assert.That(LaunchTimeline.Return(LaunchTimeline.RETURN), Is.EqualTo(LaunchFrame.Rest));
         });
     }
 }

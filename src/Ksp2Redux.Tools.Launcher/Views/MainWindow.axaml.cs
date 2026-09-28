@@ -124,16 +124,23 @@ public partial class MainWindow : Window
         RequestParallaxFrame();
     }
 
-    private TimeSpan? _launchStart;
-    private bool _launchRequested;
+    private readonly LaunchSequence _launch = new();
     private HomeTabViewModel? _launchSource;
 
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_launchSource is not null) _launchSource.GameLaunched -= OnGameLaunched;
+        if (_launchSource is not null)
+        {
+            _launchSource.GameLaunched -= OnGameLaunched;
+            _launchSource.GameExited -= OnGameExited;
+        }
         _launchSource = (DataContext as MainWindowViewModel)?.HomeTab;
-        if (_launchSource is not null) _launchSource.GameLaunched += OnGameLaunched;
+        if (_launchSource is not null)
+        {
+            _launchSource.GameLaunched += OnGameLaunched;
+            _launchSource.GameExited += OnGameExited;
+        }
 
         if (_motionSource is not null) _motionSource.PropertyChanged -= OnMotionSettingChanged;
         _motionSource = (DataContext as MainWindowViewModel)?.SettingsTab;
@@ -142,28 +149,21 @@ public partial class MainWindow : Window
 
     private void OnGameLaunched(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
     {
-        if (_launchStart is not null || _launchRequested) return;
-        _launchRequested = true;
-        RequestParallaxFrame();
+        if (_launch.Launch()) RequestParallaxFrame();
+    });
+
+    private void OnGameExited(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        if (_launch.GameExited()) RequestParallaxFrame();
     });
 
     private bool AdvanceLaunch(TimeSpan time)
     {
-        if (_launchRequested)
-        {
-            _launchRequested = false;
-            _launchStart = time;
-        }
-        if (_launchStart is not { } start) return false;
-
-        var elapsed = (time - start).TotalSeconds;
-        var done = elapsed >= LaunchTimeline.DURATION;
-        var launchTime = done ? double.NaN : elapsed;
-        BackgroundLayers.LaunchTime = launchTime;
-        ContentBackdropLayers.LaunchTime = launchTime;
-        SidebarBackdropLayers.LaunchTime = launchTime;
-        if (done) _launchStart = null;
-        return !done;
+        var step = _launch.Advance(time.TotalSeconds);
+        BackgroundLayers.SetLaunch(step.Time, step.Frame);
+        ContentBackdropLayers.SetLaunch(step.Time, step.Frame);
+        SidebarBackdropLayers.SetLaunch(step.Time, step.Frame);
+        return step.Animating;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

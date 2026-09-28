@@ -174,18 +174,37 @@ public class LaunchStopButtonTest
     }
 
     [AvaloniaTest]
-    public async Task GameAppears_RaisesGameLaunchedOnce()
+    public async Task GameAppearsThenExits_RaisesGameLaunchedThenGameExitedOnce()
     {
         var home = Start();
-        var raised = 0;
-        home.GameLaunched += (_, _) => raised++;
+        List<string> events = [];
+        home.GameLaunched += (_, _) => events.Add("launched");
+        home.GameExited += (_, _) => events.Add("exited");
 
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
         Pump();
+        Assert.That(events, Is.EqualTo(new[] { "launched" }), "The station should stay away while the game runs.");
+
         _gameExited.SetResult();
         await launching;
 
-        Assert.That(raised, Is.EqualTo(1));
+        Assert.That(events, Is.EqualTo(new[] { "launched", "exited" }));
+    }
+
+    [AvaloniaTest]
+    public async Task StoppingTheGame_RaisesGameExited()
+    {
+        var home = Start();
+        var exited = 0;
+        home.GameExited += (_, _) => exited++;
+        var launching = home.LaunchGameCommand.ExecuteAsync(null);
+        Pump();
+
+        home.CancelCurrentMainButtonActionCommand.Execute(null);
+        Pump();
+        await launching;
+
+        Assert.That(exited, Is.EqualTo(1));
     }
 
     [AvaloniaTest]
@@ -194,10 +213,11 @@ public class LaunchStopButtonTest
         var home = Start(gameAppears: false);
         var raised = 0;
         home.GameLaunched += (_, _) => raised++;
+        home.GameExited += (_, _) => raised++;
 
         await home.LaunchGameCommand.ExecuteAsync(null);
 
-        Assert.That(raised, Is.Zero, "The station should not fly off for a game that never started.");
+        Assert.That(raised, Is.Zero, "The station should not fly off or come back for a game that never started.");
 
         Assert.That(home.MainButtonShown, Is.Not.EqualTo(HomeTabViewModel.MainButtonState.Cancel));
         TestAppBuilder.GameProcessService.Verify(g => g.WaitForExitAsync(It.IsAny<CancellationToken>()), Times.Never);

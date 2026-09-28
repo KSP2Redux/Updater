@@ -21,7 +21,8 @@ public class StationLayer : Control
     private static readonly IBrush NozzleCore = new ImmutableSolidColorBrush(Color.FromArgb(235, 255, 255, 255));
 
     private readonly Bitmap _bitmap;
-    private double _launchTime = double.NaN;
+    private double _launchTime;
+    private LaunchFrame _frame = LaunchFrame.Rest;
 
     public StationLayer(Bitmap bitmap)
     {
@@ -29,14 +30,14 @@ public class StationLayer : Control
         RenderOptions.SetBitmapInterpolationMode(this, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
     }
 
-    public double LaunchTime
+    public LaunchFrame Frame => _frame;
+
+    public void SetLaunch(double time, LaunchFrame frame)
     {
-        get => _launchTime;
-        set
-        {
-            _launchTime = value;
-            InvalidateVisual();
-        }
+        if (frame == _frame && (frame.Thrust <= 0 || time == _launchTime)) return;
+        _launchTime = time;
+        _frame = frame;
+        InvalidateVisual();
     }
 
     public override void Render(DrawingContext context)
@@ -46,8 +47,8 @@ public class StationLayer : Control
         var scale = Math.Max(Bounds.Width / width, Bounds.Height / height);
         var origin = new Point((Bounds.Width - width * scale) / 2, (Bounds.Height - height * scale) / 2);
 
-        var t = double.IsNaN(_launchTime) ? 0 : _launchTime;
-        var frame = LaunchTimeline.Evaluate(t);
+        var t = _launchTime;
+        var frame = _frame;
         if (frame.StationOpacity <= 0) return;
 
         var rumble = frame.Thrust > 0 ? new Vector(Noise(t * 3, 1) - 0.5, Noise(t * 3, 2) - 0.5) * 2.4 * frame.Thrust : default;
