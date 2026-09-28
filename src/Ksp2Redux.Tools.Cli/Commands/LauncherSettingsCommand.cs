@@ -4,7 +4,7 @@ using Ksp2Redux.Tools.Cli.Settings;
 namespace Ksp2Redux.Tools.Cli.Commands;
 
 /// <summary>
-/// Shows the launcher-wide settings: patch source, concurrent chunks and verbose logging.
+/// Shows the launcher-wide settings: patch source, concurrent chunks, verbose logging and background motion.
 /// </summary>
 public sealed class LauncherSettingsCommand : ReduxCommand<LauncherSettingsSettings>
 {
@@ -32,6 +32,7 @@ public sealed class LauncherSettingsCommand : ReduxCommand<LauncherSettingsSetti
                 patchSource = config.PatchDownloadSource.ToString().ToLowerInvariant(),
                 concurrentChunks = config.MaxConcurrentChunkDownloads,
                 verboseLogging = config.VerboseLogging,
+                backgroundMotion = config.ParallaxMotion,
                 configPath = config.StoragePath,
             },
             () =>
@@ -39,6 +40,7 @@ public sealed class LauncherSettingsCommand : ReduxCommand<LauncherSettingsSetti
                 context.Output.Result($"  {"patch source:",-20}{config.PatchDownloadSource.ToString().ToLowerInvariant()}");
                 context.Output.Result($"  {"concurrent chunks:",-20}{config.MaxConcurrentChunkDownloads}");
                 context.Output.Result($"  {"verbose logging:",-20}{(config.VerboseLogging ? "on" : "off")}");
+                context.Output.Result($"  {"background motion:",-20}{(config.ParallaxMotion ? "on" : "off")}");
             });
     }
 }

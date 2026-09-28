@@ -279,6 +279,11 @@
 				          ToolTip.Tip="Write more detailed information to the log file. Useful when troubleshooting an issue.">
 					Verbose logging
 				</CheckBox>
+				<CheckBox Margin="16,0,0,6" FontSize="11" VerticalAlignment="Center"
+				          IsChecked="{Binding ParallaxMotion, Mode=TwoWay}"
+				          ToolTip.Tip="Shift the background slightly as the mouse moves. Turn this off if the motion is distracting or uncomfortable.">
+					Background motion
+				</CheckBox>
 				</WrapPanel>
 				<TextBlock Grid.Row="1" Margin="0,2,0,0"
 				           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
