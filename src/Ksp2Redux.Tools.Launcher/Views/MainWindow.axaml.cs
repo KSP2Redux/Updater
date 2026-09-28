@@ -46,6 +46,65 @@ public partial class MainWindow : Window
         // we can hook. Recomputing on every layout pass keeps it in sync regardless of
         // what caused the layout change.
         LayoutUpdated += (_, _) => RefreshBackdropClips();
+
+        AddHandler(PointerMovedEvent, OnParallaxPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
+        PointerExited += (_, _) => SetParallaxTarget(default);
+        Deactivated += (_, _) => SetParallaxTarget(default);
+    }
+
+    private const double PARALLAX_EASING_PER_SECOND = 5;
+    private const double PARALLAX_SETTLED = 0.0005;
+
+    private Vector _parallaxTarget;
+    private Vector _parallaxCurrent;
+    private TimeSpan? _lastParallaxFrame;
+    private bool _parallaxFrameRequested;
+
+    private void OnParallaxPointerMoved(object? sender, PointerEventArgs e)
+    {
+        var size = Bounds.Size;
+        if (size.Width <= 0 || size.Height <= 0) return;
+        var point = e.GetPosition(this);
+        SetParallaxTarget(new Vector(
+            Math.Clamp(point.X / size.Width * 2 - 1, -1, 1),
+            Math.Clamp(point.Y / size.Height * 2 - 1, -1, 1)));
+    }
+
+    private void SetParallaxTarget(Vector target)
+    {
+        _parallaxTarget = target;
+        RequestParallaxFrame();
+    }
+
+    private void RequestParallaxFrame()
+    {
+        if (_parallaxFrameRequested) return;
+        _parallaxFrameRequested = true;
+        RequestAnimationFrame(OnParallaxFrame);
+    }
+
+    private void OnParallaxFrame(TimeSpan time)
+    {
+        _parallaxFrameRequested = false;
+        var seconds = _lastParallaxFrame is { } last ? Math.Min((time - last).TotalSeconds, 0.1) : 1.0 / 60;
+        _lastParallaxFrame = time;
+
+        var delta = _parallaxTarget - _parallaxCurrent;
+        if (delta.Length < PARALLAX_SETTLED)
+        {
+            _parallaxCurrent = _parallaxTarget;
+            _lastParallaxFrame = null;
+        }
+        else
+        {
+            _parallaxCurrent += delta * (1 - Math.Exp(-PARALLAX_EASING_PER_SECOND * seconds));
+        }
+
+        BackgroundLayers.Offset = _parallaxCurrent;
+        ContentBackdropLayers.Offset = _parallaxCurrent;
+        SidebarBackdropLayers.Offset = _parallaxCurrent;
+
+        if (_lastParallaxFrame is not null) RequestParallaxFrame();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
