@@ -62,6 +62,31 @@ public class NewsServiceTest
     }
 
     [Test]
+    public async Task FetchNews_ImageWithDimensionAttributes_StripsThemSoTheImageScalesProportionally()
+    {
+        var (service, provider, _) = MakeService();
+        provider.Setup(p => p.GetSyndicationFeed()).ReturnsAsync(new Feed
+        {
+            Items =
+            [
+                new FeedItem
+                {
+                    Title = "Post",
+                    Link = "https://a",
+                    PublishingDate = new DateTime(2026, 1, 1),
+                    Content = "<p width=\"10\">Hi</p><img src=\"a.webp\" alt=\"x\" WIDTH='2400' height=1553 decoding=\"async\">"
+                }
+            ]
+        });
+
+        await service.FetchNews();
+        var news = await service.FindAllNews();
+
+        Assert.That(news.Single().Content,
+            Is.EqualTo("<p width=\"10\">Hi</p><img src=\"a.webp\" alt=\"x\" decoding=\"async\">"));
+    }
+
+    [Test]
     public async Task GetNews_IdNoLongerPresent_ReturnsNullInsteadOfThrowing()
     {
         var (service, provider, _) = MakeService();
