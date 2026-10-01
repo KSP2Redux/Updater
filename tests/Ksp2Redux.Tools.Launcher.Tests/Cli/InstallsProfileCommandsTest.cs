@@ -44,6 +44,56 @@ public class InstallsProfileCommandsTest
     }
 
     [Test]
+    public async Task Set_Hdr_TogglesTheLineInBootConfigAndLeavesTheRest()
+    {
+        // Arrange
+        var (harness, id) = WithProfile();
+        harness.Installs.SetActiveInstall(id);
+        var bootConfig = harness.FileSystem.Path.Combine(GAME, "KSP2_x64_Data", "boot.config");
+        string[] shipped =
+        [
+            "wait-for-native-debugger=0",
+            "hdr-display-enabled=0",
+            "gc-max-time-slice=3",
+            "build-guid=1dfe0eb812ce4d209d85313ee9c65a34",
+            "gfx-enable-gfx-jobs=1",
+        ];
+        harness.FileSystem.File.WriteAllLines(bootConfig, shipped);
+
+        // Act
+        var on = await new InstallsSetCommand().RunWithContextAsync(harness.Context, new InstallsSetSettings { Install = "Testing", Hdr = "on" });
+        var afterOn = harness.FileSystem.File.ReadAllLines(bootConfig);
+        var off = await new InstallsSetCommand().RunWithContextAsync(harness.Context, new InstallsSetSettings { Install = "Testing", Hdr = "off" });
+        var afterOff = harness.FileSystem.File.ReadAllLines(bootConfig);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(on, Is.EqualTo(ExitCode.SUCCESS));
+            Assert.That(afterOn, Is.EqualTo(shipped.Select(l => l == "hdr-display-enabled=0" ? "hdr-display-enabled=1" : l)));
+            Assert.That(off, Is.EqualTo(ExitCode.SUCCESS));
+            Assert.That(afterOff, Is.EqualTo(shipped));
+            Assert.That(harness.Installs.Entries.Single(e => e.Id == id).EnableHdr, Is.False);
+        });
+    }
+
+    [Test]
+    public async Task Set_Hdr_IsSavedToTheProfile()
+    {
+        // Arrange
+        var (harness, id) = WithProfile();
+
+        // Act
+        var exit = await new InstallsSetCommand().RunWithContextAsync(harness.Context, new InstallsSetSettings { Install = "Testing", Hdr = "on" });
+
+        // Assert
+        Assert.That(exit, Is.EqualTo(ExitCode.SUCCESS));
+        Assert.That(harness.Installs.Entries.Single(e => e.Id == id).EnableHdr, Is.True);
+        Assert.That(harness.FileSystem.File.ReadAllText(harness.Context.ConfigService.Config.StoragePath), Does.Contain("\"EnableHdr\": true"));
+        Assert.That(harness.Json.GetProperty("hdr").GetBoolean(), Is.True);
+    }
+
+    [Test]
     public async Task Set_ClearArguments_LeavesNone()
     {
         // Arrange
@@ -56,9 +106,10 @@ public class InstallsProfileCommandsTest
         Assert.That(harness.Installs.Entries.Single(e => e.Id == id).LaunchArguments, Is.Empty);
     }
 
-    [TestCase("maybe", null)]
-    [TestCase(null, "sometimes")]
-    public async Task Set_SwitchThatIsNeitherOnNorOff_ChangesNothing(string? graphicsJobs, string? steamLaunch)
+    [TestCase("maybe", null, null)]
+    [TestCase(null, "sometimes", null)]
+    [TestCase(null, null, "bright")]
+    public async Task Set_SwitchThatIsNeitherOnNorOff_ChangesNothing(string? graphicsJobs, string? steamLaunch, string? hdr)
     {
         // Arrange
         var (harness, id) = WithProfile();
@@ -70,6 +121,7 @@ public class InstallsProfileCommandsTest
             Arguments = "-changed",
             GraphicsJobs = graphicsJobs,
             SteamLaunch = steamLaunch,
+            Hdr = hdr,
         });
 
         // Assert

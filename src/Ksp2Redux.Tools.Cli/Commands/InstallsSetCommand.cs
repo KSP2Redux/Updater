@@ -14,11 +14,11 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
         InstallsSetSettings settings,
         CancellationToken cancellationToken)
     {
-        if (settings is { Path: null, Arguments: null, ClearArguments: false, GraphicsJobs: null, SteamLaunch: null, SteamAppId: null })
+        if (settings is { Path: null, Arguments: null, ClearArguments: false, GraphicsJobs: null, Hdr: null, SteamLaunch: null, SteamAppId: null })
         {
             return Task.FromResult(context.Output.Fail(
                 ExitCode.USAGE_ERROR,
-                "Nothing to change. Pass at least one of --path, --args, --clear-args, --graphics-jobs, --steam-launch or --steam-app-id."));
+                "Nothing to change. Pass at least one of --path, --args, --clear-args, --graphics-jobs, --hdr, --steam-launch or --steam-app-id."));
         }
 
         if (settings is { ClearArguments: true, Arguments: not null })
@@ -28,9 +28,11 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
 
         var arguments = settings.ClearArguments ? "" : settings.Arguments?.Trim();
 
-        if (!CliSwitch.TryParse(settings.GraphicsJobs, out var graphicsJobs) || !CliSwitch.TryParse(settings.SteamLaunch, out var steamLaunch))
+        if (!CliSwitch.TryParse(settings.GraphicsJobs, out var graphicsJobs)
+            || !CliSwitch.TryParse(settings.Hdr, out var hdr)
+            || !CliSwitch.TryParse(settings.SteamLaunch, out var steamLaunch))
         {
-            return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "--graphics-jobs and --steam-launch take on or off."));
+            return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "--graphics-jobs, --hdr and --steam-launch take on or off."));
         }
 
         var steamAppId = settings.SteamAppId?.Trim();
@@ -66,6 +68,11 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
             service.UpdateInstallDisableGraphicsJobs(entry.Id, !jobsOn);
         }
 
+        if (hdr is { } hdrOn)
+        {
+            service.UpdateInstallEnableHdr(entry.Id, hdrOn);
+        }
+
         if (arguments is not null)
         {
             entry.LaunchArguments = arguments;
@@ -87,6 +94,7 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
                 e.Id == entry.Id
                 && (exePath is null || e.ExePath == exePath)
                 && (graphicsJobs is null || e.DisableGraphicsJobs == !graphicsJobs)
+                && (hdr is null || e.EnableHdr == hdr)
                 && (arguments is null || e.LaunchArguments == arguments)
                 && (steamLaunch is null || e.LaunchThroughSteam == steamLaunch)
                 && (steamAppId is null || e.SteamAppId == steamAppId))))
@@ -110,6 +118,7 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
                 exePath = entry.ExePath,
                 launchArguments = entry.LaunchArguments,
                 graphicsJobs = !entry.DisableGraphicsJobs,
+                hdr = entry.EnableHdr,
                 steamLaunch = entry.LaunchThroughSteam,
                 steamAppId = entry.SteamAppId,
             },

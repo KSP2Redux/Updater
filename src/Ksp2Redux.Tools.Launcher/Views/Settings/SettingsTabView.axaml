@@ -235,6 +235,17 @@
 						          IsChecked="{Binding SelectedInstall.DisableGraphicsJobs, Mode=TwoWay}" />
 					</Grid>
 
+					<Grid Classes="field" IsVisible="{Binding HasSelectedInstall}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label"
+						           ToolTip.Tip="Turn on HDR output by setting hdr-display-enabled=1 in boot.config. Needs an HDR display with HDR turned on in your system's display settings.">Enable HDR</TextBlock>
+						<CheckBox Grid.Column="1" HorizontalAlignment="Left"
+						          IsChecked="{Binding SelectedInstall.EnableHdr, Mode=TwoWay}" />
+					</Grid>
+
 					<Separator Margin="0" IsVisible="{Binding HasSelectedInstall}" />
 
 					<Grid ColumnDefinitions="*,*,*" ColumnSpacing="10"

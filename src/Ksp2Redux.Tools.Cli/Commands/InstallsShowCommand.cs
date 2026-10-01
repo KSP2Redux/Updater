@@ -40,6 +40,7 @@ public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
                 channel = entry.ReleaseChannel,
                 launchArguments = entry.LaunchArguments,
                 graphicsJobs = !entry.DisableGraphicsJobs,
+                hdr = entry.EnableHdr,
                 steamLaunch = entry.LaunchThroughSteam,
                 steamAppId = entry.SteamAppId,
             },
@@ -55,6 +56,7 @@ public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
                 var arguments = string.IsNullOrWhiteSpace(entry.LaunchArguments) ? "(none)" : entry.LaunchArguments;
                 Row(context, "launch args", steamLaunchApplies && entry.LaunchThroughSteam ? $"{arguments} (not used while launching via Steam)" : arguments);
                 Row(context, "graphics jobs", entry.DisableGraphicsJobs ? "off" : "on");
+                Row(context, "hdr", entry.EnableHdr ? "on" : "off");
                 Row(context, "steam launch", !steamLaunchApplies ? "not used on macOS"
                     : entry.LaunchThroughSteam ? $"on (app {entry.SteamAppId})" : "off");
             });
