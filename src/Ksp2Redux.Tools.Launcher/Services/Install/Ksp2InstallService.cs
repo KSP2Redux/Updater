@@ -29,6 +29,7 @@ public interface IKsp2InstallService
     void UpdateInstallReleaseChannel(Guid id, string channel);
     void UpdateInstallExePath(Guid id, string newExePath);
     void UpdateInstallDisableGraphicsJobs(Guid id, bool value);
+    void UpdateInstallEnableHdr(Guid id, bool value);
     void NotifyInstallChanged(Guid id);
 
     void ApplyActiveInstallBootConfig();
@@ -217,12 +218,18 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         }
     }
 
-    public void UpdateInstallDisableGraphicsJobs(Guid id, bool value)
+    public void UpdateInstallDisableGraphicsJobs(Guid id, bool value) =>
+        UpdateBootConfigSetting(id, e => e.DisableGraphicsJobs, (e, v) => e.DisableGraphicsJobs = v, value);
+
+    public void UpdateInstallEnableHdr(Guid id, bool value) =>
+        UpdateBootConfigSetting(id, e => e.EnableHdr, (e, v) => e.EnableHdr = v, value);
+
+    private void UpdateBootConfigSetting(Guid id, Func<Ksp2InstallEntry, bool> get, Action<Ksp2InstallEntry, bool> set, bool value)
     {
         var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
         if (entry is null) return;
-        if (entry.DisableGraphicsJobs == value) return;
-        entry.DisableGraphicsJobs = value;
+        if (get(entry) == value) return;
+        set(entry, value);
         launcherConfigService.Save();
         if (id == launcherConfigService.Config.ActiveKsp2InstallId)
         {
@@ -241,24 +248,27 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (Ksp2 is not { IsValid: true } ksp2) return;
         var bootConfigPath = fileSystem.Path.Combine(ksp2.InstallDir, "KSP2_x64_Data", "boot.config");
 
-        const string Key = "gfx-enable-gfx-jobs";
-        var desiredLine = $"{Key}={(entry.DisableGraphicsJobs ? "0" : "1")}";
+        (string Key, string Value)[] settings =
+        [
+            ("gfx-enable-gfx-jobs", entry.DisableGraphicsJobs ? "0" : "1"),
+            ("hdr-display-enabled", entry.EnableHdr ? "1" : "0"),
+        ];
 
         try
         {
             if (!fileSystem.File.Exists(bootConfigPath)) return;
             var lines = fileSystem.File.ReadAllLines(bootConfigPath).ToList();
-            var idx = lines.FindIndex(l => l.StartsWith(Key + "=", StringComparison.Ordinal));
-            if (idx >= 0)
+            var changed = false;
+            foreach (var (key, value) in settings)
             {
-                if (lines[idx] == desiredLine) return;
-                lines[idx] = desiredLine;
+                var desiredLine = $"{key}={value}";
+                var idx = lines.FindIndex(l => l.StartsWith(key + "=", StringComparison.Ordinal));
+                if (idx >= 0 && lines[idx] == desiredLine) continue;
+                if (idx >= 0) lines[idx] = desiredLine;
+                else lines.Add(desiredLine);
+                changed = true;
             }
-            else
-            {
-                lines.Add(desiredLine);
-            }
-            fileSystem.File.WriteAllLines(bootConfigPath, lines);
+            if (changed) fileSystem.File.WriteAllLines(bootConfigPath, lines);
         }
         catch (IOException ex)
         {

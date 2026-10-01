@@ -37,6 +37,13 @@ public sealed class InstallsSetSettings : InstallsTargetSettings
     public string? GraphicsJobs { get; init; }
 
     /// <summary>
+    /// Gets whether HDR output is on or off, or null to leave the setting.
+    /// </summary>
+    [CommandOption("--hdr <ON_OR_OFF>")]
+    [Description("Turn HDR output on or off. Needs an HDR display with HDR turned on in the system's display settings.")]
+    public string? Hdr { get; init; }
+
+    /// <summary>
     /// Gets whether the game starts through the Steam client, or null to leave the setting.
     /// </summary>
     [CommandOption("--steam-launch <ON_OR_OFF>")]
