@@ -548,9 +548,16 @@ public partial class HomeTabViewModel : ViewModelBase
         Versions.Clear();
         
         GameVersionViewModel? currentVersion = null;
-        if (_ksp2InstallService.Ksp2?.GameVersion != null)
+        if (_ksp2InstallService.Ksp2?.GameVersion is { } installedVersion)
         {
-            currentVersion = new GameVersionViewModel(_ksp2InstallService.Ksp2.GameVersion)
+            // Promoted builds can still embed the beta channel. Published metadata
+            // supplies the current channel and label, with stable taking precedence.
+            var publishedVersion = _releasesFeedService.ReleasesFeed.Values
+                .SelectMany(feed => feed.GetAllVersions())
+                .Where(version => version.Equals(installedVersion))
+                .OrderByDescending(version => version.Channel == ReleaseChannels.STABLE)
+                .FirstOrDefault();
+            currentVersion = new GameVersionViewModel(publishedVersion ?? installedVersion)
             {
                 Channel = "installed"
             };
