@@ -11,8 +11,6 @@
              from referencing a self contained one. Matching it means every build needs a runtime
              identifier. -->
         <SelfContained>true</SelfContained>
-        <!-- Single-file releases need the native decoder for the embedded logo. -->
-        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <AssemblyTitle>KSP2 Redux Launcher CLI</AssemblyTitle>
         <Description>Scriptable front end over the KSP2 Redux launcher: list channels and versions, install a specific build, and launch the game.</Description>
         <IsPackable>false</IsPackable>
@@ -32,9 +30,9 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-        <PackageReference Include="SkiaSharp" />
         <PackageReference Include="Spectre.Console" />
         <PackageReference Include="Spectre.Console.Cli" />
+        <PackageReference Include="Spectre.Console.ImageSharp" />
         <PackageReference Include="Testably.Abstractions" />
     </ItemGroup>
 

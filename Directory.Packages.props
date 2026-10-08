@@ -36,11 +36,11 @@
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <PackageVersion Include="QRCoder" Version="1.8.0" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.8" />
-    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
     <!-- Spectre.Console.Cli has no 0.57 release, so it resolves against the newer renderer. The CLI
              smoke suite covers this pairing; re-run it when either line moves. -->
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Cli" Version="0.55.0" />
+    <PackageVersion Include="Spectre.Console.ImageSharp" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2" />
     <PackageVersion Include="SteamKit2" Version="3.4.0" />
     <PackageVersion Include="Testably.Abstractions" Version="10.3.0" />

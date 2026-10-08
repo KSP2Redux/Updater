@@ -1,4 +1,6 @@
-﻿using SkiaSharp;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using Spectre.Console;
 
 namespace Ksp2Redux.Tools.Cli.Infrastructure;
@@ -54,20 +56,15 @@ public static class CliBanner
                 return;
             }
 
-            using var logo = SKBitmap.Decode(resource);
-            if (logo is null)
-                return;
+            using var logo = Image.Load<Rgba32>(resource);
 
             var columns = Columns(console);
             var rows = Math.Max(1, (int)Math.Round(columns * (double)logo.Height / logo.Width / 2));
-            using var resizedLogo = logo.Resize(
-                new SKSizeI(columns, rows * 2), new SKSamplingOptions(SKCubicResampler.CatmullRom));
-            if (resizedLogo is null)
-                return;
+            logo.Mutate(image => image.Resize(columns, rows * 2));
 
             for (var row = 0; row < rows; row++)
             {
-                console.MarkupLine(Line(resizedLogo, row));
+                console.MarkupLine(Line(logo, row));
             }
 
             console.WriteLine();
@@ -111,16 +108,16 @@ public static class CliBanner
 
     // A cell carries the pixel above and the pixel below. Either one can be transparent, in which
     // case the half block flips or disappears so the terminal's own background shows through.
-    private static string Line(SKBitmap logo, int row)
+    private static string Line(Image<Rgba32> logo, int row)
     {
         System.Text.StringBuilder line = new();
         for (var column = 0; column < logo.Width; column++)
         {
-            var upper = logo.GetPixel(column, row * 2);
-            var lower = logo.GetPixel(column, (row * 2) + 1);
+            var upper = logo[column, row * 2];
+            var lower = logo[column, (row * 2) + 1];
 
-            var hasUpper = upper.Alpha >= ALPHA_THRESHOLD;
-            var hasLower = lower.Alpha >= ALPHA_THRESHOLD;
+            var hasUpper = upper.A >= ALPHA_THRESHOLD;
+            var hasLower = lower.A >= ALPHA_THRESHOLD;
 
             line.Append((hasUpper, hasLower) switch
             {
@@ -134,7 +131,7 @@ public static class CliBanner
         return line.ToString();
     }
 
-    private static string Hex(SKColor pixel) => $"#{pixel.Red:X2}{pixel.Green:X2}{pixel.Blue:X2}";
+    private static string Hex(Rgba32 pixel) => $"#{pixel.R:X2}{pixel.G:X2}{pixel.B:X2}";
 
     private static int Columns(IAnsiConsole console)
     {
