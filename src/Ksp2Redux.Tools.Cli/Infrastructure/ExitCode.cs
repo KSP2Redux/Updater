@@ -88,4 +88,16 @@ public static class ExitCode
     /// The folder asked for does not exist, for example the game data folder before KSP2 has run once.
     /// </summary>
     public const int PATH_NOT_FOUND = 15;
+
+    /// <summary>
+    /// A stock bundle conversion or revert left something undone: a write failed, or a bundle held
+    /// bytes the converter did not expect and was left alone.
+    /// </summary>
+    public const int BUNDLE_CONVERSION_FAILED = 16;
+
+    /// <summary>
+    /// The stock bundles are not fully converted: there is no journal, an edit is back to stock, or a
+    /// converted copy is missing or stale. Running the conversion again fixes it.
+    /// </summary>
+    public const int BUNDLES_NOT_CONVERTED = 17;
 }

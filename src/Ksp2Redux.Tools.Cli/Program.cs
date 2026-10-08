@@ -149,6 +149,22 @@ public static class Program
                     .WithExample("cache", "clear", "--older-than", "30");
             });
 
+            config.AddBranch("bundles", bundles =>
+            {
+                bundles.SetDescription("Retarget the stock bundles to the Redux URP shader bundles, and check or undo that.");
+                bundles.SetDefaultCommand<BundlesVerifyCommand>();
+
+                bundles.AddCommand<BundlesConvertCommand>("convert")
+                    .WithDescription("Retarget embedded shader copies in the stock bundles to the replacement shader bundles.")
+                    .WithExample("bundles", "convert", "--game", "D:\\Games\\KSP2", "--shader-manifest", "manifest.json", "--dry-run");
+                bundles.AddCommand<BundlesRevertCommand>("revert")
+                    .WithDescription("Put the stock bundles back and delete the converted copies, using the conversion journal.")
+                    .WithExample("bundles", "revert", "--game", "D:\\Games\\KSP2");
+                bundles.AddCommand<BundlesVerifyCommand>("verify")
+                    .WithDescription("Check every journaled edit and converted copy against the files on disk.")
+                    .WithExample("bundles", "verify", "--game", "D:\\Games\\KSP2");
+            });
+
             config.AddCommand<LogsCommand>("logs")
                 .WithDescription("Print the launcher's most recent log file.")
                 .WithExample("logs", "--tail", "100");

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Ksp2Redux.Tools.BundleConversion/Ksp2Redux.Tools.BundleConversion.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Cli/Ksp2Redux.Tools.Cli.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Common/Ksp2Redux.Tools.Common.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
@@ -8,6 +9,7 @@
     <Project Path="src/Ksp2Redux.Tools.Uploader/Ksp2Redux.Tools.Uploader.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Ksp2Redux.Tools.BundleConversion.Tests/Ksp2Redux.Tools.BundleConversion.Tests.csproj" />
     <Project Path="tests/Ksp2Redux.Tools.Launcher.Tests/Ksp2Redux.Tools.Launcher.Tests.csproj" />
     <Project Path="tests/Ksp2Redux.Tools.Launcher.Tests.MockGame/Ksp2Redux.Tools.Launcher.Tests.MockGame.csproj" />
   </Folder>

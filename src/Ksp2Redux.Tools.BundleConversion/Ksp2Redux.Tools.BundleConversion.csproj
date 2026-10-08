@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- netstandard2.1 so the Unity editor can load the same converter the launcher runs. -->
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyTitle>KSP2 Redux Bundle Conversion</AssemblyTitle>
+        <Description>Retargets stock KSP2 bundle materials from embedded BRP shader copies to the Redux URP replacement shader bundles</Description>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AssetsTools.NET" />
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="System.Text.Json" />
+        <PackageReference Include="Testably.Abstractions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="..\Ksp2Redux.Tools.Common\BannedSymbols.txt" Link="BannedSymbols.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Ksp2Redux.Tools.BundleConversion.Tests" />
+    </ItemGroup>
+
+</Project>

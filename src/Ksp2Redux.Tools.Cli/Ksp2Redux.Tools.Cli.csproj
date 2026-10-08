@@ -42,6 +42,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Ksp2Redux.Tools.BundleConversion\Ksp2Redux.Tools.BundleConversion.csproj" />
         <ProjectReference Include="..\Ksp2Redux.Tools.Common\Ksp2Redux.Tools.Common.csproj" />
         <ProjectReference Include="..\Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj" />
     </ItemGroup>
