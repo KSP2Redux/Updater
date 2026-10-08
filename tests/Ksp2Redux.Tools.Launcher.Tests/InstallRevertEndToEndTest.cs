@@ -4,6 +4,7 @@ using System.IO.Abstractions;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Ksp2Redux.Tools.BundleConversion;
+using Ksp2Redux.Tools.Common.Patching;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -17,7 +18,9 @@ namespace Ksp2Redux.Tools.Launcher.Tests;
 
 /// <summary>
 /// Installs a local Redux patch, verifies bundle conversion, and checks that uninstall restores every
-/// file byte for byte. Opt in with REDUX_E2E_INSTALL_DIR and REDUX_E2E_PATCH on a disposable KSP2 copy.
+/// file byte for byte. Opt in with REDUX_E2E_INSTALL_DIR on a disposable KSP2 copy, plus either
+/// REDUX_E2E_PATCH for an existing patch or REDUX_E2E_BUILD_DIR for a Unity player build to generate
+/// the patch from, the way CI does.
 /// </summary>
 [Category("Integration")]
 [NonParallelizable]
@@ -35,19 +38,19 @@ public class InstallRevertEndToEndTest
         if (string.IsNullOrWhiteSpace(installInput))
         {
             // This project uses NUnit. Ignore is its dynamic skip, and TestContext.Out is its test output helper.
-            Assert.Ignore("Set REDUX_E2E_INSTALL_DIR and REDUX_E2E_PATCH to run the install/revert end-to-end test.");
+            Assert.Ignore("Set REDUX_E2E_INSTALL_DIR and either REDUX_E2E_PATCH or REDUX_E2E_BUILD_DIR to run the " +
+                          "install/revert end-to-end test.");
         }
 
         IFileSystem fileSystem = new RealFileSystem();
         var install = GetAllowedPath(fileSystem, installInput!);
         var patchInput = environment.GetEnvironmentVariable("REDUX_E2E_PATCH");
-        Assert.That(patchInput, Is.Not.Null.And.Not.Empty, "REDUX_E2E_PATCH is required when opting in.");
-        var patch = GetAllowedPath(fileSystem, patchInput!);
-        Assert.That(IsWithin(fileSystem, patch, install), Is.False, "Keep the input patch outside the install folder.");
+        var buildInput = environment.GetEnvironmentVariable("REDUX_E2E_BUILD_DIR");
+        Assert.That(string.IsNullOrWhiteSpace(patchInput) != string.IsNullOrWhiteSpace(buildInput), Is.True,
+            "Set exactly one of REDUX_E2E_PATCH or REDUX_E2E_BUILD_DIR when opting in.");
         Assert.That(fileSystem.Directory.Exists(install), Is.True, "The install folder must exist.");
         Assert.That(fileSystem.File.Exists(fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME)), Is.True,
             "The install folder must contain KSP2_x64.exe.");
-        Assert.That(fileSystem.File.Exists(patch), Is.True, "The local Redux patch must exist.");
 
         var distributionInput = environment.GetEnvironmentVariable("REDUX_E2E_DISTRIBUTION") ?? "Steam";
         var distribution = distributionInput.ToUpperInvariant() switch
@@ -63,6 +66,38 @@ public class InstallRevertEndToEndTest
         if (report is not null)
         {
             Assert.That(IsWithin(fileSystem, report, install), Is.False, "Keep reports outside the install folder.");
+        }
+
+        string patch;
+        string? build = null;
+        string? temporaryPatch = null;
+        if (string.IsNullOrWhiteSpace(buildInput))
+        {
+            patch = GetAllowedPath(fileSystem, patchInput!);
+            Assert.That(IsWithin(fileSystem, patch, install), Is.False, "Keep the input patch outside the install folder.");
+            Assert.That(fileSystem.File.Exists(patch), Is.True, "The local Redux patch must exist.");
+        }
+        else
+        {
+            build = GetAllowedPath(fileSystem, buildInput);
+            Assert.That(IsWithin(fileSystem, build, install) || IsWithin(fileSystem, install, build), Is.False,
+                "Keep the build folder and the install folder apart.");
+            Assert.That(fileSystem.File.Exists(fileSystem.Path.Combine(build, Ksp2Install.KSP2_EXE_NAME)), Is.True,
+                "The build folder must contain KSP2_x64.exe.");
+
+            // The generated patch goes to the report folder, which keeps it for inspection, or to a temporary
+            // file that is deleted once the install step is over.
+            if (report is not null)
+            {
+                patch = fileSystem.Path.Combine(report, "Ksp2Redux-e2e.patch");
+            }
+            else
+            {
+                patch = temporaryPatch = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(),
+                    $"Ksp2Redux-e2e-{Guid.NewGuid():N}.patch");
+            }
+            Assert.That(IsWithin(fileSystem, patch, install) || IsWithin(fileSystem, patch, build), Is.False,
+                "Keep the generated patch, and the report folder, outside the install and build folders.");
         }
 
         var output = TextWriter.Synchronized(TestContext.Out);
@@ -117,7 +152,9 @@ public class InstallRevertEndToEndTest
         var stockInstall = new Ksp2Install(fileSystem, modules, fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME));
         Assert.That(stockInstall.Distribution, Is.EqualTo(distribution),
             "The normalized stock folder must match REDUX_E2E_DISTRIBUTION.");
-        Log($"Distribution: {distribution}. Install: {install}. Patch: {patch}.");
+        Log(build is null
+            ? $"Distribution: {distribution}. Install: {install}. Patch: {patch}."
+            : $"Distribution: {distribution}. Install: {install}. Build: {build}. Generated patch: {patch}.");
 
         var before = Snapshot(fileSystem, install, "2. Stock snapshot", Log);
         WriteSnapshot(fileSystem, report, "stock-snapshot.json", before);
@@ -128,7 +165,21 @@ public class InstallRevertEndToEndTest
             // These helpers prepend steps. Prepatch creates uninstall.zip internally before applying
             // the embedded distribution prepatch, and the plan converts bundles after the local patch.
             var plan = new InstallPlan();
-            plan.ApplyPatchFile(patch);
+            if (build is null)
+            {
+                plan.ApplyPatchFile(patch);
+            }
+            else
+            {
+                // CI generates the patch against KSP2_PREPATCH, a stock folder with the distribution prepatch
+                // applied. The plan resolves a step's patch path only when it reaches that step, so generating
+                // there diffs the folder its Prepatch step has just prepatched. One plan then prepatches once,
+                // applies the generated patch on top and converts bundles once, like a real install. The step is
+                // built directly because the helper for resolved paths deletes the patch after applying it.
+                plan.Steps.Insert(0, new InstallPlan.Step(InstallPlanAction.ApplyPatchFile,
+                    (_, _, ct) => GeneratePatchAsync(fileSystem, install, build, patch, Log, ct),
+                    $"Generating {patch} from the prepatched install and {build}, then applying it"));
+            }
             plan.Prepatch();
             service.Describe(plan, Log);
             await TimeAsync("3. Install and convert bundles", () => ExecuteAsync(plan), Log);
@@ -163,6 +214,15 @@ public class InstallRevertEndToEndTest
             // Still uninstall and report the round trip when installation or its assertions fail.
             installFailure = exception;
             Log($"Install/verification failed: {exception}");
+        }
+        finally
+        {
+            // The plan has finished with the generated patch. Only a report folder keeps it.
+            if (temporaryPatch is not null && fileSystem.File.Exists(temporaryPatch))
+            {
+                try { fileSystem.File.Delete(temporaryPatch); }
+                catch (Exception exception) { Log($"Failed to delete the generated patch {temporaryPatch}: {exception.Message}"); }
+            }
         }
 
         await TimeAsync("5. Uninstall", async () =>
@@ -217,6 +277,30 @@ public class InstallRevertEndToEndTest
         {
             log($"{step}: {timer.Elapsed.TotalSeconds:F2} seconds.");
         }
+    }
+
+    /// <summary>
+    /// Generates a Redux patch through the library call the patch generator makes, with the arguments
+    /// build-patch.ps1 passes it: KSP2_PREPATCH build out.patch false --remove-missing-dlls-under KSP2_x64_Data/Managed.
+    /// </summary>
+    /// <param name="fileSystem">The real file system.</param>
+    /// <param name="prepatched">The install folder, after the plan's Prepatch step.</param>
+    /// <param name="build">The Unity player build folder.</param>
+    /// <param name="patch">The patch file to write.</param>
+    /// <param name="log">Receives timing and size lines.</param>
+    /// <param name="ct">Cancels before generation starts.</param>
+    /// <returns>The generated patch path, for the plan to apply.</returns>
+    private static async Task<string> GeneratePatchAsync(IFileSystem fileSystem, string prepatched, string build,
+        string patch, Action<string> log, CancellationToken ct)
+    {
+        await TimeAsync("3a. Generate the patch from the prepatched install", () => Task.Run(() =>
+        {
+            fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(patch)!);
+            using var _ = Ksp2Patch.FromDiff(fileSystem, patch, prepatched, build, checkRemovals: false,
+                checkMissingDllsUnder: ["KSP2_x64_Data/Managed"]);
+        }, ct), log);
+        log($"Generated patch: {patch}, {fileSystem.FileInfo.New(patch).Length} bytes.");
+        return patch;
     }
 
     private static FileSnapshot Snapshot(IFileSystem fileSystem, string install, string step, Action<string> log)
