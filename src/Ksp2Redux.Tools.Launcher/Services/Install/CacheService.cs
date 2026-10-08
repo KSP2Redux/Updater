@@ -18,7 +18,10 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
     public List<string> IgnoredDirectories
         => [fileSystem.Path.Combine("KSP2_x64_Data","StreamingAssets"), "UninstallTemp", "mods"];
 
-    public List<string> SavedDirectories = ["Redux/Config"];
+    // Redux/BundleConversion holds the bundle conversion journal and the converted copies. The edits it
+    // records live in StreamingAssets, which a restore leaves alone, so the journal has to survive a
+    // repatch for the edits to stay revertible.
+    public List<string> SavedDirectories = ["Redux/Config", "Redux/BundleConversion"];
 
     // Paths (relative to the install dir) that are always deleted during a restore, even if they
     // fall under an IgnoredDirectories subtree. Used for Redux-produced artifacts that live inside

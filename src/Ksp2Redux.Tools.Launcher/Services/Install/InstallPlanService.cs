@@ -19,7 +19,7 @@ public interface IInstallPlanService
 public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider,
     IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService, IZipFileService zipFileService,
     IDiskSpaceService diskSpaceService, IPatchDownloadService patchDownloadService,
-    ILauncherConfigService launcherConfigService) : IInstallPlanService
+    ILauncherConfigService launcherConfigService, IBundleConversionService? bundleConversionService = null) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -90,9 +90,20 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 case InstallPlanAction.Uninstall:
                     log("Uninstalling KSP2 Redux");
                     mutationStarted = true;
+                    // The bundle folder is not in the snapshot, and the restore deletes the journal, so undo
+                    // the bundle conversion first.
+                    await RevertBundleConversion(install, log, ct);
                     cacheService.RecursivelyRestoreCache(install);
                     break;
                 case InstallPlanAction.RevertToStock:
+                    // When patching follows, the conversion after it brings the bundles up to the new shader
+                    // manifest, and the journal survives the repatch, so only a plain revert undoes it here.
+                    if (!installPlan.Steps.Any(planned =>
+                            planned.Action is InstallPlanAction.Prepatch or InstallPlanAction.ApplyPatchFile))
+                    {
+                        await RevertBundleConversion(install, log, ct);
+                    }
+
                     if (fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
                         log("Reverting KSP2 Redux to Stock for repatching");
@@ -224,6 +235,32 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 }
             }
         }
+
+        bool patched = installPlan.Steps.Any(step =>
+            step.Action is InstallPlanAction.Prepatch or InstallPlanAction.ApplyPatchFile);
+        if (patched && bundleConversionService is not null)
+        {
+            // A failed conversion leaves a playable install: the game moves materials that still reach a
+            // Built-in shader to the URP port at load time. So report it rather than roll the install back.
+            try
+            {
+                await Task.Run(() => bundleConversionService.Convert(install, log, ct), ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                log($"Bundle conversion failed: {ex.Message}. The game will convert shaders at load time instead.");
+            }
+        }
+    }
+
+    private async Task RevertBundleConversion(string install, Action<string> log, CancellationToken ct)
+    {
+        if (bundleConversionService is null)
+        {
+            return;
+        }
+
+        await Task.Run(() => bundleConversionService.Revert(install, log, ct), ct);
     }
 
     /// <summary>
