@@ -47,6 +47,33 @@ public class CacheServiceTest
     }
 
     [Test]
+    public void RecursivelyRestoreCache_RemovesReduxSdkFilesButKeepsStockBundles()
+    {
+        // The uninstall snapshot skips StreamingAssets, so files a patch adds there survive a restore
+        // unless they are purged. The player build adds the linked addressables under ReduxSDK.
+        var (service, fs, zipFileService) = MakeService();
+        string streamingAssets = fs.Path.Combine(InstallDir, "KSP2_x64_Data", "StreamingAssets");
+        string reduxSdk = fs.Path.Combine(streamingAssets, "ReduxSDK");
+        string stockBundle = fs.Path.Combine(streamingAssets, "aa", "StandaloneWindows64", "stock.bundle");
+        fs.Directory.CreateDirectory(fs.Path.Combine(reduxSdk, "ExternalAddressables"));
+        fs.File.WriteAllText(fs.Path.Combine(reduxSdk, "linked-addressables-build.json"), "{}");
+        fs.File.WriteAllText(fs.Path.Combine(reduxSdk, "ExternalAddressables", "catalog.json"), "{}");
+        fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(stockBundle)!);
+        fs.File.WriteAllText(stockBundle, "stock");
+        fs.File.WriteAllText(fs.Path.Combine(InstallDir, "uninstall.zip"), "zip");
+        zipFileService.Setup(z => z.OpenRead(It.IsAny<string>()))
+            .Returns(new Mock<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>().Object);
+
+        service.RecursivelyRestoreCache(InstallDir);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fs.Directory.Exists(reduxSdk), Is.False, "Linked addressables must not outlive an uninstall.");
+            Assert.That(fs.File.Exists(stockBundle), Is.True, "Stock bundles in StreamingAssets must be left alone.");
+        });
+    }
+
+    [Test]
     public void AddFolder_ManagedShapesRuntime_IsIncludedInUninstallSnapshot()
     {
         var (service, fs, _) = MakeService();

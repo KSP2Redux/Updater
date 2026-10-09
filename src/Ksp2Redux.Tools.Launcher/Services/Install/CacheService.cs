@@ -28,7 +28,9 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
     // otherwise-ignored stock folders (e.g. baked subscenes under StreamingAssets).
     public List<string> PurgeOnRestore =>
     [
-        fileSystem.Path.Combine("KSP2_x64_Data", "StreamingAssets", "EntityScenes")
+        fileSystem.Path.Combine("KSP2_x64_Data", "StreamingAssets", "EntityScenes"),
+        // The player build's linked addressables: its copy of the game catalog and its build manifest.
+        fileSystem.Path.Combine("KSP2_x64_Data", "StreamingAssets", "ReduxSDK")
     ];
 
 
