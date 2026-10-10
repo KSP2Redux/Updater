@@ -17,7 +17,7 @@ public abstract class ReduxCommand<TSettings> : AsyncCommand<TSettings>
     // The launcher's LogService writes its banner and every log line to Console.Out, which would
     // corrupt a JSON document and interleave with results in text mode. Capture the real stdout for
     // results, then point Console.Out at stderr so any launcher write lands there instead.
-    protected sealed override async Task<int> ExecuteAsync(
+    public sealed override async Task<int> ExecuteAsync(
         CommandContext context,
         TSettings settings,
         CancellationToken cancellationToken)

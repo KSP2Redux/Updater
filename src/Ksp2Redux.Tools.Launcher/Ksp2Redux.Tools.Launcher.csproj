@@ -77,6 +77,7 @@
 
     <ItemGroup>
         <PackageReference Include="Dotnet.Bundle" PrivateAssets="all" />
+        <PackageReference Include="Testably.Abstractions" />
     </ItemGroup>
 
     <!-- Dotnet.Bundle writes CFBundleIconFile into Info.plist but never copies the file. -->

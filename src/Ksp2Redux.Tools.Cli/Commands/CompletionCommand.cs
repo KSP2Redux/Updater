@@ -34,7 +34,7 @@ public sealed class CompletionCommand : Command<CompletionSettings>
     /// <inheritdoc />
     // The script only knows how to ask the CLI, so a new command shows up in completion as soon as
     // it is in the catalog, without the user regenerating anything.
-    protected override int Execute(CommandContext context, CompletionSettings settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, CompletionSettings settings, CancellationToken cancellationToken)
     {
         Console.Out.WriteLine(settings.Shell == CompletionShell.Bash ? BASH_SCRIPT : PWSH_SCRIPT);
         return ExitCode.SUCCESS;

@@ -112,7 +112,7 @@ public class Ksp2GameUninstallServiceTest
     }
 
     [Test]
-    public void DeleteAsync_NotAGameFolder_Throws()
+    public async Task DeleteAsync_NotAGameFolder_Throws()
     {
         // Arrange
         _fileSystem.Directory.CreateDirectory(@"C:\Users\Eivind\Downloads");
@@ -121,7 +121,7 @@ public class Ksp2GameUninstallServiceTest
         var removal = new Ksp2GameRemoval(Ksp2GameRemovalKind.NotAGameFolder, @"C:\Users\Eivind\Downloads");
 
         // Assert
-        Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(removal));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(removal));
         Assert.That(_fileSystem.Directory.Exists(@"C:\Users\Eivind\Downloads"), Is.True);
     }
 }

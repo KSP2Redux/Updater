@@ -23,7 +23,7 @@ public sealed class CompleteCommand : Command<CompleteCommand.CompleteSettings>
     /// <inheritdoc />
     // This runs on every keypress a user spends on TAB, so it builds no container, writes no log
     // file and never fails loudly. No candidates is a perfectly good answer.
-    protected override int Execute(CommandContext context, CompleteSettings settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, CompleteSettings settings, CancellationToken cancellationToken)
     {
         try
         {

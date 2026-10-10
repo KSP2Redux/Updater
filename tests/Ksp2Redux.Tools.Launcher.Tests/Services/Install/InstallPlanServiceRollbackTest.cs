@@ -57,7 +57,7 @@ public class InstallPlanServiceRollbackTest
         var (service, cacheService, fs) = MakeService(zipFileService);
         fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "uninstall.zip"), [0x00]); // a snapshot exists
 
-        var ex = Assert.ThrowsAsync<InstallFailedException>(async () =>
+        var ex = await Assert.ThrowsAsync<InstallFailedException>(async () =>
             await service.ApplyToFolder(MakeCorruptPatchPlan(), InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
 
         Assert.That(ex!.RolledBack, Is.True);
@@ -77,7 +77,7 @@ public class InstallPlanServiceRollbackTest
         cacheService.Setup(c => c.RecursivelyRestoreCache(InstallDir, true))
             .Throws(new IOException("disk full while restoring"));
 
-        var ex = Assert.ThrowsAsync<InstallFailedException>(async () =>
+        var ex = await Assert.ThrowsAsync<InstallFailedException>(async () =>
             await service.ApplyToFolder(MakeCorruptPatchPlan(), InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
 
         Assert.That(ex!.RolledBack, Is.False);
@@ -94,7 +94,7 @@ public class InstallPlanServiceRollbackTest
         var (service, cacheService, _) = MakeService(zipFileService);
         // No uninstall.zip created - nothing to roll back to yet.
 
-        var ex = Assert.ThrowsAsync<IOException>(async () =>
+        var ex = await Assert.ThrowsAsync<IOException>(async () =>
             await service.ApplyToFolder(MakeCorruptPatchPlan(), InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
 
         Assert.That(ex!.Message, Is.EqualTo("archive is corrupt"));

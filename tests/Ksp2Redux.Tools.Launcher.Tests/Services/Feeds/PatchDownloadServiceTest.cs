@@ -75,7 +75,7 @@ public class PatchDownloadServiceTest
 
     [TestCase(PatchDownloadSource.R2)]
     [TestCase(PatchDownloadSource.GitHub)]
-    public void EnqueueAll_ChunkFailureAllowsSwitchingToOtherMirror(PatchDownloadSource source)
+    public async Task EnqueueAll_ChunkFailureAllowsSwitchingToOtherMirror(PatchDownloadSource source)
     {
         byte[] first = [1, 2, 3];
         byte[] second = [4, 5];
@@ -89,13 +89,13 @@ public class PatchDownloadServiceTest
             [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
             source, 1, _ => { }, (_, _) => { }, CancellationToken.None);
 
-        var exception = Assert.ThrowsAsync<PatchDownloadException>(async () => await tasks[0]);
+        var exception = await Assert.ThrowsAsync<PatchDownloadException>(async () => await tasks[0]);
         Assert.That(exception!.DownloadSource, Is.EqualTo(source));
         Assert.That(exception.CanSwitchSource, Is.True);
     }
 
     [Test]
-    public void EnqueueAll_LegacyDownloadFailureDoesNotOfferUnavailableMirror()
+    public async Task EnqueueAll_LegacyDownloadFailureDoesNotOfferUnavailableMirror()
     {
         byte[] whole = [1, 2, 3];
         var patch = new ReleasePatch
@@ -116,7 +116,7 @@ public class PatchDownloadServiceTest
             [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
             PatchDownloadSource.GitHub, 1, _ => { }, (_, _) => { }, CancellationToken.None);
 
-        var exception = Assert.ThrowsAsync<PatchDownloadException>(async () => await tasks[0]);
+        var exception = await Assert.ThrowsAsync<PatchDownloadException>(async () => await tasks[0]);
         Assert.That(exception!.DownloadSource, Is.EqualTo(PatchDownloadSource.GitHub));
         Assert.That(exception.CanSwitchSource, Is.False);
     }

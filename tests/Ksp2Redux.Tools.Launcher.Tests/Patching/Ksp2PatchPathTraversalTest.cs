@@ -45,12 +45,12 @@ public class Ksp2PatchPathTraversalTest
     }
 
     [Test]
-    public void AsyncApply_EntryNameEscapesWithParentDirectorySegments_ThrowsAndNeverExtracts()
+    public async Task AsyncApply_EntryNameEscapesWithParentDirectorySegments_ThrowsAndNeverExtracts()
     {
         var (patch, fs, maliciousEntry) = MakeMaliciousPatch(@"..\..\..\evil.txt");
         var environmentProvider = new MockEnvironmentProvider();
 
-        Assert.ThrowsAsync<InvalidDataException>(async () =>
+        await Assert.ThrowsAsync<InvalidDataException>(async () =>
             await patch.AsyncApply(environmentProvider, InstallDir));
 
         // The containment check must reject the entry before any extraction is even attempted.

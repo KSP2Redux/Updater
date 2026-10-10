@@ -80,7 +80,7 @@ public class InstallPlanServiceBundleConversionTest
     }
 
     [Test]
-    public void RevertToStockBeforeAPatch_KeepsTheBundleConversion()
+    public async Task RevertToStockBeforeAPatch_KeepsTheBundleConversion()
     {
         var (service, _, conversion, _) = MakeService();
         var plan = new InstallPlan();
@@ -88,7 +88,7 @@ public class InstallPlanServiceBundleConversionTest
         plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "corrupt patch");
 
         // The patch is corrupt, so the plan rolls back, but the conversion must not have been reverted on the way.
-        Assert.ThrowsAsync<InstallFailedException>(async () =>
+        await Assert.ThrowsAsync<InstallFailedException>(async () =>
             await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
 
         conversion.Verify(c => c.Revert(It.IsAny<string>(), It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()), Times.Never);
