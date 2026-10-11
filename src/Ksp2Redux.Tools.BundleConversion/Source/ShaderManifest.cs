@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.IO.Abstractions;
-using System.Text.Json;
 
 namespace Ksp2Redux.Tools.BundleConversion;
 
@@ -101,13 +100,6 @@ public sealed record ShaderTarget(string Cab, long PathId);
 /// </summary>
 public sealed class ShaderManifestIndex
 {
-    private static readonly JsonSerializerOptions JSON_OPTIONS = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     private readonly Dictionary<string, List<ShaderTarget>> _targets = new(StringComparer.Ordinal);
 
     private ShaderManifestIndex(ShaderManifest manifest, string sha256)
@@ -203,9 +195,9 @@ public sealed class ShaderManifestIndex
         ShaderManifest? manifest;
         try
         {
-            manifest = JsonSerializer.Deserialize<ShaderManifest>(StripBom(bytes), JSON_OPTIONS);
+            manifest = JsonCodec.Read<ShaderManifest>(StripBom(bytes));
         }
-        catch (JsonException e)
+        catch (FormatException e)
         {
             throw new InvalidDataException($"The shader manifest is not valid JSON: {e.Message}", e);
         }

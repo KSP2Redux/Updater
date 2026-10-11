@@ -13,7 +13,8 @@ namespace Ksp2Redux.Tools.BundleConversion;
 /// other bundle gets a converted LZ4 copy under Redux/BundleConversion and its stock file is left
 /// alone. Every run is safe to repeat: plans are made from the stock bytes, which the journal lets
 /// the converter see through its own earlier edits, and an edit is only ever written over the exact
-/// bytes it expects.
+/// bytes it expects. With <see cref="BundleConversionOptions.CacheDirectory" /> the install is only
+/// read: copies and journal go to the cache and in-place edits are journaled without being written.
 /// </remarks>
 public sealed class BundleConverter
 {
@@ -23,19 +24,21 @@ public sealed class BundleConverter
     private readonly IFileSystem _fileSystem;
     private readonly BundleConversionOptions _options;
     private readonly JournalStore _journal;
+    private readonly JournalStore _installJournal;
 
     /// <summary>
     /// Initializes a converter for one KSP2 install.
     /// </summary>
     /// <param name="fileSystem">The file system to read and write through.</param>
     /// <param name="gameDirectory">The KSP2 folder, the one holding KSP2_x64.exe.</param>
-    /// <param name="options">Parallelism and progress settings, or null for the defaults.</param>
+    /// <param name="options">Parallelism, progress and cache settings, or null for the defaults.</param>
     public BundleConverter(IFileSystem fileSystem, string gameDirectory, BundleConversionOptions? options = null)
     {
         _fileSystem = fileSystem;
         _options = options ?? new BundleConversionOptions();
-        Layout = new BundleConversionLayout(fileSystem, gameDirectory);
+        Layout = new BundleConversionLayout(fileSystem, gameDirectory, _options.CacheDirectory);
         _journal = new JournalStore(fileSystem, Layout.JournalPath);
+        _installJournal = Layout.IsCache ? new JournalStore(fileSystem, Layout.InstallJournalPath) : _journal;
     }
 
     /// <summary>
@@ -52,7 +55,7 @@ public sealed class BundleConverter
     /// <exception cref="DirectoryNotFoundException">The install has no bundle folder.</exception>
     /// <exception cref="InvalidDataException">An existing journal cannot be read.</exception>
     public ConversionPlan Plan(ShaderManifestIndex manifest, CancellationToken cancellationToken = default) =>
-        PlanFrom(manifest, _journal.Read(), cancellationToken);
+        PlanFrom(manifest, StockJournal(_journal.Read()), cancellationToken);
 
     /// <summary>
     /// Plans and carries out the conversion, merging with whatever an earlier run already did.
@@ -66,7 +69,7 @@ public sealed class BundleConverter
     public ConversionResult Apply(ShaderManifestIndex manifest, bool dryRun = false, CancellationToken cancellationToken = default)
     {
         var previous = _journal.Read();
-        var plan = PlanFrom(manifest, previous, cancellationToken);
+        var plan = PlanFrom(manifest, StockJournal(previous), cancellationToken);
         ConversionResult result = new(plan, dryRun, Layout.JournalPath);
         if (dryRun)
         {
@@ -95,7 +98,10 @@ public sealed class BundleConverter
         }
 
         // Undo whatever earlier runs did that this plan no longer wants, before anything new is written.
-        var leftovers = RetireInPlaceEdits(previousInPlace, planned, result);
+        // A cache conversion never wrote its in-place edits, so there is nothing to put back.
+        var leftovers = Layout.IsCache
+            ? new Dictionary<string, List<JournalEdit>>(StringComparer.OrdinalIgnoreCase)
+            : RetireInPlaceEdits(previousInPlace, planned, result);
         RetireCopies(previousCopies, planned, result);
 
         List<JournalInPlaceFile> inPlace = [];
@@ -123,6 +129,7 @@ public sealed class BundleConverter
         ConversionJournal journal = new()
         {
             ShaderManifestSha256 = manifest.ManifestSha256,
+            GameDirectory = Layout.IsCache ? Layout.GameDirectory : "",
             InPlace = [.. inPlace.OrderBy(entry => entry.File, StringComparer.Ordinal)],
             Rewritten = [.. copies.Select(copy => copy.Entry).Concat(carriedCopies).OrderBy(entry => entry.File, StringComparer.Ordinal)],
             Skipped = SkippedEntries(plan),
@@ -133,7 +140,14 @@ public sealed class BundleConverter
         _journal.Write(journal);
 
         WriteCopies(copies.Where(copy => copy.Pending).ToList(), journal, result, cancellationToken);
-        ApplyInPlace(plan, previousInPlace, result, cancellationToken);
+        if (Layout.IsCache)
+        {
+            result.EditsDeferred = plan.Bundles.Where(bundle => bundle.Mode == BundleEditMode.InPlace).Sum(bundle => bundle.Edits.Count);
+        }
+        else
+        {
+            ApplyInPlace(plan, previousInPlace, result, cancellationToken);
+        }
 
         _journal.Write(journal);
         return result;
@@ -154,7 +168,8 @@ public sealed class BundleConverter
             return result;
         }
 
-        foreach (var entry in MergeByFile(journal.InPlace).Values)
+        // A cache conversion's in-place edits only ever lived in its journal.
+        foreach (var entry in Layout.IsCache ? Enumerable.Empty<JournalInPlaceFile>() : MergeByFile(journal.InPlace).Values)
         {
             cancellationToken.ThrowIfCancellationRequested();
             RevertFile(entry, result);
@@ -211,7 +226,8 @@ public sealed class BundleConverter
             return result;
         }
 
-        foreach (var entry in MergeByFile(journal.InPlace).Values)
+        // A cache conversion's in-place edits are applied by whoever loads the bundles, never on disk.
+        foreach (var entry in Layout.IsCache ? Enumerable.Empty<JournalInPlaceFile>() : MergeByFile(journal.InPlace).Values)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!TryOpenBundle(entry.File, entry.Size, FileAccess.Read, out var stream))
@@ -238,6 +254,26 @@ public sealed class BundleConverter
 
         result.Outputs.AddRange(outputs);
         return result;
+    }
+
+    // The journal whose in-place edits may sit in the install's bytes: this conversion's own, or for a
+    // cache the install's, which a launcher conversion of the same install wrote. An install journal that
+    // cannot be read is left out, and its bundles plan from their bytes as they are.
+    private ConversionJournal? StockJournal(ConversionJournal? own)
+    {
+        if (!Layout.IsCache)
+        {
+            return own;
+        }
+
+        try
+        {
+            return _installJournal.Read();
+        }
+        catch (InvalidDataException)
+        {
+            return null;
+        }
     }
 
     private ConversionPlan PlanFrom(ShaderManifestIndex manifest, ConversionJournal? journal, CancellationToken cancellationToken)

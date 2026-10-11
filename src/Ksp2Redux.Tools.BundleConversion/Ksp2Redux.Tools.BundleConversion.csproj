@@ -22,6 +22,14 @@
         <AdditionalFiles Include="..\Ksp2Redux.Tools.Common\BannedSymbols.txt" Link="BannedSymbols.txt" />
     </ItemGroup>
 
+    <!-- The Unity editor compiles Source as a local package (package.json, the asmdef and csc.rsp there).
+         Source/Unity holds what it needs in place of Testably.Abstractions, System.Text.Json and implicit
+         usings, so this build leaves it out. Json holds the System.Text.Json side, which Unity never sees. -->
+    <ItemGroup>
+        <Compile Remove="Source\Unity\**" />
+        <None Remove="Source\**\*.meta" />
+    </ItemGroup>
+
     <ItemGroup>
         <InternalsVisibleTo Include="Ksp2Redux.Tools.BundleConversion.Tests" />
     </ItemGroup>

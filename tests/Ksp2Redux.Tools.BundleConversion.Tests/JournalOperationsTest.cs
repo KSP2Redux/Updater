@@ -178,7 +178,7 @@ public class JournalOperationsTest
         // Assert
         using var document = JsonDocument.Parse(game.FileSystem.File.ReadAllText(game.Layout.JournalPath));
         var root = document.RootElement;
-        Assert.That(Names(root), Is.EqualTo(new[] { "Version", "ShaderManifestSha256", "BundleRoot", "InPlace", "Rewritten", "Skipped" }));
+        Assert.That(Names(root), Is.EqualTo(new[] { "Version", "ShaderManifestSha256", "BundleRoot", "GameDirectory", "InPlace", "Rewritten", "Skipped" }));
         Assert.That(root.GetProperty("Version").GetInt32(), Is.EqualTo(1));
         Assert.That(root.GetProperty("BundleRoot").GetString(), Is.EqualTo("KSP2_x64_Data/StreamingAssets/aa/StandaloneWindows64"));
         Assert.That(Names(root.GetProperty("InPlace")[0]), Is.EqualTo(new[] { "File", "Size", "Edits" }));

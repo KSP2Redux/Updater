@@ -29,6 +29,9 @@ x64/
 *.pgc
 *.pgd
 *.rsp
+# Unity's compiler options for the bundle converter package (Source/package.json). Its .meta files stay ignored,
+# Unity writes them on each machine.
+!src/Ksp2Redux.Tools.BundleConversion/Source/csc.rsp
 *.sbr
 *.tlb
 *.tli

@@ -1,0 +1,19 @@
+{
+    "name": "Ksp2Redux.Tools.BundleConversion",
+    "rootNamespace": "Ksp2Redux.Tools.BundleConversion",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "AssetsTools.NET.dll",
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

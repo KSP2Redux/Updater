@@ -32,6 +32,9 @@ internal sealed class TestGame
 
     public BundleConverter Converter() => new(FileSystem, ROOT, new BundleConversionOptions { MaxParallelism = 1 });
 
+    public BundleConverter CacheConverter(string cacheDirectory) =>
+        new(FileSystem, ROOT, new BundleConversionOptions { MaxParallelism = 1, CacheDirectory = cacheDirectory });
+
     public void Write(string file, byte[] bytes) => FileSystem.File.WriteAllBytes(Layout.BundlePath(file), bytes);
 
     public byte[] Read(string file) => FileSystem.File.ReadAllBytes(Layout.BundlePath(file));

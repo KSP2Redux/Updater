@@ -1,6 +1,4 @@
 using System.IO.Abstractions;
-using System.Text.Encodings.Web;
-using System.Text.Json;
 
 namespace Ksp2Redux.Tools.BundleConversion;
 
@@ -30,6 +28,12 @@ public sealed class ConversionJournal
     /// Gets or sets the stock bundle folder, relative to the game folder, with forward slashes.
     /// </summary>
     public string BundleRoot { get; set; } = BundleConversionLayout.BUNDLE_ROOT;
+
+    /// <summary>
+    /// Gets or sets the absolute game folder a cache conversion was made from, or an empty string for a
+    /// conversion that lives in the game folder itself (see <see cref="BundleConversionOptions.CacheDirectory" />).
+    /// </summary>
+    public string GameDirectory { get; set; } = "";
 
     /// <summary>
     /// Gets or sets the stock bundles edited in place.
@@ -146,15 +150,6 @@ public sealed class JournalSkipped
 /// </summary>
 public sealed class JournalStore
 {
-    // The relaxed encoder writes shader names such as "<CAB-x:123>" as they are instead of as <
-    // escapes. The journal is a data file, never embedded in HTML, so the stricter default buys nothing.
-    private static readonly JsonSerializerOptions JSON_OPTIONS = new()
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
-
     private readonly IFileSystem _fileSystem;
     private readonly string _path;
 
@@ -196,9 +191,9 @@ public sealed class JournalStore
         ConversionJournal? journal;
         try
         {
-            journal = JsonSerializer.Deserialize<ConversionJournal>(_fileSystem.File.ReadAllBytes(_path), JSON_OPTIONS);
+            journal = JsonCodec.Read<ConversionJournal>(_fileSystem.File.ReadAllBytes(_path));
         }
-        catch (JsonException e)
+        catch (FormatException e)
         {
             throw new InvalidDataException($"The conversion journal {_path} is not valid JSON: {e.Message}", e);
         }
@@ -230,7 +225,7 @@ public sealed class JournalStore
         }
 
         var temporary = _path + ".tmp";
-        _fileSystem.File.WriteAllBytes(temporary, JsonSerializer.SerializeToUtf8Bytes(journal, JSON_OPTIONS));
+        _fileSystem.File.WriteAllBytes(temporary, JsonCodec.Write(journal));
         AtomicFile.Replace(_fileSystem, temporary, _path);
     }
 

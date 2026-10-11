@@ -91,6 +91,9 @@ public sealed class ConversionResult
     /// <summary>Gets the number of earlier edits put back to stock because the plan no longer wants them.</summary>
     public int EditsReverted { get; internal set; }
 
+    /// <summary>Gets the number of in-place edits journaled but not written, because the run converted into a cache.</summary>
+    public int EditsDeferred { get; internal set; }
+
     /// <summary>Gets the edits whose bytes matched neither the stock nor the converted bytes, which were left alone.</summary>
     public List<EditStatus> ForeignEdits { get; } = [];
 
@@ -195,4 +198,15 @@ public sealed class BundleConversionOptions
     /// Gets or sets where progress lines go, or null for nowhere.
     /// </summary>
     public IProgress<string>? Progress { get; set; }
+
+    /// <summary>
+    /// Gets or sets a folder to convert into instead of the game folder, or null to convert the install itself.
+    /// </summary>
+    /// <remarks>
+    /// With a cache folder the install is only read. The journal and the converted copies go to the cache
+    /// folder, and the same-size edits of bundles that would be edited in place are journaled but never
+    /// written: whoever loads the bundles applies them while reading (the Redux editor does). Plans still
+    /// start from stock bytes when the launcher converted the install itself, through that install's journal.
+    /// </remarks>
+    public string? CacheDirectory { get; set; }
 }
