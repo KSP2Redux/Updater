@@ -18,11 +18,12 @@ public class InstallPlanServiceBundleConversionTest
     private const string InstallDir = @"C:\Games\Ksp2";
     private const string PatchPath = @"C:\downloads\corrupt.patch";
 
-    private static (InstallPlanService Service, Mock<ICacheService> CacheService, Mock<IBundleConversionService> Conversion, List<string> Calls)
+    private static (InstallPlanService Service, Mock<ICacheService> CacheService, Mock<IBundleConversionService> Conversion, List<string> Calls, MockFileSystem Fs)
         MakeService()
     {
         var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         fs.Directory.CreateDirectory(InstallDir);
+        fs.Directory.CreateDirectory(fs.Path.GetTempPath());
         fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(PatchPath)!);
         fs.File.WriteAllBytes(PatchPath, [0x01]);
         fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "uninstall.zip"), [0x00]);
@@ -37,8 +38,11 @@ public class InstallPlanServiceBundleConversionTest
         conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("convert"));
 
+        // Every patch, the prepatch included, fails to open, so a plan that reaches one rolls back.
         var zipFileService = new Mock<IZipFileService>();
-        zipFileService.Setup(z => z.OpenRead(PatchPath)).Throws(new IOException("archive is corrupt"));
+        zipFileService.Setup(z => z.OpenRead(It.IsAny<string>())).Throws(new IOException("archive is corrupt"));
+        var assemblyService = new Mock<IAssemblyService>();
+        assemblyService.Setup(a => a.GetManifestResourceStream(It.IsAny<string>())).Returns(() => new MemoryStream([0x00]));
         var diskSpace = new Mock<IDiskSpaceService>();
         diskSpace.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
         var patchDownloadService = new Mock<IPatchDownloadService>();
@@ -50,15 +54,15 @@ public class InstallPlanServiceBundleConversionTest
         configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
 
         var service = new InstallPlanService(fs, cacheService.Object, new MockEnvironmentProvider(),
-            new Mock<IAssemblyService>().Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object,
+            assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object,
             diskSpace.Object, patchDownloadService.Object, configService.Object, conversion.Object);
-        return (service, cacheService, conversion, calls);
+        return (service, cacheService, conversion, calls, fs);
     }
 
     [Test]
     public async Task Uninstall_RevertsTheBundleConversionBeforeRestoringTheSnapshot()
     {
-        var (service, _, _, calls) = MakeService();
+        var (service, _, _, calls, _) = MakeService();
         var plan = new InstallPlan();
         plan.Uninstall();
 
@@ -70,7 +74,7 @@ public class InstallPlanServiceBundleConversionTest
     [Test]
     public async Task RevertToStockAlone_RevertsTheBundleConversionBeforeRestoringTheSnapshot()
     {
-        var (service, _, _, calls) = MakeService();
+        var (service, _, _, calls, _) = MakeService();
         var plan = new InstallPlan();
         plan.RevertToStock();
 
@@ -80,17 +84,43 @@ public class InstallPlanServiceBundleConversionTest
     }
 
     [Test]
-    public async Task RevertToStockBeforeAPatch_KeepsTheBundleConversion()
+    public async Task RevertToStockBeforeAPatch_KeepsTheBundleConversionUntilTheRollback()
     {
-        var (service, _, conversion, _) = MakeService();
+        var (service, _, _, calls, _) = MakeService();
+        // Each step goes in front of the ones already planned.
         var plan = new InstallPlan();
-        plan.RevertToStock();
         plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "corrupt patch");
+        plan.RevertToStock();
 
-        // The patch is corrupt, so the plan rolls back, but the conversion must not have been reverted on the way.
         await Assert.ThrowsAsync<InstallFailedException>(async () =>
             await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
 
-        conversion.Verify(c => c.Revert(It.IsAny<string>(), It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        // The revert to stock keeps the conversion for the patch. The patch is corrupt, and the rollback leaves
+        // a stock install, which converted bundles would draw magenta, so it undoes the conversion.
+        Assert.That(calls, Is.EqualTo(new[] { "restore", "revert", "restore" }));
+    }
+
+    [Test]
+    public async Task RevertToStockThenPrepatch_ReachesThePrepatchWhenTheConversionJournalIsKept()
+    {
+        var (service, _, _, _, fs) = MakeService();
+        // A Steam install that the restore left with the folders a repatch keeps under Redux.
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, Ksp2Install.KSP2_EXE_NAME), [0x00]);
+        fs.Directory.CreateDirectory(fs.Path.Combine(InstallDir, "KSP2_x64_Data", "Plugins"));
+        fs.File.WriteAllText(fs.Path.Combine(InstallDir, "KSP2_x64_Data", "Plugins", "Steamworks.NET.txt"), "");
+        fs.Directory.CreateDirectory(fs.Path.Combine(InstallDir, "Redux", "Config"));
+        fs.Directory.CreateDirectory(fs.Path.Combine(InstallDir, "Redux", "BundleConversion"));
+        fs.File.WriteAllText(fs.Path.Combine(InstallDir, "Redux", "BundleConversion", "journal.json"), "{}");
+        var plan = new InstallPlan();
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "snapshot patch");
+        plan.Prepatch();
+        plan.RevertToStock();
+
+        var ex = await Assert.ThrowsAsync<InstallFailedException>(async () =>
+            await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
+
+        // The prepatch itself is the corrupt archive here. Refusing the install as a Redux one stops before it.
+        Assert.That(ex!.InnerException, Is.InstanceOf<IOException>());
+        Assert.That(ex.InnerException!.Message, Is.EqualTo("archive is corrupt"));
     }
 }

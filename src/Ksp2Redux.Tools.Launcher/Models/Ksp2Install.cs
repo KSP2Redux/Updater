@@ -39,6 +39,14 @@ public class Ksp2Install
     private const string EpicGamesMarker = ".egstore";
     private const string PrepatchMarker = "prepatched.nodelete";
 
+    // Revert-to-stock keeps these folders under Redux: the config, and the bundle conversion journal with its
+    // converted copies. A Redux folder holding only them is a stock install.
+    private static readonly HashSet<string> KeptReduxFolders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Config",
+        "BundleConversion",
+    };
+
     public Ksp2Install(IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, string exePath)
     {
         _fileSystem = fileSystem;
@@ -51,11 +59,10 @@ public class Ksp2Install
             InstallDir = _fileSystem.Path.GetDirectoryName(exePath)!;
             var isSteam = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, SteamworksText));
             var isEpic = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, EpicGamesMarker));
-            // Revert-to-stock keeps Redux/Config, so ignore a Config-only Redux folder.
             var reduxDir = _fileSystem.Path.Combine(InstallDir, "Redux");
             var isRedux = _fileSystem.Directory.Exists(reduxDir)
                 && _fileSystem.Directory.EnumerateFileSystemEntries(reduxDir)
-                    .Any(p => !string.Equals(_fileSystem.Path.GetFileName(p), "Config", StringComparison.OrdinalIgnoreCase));
+                    .Any(p => !KeptReduxFolders.Contains(_fileSystem.Path.GetFileName(p)));
             var isPrepatch = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, PrepatchMarker));
             Distribution = isRedux ? Distribution.Redux :
                 isPrepatch ? Distribution.Prepatched :

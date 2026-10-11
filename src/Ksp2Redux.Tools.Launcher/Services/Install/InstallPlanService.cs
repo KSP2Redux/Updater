@@ -263,6 +263,24 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         await Task.Run(() => bundleConversionService.Revert(install, log, ct), ct);
     }
 
+    // Runs during a rollback, which may follow a cancellation, so it does not take the plan's token.
+    private void TryRevertBundleConversion(string install, Action<string> log)
+    {
+        if (bundleConversionService is null)
+        {
+            return;
+        }
+
+        try
+        {
+            bundleConversionService.Revert(install, log, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            log($"Could not revert the bundle conversion: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// Called when a Prepatch/ApplyPatchFile step throws partway through. If a known-good snapshot
     /// (uninstall.zip) exists, restores it so a corrupt patch or a mid-write failure (e.g. disk full)
@@ -281,6 +299,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         }
 
         log($"Install step failed ({original.Message}). Rolling back to the last known-good state...");
+
+        // The snapshot is a stock install, and the restore leaves the bundles in StreamingAssets as they are.
+        // Converted bundles draw magenta in stock and in Redux builds from before the URP port, so the
+        // conversion is undone too. The next install converts again if its build needs it.
+        TryRevertBundleConversion(install, log);
 
         Exception? rollbackFailure = null;
         try
