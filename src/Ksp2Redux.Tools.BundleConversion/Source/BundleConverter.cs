@@ -129,6 +129,7 @@ public sealed class BundleConverter
         ConversionJournal journal = new()
         {
             ShaderManifestSha256 = manifest.ManifestSha256,
+            ShaderTargetsSha256 = manifest.TargetsSha256,
             GameDirectory = Layout.IsCache ? Layout.GameDirectory : "",
             InPlace = [.. inPlace.OrderBy(entry => entry.File, StringComparer.Ordinal)],
             Rewritten = [.. copies.Select(copy => copy.Entry).Concat(carriedCopies).OrderBy(entry => entry.File, StringComparer.Ordinal)],
@@ -427,7 +428,10 @@ public sealed class BundleConverter
     {
         var bundles = plan.Bundles.Where(bundle => bundle.Mode == BundleEditMode.Rewrite).ToList();
         var copies = new PlannedCopy[bundles.Count];
-        var sameManifest = previous is not null && previous.ShaderManifestSha256 == manifest.ManifestSha256;
+        // A copy holds only the manifest's retargets, so a rebuild of the shaders that keeps every name and path ID
+        // reuses it. Journals from before the retarget hash rebuild once.
+        var sameManifest = previous is not null && previous.ShaderTargetsSha256.Length > 0 &&
+            previous.ShaderTargetsSha256 == manifest.TargetsSha256;
 
         Parallel.For(0, bundles.Count, ParallelOptions(cancellationToken), index =>
         {

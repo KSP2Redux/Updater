@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json;
 using Ksp2Redux.Tools.BundleConversion.Bundles;
 
 namespace Ksp2Redux.Tools.BundleConversion.Tests;
@@ -71,6 +73,40 @@ public class BundleConverterApplyTest
         Assert.That(game.Read(CONTENT), Is.EqualTo(bundle));
         Assert.That(game.ReadCopy(OTHER), Is.EqualTo(copy));
         Assert.That(game.FileSystem.File.ReadAllText(game.Layout.JournalPath), Is.EqualTo(journal));
+    }
+
+    [Test]
+    public void Apply_ShadersRebuiltWithTheSameNamesAndIds_ReusesTheCopies()
+    {
+        // Arrange: a shader edit changes the source and bundle hashes in the manifest, not what is retargeted.
+        TestGame game = new();
+        game.Write(CONTENT, TestGame.ContentBundle(compress: true, ShaderBundleIds.SHARED_SHADERS_CAB));
+        game.Converter().Apply(RebuiltManifest("first build"));
+        var copy = game.ReadCopy(CONTENT);
+
+        // Act
+        var second = game.Converter().Apply(RebuiltManifest("second build"));
+
+        // Assert
+        Assert.That(second.CopiesWritten, Is.Zero);
+        Assert.That(second.CopiesUpToDate, Is.EqualTo(1));
+        Assert.That(game.ReadCopy(CONTENT), Is.EqualTo(copy));
+    }
+
+    [Test]
+    public void Apply_AShaderPathIdChanged_RewritesTheCopies()
+    {
+        // Arrange
+        TestGame game = new();
+        game.Write(CONTENT, TestGame.ContentBundle(compress: true, ShaderBundleIds.SHARED_SHADERS_CAB));
+        game.Converter().Apply(RebuiltManifest("first build"));
+
+        // Act
+        var second = game.Converter().Apply(RebuiltManifest("first build", pathIdOffset: 1));
+
+        // Assert
+        Assert.That(second.CopiesWritten, Is.EqualTo(1));
+        Assert.That(second.CopiesUpToDate, Is.Zero);
     }
 
     [Test]
@@ -327,6 +363,20 @@ public class BundleConverterApplyTest
         Assert.That(game.Read(OTHER), Is.EqualTo(other));
         Assert.That(game.FileSystem.Directory.Exists(game.Layout.ConversionDirectory), Is.False);
         Assert.That(again.HadJournal, Is.False);
+    }
+
+    // The manifest a shader bundle build writes: the build hashes in it change with every build.
+    private static ShaderManifestIndex RebuiltManifest(string build, long pathIdOffset = 0)
+    {
+        ShaderManifest manifest = new() { Version = 1, UnityVersion = "6000.6.0f1", Platform = "StandaloneWindows64", SourceHash = build };
+        manifest.Bundles.Add(new ShaderManifestBundle
+        {
+            File = "redux_urp_sharedshaders.bundle",
+            Cab = ShaderBundleIds.SHARED_SHADERS_CAB,
+            Sha256 = build,
+            Shaders = [new ShaderManifestShader { Name = TestGame.EMBEDDED_SHADER, PathId = (TestGame.TargetPathId + pathIdOffset).ToString(CultureInfo.InvariantCulture) }],
+        });
+        return ShaderManifestIndex.FromBytes(JsonSerializer.SerializeToUtf8Bytes(manifest));
     }
 
     private static void Patch(TestGame game, string file, long offset, byte[] bytes)

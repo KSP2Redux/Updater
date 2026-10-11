@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO.Abstractions;
+using System.Text;
 
 namespace Ksp2Redux.Tools.BundleConversion;
 
@@ -114,6 +115,7 @@ public sealed class ShaderManifestIndex
         };
 
         List<string> warnings = [];
+        StringBuilder retargets = new();
         foreach (var bundle in manifest.Bundles)
         {
             if (string.IsNullOrWhiteSpace(bundle.Cab))
@@ -123,6 +125,7 @@ public sealed class ShaderManifestIndex
             }
 
             replacementCabs.Add(bundle.Cab);
+            retargets.Append(bundle.Cab).Append('\n');
             foreach (var shader in bundle.Shaders)
             {
                 if (!long.TryParse(shader.PathId, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var pathId))
@@ -138,11 +141,13 @@ public sealed class ShaderManifestIndex
                 }
 
                 list.Add(new ShaderTarget(bundle.Cab, pathId));
+                retargets.Append(shader.Name).Append('\t').Append(pathId.ToString(CultureInfo.InvariantCulture)).Append('\n');
             }
         }
 
         ReplacementCabs = replacementCabs;
         Warnings = warnings;
+        TargetsSha256 = Hex.Sha256(Encoding.UTF8.GetBytes(retargets.ToString()));
     }
 
     /// <summary>
@@ -154,6 +159,13 @@ public sealed class ShaderManifestIndex
     /// Gets the lowercase hex SHA-256 of the manifest file.
     /// </summary>
     public string ManifestSha256 { get; }
+
+    /// <summary>
+    /// Gets the lowercase hex SHA-256 of what a conversion writes from the manifest: each bundle's CAB and its
+    /// shaders' names and path IDs, in manifest order. The manifest file also carries the hashes of the shader
+    /// sources and bundles, which change with every shader edit while the conversion stays the same.
+    /// </summary>
+    public string TargetsSha256 { get; }
 
     /// <summary>
     /// Gets the CABs a material may already point into without needing a retarget: the two stock

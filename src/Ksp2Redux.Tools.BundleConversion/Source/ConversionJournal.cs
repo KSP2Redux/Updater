@@ -25,6 +25,12 @@ public sealed class ConversionJournal
     public string ShaderManifestSha256 { get; set; } = "";
 
     /// <summary>
+    /// Gets or sets the lowercase hex SHA-256 of the manifest's retargets the copies were made with
+    /// (<see cref="ShaderManifestIndex.TargetsSha256" />), or an empty string in a journal from before it existed.
+    /// </summary>
+    public string ShaderTargetsSha256 { get; set; } = "";
+
+    /// <summary>
     /// Gets or sets the stock bundle folder, relative to the game folder, with forward slashes.
     /// </summary>
     public string BundleRoot { get; set; } = BundleConversionLayout.BUNDLE_ROOT;
