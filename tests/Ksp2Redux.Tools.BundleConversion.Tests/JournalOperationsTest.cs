@@ -129,6 +129,28 @@ public class JournalOperationsTest
     }
 
     [Test]
+    public void Revert_ABundleAnotherProgramHolds_IsAFailureAndTheOthersAreStillReverted()
+    {
+        // Arrange: a Unity editor that loaded the game's bundles holds the first one open.
+        const string held = "a-held.bundle";
+        var (game, bytes) = Setup(applyA: true, applyB: true);
+        game.Write(held, bytes);
+        var store = new JournalStore(game.FileSystem, game.Layout.JournalPath);
+        var journal = store.Read()!;
+        journal.InPlace.Insert(0, new JournalInPlaceFile { File = held, Size = bytes.Length, Edits = journal.InPlace[0].Edits });
+        store.Write(journal);
+        using var editor = game.FileSystem.File.Open(game.Layout.BundlePath(held), FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        // Act
+        var result = game.Converter().Revert();
+
+        // Assert
+        Assert.That(result.Failures.Single().File, Is.EqualTo(held));
+        Assert.That(game.Read(FILE), Is.EqualTo(Stock()));
+        Assert.That(result.JournalDeleted, Is.False);
+    }
+
+    [Test]
     public void WriteIfMatches_BytesDifferFromTheExpectedOldBytes_LeavesTheFileAlone()
     {
         // Arrange

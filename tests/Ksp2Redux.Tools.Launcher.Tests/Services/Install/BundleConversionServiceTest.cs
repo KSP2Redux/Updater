@@ -20,6 +20,31 @@ public class BundleConversionServiceTest
     [Test]
     public void ConvertForABuildWithoutShaderBundles_PutsTheConvertedBundlesBackToStock()
     {
+        var (fs, bundlePath, journalPath) = MakeConvertedInstall();
+
+        // The installed build ships no Redux/ShaderBundles manifest.
+        new BundleConversionService(fs).Convert(InstallDir, _ => { }, CancellationToken.None);
+
+        var expected = new byte[64];
+        StockBytes.CopyTo(expected, EditOffset);
+        Assert.That(fs.File.ReadAllBytes(bundlePath), Is.EqualTo(expected));
+        Assert.That(fs.File.Exists(journalPath), Is.False);
+    }
+
+    [Test]
+    public void RevertingABundleAnotherProgramHoldsOpenFailsAndKeepsTheJournal()
+    {
+        var (fs, bundlePath, journalPath) = MakeConvertedInstall();
+        using var editor = fs.File.Open(bundlePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        // An uninstall that carried on would delete the journal, and the bundle would stay converted for good.
+        Assert.Throws<IOException>(() => new BundleConversionService(fs).Revert(InstallDir, _ => { }, CancellationToken.None));
+
+        Assert.That(fs.File.Exists(journalPath), Is.True);
+    }
+
+    private static (MockFileSystem Fs, string BundlePath, string JournalPath) MakeConvertedInstall()
+    {
         var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         var bundleDirectory = fs.Path.Combine(InstallDir, BundleConversionLayout.BUNDLE_ROOT.Replace('/', '\\'));
         fs.Directory.CreateDirectory(bundleDirectory);
@@ -46,13 +71,6 @@ public class BundleConversionServiceTest
             ],
         });
         new JournalStore(fs, journalPath).Write(journal);
-
-        // The installed build ships no Redux/ShaderBundles manifest.
-        new BundleConversionService(fs).Convert(InstallDir, _ => { }, CancellationToken.None);
-
-        var expected = new byte[64];
-        StockBytes.CopyTo(expected, EditOffset);
-        Assert.That(fs.File.ReadAllBytes(bundlePath), Is.EqualTo(expected));
-        Assert.That(fs.File.Exists(journalPath), Is.False);
+        return (fs, bundlePath, journalPath);
     }
 }

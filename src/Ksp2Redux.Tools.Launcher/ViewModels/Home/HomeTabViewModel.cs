@@ -686,6 +686,10 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             await ShowNotEnoughDiskSpace(e);
         }
+        catch (FilesInUseException e)
+        {
+            await ShowFilesInUse(e);
+        }
         catch (InstallFailedException e)
         {
             LogError(e.Message, e);
@@ -767,6 +771,10 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             await ShowNotEnoughDiskSpace(e);
         }
+        catch (FilesInUseException e)
+        {
+            await ShowFilesInUse(e);
+        }
         catch (InstallFailedException e)
         {
             LogError(e.Message, e);
@@ -810,6 +818,13 @@ public partial class HomeTabViewModel : ViewModelBase
         Log("Nothing was changed.");
         await _messageBoxService.ShowMessageBoxAsOwnedAsync("Not Enough Disk Space",
             $"{e.Message}\n\nThe space is needed on the drive that holds:\n{e.Path}\n\nNothing was changed.",
+            ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
+    }
+
+    private async Task ShowFilesInUse(FilesInUseException e)
+    {
+        LogError(e.Message, e);
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Game Files In Use", e.Message,
             ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 

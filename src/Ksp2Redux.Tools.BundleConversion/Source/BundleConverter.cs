@@ -592,14 +592,16 @@ public sealed class BundleConverter
 
     private void RevertFile(JournalInPlaceFile entry, RevertResult result)
     {
-        if (!TryOpenBundle(entry.File, entry.Size, FileAccess.ReadWrite, out var stream))
-        {
-            result.Unreverted.AddRange(entry.Edits.Select(edit => new EditStatus(entry.File, edit.Offset, EditState.FileChanged)));
-            return;
-        }
-
+        // Opening is inside the try because another program holding the bundle fails right there. Escaping from
+        // here would stop the whole revert and leave every later bundle converted.
         try
         {
+            if (!TryOpenBundle(entry.File, entry.Size, FileAccess.ReadWrite, out var stream))
+            {
+                result.Unreverted.AddRange(entry.Edits.Select(edit => new EditStatus(entry.File, edit.Offset, EditState.FileChanged)));
+                return;
+            }
+
             using (stream)
             {
                 foreach (var edit in entry.Edits)

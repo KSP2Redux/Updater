@@ -39,6 +39,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
         serviceCollection.AddSingleton<IAssemblyService, ExecutingAssemblyService>();
         serviceCollection.AddSingleton<IBundleConversionService, BundleConversionService>();
+        serviceCollection.AddSingleton<IInstallFileLockService, InstallFileLockService>();
         serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
         serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();

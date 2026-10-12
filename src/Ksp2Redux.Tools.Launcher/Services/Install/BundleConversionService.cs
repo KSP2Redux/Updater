@@ -15,6 +15,7 @@ public interface IBundleConversionService
     /// <param name="install">The KSP2 folder.</param>
     /// <param name="log">Receives progress and summary lines.</param>
     /// <param name="ct">Cancels the conversion between bundles.</param>
+    /// <exception cref="IOException">A bundle could not be converted, after the others were.</exception>
     void Convert(string install, Action<string> log, CancellationToken ct);
 
     /// <summary>
@@ -23,6 +24,7 @@ public interface IBundleConversionService
     /// <param name="install">The KSP2 folder.</param>
     /// <param name="log">Receives progress and summary lines.</param>
     /// <param name="ct">Cancels the revert between bundles.</param>
+    /// <exception cref="IOException">A bundle could not be put back, after the others were. The journal keeps it.</exception>
     void Revert(string install, Action<string> log, CancellationToken ct);
 }
 
@@ -65,6 +67,8 @@ public class BundleConversionService(IFileSystem fileSystem) : IBundleConversion
         {
             log($"Could not convert: {failure}");
         }
+
+        ThrowIfAnyFailed(result.Failures.Count, "converted");
     }
 
     /// <inheritdoc />
@@ -86,6 +90,20 @@ public class BundleConversionService(IFileSystem fileSystem) : IBundleConversion
         foreach (var failure in result.Failures)
         {
             log($"Could not revert: {failure}");
+        }
+
+        ThrowIfAnyFailed(result.Failures.Count, "put back to stock");
+    }
+
+    // A bundle the conversion could not write stays as it was while the rest move on, so the caller has to treat
+    // the step as failed rather than carry on with a mixed set.
+    private static void ThrowIfAnyFailed(int failureCount, string action)
+    {
+        if (failureCount > 0)
+        {
+            throw new IOException(failureCount == 1
+                ? $"A stock bundle could not be {action}. Another program may have it open."
+                : $"{failureCount} stock bundles could not be {action}. Another program may have them open.");
         }
     }
 }

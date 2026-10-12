@@ -19,7 +19,8 @@ public interface IInstallPlanService
 public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider,
     IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService, IZipFileService zipFileService,
     IDiskSpaceService diskSpaceService, IPatchDownloadService patchDownloadService,
-    ILauncherConfigService launcherConfigService, IBundleConversionService? bundleConversionService = null) : IInstallPlanService
+    ILauncherConfigService launcherConfigService, IBundleConversionService? bundleConversionService = null,
+    IInstallFileLockService? installFileLockService = null) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -61,6 +62,15 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     public async Task ApplyToFolder(InstallPlan installPlan, string install, Action<string> log,
         Action<long, long> downloadProgress, Action<int, int> stepsProgress, CancellationToken ct)
     {
+        // Patching, rollback and bundle conversion rewrite files in place. A file another program holds open (a
+        // running KSP2, or a Unity editor that loaded the game's bundles) fails partway through and leaves old and
+        // new files mixed, so nothing starts while any is held.
+        if (installFileLockService is not null)
+        {
+            log("Checking that no other program is using the game files...");
+            await Task.Run(() => installFileLockService.EnsureNoFilesInUse(install), ct);
+        }
+
         EnsureEnoughDiskSpace(installPlan, install, log);
         using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
@@ -89,10 +99,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 {
                 case InstallPlanAction.Uninstall:
                     log("Uninstalling KSP2 Redux");
-                    mutationStarted = true;
                     // The bundle folder is not in the snapshot, and the restore deletes the journal, so undo
-                    // the bundle conversion first.
+                    // the bundle conversion first. A bundle it could not put back would stay converted for good
+                    // once the journal is gone, so a failed revert stops here with the Redux install intact.
                     await RevertBundleConversion(install, log, ct);
+                    mutationStarted = true;
                     cacheService.RecursivelyRestoreCache(install);
                     break;
                 case InstallPlanAction.RevertToStock:
@@ -240,15 +251,15 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             step.Action is InstallPlanAction.Prepatch or InstallPlanAction.ApplyPatchFile);
         if (patched && bundleConversionService is not null)
         {
-            // A failed conversion leaves a playable install: the game moves materials that still reach a
-            // Built-in shader to the URP port at load time. So report it rather than roll the install back.
+            // Some bundles converted and others not is a half-finished install, and reporting it as installed hid
+            // that from players. So a failed or cancelled conversion rolls the install back like a failed patch.
             try
             {
                 await Task.Run(() => bundleConversionService.Convert(install, log, ct), ct);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
-                log($"Bundle conversion failed: {ex.Message}. The game will convert shaders at load time instead.");
+                RollbackOrRethrow(install, log, ex);
             }
         }
     }

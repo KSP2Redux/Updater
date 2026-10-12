@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -19,7 +20,7 @@ public class InstallPlanServiceBundleConversionTest
     private const string PatchPath = @"C:\downloads\corrupt.patch";
 
     private static (InstallPlanService Service, Mock<ICacheService> CacheService, Mock<IBundleConversionService> Conversion, List<string> Calls, MockFileSystem Fs)
-        MakeService()
+        MakeService(IInstallFileLockService? lockService = null, bool patchesApply = false)
     {
         var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         fs.Directory.CreateDirectory(InstallDir);
@@ -27,6 +28,10 @@ public class InstallPlanServiceBundleConversionTest
         fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(PatchPath)!);
         fs.File.WriteAllBytes(PatchPath, [0x01]);
         fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "uninstall.zip"), [0x00]);
+        if (patchesApply)
+        {
+            WriteEmptyPatch(fs);
+        }
 
         var calls = new List<string>();
         var cacheService = new Mock<ICacheService>();
@@ -41,6 +46,12 @@ public class InstallPlanServiceBundleConversionTest
         // Every patch, the prepatch included, fails to open, so a plan that reaches one rolls back.
         var zipFileService = new Mock<IZipFileService>();
         zipFileService.Setup(z => z.OpenRead(It.IsAny<string>())).Throws(new IOException("archive is corrupt"));
+        if (patchesApply)
+        {
+            // ZipFile.OpenRead reads the real disk, so the archive is opened from the mock file system instead.
+            zipFileService.Setup(z => z.OpenRead(PatchPath)).Returns(() =>
+                new ZipFileService(fs).NewArchive(fs.File.OpenRead(PatchPath), ZipArchiveMode.Read, false));
+        }
         var assemblyService = new Mock<IAssemblyService>();
         assemblyService.Setup(a => a.GetManifestResourceStream(It.IsAny<string>())).Returns(() => new MemoryStream([0x00]));
         var diskSpace = new Mock<IDiskSpaceService>();
@@ -54,9 +65,68 @@ public class InstallPlanServiceBundleConversionTest
         configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
 
         var service = new InstallPlanService(fs, cacheService.Object, new MockEnvironmentProvider(),
-            assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object,
-            diskSpace.Object, patchDownloadService.Object, configService.Object, conversion.Object);
+            assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object, diskSpace.Object, patchDownloadService.Object, configService.Object, conversion.Object, lockService);
         return (service, cacheService, conversion, calls, fs);
+    }
+
+    // A patch that applies and changes nothing, so a plan gets past its patch to the bundle conversion.
+    private static void WriteEmptyPatch(MockFileSystem fs)
+    {
+        using var stream = fs.File.Create(PatchPath);
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+        using var writer = new StreamWriter(archive.CreateEntry("manifest.json").Open());
+        writer.Write("{\"operations\": []}");
+    }
+
+    [Test]
+    public async Task AHeldGameFileStopsThePlanBeforeAnythingChanges()
+    {
+        var lockService = new Mock<IInstallFileLockService>();
+        lockService.Setup(l => l.EnsureNoFilesInUse(InstallDir))
+            .Throws(new FilesInUseException("A game file is in use.", ["ui_assets_all.bundle"], ["Unity (process 1)"]));
+        var (service, _, _, calls, _) = MakeService(lockService.Object);
+        var plan = new InstallPlan();
+        plan.Uninstall();
+
+        await Assert.ThrowsAsync<FilesInUseException>(async () =>
+            await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
+
+        Assert.That(calls, Is.Empty);
+    }
+
+    [Test]
+    public async Task UninstallStopsBeforeTheRestoreWhenABundleCannotBePutBack()
+    {
+        var (service, _, conversion, calls, _) = MakeService();
+        conversion.Setup(c => c.Revert(InstallDir, It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("revert"))
+            .Throws(new IOException("A stock bundle could not be put back to stock."));
+        var plan = new InstallPlan();
+        plan.Uninstall();
+
+        await Assert.ThrowsAsync<IOException>(async () =>
+            await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
+
+        // The restore deletes the conversion journal, after which the bundle could never be put back.
+        Assert.That(calls, Is.EqualTo(new[] { "revert" }));
+    }
+
+    [Test]
+    public async Task AFailedConversionAfterThePatchRollsTheInstallBack()
+    {
+        var (service, _, conversion, calls, _) = MakeService(patchesApply: true);
+        conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("convert"))
+            .Throws(new IOException("4 stock bundles could not be converted."));
+        var plan = new InstallPlan();
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "empty patch");
+
+        var ex = await Assert.ThrowsAsync<InstallFailedException>(async () =>
+            await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
+
+        Assert.That(ex!.InnerException?.Message, Is.EqualTo("4 stock bundles could not be converted."));
+        Assert.That(ex.RolledBack, Is.True);
+        Assert.That(calls, Is.EqualTo(new[] { "convert", "revert", "restore" }));
     }
 
     [Test]
