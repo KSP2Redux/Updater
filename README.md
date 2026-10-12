@@ -101,6 +101,7 @@ The solution (`Ksp2Redux.Tools.slnx`) is laid out as:
 | `src/Ksp2Redux.Tools.Launcher` | The Avalonia launcher/updater app (the main deliverable) |
 | `src/Ksp2Redux.Tools.Cli` | Headless CLI over the launcher's install path (`redux-launcher-cli`) |
 | `src/Ksp2Redux.Tools.Common` | Shared patch engine (`Patching/`) and release-feed schema (`Models/`) |
+| `src/Ksp2Redux.Tools.GameCli` | Developer CLI and MCP server that drives the Redux Unity editor and the running game (`ksp2redux-cli`). Not part of a release, the game repo builds it with `scripts/build-cli.ps1` |
 | `src/Ksp2Redux.Tools.Installer` | Windows WPF installer |
 | `src/Ksp2Redux.Tools.PatchApplier` / `PatchGenerator` | CLI tools to apply/create patch files |
 | `src/Ksp2Redux.Tools.Uploader` | CLI tool that publishes releases and the manifest |

@@ -3,6 +3,7 @@
     <Project Path="src/Ksp2Redux.Tools.BundleConversion/Ksp2Redux.Tools.BundleConversion.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Cli/Ksp2Redux.Tools.Cli.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Common/Ksp2Redux.Tools.Common.csproj" />
+    <Project Path="src/Ksp2Redux.Tools.GameCli/Ksp2Redux.Tools.GameCli.csproj" />
     <Project Path="src/Ksp2Redux.Tools.Launcher/Ksp2Redux.Tools.Launcher.csproj" />
     <Project Path="src/Ksp2Redux.Tools.PatchApplier/Ksp2Redux.Tools.PatchApplier.csproj" />
     <Project Path="src/Ksp2Redux.Tools.PatchGenerator/Ksp2Redux.Tools.PatchGenerator.csproj" />
