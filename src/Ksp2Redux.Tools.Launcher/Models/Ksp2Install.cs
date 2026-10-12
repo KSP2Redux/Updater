@@ -1,5 +1,6 @@
 ﻿using System.IO.Abstractions;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using Mono.Cecil;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
@@ -31,8 +32,14 @@ public class Ksp2Install
 
     public const string KSP2_EXE_NAME = "KSP2_x64.exe";
 
-    private static string GetAssemblyCSharpRelativePath(IFileSystem fileSystem)
-        => fileSystem.Path.Combine("KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
+    private static string GetManagedFolder(IFileSystem fileSystem, string installDir)
+        => fileSystem.Path.Combine(installDir, "KSP2_x64_Data", "Managed");
+
+    private const string MainAssemblyFileName = "Assembly-CSharp.dll";
+    private const string VersionTypeName = "VersionID";
+
+    // Only Redux builds declare it, so it tells Redux game code from stock without trusting the folder layout.
+    private const string ReduxChannelField = "CHANNEL_NAME";
 
     // Exists in Steam based installations, but doesn't exist in portable version.
     private const string SteamworksText = "KSP2_x64_Data/Plugins/Steamworks.NET.txt";
@@ -64,13 +71,16 @@ public class Ksp2Install
                 && _fileSystem.Directory.EnumerateFileSystemEntries(reduxDir)
                     .Any(p => !KeptReduxFolders.Contains(_fileSystem.Path.GetFileName(p)));
             var isPrepatch = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, PrepatchMarker));
-            Distribution = isRedux ? Distribution.Redux :
+
+            var gameCodeIsRedux = TryDetectGameVersionFromMainAssembly(InstallDir);
+
+            // Verifying the game files through the store puts the stock game code back but leaves everything Redux
+            // added, so the Redux folder alone is not proof. When the game code was read, it decides.
+            Distribution = (gameCodeIsRedux ?? isRedux) ? Distribution.Redux :
                 isPrepatch ? Distribution.Prepatched :
                 isSteam ? Distribution.Steam :
                 isEpic ? Distribution.Epic :
                 Distribution.Portable;
-
-            TryDetectGameVersionFromMainAssembly(InstallDir, Distribution == Distribution.Redux);
         }
         else
         {
@@ -78,21 +88,46 @@ public class Ksp2Install
         }
     }
 
-    private void TryDetectGameVersionFromMainAssembly(string installDir, bool isRedux)
+    // Returns whether the game code is a Redux build, or null when no version could be read.
+    private bool? TryDetectGameVersionFromMainAssembly(string installDir)
     {
         try
         {
-            var mainAssembly = _fileSystem.Path.Combine(installDir, GetAssemblyCSharpRelativePath(_fileSystem));
-            using var module = _moduleDefinitionService.ReadModule(mainAssembly);
-            var versionType = module.Types.First(t => t.Name == "VersionID");
+            using var versionModule = ReadModuleDeclaringVersionId(GetManagedFolder(_fileSystem, installDir));
+            var versionType = versionModule.Types.First(t => t.Name == VersionTypeName);
+            var isRedux = versionType.Fields.Any(f => f.Name == ReduxChannelField);
 
-            GameVersion = versionType is not null ? GameVersion.FromVersionIDType(versionType, isRedux) : null;
+            GameVersion = GameVersion.FromVersionIDType(versionType, isRedux);
+            return isRedux;
         }
         catch (Exception e)
         {
             GameVersion = null;
             VersionDetectionException = e;
+            return null;
         }
+    }
+
+    // Stock KSP2 and Redux builds up to the repository consolidation keep VersionID in Assembly-CSharp. Later
+    // builds compile the game into its own assembly and ship an Assembly-CSharp made only of type forwarders,
+    // so the forwarder names the assembly to read instead.
+    private ModuleDefinition ReadModuleDeclaringVersionId(string managedFolder)
+    {
+        var mainModule = _moduleDefinitionService.ReadModule(_fileSystem.Path.Combine(managedFolder, MainAssemblyFileName));
+        if (mainModule.Types.Any(t => t.Name == VersionTypeName))
+        {
+            return mainModule;
+        }
+
+        var forwarder = mainModule.ExportedTypes.FirstOrDefault(t => t.Name == VersionTypeName && t.IsForwarder);
+        if (forwarder?.Scope is not AssemblyNameReference targetAssembly)
+        {
+            mainModule.Dispose();
+            throw new InvalidOperationException($"{MainAssemblyFileName} neither declares nor forwards {VersionTypeName}.");
+        }
+
+        mainModule.Dispose();
+        return _moduleDefinitionService.ReadModule(_fileSystem.Path.Combine(managedFolder, $"{targetAssembly.Name}.dll"));
     }
 
     public override string ToString()
