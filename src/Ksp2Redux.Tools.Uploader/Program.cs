@@ -426,7 +426,9 @@ static async Task<ReleaseAsset> UploadExactAssetAsync(
     {
         FileName = assetName,
         ContentType = "application/octet-stream",
-        RawData = stream
+        RawData = stream,
+        // Octokit cancels a request after 100 seconds by default, which a full patch upload overruns.
+        Timeout = TimeSpan.FromHours(2)
     });
     if (asset.Size != expectedSize)
         throw new InvalidOperationException(
