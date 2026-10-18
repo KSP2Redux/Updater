@@ -105,8 +105,8 @@ public class InstallRevertEndToEndTest
         void Log(string message)
         {
             output.WriteLine(message);
-            if (message.StartsWith("Could not convert:", StringComparison.Ordinal) ||
-                message.StartsWith("Left alone, the bundle holds unexpected bytes:", StringComparison.Ordinal) ||
+            if (message.StartsWith("Could not convert ", StringComparison.Ordinal) ||
+                message.StartsWith("Left alone, ", StringComparison.Ordinal) ||
                 message.StartsWith("Bundle conversion failed:", StringComparison.Ordinal))
             {
                 conversionFailures.Enqueue(message);

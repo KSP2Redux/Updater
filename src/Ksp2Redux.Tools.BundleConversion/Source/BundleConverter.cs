@@ -500,8 +500,9 @@ public sealed class BundleConverter
                     result.CopiesWritten++;
                 }
             }
-            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
+            catch (Exception e) when (e is not OperationCanceledException)
             {
+                // Whatever fails is reported against this bundle, so the log names it and the other copies carry on.
                 // A copy from an earlier run is stale now and loses its journal entry, so it goes too
                 // rather than sitting on disk where nothing would ever clean it up.
                 TryDelete(temporary);

@@ -117,15 +117,18 @@ internal sealed class UnityFsBundle : IDisposable
     /// <param name="decompressedSize">The size the block decompresses to.</param>
     /// <returns>The decompressed bytes.</returns>
     /// <exception cref="InvalidDataException">The block is corrupt.</exception>
+    // LZ4ps does not bounds-check its input, so a corrupt block can throw anything, IndexOutOfRangeException included.
     internal static byte[] DecodeLz4(byte[] compressed, int decompressedSize)
     {
         try
         {
             return LZ4Codec.Decode32(compressed, 0, compressed.Length, decompressedSize);
         }
-        catch (ArgumentException e)
+        catch (Exception e)
         {
-            throw new InvalidDataException($"An LZ4 block of {compressed.Length} bytes did not decompress to {decompressedSize} bytes.", e);
+            throw new InvalidDataException(
+                $"An LZ4 block of {compressed.Length} bytes did not decompress to {decompressedSize} bytes ({e.GetType().Name}: {e.Message})",
+                e);
         }
     }
 

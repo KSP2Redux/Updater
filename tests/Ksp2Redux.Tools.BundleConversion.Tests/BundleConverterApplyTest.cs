@@ -182,6 +182,33 @@ public class BundleConverterApplyTest
     }
 
     [Test]
+    public void Apply_CorruptLz4Block_ReportsTheBundleAndConvertsTheRest()
+    {
+        // Arrange: the last block holds only resource data, so the scan never decodes it and the rewrite does.
+        TestGame game = new();
+        var stock = TestGame.ContentBundle(compress: true, ShaderBundleIds.SHARED_SHADERS_CAB);
+        using (var bundle = UnityFsBundle.Open(new MemoryStream(stock)))
+        {
+            var last = bundle.Blocks.Length - 1;
+            Array.Clear(stock, (int)bundle.Layout.FileStarts[last], (int)bundle.Blocks[last].CompressedSize);
+        }
+
+        game.Write(CONTENT, stock);
+        game.Write(OTHER, TestGame.ReferencingBundle(compress: true, ShaderBundleIds.SHARED_SHADERS_CAB));
+
+        // Act
+        var result = game.Converter().Apply(TestGame.Manifest(TestGame.EMBEDDED_SHADER));
+
+        // Assert
+        var failure = result.Failures.Single();
+        Assert.That(failure.File, Is.EqualTo(CONTENT));
+        Assert.That(failure.Message, Does.Contain("LZ4 block"));
+        Assert.That(game.CopyExists(CONTENT), Is.False);
+        Assert.That(game.CopyExists(OTHER), Is.True);
+        Assert.That(game.Journal()!.Rewritten.Select(entry => entry.File), Is.EqualTo(new[] { OTHER }));
+    }
+
+    [Test]
     public void Apply_NoExternalForTheTarget_AppendsItInTheConvertedCopy()
     {
         // Arrange: uncompressed, but the file never referenced the shared shader bundle.

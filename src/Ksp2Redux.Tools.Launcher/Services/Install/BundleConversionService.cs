@@ -60,15 +60,15 @@ public class BundleConversionService(IFileSystem fileSystem) : IBundleConversion
             $"{result.CopiesWritten} bundle copies written, {result.CopiesUpToDate} up to date, {result.CopiesDeleted} removed.");
         foreach (var edit in result.ForeignEdits)
         {
-            log($"Left alone, the bundle holds unexpected bytes: {edit}");
+            log($"Left alone, {edit.File} holds unexpected bytes at offset {edit.Offset}.");
         }
 
         foreach (var failure in result.Failures)
         {
-            log($"Could not convert: {failure}");
+            log($"Could not convert {failure.File}: {failure.Message}");
         }
 
-        ThrowIfAnyFailed(result.Failures.Count, "converted");
+        ThrowIfAnyFailed(result.Failures, "converted");
     }
 
     /// <inheritdoc />
@@ -84,26 +84,29 @@ public class BundleConversionService(IFileSystem fileSystem) : IBundleConversion
         log($"Bundle conversion reverted: {result.EditsReverted} edits undone, {result.CopiesDeleted} bundle copies removed.");
         foreach (var edit in result.Unreverted)
         {
-            log($"Could not undo, the bundle holds unexpected bytes: {edit}");
+            log($"Could not undo, {edit.File} holds unexpected bytes at offset {edit.Offset}.");
         }
 
         foreach (var failure in result.Failures)
         {
-            log($"Could not revert: {failure}");
+            log($"Could not revert {failure.File}: {failure.Message}");
         }
 
-        ThrowIfAnyFailed(result.Failures.Count, "put back to stock");
+        ThrowIfAnyFailed(result.Failures, "put back to stock");
     }
 
     // A bundle the conversion could not write stays as it was while the rest move on, so the caller has to treat
     // the step as failed rather than carry on with a mixed set.
-    private static void ThrowIfAnyFailed(int failureCount, string action)
+    private static void ThrowIfAnyFailed(IReadOnlyList<BundleProblem> failures, string action)
     {
-        if (failureCount > 0)
+        if (failures.Count == 0)
         {
-            throw new IOException(failureCount == 1
-                ? $"A stock bundle could not be {action}. Another program may have it open."
-                : $"{failureCount} stock bundles could not be {action}. Another program may have them open.");
+            return;
         }
+
+        var first = failures[0];
+        throw new IOException(failures.Count == 1
+            ? $"A stock bundle could not be {action} ({first.File}: {first.Message})."
+            : $"{failures.Count} stock bundles could not be {action}, the first was {first.File} ({first.Message}).");
     }
 }
