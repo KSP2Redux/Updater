@@ -47,9 +47,6 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool DisableGraphicsJobs { get; set; }
 
-    [ObservableProperty]
-    public partial bool EnableHdr { get; set; }
-
     public Ksp2InstallRowViewModel(IFileSystem fileSystem, IKsp2InstallService ksp2InstallService,
         IMessageBoxService messageBoxService, Ksp2InstallEntry entry, bool isActive)
     {
@@ -65,7 +62,6 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
         SteamAppId = entry.SteamAppId;
         LaunchArguments = entry.LaunchArguments;
         DisableGraphicsJobs = entry.DisableGraphicsJobs;
-        EnableHdr = entry.EnableHdr;
 
         ExePathError = ValidateExePath(ExePath);
         SteamAppIdError = ValidateSteamAppId(SteamAppId);
@@ -125,9 +121,6 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
 
     partial void OnDisableGraphicsJobsChanged(bool value)
         => _ksp2InstallService.UpdateInstallDisableGraphicsJobs(_entry.Id, value);
-
-    partial void OnEnableHdrChanged(bool value)
-        => _ksp2InstallService.UpdateInstallEnableHdr(_entry.Id, value);
 
     private string? ValidateExePath(string value)
     {
