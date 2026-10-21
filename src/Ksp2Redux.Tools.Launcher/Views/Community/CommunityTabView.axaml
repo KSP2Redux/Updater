@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:community="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Community"
              xmlns:launcher="clr-namespace:Ksp2Redux.Tools.Launcher"
+             xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
              mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="530"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Community.CommunityTabView"
              x:DataType="community:CommunityTabViewModel">
@@ -27,9 +28,9 @@
                     </Button>
                 </Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <HtmlPanel Name="Html"
-                               BaseStylesheet="{x:Static launcher:App.NewsStylesheet}"
-                               Text="{Binding Content}"/>
+                    <controls:NewsHtmlPanel Name="Html"
+                                            BaseStylesheet="{x:Static launcher:App.NewsStylesheet}"
+                                            Text="{Binding Content}"/>
                 </ScrollViewer>
             </DockPanel>
         </Border>
