@@ -52,8 +52,7 @@ var github = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Uploader")
 {
     Credentials = new Credentials(uploadManifest.Token)
 };
-// HttpClient cancels every request after 100 seconds by default, which a full patch upload overruns.
-// A per-request Timeout does not lift that cap, so it has to be raised on the client.
+// Octokit enforces separate client and request timeouts. Keep both limits aligned for large uploads.
 github.SetRequestTimeout(TimeSpan.FromSeconds(600));
 string workingDirectory = Path.Combine(Path.GetTempPath(), $"ksp2redux-upload-{Guid.NewGuid():N}");
 Directory.CreateDirectory(workingDirectory);
@@ -429,7 +428,8 @@ static async Task<ReleaseAsset> UploadExactAssetAsync(
     {
         FileName = assetName,
         ContentType = "application/octet-stream",
-        RawData = stream
+        RawData = stream,
+        Timeout = TimeSpan.FromSeconds(600)
     });
     if (asset.Size != expectedSize)
         throw new InvalidOperationException(
