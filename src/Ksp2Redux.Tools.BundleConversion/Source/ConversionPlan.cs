@@ -131,6 +131,116 @@ public sealed class BundleEditPlan
 }
 
 /// <summary>
+/// One cubemap the plan stores in a smaller format, or only stops keeping a CPU copy of.
+/// </summary>
+/// <remarks>
+/// Neither changes the stock file. The new header bytes and pixels are journaled as an overlay that whoever loads the
+/// bundle shows over the stock bytes, the way a cache conversion's in-place edits are, and the pixels go to a file of
+/// their own beside the copies. Same-size fields and an untouched bundle layout are why only uncompressed stock blocks
+/// qualify: the new pixels are written over the start of the old ones, which are never read again.
+/// </remarks>
+public sealed class PlannedTexture
+{
+    internal PlannedTexture(
+        string serializedFile,
+        long objectPathId,
+        string name,
+        int sourceFormat,
+        int targetFormat,
+        int width,
+        int height,
+        int mipCount,
+        long sourceFileOffset,
+        long sourceFaceSize,
+        long targetFaceSize,
+        IReadOnlyList<TextureFieldEdit> fieldEdits)
+    {
+        SerializedFile = serializedFile;
+        ObjectPathId = objectPathId;
+        Name = name;
+        SourceFormat = sourceFormat;
+        TargetFormat = targetFormat;
+        Width = width;
+        Height = height;
+        MipCount = mipCount;
+        SourceFileOffset = sourceFileOffset;
+        SourceFaceSize = sourceFaceSize;
+        TargetFaceSize = targetFaceSize;
+        FieldEdits = fieldEdits;
+    }
+
+    /// <summary>Gets the serialized file (CAB) inside the bundle that holds the texture.</summary>
+    public string SerializedFile { get; }
+
+    /// <summary>Gets the texture's path ID.</summary>
+    public long ObjectPathId { get; }
+
+    /// <summary>Gets the texture's name.</summary>
+    public string Name { get; }
+
+    /// <summary>Gets the stock Unity texture format.</summary>
+    public int SourceFormat { get; }
+
+    /// <summary>Gets the converted Unity texture format, the stock one when only the CPU copy goes.</summary>
+    public int TargetFormat { get; }
+
+    /// <summary>Gets the top mip's width.</summary>
+    public int Width { get; }
+
+    /// <summary>Gets the top mip's height.</summary>
+    public int Height { get; }
+
+    /// <summary>Gets the number of mips.</summary>
+    public int MipCount { get; }
+
+    /// <summary>Gets the file offset of the stock pixels, or -1 when the pixels stay as they are.</summary>
+    public long SourceFileOffset { get; }
+
+    /// <summary>Gets the stock size of one face with its mips.</summary>
+    public long SourceFaceSize { get; }
+
+    /// <summary>Gets the converted size of one face with its mips.</summary>
+    public long TargetFaceSize { get; }
+
+    /// <summary>Gets a value indicating whether the pixels change format, rather than the texture only stopping being readable.</summary>
+    public bool ChangesFormat => TargetFormat != SourceFormat;
+
+    /// <summary>Gets the bytes the texture takes on the GPU before the conversion.</summary>
+    public long StockBytes => SourceFaceSize * Textures.CubemapRecompression.FACES;
+
+    /// <summary>Gets the bytes it takes after.</summary>
+    public long ConvertedBytes => TargetFaceSize * Textures.CubemapRecompression.FACES;
+
+    /// <summary>Gets the same-size header edits.</summary>
+    internal IReadOnlyList<TextureFieldEdit> FieldEdits { get; }
+}
+
+/// <summary>
+/// One same-size edit to a texture header field.
+/// </summary>
+/// <param name="Field">The field path.</param>
+/// <param name="FileOffset">The field's offset in the bundle file.</param>
+/// <param name="Old">The stock bytes.</param>
+/// <param name="New">The converted bytes.</param>
+internal sealed record TextureFieldEdit(string Field, long FileOffset, byte[] Old, byte[] New);
+
+/// <summary>
+/// The textures planned for one bundle.
+/// </summary>
+/// <param name="File">The bundle file name.</param>
+/// <param name="Size">The stock bundle size.</param>
+/// <param name="Textures">The textures, in file order.</param>
+public sealed record BundleTexturePlan(string File, long Size, IReadOnlyList<PlannedTexture> Textures);
+
+/// <summary>
+/// A cloud cubemap the plan leaves in its stock format.
+/// </summary>
+/// <param name="File">The bundle holding it.</param>
+/// <param name="Name">The texture's name.</param>
+/// <param name="Reason">Why it stays as it is.</param>
+public sealed record SkippedTexture(string File, string Name, string Reason);
+
+/// <summary>
 /// A shader reference the plan leaves alone.
 /// </summary>
 /// <param name="File">The bundle holding the reference.</param>
@@ -185,7 +295,9 @@ public sealed class ConversionPlan
         IReadOnlyList<BundleProblem> errors,
         IReadOnlyList<BundleProblem> warnings,
         int materialsOnReplacement,
-        IReadOnlyList<string> unrecordedEdits)
+        IReadOnlyList<string> unrecordedEdits,
+        IReadOnlyList<BundleTexturePlan> textureBundles,
+        IReadOnlyList<SkippedTexture> skippedTextures)
     {
         ManifestSha256 = manifestSha256;
         BundlesScanned = bundlesScanned;
@@ -196,6 +308,8 @@ public sealed class ConversionPlan
         Warnings = warnings;
         MaterialsOnReplacement = materialsOnReplacement;
         UnrecordedEdits = unrecordedEdits;
+        TextureBundles = textureBundles;
+        SkippedTextures = skippedTextures;
     }
 
     /// <summary>Gets the SHA-256 of the manifest the plan was made against.</summary>
@@ -227,6 +341,12 @@ public sealed class ConversionPlan
     /// bundle can put them back, and until then a build without the replacement shaders draws them magenta.
     /// </summary>
     public IReadOnlyList<string> UnrecordedEdits { get; }
+
+    /// <summary>Gets the bundles whose cloud cubemaps get a smaller format or lose their CPU copy, ordered by file name.</summary>
+    public IReadOnlyList<BundleTexturePlan> TextureBundles { get; }
+
+    /// <summary>Gets the cloud cubemaps left in their stock format for a reason other than already being small.</summary>
+    public IReadOnlyList<SkippedTexture> SkippedTextures { get; }
 
     /// <summary>Gets the edits of one kind across all bundles of one mode.</summary>
     /// <param name="mode">The edit mode.</param>

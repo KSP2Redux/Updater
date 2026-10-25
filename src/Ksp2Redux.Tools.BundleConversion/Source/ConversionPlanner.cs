@@ -1,4 +1,5 @@
 using Ksp2Redux.Tools.BundleConversion.Bundles;
+using Ksp2Redux.Tools.BundleConversion.Textures;
 
 namespace Ksp2Redux.Tools.BundleConversion;
 
@@ -62,6 +63,9 @@ internal static class ConversionPlanner
             }
         }
 
+        List<SkippedTexture> skippedTextures = [];
+        var textureBundles = PlanTextures(bundles, plans, skippedTextures);
+
         return new ConversionPlan(
             manifest.ManifestSha256,
             bundles.Count,
@@ -71,7 +75,169 @@ internal static class ConversionPlanner
             errors,
             warnings,
             materialsOnReplacement,
-            FindUnrecordedEdits(bundles));
+            FindUnrecordedEdits(bundles),
+            textureBundles,
+            skippedTextures);
+    }
+
+    /// <summary>
+    /// Plans the cloud cubemaps that get a smaller format, and the ones that only stop keeping a CPU copy.
+    /// </summary>
+    /// <param name="bundles">Every scanned bundle.</param>
+    /// <param name="shaderPlans">The shader plans, which say what else happens to each bundle.</param>
+    /// <param name="skipped">Receives the cloud cubemaps left as they are, with why.</param>
+    /// <returns>The texture plans, ordered by bundle file name.</returns>
+    // A bundle written as a converted copy is left out, because the game loads the copy instead of the stock file the
+    // overlay would sit on.
+    internal static List<BundleTexturePlan> PlanTextures(
+        IReadOnlyList<ScannedBundle> bundles,
+        IReadOnlyList<BundleEditPlan> shaderPlans,
+        List<SkippedTexture> skipped)
+    {
+        var copied = new HashSet<string>(
+            shaderPlans.Where(plan => plan.Mode == BundleEditMode.Rewrite).Select(plan => plan.File),
+            StringComparer.OrdinalIgnoreCase);
+
+        List<BundleTexturePlan> result = [];
+        foreach (var bundle in bundles.Where(bundle => bundle.Error is null).OrderBy(bundle => bundle.File, StringComparer.Ordinal))
+        {
+            List<PlannedTexture> textures = [];
+            foreach (var file in bundle.Files)
+            {
+                foreach (var texture in file.Textures.Where(texture => CubemapRecompression.IsCloudMap(texture.Name)))
+                {
+                    var reason = copied.Contains(bundle.File) ? "the bundle is written as a converted copy" : null;
+                    var planned = reason is null ? PlanTexture(bundle, file, texture, out reason) : null;
+                    if (planned is not null)
+                    {
+                        textures.Add(planned);
+                    }
+                    else if (reason is not null)
+                    {
+                        skipped.Add(new SkippedTexture(bundle.File, texture.Name, reason));
+                    }
+                }
+            }
+
+            if (textures.Count > 0)
+            {
+                result.Add(new BundleTexturePlan(bundle.File, bundle.Size, textures));
+            }
+        }
+
+        return result;
+    }
+
+    // Returns null with a null reason for a texture that is already as small as the conversion makes it.
+    private static PlannedTexture? PlanTexture(ScannedBundle bundle, ScannedSerializedFile file, ScannedTexture texture, out string? reason)
+    {
+        reason = null;
+        var format = (int)texture.Value(ScannedTexture.FORMAT);
+        var width = (int)texture.Value(ScannedTexture.WIDTH);
+        var height = (int)texture.Value(ScannedTexture.HEIGHT);
+        var mipCount = (int)texture.Value(ScannedTexture.MIP_COUNT);
+        var faceSize = texture.Value(ScannedTexture.COMPLETE_IMAGE_SIZE);
+        if (width <= 0 || height <= 0 || mipCount <= 0 || faceSize <= 0)
+        {
+            reason = "its header could not be read";
+            return null;
+        }
+
+        // A readable texture keeps a CPU copy of its pixels for scripts, and nothing reads the cloud maps that way.
+        // Its pixels sit inside the object, where a smaller format would change the object's size.
+        if (texture.Value(ScannedTexture.IS_READABLE) == 1)
+        {
+            var readable = FieldEdit(bundle, texture, ScannedTexture.IS_READABLE, 0, ref reason);
+            return readable is null
+                ? null
+                : new PlannedTexture(file.Name, texture.ObjectPathId, texture.Name, format, format, width, height, mipCount, -1, faceSize, faceSize, [readable]);
+        }
+
+        if (!CubemapRecompression.TryChooseFormat(texture.Name, format, out var target))
+        {
+            return null;
+        }
+
+        if (texture.Value(ScannedTexture.IMAGE_COUNT) != CubemapRecompression.FACES ||
+            CubemapRecompression.FaceSize(format, width, height, mipCount) != faceSize ||
+            texture.Value(ScannedTexture.STREAM_SIZE) != faceSize * CubemapRecompression.FACES)
+        {
+            reason = "its pixel data is not laid out as six faces with full mip chains";
+            return null;
+        }
+
+        var resource = BundleScanner.ExternalName(texture.StreamPath);
+        var entry = bundle.Entries.FirstOrDefault(candidate => string.Equals(candidate.Name, resource, StringComparison.Ordinal));
+        if (entry is null)
+        {
+            reason = $"its pixels are not in a resource file of this bundle ({texture.StreamPath})";
+            return null;
+        }
+
+        if (texture.Value(ScannedTexture.STREAM_OFFSET) < 0 || texture.Value(ScannedTexture.STREAM_OFFSET) + (faceSize * CubemapRecompression.FACES) > entry.Size)
+        {
+            reason = "its pixels run past the end of their resource file";
+            return null;
+        }
+
+        var targetFaceSize = CubemapRecompression.FaceSize(target, width, height, mipCount);
+        var dataOffset = entry.DataOffset + texture.Value(ScannedTexture.STREAM_OFFSET);
+        if (!bundle.Layout!.TryMapUncompressed(dataOffset, (int)(targetFaceSize * CubemapRecompression.FACES), out var fileOffset))
+        {
+            reason = "its pixels are stored in compressed blocks";
+            return null;
+        }
+
+        TextureFieldEdit?[] edits =
+        [
+            FieldEdit(bundle, texture, ScannedTexture.FORMAT, target, ref reason),
+            FieldEdit(bundle, texture, ScannedTexture.COMPLETE_IMAGE_SIZE, targetFaceSize, ref reason),
+            FieldEdit(bundle, texture, ScannedTexture.STREAM_SIZE, targetFaceSize * CubemapRecompression.FACES, ref reason),
+        ];
+
+        return reason is not null
+            ? null
+            : new PlannedTexture(
+                file.Name,
+                texture.ObjectPathId,
+                texture.Name,
+                format,
+                target,
+                width,
+                height,
+                mipCount,
+                fileOffset,
+                faceSize,
+                targetFaceSize,
+                [.. edits.Select(edit => edit!)]);
+    }
+
+    private static TextureFieldEdit? FieldEdit(ScannedBundle bundle, ScannedTexture texture, string field, long value, ref string? reason)
+    {
+        if (!texture.Fields.TryGetValue(field, out var number))
+        {
+            reason ??= $"its {field} could not be read";
+            return null;
+        }
+
+        if (!bundle.Layout!.TryMapUncompressed(texture.ObjectDataOffset + number.Offset, number.Size, out var fileOffset))
+        {
+            reason ??= "its header is stored in compressed blocks";
+            return null;
+        }
+
+        return new TextureFieldEdit(field, fileOffset, LittleEndian(number.Value, number.Size), LittleEndian(value, number.Size));
+    }
+
+    private static byte[] LittleEndian(long value, int size)
+    {
+        var bytes = new byte[size];
+        for (var index = 0; index < size; index++)
+        {
+            bytes[index] = (byte)(value >> (index * 8));
+        }
+
+        return bytes;
     }
 
     /// <summary>

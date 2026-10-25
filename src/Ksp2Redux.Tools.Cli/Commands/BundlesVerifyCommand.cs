@@ -79,7 +79,7 @@ public sealed class BundlesVerifyCommand : ReduxCommand<BundlesVerifySettings>
 
                 context.Output.Result(result.IsComplete ? "Conversion complete" : "Conversion incomplete");
                 context.Output.Result($"  edits   applied {result.Count(EditState.Applied)}, stock (needs reapply) {result.Count(EditState.Stock)}, foreign {result.Count(EditState.Foreign)}, file changed {result.Count(EditState.FileChanged)}");
-                context.Output.Result($"  copies  ok {result.Count(OutputState.Ok)}, missing {result.Count(OutputState.Missing)}, hash mismatch {result.Count(OutputState.HashMismatch)}, pending {result.Count(OutputState.Pending)}, stock changed {result.Count(OutputState.StockChanged)}, invalid {result.Count(OutputState.Invalid)}");
+                context.Output.Result($"  copies and overlays  ok {result.Count(OutputState.Ok)}, missing {result.Count(OutputState.Missing)}, hash mismatch {result.Count(OutputState.HashMismatch)}, pending {result.Count(OutputState.Pending)}, stock changed {result.Count(OutputState.StockChanged)}, invalid {result.Count(OutputState.Invalid)}");
 
                 foreach (var edit in badEdits.Take(LISTED_PROBLEMS))
                 {

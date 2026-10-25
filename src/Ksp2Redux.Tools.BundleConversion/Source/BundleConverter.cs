@@ -1,20 +1,24 @@
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.BundleConversion.Bundles;
+using Ksp2Redux.Tools.BundleConversion.Textures;
 
 namespace Ksp2Redux.Tools.BundleConversion;
 
 /// <summary>
 /// Retargets stock bundle materials from embedded BRP shader copies to the Redux replacement shader
-/// bundles, and verifies or reverts that conversion from its journal.
+/// bundles, stores the stock cloud cubemaps in smaller formats, and verifies or reverts that conversion
+/// from its journal.
 /// </summary>
 /// <remarks>
 /// Bundles whose edits all fall in uncompressed blocks, and whose serialized files already list the
 /// replacement CAB as an external, are edited in place with same-size 12-byte PPtr writes. Every
 /// other bundle gets a converted LZ4 copy under Redux/BundleConversion and its stock file is left
-/// alone. Every run is safe to repeat: plans are made from the stock bytes, which the journal lets
+/// alone. Cloud cubemaps become overlays: header edits and converted pixels the game lays over the
+/// stock bytes while it reads the bundle, so the stock file is never written and no copy is needed.
+/// Every run is safe to repeat: plans are made from the stock bytes, which the journal lets
 /// the converter see through its own earlier edits, and an edit is only ever written over the exact
 /// bytes it expects. With <see cref="BundleConversionOptions.CacheDirectory" /> the install is only
-/// read: copies and journal go to the cache and in-place edits are journaled without being written.
+/// read: copies, overlays and journal go to the cache and in-place edits are journaled without being written.
 /// </remarks>
 public sealed class BundleConverter
 {
@@ -115,6 +119,7 @@ public sealed class BundleConverter
             ? new Dictionary<string, List<JournalEdit>>(StringComparer.OrdinalIgnoreCase)
             : RetireInPlaceEdits(previousInPlace, planned, result);
         RetireCopies(previousCopies, planned, result);
+        var overlays = PlanOverlays(plan, previous, unreadable, result);
 
         List<JournalInPlaceFile> inPlace = [];
         foreach (var bundle in plan.Bundles.Where(bundle => bundle.Mode == BundleEditMode.InPlace))
@@ -146,13 +151,16 @@ public sealed class BundleConverter
             InPlace = [.. inPlace.OrderBy(entry => entry.File, StringComparer.Ordinal)],
             Rewritten = [.. copies.Select(copy => copy.Entry).Concat(carriedCopies).OrderBy(entry => entry.File, StringComparer.Ordinal)],
             Skipped = SkippedEntries(plan),
+            Overlaid = [.. overlays.Select(overlay => overlay.Entry).OrderBy(entry => entry.File, StringComparer.Ordinal)],
+            TextureRevision = CubemapRecompression.REVISION,
         };
 
         // The journal goes to disk before any byte it describes, so an interrupted run can always be
-        // reverted. A copy is journaled with an empty hash until it is complete.
+        // reverted. A copy or an overlay's data is journaled with an empty hash until it is complete.
         _journal.Write(journal);
 
         WriteCopies(copies.Where(copy => copy.Pending).ToList(), journal, result, cancellationToken);
+        WriteOverlays(overlays.Where(overlay => overlay.Pending).ToList(), journal, result, cancellationToken);
         if (Layout.IsCache)
         {
             result.EditsDeferred = plan.Bundles.Where(bundle => bundle.Mode == BundleEditMode.InPlace).Sum(bundle => bundle.Edits.Count);
@@ -167,8 +175,8 @@ public sealed class BundleConverter
     }
 
     /// <summary>
-    /// Puts every journaled edit back to stock, deletes the converted copies, then deletes the journal. Edits that
-    /// could not be put back stay journaled, alone, until a stock copy of their bundle replaces them.
+    /// Puts every journaled edit back to stock, deletes the converted copies and overlay data, then deletes the
+    /// journal. Edits that could not be put back stay journaled, alone, until a stock copy of their bundle replaces them.
     /// </summary>
     /// <param name="cancellationToken">Stops the revert between bundles. The journal is kept until everything is undone.</param>
     /// <returns>What the revert found and did.</returns>
@@ -214,6 +222,37 @@ public sealed class BundleConverter
             }
         }
 
+        // Overlays never touched the stock files, so their data files are all there is to undo.
+        foreach (var entry in journal.Overlaid)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (entry.Data.Length == 0)
+            {
+                continue;
+            }
+
+            if (!TryResolveOverlay(entry, out var data))
+            {
+                result.Failures.Add(new BundleProblem(entry.File, $"journal overlay data '{entry.Data}' is not in the conversion folder, left alone"));
+                continue;
+            }
+
+            try
+            {
+                if (_fileSystem.File.Exists(data))
+                {
+                    _fileSystem.File.Delete(data);
+                    result.OverlaysDeleted++;
+                }
+
+                _fileSystem.File.Delete(data + ".tmp");
+            }
+            catch (IOException e)
+            {
+                result.Failures.Add(new BundleProblem(entry.File, $"could not delete {data}: {e.Message}"));
+            }
+        }
+
         if (result.Failures.Count > 0)
         {
             return result;
@@ -248,15 +287,16 @@ public sealed class BundleConverter
         _journal.Delete();
         result.JournalDeleted = true;
         DeleteIfEmpty(Layout.OutputDirectory);
+        DeleteIfEmpty(Layout.OverlayDirectory);
         DeleteIfEmpty(Layout.ConversionDirectory);
         return result;
     }
 
     /// <summary>
-    /// Checks every journaled edit and converted copy against the files on disk.
+    /// Checks every journaled edit, converted copy and texture overlay against the files on disk.
     /// </summary>
     /// <param name="cancellationToken">Stops the check between bundles.</param>
-    /// <returns>The state of each edit and copy.</returns>
+    /// <returns>The state of each edit, copy and overlay.</returns>
     /// <exception cref="InvalidDataException">The journal cannot be read.</exception>
     public VerifyResult Verify(CancellationToken cancellationToken = default)
     {
@@ -294,6 +334,15 @@ public sealed class BundleConverter
         });
 
         result.Outputs.AddRange(outputs);
+
+        var overlays = new OutputStatus[journal.Overlaid.Count];
+        Parallel.For(0, overlays.Length, ParallelOptions(cancellationToken), index =>
+        {
+            var entry = journal.Overlaid[index];
+            overlays[index] = new OutputStatus(entry.File, entry.Data, CheckOverlay(entry));
+        });
+
+        result.Outputs.AddRange(overlays);
         return result;
     }
 
@@ -563,6 +612,210 @@ public sealed class BundleConverter
                 _options.Progress?.Report($"Wrote {count} of {pending.Count} converted copies");
             }
         });
+    }
+
+    // Builds this run's overlay entries from the plan. An earlier run's data file is kept wherever the same revision
+    // made it from the same edits and ranges and it is still intact. Data files the plan no longer wants are deleted,
+    // and bundles that could not be read keep whatever an earlier run gave them.
+    private List<PlannedOverlay> PlanOverlays(ConversionPlan plan, ConversionJournal? previous, HashSet<string> unreadable, ConversionResult result)
+    {
+        var earlier = (previous?.Overlaid ?? [])
+            .GroupBy(entry => entry.File, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.OrdinalIgnoreCase);
+
+        List<PlannedOverlay> overlays = [];
+        foreach (var bundle in plan.TextureBundles)
+        {
+            var entry = OverlayEntry(bundle);
+            earlier.TryGetValue(bundle.File, out var existing);
+            earlier.Remove(bundle.File);
+            if (existing is not null && SameOverlay(existing, entry) && (entry.Ranges.Count == 0 || CheckOverlayData(existing) == OutputState.Ok))
+            {
+                result.OverlaysUpToDate++;
+                overlays.Add(new PlannedOverlay(bundle, existing, false));
+                continue;
+            }
+
+            overlays.Add(new PlannedOverlay(bundle, entry, entry.Ranges.Count > 0));
+        }
+
+        foreach (var entry in earlier.Values)
+        {
+            if (unreadable.Contains(entry.File))
+            {
+                overlays.Add(new PlannedOverlay(null, entry, false));
+                continue;
+            }
+
+            if (entry.Data.Length > 0 && TryResolveOverlay(entry, out var data) && _fileSystem.File.Exists(data))
+            {
+                _fileSystem.File.Delete(data);
+                result.OverlaysDeleted++;
+            }
+        }
+
+        return overlays;
+    }
+
+    private static JournalOverlayFile OverlayEntry(BundleTexturePlan bundle)
+    {
+        JournalOverlayFile entry = new()
+        {
+            File = bundle.File,
+            Size = bundle.Size,
+            Revision = CubemapRecompression.REVISION,
+        };
+
+        long dataOffset = 0;
+        foreach (var texture in bundle.Textures)
+        {
+            entry.Textures.Add(texture.Name);
+            entry.Edits.AddRange(texture.FieldEdits.Select(edit => new JournalEdit { Offset = edit.FileOffset, Old = Hex.Encode(edit.Old), New = Hex.Encode(edit.New) }));
+            if (texture.ChangesFormat)
+            {
+                entry.Ranges.Add(new JournalRange { Offset = texture.SourceFileOffset, Length = texture.ConvertedBytes, DataOffset = dataOffset });
+                dataOffset += texture.ConvertedBytes;
+            }
+        }
+
+        entry.Edits.Sort((left, right) => left.Offset.CompareTo(right.Offset));
+        entry.Data = entry.Ranges.Count > 0 ? BundleConversionLayout.RelativeOverlay(bundle.File) : "";
+        return entry;
+    }
+
+    private static bool SameOverlay(JournalOverlayFile left, JournalOverlayFile right) =>
+        left.Size == right.Size &&
+        left.Revision == right.Revision &&
+        left.Data == right.Data &&
+        left.Edits.Count == right.Edits.Count &&
+        left.Edits.Zip(right.Edits, (a, b) => a.Offset == b.Offset && a.Old == b.Old && a.New == b.New).All(same => same) &&
+        left.Ranges.Count == right.Ranges.Count &&
+        left.Ranges.Zip(right.Ranges, (a, b) => a.Offset == b.Offset && a.Length == b.Length && a.DataOffset == b.DataOffset).All(same => same);
+
+    private void WriteOverlays(List<PlannedOverlay> pending, ConversionJournal journal, ConversionResult result, CancellationToken cancellationToken)
+    {
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
+        _fileSystem.Directory.CreateDirectory(Layout.OverlayDirectory);
+        var done = 0;
+        var gate = new object();
+
+        Parallel.For(0, pending.Count, ParallelOptions(cancellationToken), index =>
+        {
+            var overlay = pending[index];
+            var bundle = overlay.Bundle!;
+            var data = Layout.Resolve(overlay.Entry.Data);
+            var temporary = data + ".tmp";
+            try
+            {
+                using (var stock = _fileSystem.FileStream.New(Layout.BundlePath(bundle.File), FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20))
+                using (var target = _fileSystem.FileStream.New(temporary, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 1 << 20))
+                {
+                    if (stock.Length != bundle.Size)
+                    {
+                        throw new InvalidDataException("the stock bundle changed size after it was scanned");
+                    }
+
+                    foreach (var texture in bundle.Textures.Where(texture => texture.ChangesFormat))
+                    {
+                        CubemapRecompression.Convert(
+                            stock,
+                            texture.SourceFileOffset,
+                            texture.SourceFormat,
+                            texture.TargetFormat,
+                            texture.Width,
+                            texture.Height,
+                            texture.MipCount,
+                            target,
+                            cancellationToken);
+                    }
+
+                    var planned = overlay.Entry.Ranges.Sum(range => range.Length);
+                    if (target.Length != planned)
+                    {
+                        throw new InvalidDataException($"the converted pixels came to {target.Length} bytes where {planned} were planned");
+                    }
+                }
+
+                overlay.Entry.DataSha256 = HashFile(temporary);
+                AtomicFile.Replace(_fileSystem, temporary, data);
+                lock (gate)
+                {
+                    result.OverlaysWritten++;
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                // Without its data the overlay cannot be used, so its entry goes and the game loads the stock bundle.
+                TryDelete(temporary);
+                TryDelete(data);
+                lock (gate)
+                {
+                    result.TextureFailures.Add(new BundleProblem(bundle.File, $"texture overlay failed: {e.Message}"));
+                    journal.Overlaid.Remove(overlay.Entry);
+                }
+            }
+
+            var count = Interlocked.Increment(ref done);
+            _options.Progress?.Report($"Converted the cloud textures of {count} of {pending.Count} bundles");
+        });
+    }
+
+    private OutputState CheckOverlay(JournalOverlayFile entry)
+    {
+        if (!IsPlainFileName(entry.File) || !TryOpenBundle(entry.File, entry.Size, FileAccess.Read, out var stream))
+        {
+            return OutputState.StockChanged;
+        }
+
+        using (stream)
+        {
+            // The overlay shows its bytes over the stock ones, so the file must still hold either.
+            if (entry.Edits.Any(edit => Classify(stream, edit) == EditState.Foreign))
+            {
+                return OutputState.StockChanged;
+            }
+        }
+
+        return entry.Ranges.Count == 0 ? OutputState.Ok : CheckOverlayData(entry);
+    }
+
+    private OutputState CheckOverlayData(JournalOverlayFile entry)
+    {
+        if (!TryResolveOverlay(entry, out var data))
+        {
+            return OutputState.Invalid;
+        }
+
+        if (entry.DataSha256.Length == 0)
+        {
+            return OutputState.Pending;
+        }
+
+        if (!_fileSystem.File.Exists(data))
+        {
+            return OutputState.Missing;
+        }
+
+        return _fileSystem.FileInfo.New(data).Length == entry.Ranges.Sum(range => range.Length) && HashFile(data) == entry.DataSha256
+            ? OutputState.Ok
+            : OutputState.HashMismatch;
+    }
+
+    // Like a copy, an overlay's data file must be exactly where this converter puts the one for its bundle.
+    private bool TryResolveOverlay(JournalOverlayFile entry, out string data)
+    {
+        data = "";
+        if (!IsPlainFileName(entry.File) || entry.Data != BundleConversionLayout.RelativeOverlay(entry.File))
+        {
+            return false;
+        }
+
+        data = Layout.Resolve(entry.Data);
+        return true;
     }
 
     private void ApplyInPlace(
@@ -844,6 +1097,23 @@ public sealed class BundleConverter
         public BundleEditPlan Bundle { get; }
 
         public JournalRewrittenFile Entry { get; }
+
+        public bool Pending { get; }
+    }
+
+    private sealed class PlannedOverlay
+    {
+        public PlannedOverlay(BundleTexturePlan? bundle, JournalOverlayFile entry, bool pending)
+        {
+            Bundle = bundle;
+            Entry = entry;
+            Pending = pending;
+        }
+
+        // Null for an overlay carried over from an earlier run because its bundle could not be read this time.
+        public BundleTexturePlan? Bundle { get; }
+
+        public JournalOverlayFile Entry { get; }
 
         public bool Pending { get; }
     }

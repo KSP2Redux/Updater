@@ -208,6 +208,14 @@ internal sealed class TypeField
 internal sealed record PPtrHit(string Path, string Type, int Offset, int FileId, long PathId);
 
 /// <summary>
+/// A captured number field, with where it sits in the object's bytes.
+/// </summary>
+/// <param name="Offset">The offset of the field from the start of the object.</param>
+/// <param name="Size">The field size in bytes.</param>
+/// <param name="Value">The field value, read as an unsigned little-endian integer.</param>
+internal readonly record struct CapturedNumber(int Offset, int Size, long Value);
+
+/// <summary>
 /// What an object walk reports.
 /// </summary>
 [Flags]
@@ -239,7 +247,7 @@ internal sealed class UnwalkableObjectException : Exception
 }
 
 /// <summary>
-/// Walks one object's bytes along its type tree and reports PPtrs and chosen strings with their offsets.
+/// Walks one object's bytes along its type tree and reports PPtrs, chosen strings and chosen numbers.
 /// </summary>
 // AssetsTools.NET can deserialize the same data, but its value fields do not say where in the
 // object each value came from, and an in-place edit needs exactly that.
@@ -263,7 +271,7 @@ internal sealed class ObjectWalker
     /// </summary>
     /// <param name="data">The object bytes, starting at the object.</param>
     /// <param name="targets">The PPtrs to report.</param>
-    /// <param name="capturePaths">Dotted paths of strings to capture, such as m_ParsedForm.m_Name.</param>
+    /// <param name="capturePaths">Dotted paths of strings and numbers to capture, such as m_ParsedForm.m_Name.</param>
     /// <param name="refTypes">Looks up a SerializeReference type by class, namespace and assembly, or null when the file has none.</param>
     /// <param name="registryMayHaveTargets">True when some SerializeReference type could hold a target.</param>
     public ObjectWalker(
@@ -290,6 +298,11 @@ internal sealed class ObjectWalker
     /// Gets the captured strings by their dotted path.
     /// </summary>
     public Dictionary<string, string> Strings { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Gets the captured numbers by their dotted path.
+    /// </summary>
+    public Dictionary<string, CapturedNumber> Numbers { get; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Walks the object.
@@ -350,6 +363,13 @@ internal sealed class ObjectWalker
         switch (field.Kind)
         {
             case FieldKind.Primitive:
+                if (_capturesLeft > 0 && field.ByteSize is 1 or 2 or 4 or 8 && IsCapturePath())
+                {
+                    Require(position, field.ByteSize);
+                    Numbers[FormatPath()] = new CapturedNumber(position, field.ByteSize, ReadNumber(position, field.ByteSize));
+                    Captured();
+                }
+
                 position = Advance(position, field.ByteSize);
                 break;
 
@@ -416,11 +436,7 @@ internal sealed class ObjectWalker
         if (_capturesLeft > 0 && IsCapturePath())
         {
             Strings[FormatPath()] = Encoding.UTF8.GetString(_data, position, length);
-            _capturesLeft--;
-            if (_capturesLeft == 0 && _targets == WalkTargets.None)
-            {
-                _stop = true;
-            }
+            Captured();
         }
 
         position += length;
@@ -431,6 +447,23 @@ internal sealed class ObjectWalker
 
         return position;
     }
+
+    private void Captured()
+    {
+        _capturesLeft--;
+        if (_capturesLeft == 0 && _targets == WalkTargets.None)
+        {
+            _stop = true;
+        }
+    }
+
+    private long ReadNumber(int position, int size) => size switch
+    {
+        1 => _data[position],
+        2 => BinaryPrimitives.ReadUInt16LittleEndian(_data.AsSpan(position)),
+        4 => BinaryPrimitives.ReadUInt32LittleEndian(_data.AsSpan(position)),
+        _ => (long)BinaryPrimitives.ReadUInt64LittleEndian(_data.AsSpan(position)),
+    };
 
     private int WalkArray(TypeField field, int position)
     {

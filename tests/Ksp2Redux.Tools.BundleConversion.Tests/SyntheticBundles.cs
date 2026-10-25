@@ -64,7 +64,39 @@ internal static class SyntheticBundles
             .. StringField(1, "m_AssemblyName"),
         ]);
 
+    // The Cubemap fields the converter reads, in the order Unity's type tree has them.
+    public static readonly TypeTreeType CUBEMAP = Type(
+        UnityClassId.CUBEMAP,
+        [
+            new Node(0, "Cubemap", "Base", -1),
+            .. StringField(1, "m_Name"),
+            new Node(1, "int", "m_Width", 4),
+            new Node(1, "int", "m_Height", 4),
+            new Node(1, "unsigned int", "m_CompleteImageSize", 4),
+            new Node(1, "int", "m_TextureFormat", 4),
+            new Node(1, "int", "m_MipCount", 4),
+            new Node(1, "bool", "m_IsReadable", 1, Align: true),
+            new Node(1, "int", "m_ImageCount", 4),
+            new Node(1, "TypelessData", "image data", -1, Align: true),
+            new Node(2, "int", "size", 4),
+            new Node(2, "UInt8", "data", 1),
+            new Node(1, "StreamingInfo", "m_StreamData", -1),
+            new Node(2, "UInt64", "offset", 8),
+            new Node(2, "unsigned int", "size", 4),
+            .. StringField(2, "path"),
+        ]);
+
     public static byte[] Shader(string name) => new ObjectData().String("").String(name).ToArray();
+
+    /// <summary>
+    /// A cubemap header, with its pixels inline when <paramref name="inline" /> is given, otherwise at a resource file offset.
+    /// </summary>
+    public static byte[] Cubemap(string name, int width, int format, int mipCount, int faceSize, bool readable, byte[]? inline, long streamOffset, string streamPath)
+    {
+        var data = new ObjectData().String(name).Int(width).Int(width).Int(faceSize).Int(format).Int(mipCount).Byte(readable ? (byte)1 : (byte)0).Align().Int(6);
+        data.Int(inline?.Length ?? 0).Bytes(inline ?? []).Align();
+        return data.Long(inline is null ? streamOffset : 0).Int(inline is null ? faceSize * 6 : 0).String(inline is null ? streamPath : "").ToArray();
+    }
 
     public static byte[] Material(string name, int fileId, long pathId) =>
         new ObjectData().String(name).PPtr(fileId, pathId).Float(1f).ToArray();
@@ -221,6 +253,12 @@ internal static class SyntheticBundles
         public ObjectData Byte(byte value)
         {
             _stream.WriteByte(value);
+            return this;
+        }
+
+        public ObjectData Bytes(byte[] value)
+        {
+            _stream.Write(value);
             return this;
         }
 

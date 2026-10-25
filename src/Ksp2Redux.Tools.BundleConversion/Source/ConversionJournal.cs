@@ -15,6 +15,12 @@ public sealed class ConversionJournal
     public const int CURRENT_VERSION = 1;
 
     /// <summary>
+    /// The revision of the cloud texture conversion this build makes. A journal with another one needs converting
+    /// again, which redoes only the texture overlays.
+    /// </summary>
+    public const int CURRENT_TEXTURE_REVISION = 1;
+
+    /// <summary>
     /// Gets or sets the journal format version.
     /// </summary>
     public int Version { get; set; } = CURRENT_VERSION;
@@ -55,6 +61,91 @@ public sealed class ConversionJournal
     /// Gets or sets the shader references that were left alone, one entry per bundle, shader and reason.
     /// </summary>
     public List<JournalSkipped> Skipped { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the stock bundles the game reads with converted textures laid over them. The stock files
+    /// themselves are never written for these.
+    /// </summary>
+    public List<JournalOverlayFile> Overlaid { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the revision of the cloud texture conversion that made <see cref="Overlaid" />, or 0 in a journal
+    /// from before there was one.
+    /// </summary>
+    public int TextureRevision { get; set; }
+}
+
+/// <summary>
+/// A stock bundle read with byte edits and replacement ranges laid over it.
+/// </summary>
+/// <remarks>
+/// The edits are small and verified against the stock bytes before the overlay is used. The ranges are the converted
+/// pixels, too large to verify that way, read from a data file of their own. An older game reading this journal
+/// ignores the list and loads the stock bundle.
+/// </remarks>
+public sealed class JournalOverlayFile
+{
+    /// <summary>
+    /// Gets or sets the bundle file name inside the bundle root.
+    /// </summary>
+    public string File { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets the stock bundle size.
+    /// </summary>
+    public long Size { get; set; }
+
+    /// <summary>
+    /// Gets or sets the revision of the texture conversion that made the overlay.
+    /// </summary>
+    public int Revision { get; set; }
+
+    /// <summary>
+    /// Gets or sets the same-size header edits.
+    /// </summary>
+    public List<JournalEdit> Edits { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the data file holding the ranges' bytes, relative to the game folder with forward slashes, or an
+    /// empty string when there are no ranges.
+    /// </summary>
+    public string Data { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets the lowercase hex SHA-256 of the data file, or empty while it is being written.
+    /// </summary>
+    public string DataSha256 { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets the ranges of the stock file shown with bytes from the data file.
+    /// </summary>
+    public List<JournalRange> Ranges { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the names of the textures the overlay converts, for people reading the journal.
+    /// </summary>
+    public List<string> Textures { get; set; } = [];
+}
+
+/// <summary>
+/// A range of a stock bundle shown with bytes from an overlay's data file.
+/// </summary>
+public sealed class JournalRange
+{
+    /// <summary>
+    /// Gets or sets the absolute offset of the range in the bundle file.
+    /// </summary>
+    public long Offset { get; set; }
+
+    /// <summary>
+    /// Gets or sets the range length in bytes.
+    /// </summary>
+    public long Length { get; set; }
+
+    /// <summary>
+    /// Gets or sets where the range's bytes start in the data file.
+    /// </summary>
+    public long DataOffset { get; set; }
 }
 
 /// <summary>
