@@ -58,6 +58,18 @@ public sealed class BundleConverter
         PlanFrom(manifest, StockJournal(_journal.Read()), cancellationToken);
 
     /// <summary>
+    /// Scans the bundle folder for converted shader references the journal does not record, which no revert can
+    /// put back. Needs no shader manifest, so it also works after a build without one replaced the URP build.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the scan between bundles.</param>
+    /// <returns>The stock bundle file names that need a stock copy, ordered. None when there is no bundle folder.</returns>
+    /// <exception cref="InvalidDataException">An existing journal cannot be read.</exception>
+    public IReadOnlyList<string> FindUnrecordedEdits(CancellationToken cancellationToken = default) =>
+        _fileSystem.Directory.Exists(Layout.BundleDirectory)
+            ? ConversionPlanner.FindUnrecordedEdits(ScanAll(StockJournal(_journal.Read()), cancellationToken))
+            : [];
+
+    /// <summary>
     /// Plans and carries out the conversion, merging with whatever an earlier run already did.
     /// </summary>
     /// <param name="manifest">The replacement shader manifest.</param>
@@ -155,7 +167,8 @@ public sealed class BundleConverter
     }
 
     /// <summary>
-    /// Puts every journaled edit back to stock, deletes the converted copies, then deletes the journal.
+    /// Puts every journaled edit back to stock, deletes the converted copies, then deletes the journal. Edits that
+    /// could not be put back stay journaled, alone, until a stock copy of their bundle replaces them.
     /// </summary>
     /// <param name="cancellationToken">Stops the revert between bundles. The journal is kept until everything is undone.</param>
     /// <returns>What the revert found and did.</returns>
@@ -201,14 +214,41 @@ public sealed class BundleConverter
             }
         }
 
-        if (result.Failures.Count == 0)
+        if (result.Failures.Count > 0)
         {
-            _journal.Delete();
-            result.JournalDeleted = true;
-            DeleteIfEmpty(Layout.OutputDirectory);
-            DeleteIfEmpty(Layout.ConversionDirectory);
+            return result;
         }
 
+        if (result.Unreverted.Count > 0)
+        {
+            // Deleting the journal would leave these edits in the stock bundles with no record of them, so every
+            // later conversion would take them for stock and no revert could put them back. Keep just them.
+            var unreverted = new HashSet<(string File, long Offset)>(
+                result.Unreverted.Select(edit => (edit.File.ToLowerInvariant(), edit.Offset)));
+            _journal.Write(new ConversionJournal
+            {
+                ShaderManifestSha256 = journal.ShaderManifestSha256,
+                ShaderTargetsSha256 = journal.ShaderTargetsSha256,
+                GameDirectory = journal.GameDirectory,
+                InPlace =
+                [
+                    .. MergeByFile(journal.InPlace).Values
+                        .Select(entry => new JournalInPlaceFile
+                        {
+                            File = entry.File,
+                            Size = entry.Size,
+                            Edits = [.. entry.Edits.Where(edit => unreverted.Contains((entry.File.ToLowerInvariant(), edit.Offset)))],
+                        })
+                        .Where(entry => entry.Edits.Count > 0),
+                ],
+            });
+            return result;
+        }
+
+        _journal.Delete();
+        result.JournalDeleted = true;
+        DeleteIfEmpty(Layout.OutputDirectory);
+        DeleteIfEmpty(Layout.ConversionDirectory);
         return result;
     }
 
@@ -277,7 +317,10 @@ public sealed class BundleConverter
         }
     }
 
-    private ConversionPlan PlanFrom(ShaderManifestIndex manifest, ConversionJournal? journal, CancellationToken cancellationToken)
+    private ConversionPlan PlanFrom(ShaderManifestIndex manifest, ConversionJournal? journal, CancellationToken cancellationToken) =>
+        ConversionPlanner.Plan(ScanAll(journal, cancellationToken), manifest);
+
+    private ScannedBundle[] ScanAll(ConversionJournal? journal, CancellationToken cancellationToken)
     {
         if (!_fileSystem.Directory.Exists(Layout.BundleDirectory))
         {
@@ -306,7 +349,7 @@ public sealed class BundleConverter
             }
         });
 
-        return ConversionPlanner.Plan(scanned, manifest);
+        return scanned;
     }
 
     // Shows each journaled edit's stock bytes wherever the file holds its converted bytes, so a

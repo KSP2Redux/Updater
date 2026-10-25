@@ -62,6 +62,9 @@ internal sealed class ScannedSerializedFile
     /// <summary>Gets the externals, as CAB names for bundle files and raw paths otherwise. File ID n is entry n - 1.</summary>
     public List<string> Externals { get; } = [];
 
+    /// <summary>Gets the path ID of every object in the file.</summary>
+    public HashSet<long> ObjectIds { get; } = [];
+
     /// <summary>Gets the shader names by path ID.</summary>
     public Dictionary<long, string> Shaders { get; } = [];
 
@@ -208,6 +211,11 @@ internal static class BundleScanner
         foreach (var external in metadata.Externals)
         {
             result.Externals.Add(ExternalName(external.PathName));
+        }
+
+        foreach (var info in metadata.AssetInfos)
+        {
+            result.ObjectIds.Add(info.PathId);
         }
 
         if (file.Header.Endianness)

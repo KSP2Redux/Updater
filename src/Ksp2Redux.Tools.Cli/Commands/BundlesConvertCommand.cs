@@ -68,6 +68,7 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
                 sameSizeBundles = plan.Bundles.Count(bundle => bundle.IsSameSize),
                 newExternalBundles = plan.Bundles.Count(bundle => !bundle.IsSameSize),
                 materialsOnReplacement = plan.MaterialsOnReplacement,
+                unrecordedEdits = plan.UnrecordedEdits,
                 retargeted = retargeted.Select(group => new
                 {
                     shader = group.Shader,
@@ -232,6 +233,10 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
         output.Result($"  MonoBehaviour fields       {plan.CountEdits(BundleEditMode.InPlace, ShaderReferenceKind.MonoBehaviour)} in place, {plan.CountEdits(BundleEditMode.Rewrite, ShaderReferenceKind.MonoBehaviour)} via rewrite");
         output.Result($"  preload entries            {plan.CountEdits(BundleEditMode.InPlace, ShaderReferenceKind.Preload)} in place, {plan.CountEdits(BundleEditMode.Rewrite, ShaderReferenceKind.Preload)} via rewrite");
         output.Result($"  materials already on a replacement bundle {plan.MaterialsOnReplacement}");
+        if (plan.UnrecordedEdits.Count > 0)
+        {
+            output.Result($"  unrecorded converted bundles {plan.UnrecordedEdits.Count}, only Steam's copies can put them back: {string.Join(", ", plan.UnrecordedEdits)}");
+        }
 
         if (!result.DryRun)
         {

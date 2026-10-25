@@ -70,7 +70,55 @@ internal static class ConversionPlanner
             fieldReferences,
             errors,
             warnings,
-            materialsOnReplacement);
+            materialsOnReplacement,
+            FindUnrecordedEdits(bundles));
+    }
+
+    /// <summary>
+    /// Finds bundles holding in-place edits nobody can put back: references into the stock shader bundles at path
+    /// IDs those bundles do not contain. A stock bundle only ever points at objects that exist, so such a
+    /// reference is a retarget to a shader only a replacement bundle holds. Edits a journal records are not
+    /// found when the scan overlaid their stock bytes.
+    /// </summary>
+    /// <param name="bundles">Every scanned bundle, including the stock shader bundles.</param>
+    /// <returns>The bundle file names, ordered.</returns>
+    public static IReadOnlyList<string> FindUnrecordedEdits(IReadOnlyList<ScannedBundle> bundles)
+    {
+        Dictionary<string, ScannedSerializedFile> shaderFiles = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in bundles.Where(bundle => bundle.Error is null).SelectMany(bundle => bundle.Files))
+        {
+            if ((string.Equals(file.Name, ShaderBundleIds.SHARED_SHADERS_CAB, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(file.Name, ShaderBundleIds.BUILTIN_SHADERS_CAB, StringComparison.OrdinalIgnoreCase)) &&
+                !shaderFiles.ContainsKey(file.Name))
+            {
+                shaderFiles.Add(file.Name, file);
+            }
+        }
+
+        // Without a stock shader bundle there is nothing to tell a retargeted reference from a stock one by.
+        if (shaderFiles.Count == 0)
+        {
+            return [];
+        }
+
+        return bundles
+            .Where(bundle => bundle.Error is null && bundle.Files.Any(file =>
+                file.ShaderFields.Any(field => IsDangling(file, field.FileId, field.PathId)) ||
+                file.Preloads.Any(preload => IsDangling(file, preload.FileId, preload.PathId))))
+            .Select(bundle => bundle.File)
+            .OrderBy(file => file, StringComparer.Ordinal)
+            .ToList();
+
+        bool IsDangling(ScannedSerializedFile file, int fileId, long pathId)
+        {
+            if (pathId == 0)
+            {
+                return false;
+            }
+
+            var cab = file.ResolveFileId(fileId);
+            return cab is not null && shaderFiles.TryGetValue(cab, out var owner) && !owner.ObjectIds.Contains(pathId);
+        }
     }
 
     /// <summary>

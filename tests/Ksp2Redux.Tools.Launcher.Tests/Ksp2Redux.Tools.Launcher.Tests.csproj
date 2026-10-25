@@ -31,6 +31,12 @@
         <Using Include="NUnit.Framework"/>
     </ItemGroup>
 
+    <!-- Real UnityFS bundles for the conversion service tests, from the converter's own test helpers. -->
+    <ItemGroup>
+        <Compile Include="..\Ksp2Redux.Tools.BundleConversion.Tests\SyntheticBundles.cs" Link="BundleConversion\SyntheticBundles.cs" />
+        <Compile Include="..\Ksp2Redux.Tools.BundleConversion.Tests\TestGame.cs" Link="BundleConversion\TestGame.cs" />
+    </ItemGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\..\src\Ksp2Redux.Tools.Cli\Ksp2Redux.Tools.Cli.csproj" />
       <ProjectReference Include="..\..\src\Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj" />

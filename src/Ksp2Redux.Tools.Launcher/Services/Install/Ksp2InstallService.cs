@@ -8,11 +8,24 @@ public interface IKsp2InstallService
 {
     Ksp2Install? Ksp2 { get; }
     Ksp2InstallEntry? ActiveEntry { get; }
+
+    /// <summary>
+    /// The install <see cref="Ksp2"/> is loaded from: the one chosen with <see cref="SetTargetInstall"/>, otherwise the
+    /// active one.
+    /// </summary>
+    Ksp2InstallEntry? TargetEntry { get; }
+
     IReadOnlyList<Ksp2InstallEntry> Entries { get; }
     event EventHandler? ActiveInstallChanged;
     event EventHandler? InstallsChanged;
 
     void TryLoadKsp2Install();
+
+    /// <summary>
+    /// Loads <see cref="Ksp2"/> from another install for the rest of this session, without changing the active
+    /// install in the config. Null goes back to the active install.
+    /// </summary>
+    void SetTargetInstall(Guid? id);
 
     /// <summary>
     /// Returns the active install the first time it's requested per session, null otherwise.
@@ -37,6 +50,7 @@ public interface IKsp2InstallService
 public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, ILogService logService) : IKsp2InstallService
 {
     private readonly HashSet<Guid> _checkedThisSession = [];
+    private Guid? _targetId;
 
     public Ksp2Install? Ksp2 { get; private set; }
 
@@ -45,14 +59,25 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
             ? launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id)
             : null;
 
+    public Ksp2InstallEntry? TargetEntry =>
+        (_targetId is { } id ? launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id) : null)
+        ?? ActiveEntry;
+
     public IReadOnlyList<Ksp2InstallEntry> Entries => launcherConfigService.Config.Ksp2Installs;
 
     public event EventHandler? ActiveInstallChanged;
     public event EventHandler? InstallsChanged;
 
+    public void SetTargetInstall(Guid? id)
+    {
+        if (_targetId == id) return;
+        _targetId = id;
+        TryLoadKsp2Install();
+    }
+
     public void TryLoadKsp2Install()
     {
-        var path = ActiveEntry?.ExePath;
+        var path = TargetEntry?.ExePath;
         if (!string.IsNullOrWhiteSpace(path))
         {
             Ksp2 = new(fileSystem, moduleDefinitionService, path);
@@ -237,7 +262,8 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
 
     public void ApplyActiveInstallBootConfig()
     {
-        if (ActiveEntry is not { } entry) return;
+        // Ksp2 holds the target install, so its own settings decide the boot config.
+        if (TargetEntry is not { } entry) return;
         if (Ksp2 is not { IsValid: true } ksp2) return;
         var bootConfigPath = fileSystem.Path.Combine(ksp2.InstallDir, "KSP2_x64_Data", "boot.config");
 

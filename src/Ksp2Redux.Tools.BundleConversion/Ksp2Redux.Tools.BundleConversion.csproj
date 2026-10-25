@@ -32,6 +32,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Ksp2Redux.Tools.BundleConversion.Tests" />
+        <!-- The launcher's conversion service tests build their bundles with the same synthetic bundle helpers. -->
+        <InternalsVisibleTo Include="Ksp2Redux.Tools.Launcher.Tests" />
     </ItemGroup>
 
 </Project>

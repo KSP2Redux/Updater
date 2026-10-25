@@ -101,6 +101,27 @@ public class JournalOperationsTest
     }
 
     [Test]
+    public void Revert_ForeignBytes_KeepsOnlyTheEditItCouldNotUndoJournaled()
+    {
+        // Arrange: something other than the converter wrote over edit A.
+        var (game, bytes) = Setup(applyA: true, applyB: true);
+        var foreign = Hex.PPtr(9, 9);
+        Buffer.BlockCopy(foreign, 0, bytes, (int)OFFSET_A, foreign.Length);
+        game.Write(FILE, bytes);
+
+        // Act
+        var result = game.Converter().Revert();
+
+        // Assert
+        Assert.That(result.JournalDeleted, Is.False);
+        var journal = game.Journal();
+        Assert.That(journal, Is.Not.Null);
+        Assert.That(journal!.InPlace.SelectMany(entry => entry.Edits.Select(edit => (entry.File, edit.Offset))),
+            Is.EqualTo(new[] { (FILE, OFFSET_A) }));
+        Assert.That(journal.Rewritten, Is.Empty);
+    }
+
+    [Test]
     public void Revert_DeletesJournaledCopiesButNothingOutsideTheConversionFolder()
     {
         // Arrange: a copy where the converter puts it, and a tampered entry pointing at the game exe.

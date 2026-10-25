@@ -32,6 +32,18 @@ public interface ISteamDepotDownloader
     /// there and matching Steam's checksums are kept, so an interrupted download picks up where it stopped.
     /// </summary>
     Task DownloadAsync(uint appId, string targetDirectory, IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Puts Steam's copy of some of the game's files back in <paramref name="targetDirectory"/>. Each file is
+    /// downloaded beside the original, checked against Steam's checksum, then moved over it, so an interrupted
+    /// restore leaves the original in place.
+    /// </summary>
+    /// <param name="relativePaths">The files, relative to the game folder, with either kind of slash.</param>
+    /// <exception cref="SteamSignInException">Not signed in, or the account does not own the game.</exception>
+    /// <exception cref="InvalidDataException">Steam's file list does not have one of the files.</exception>
+    /// <exception cref="IOException">A file could not be downloaded or did not match Steam's checksum.</exception>
+    Task RestoreFilesAsync(uint appId, string targetDirectory, IReadOnlyCollection<string> relativePaths,
+        IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -57,6 +69,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
             : fileSystem.Path.Combine(trimmed, GAME_FOLDER_NAME);
     }
     private const string BRANCH = "public";
+    private const string RESTORE_SUFFIX = ".steam-restore";
     private const int MAX_CONCURRENT_CHUNKS = 8;
     private const int MAX_CHUNK_ATTEMPTS = 5;
 
@@ -96,7 +109,23 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
         return depots;
     }
 
-    public async Task DownloadAsync(uint appId, string targetDirectory, IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
+    public Task DownloadAsync(uint appId, string targetDirectory, IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken) =>
+        DownloadFilesAsync(appId, targetDirectory, null, progress, cancellationToken);
+
+    public Task RestoreFilesAsync(uint appId, string targetDirectory, IReadOnlyCollection<string> relativePaths,
+        IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
+    {
+        var wanted = new HashSet<string>(relativePaths.Select(NormalizeDepotPath), StringComparer.OrdinalIgnoreCase);
+        return wanted.Count == 0
+            ? Task.CompletedTask
+            : DownloadFilesAsync(appId, targetDirectory, wanted, progress, cancellationToken);
+    }
+
+    // Null restores nothing selectively: every depot file is downloaded straight into place, skipping those
+    // already complete, which is how an interrupted first download resumes. A set restores only those files,
+    // each through a checked temporary file, because it replaces files in a working install.
+    private async Task DownloadFilesAsync(uint appId, string targetDirectory, HashSet<string>? only,
+        IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
     {
         var connection = RequireConnection();
         progress.Report(new SteamDownloadProgress(0, 0, 0, 0, "Checking your Steam library"));
@@ -120,7 +149,16 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
 
         var files = work
             .SelectMany(item => (item.Manifest.Files ?? []).Select(file => (item.Depot, item.Key, File: file)))
+            .Where(item => only is null || (!IsDirectory(item.File) && only.Contains(NormalizeDepotPath(item.File.FileName))))
             .ToList();
+        if (only is not null)
+        {
+            var missing = only.Except(files.Select(item => NormalizeDepotPath(item.File.FileName)), StringComparer.OrdinalIgnoreCase).ToList();
+            if (missing.Count > 0)
+            {
+                throw new InvalidDataException($"Steam's file list for the game does not have {string.Join(", ", missing)}.");
+            }
+        }
         long totalBytes = files.Where(f => !IsDirectory(f.File)).Sum(f => (long)f.File.TotalSize);
         long downloadedBytes = 0;
         var filesDone = 0;
@@ -153,7 +191,8 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
                     return;
                 }
 
-                await using (var stream = fileSystem.FileStream.New(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                var destination = only is null ? path : path + RESTORE_SUFFIX;
+                await using (var stream = fileSystem.FileStream.New(destination, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     stream.SetLength((long)item.File.TotalSize);
                     var writeLock = new SemaphoreSlim(1, 1);
@@ -188,6 +227,17 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
                     }));
                 }
 
+                if (only is not null)
+                {
+                    if (!await IsAlreadyComplete(destination, item.File, token))
+                    {
+                        fileSystem.File.Delete(destination);
+                        throw new IOException($"The copy of {item.File.FileName} downloaded from Steam does not match Steam's checksum.");
+                    }
+
+                    fileSystem.File.Move(destination, path, true);
+                }
+
                 Interlocked.Increment(ref filesDone);
                 Report("Downloading");
             });
@@ -195,6 +245,9 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
         Report("Finished");
         log.Info($"Downloaded app {appId} ({filesTotal} files, {totalBytes} bytes) into {targetDirectory}.");
     }
+
+    // Depot file names use backslashes. Callers may name a file with either kind of slash.
+    private static string NormalizeDepotPath(string path) => path.Replace('/', '\\').TrimStart('\\');
 
     /// <summary>
     /// Picks the depots a Windows install needs from an app's <c>depots</c> product-info section.

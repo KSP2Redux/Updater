@@ -184,7 +184,8 @@ public sealed class ConversionPlan
         IReadOnlyList<ShaderFieldReference> fieldReferences,
         IReadOnlyList<BundleProblem> errors,
         IReadOnlyList<BundleProblem> warnings,
-        int materialsOnReplacement)
+        int materialsOnReplacement,
+        IReadOnlyList<string> unrecordedEdits)
     {
         ManifestSha256 = manifestSha256;
         BundlesScanned = bundlesScanned;
@@ -194,6 +195,7 @@ public sealed class ConversionPlan
         Errors = errors;
         Warnings = warnings;
         MaterialsOnReplacement = materialsOnReplacement;
+        UnrecordedEdits = unrecordedEdits;
     }
 
     /// <summary>Gets the SHA-256 of the manifest the plan was made against.</summary>
@@ -219,6 +221,12 @@ public sealed class ConversionPlan
 
     /// <summary>Gets the number of materials that already point into a replacement shader bundle.</summary>
     public int MaterialsOnReplacement { get; }
+
+    /// <summary>
+    /// Gets the bundles holding converted shader references the journal does not record. Only a stock copy of the
+    /// bundle can put them back, and until then a build without the replacement shaders draws them magenta.
+    /// </summary>
+    public IReadOnlyList<string> UnrecordedEdits { get; }
 
     /// <summary>Gets the edits of one kind across all bundles of one mode.</summary>
     /// <param name="mode">The edit mode.</param>

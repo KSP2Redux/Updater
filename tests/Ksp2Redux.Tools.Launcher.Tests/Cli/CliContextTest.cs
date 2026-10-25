@@ -20,6 +20,26 @@ public class CliContextTest
         Version("0.2.9.0", "103669"),
     ];
 
+    // Every command reads the game through the install service, which loads the active install. A command
+    // given another install with --install once planned and patched the active one instead.
+    [Test]
+    public void ResolveInstallEntry_AnotherInstall_LoadsThatInstallAndLeavesTheActiveOne()
+    {
+        // Arrange
+        CliCommandHarness harness = new();
+        var active = harness.Installs.AddInstall(harness.CreateGame(@"C:\Games\Steam KSP2"), "Steam");
+        var other = harness.Installs.AddInstall(harness.CreateGame(@"C:\Games\Test KSP2"), "Test copy");
+
+        // Act
+        var entry = harness.Context.ResolveInstallEntry(other.Id.ToString());
+        harness.Installs.TryLoadKsp2Install();
+
+        // Assert
+        Assert.That(entry, Is.SameAs(other));
+        Assert.That(harness.Installs.Ksp2!.InstallDir, Is.EqualTo(@"C:\Games\Test KSP2"));
+        Assert.That(harness.Installs.ActiveEntry, Is.SameAs(active));
+    }
+
     [Test]
     public void FormatVersion_VersionAndBuild_JoinedByDot()
     {

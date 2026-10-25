@@ -237,7 +237,16 @@ public sealed class CliContext
     /// </summary>
     /// <param name="selector">An installation id or name, or null to use the active installation.</param>
     /// <returns>The matching installation entry, or null when nothing matched.</returns>
+    // The install service loads the active install by default. Every command reads the game through it,
+    // so without retargeting it an install named with --install was planned and patched as the active one.
     public Ksp2InstallEntry? ResolveInstallEntry(string? selector)
+    {
+        var entry = FindInstallEntry(selector);
+        InstallService.SetTargetInstall(entry?.Id);
+        return entry;
+    }
+
+    private Ksp2InstallEntry? FindInstallEntry(string? selector)
     {
         InstallService.TryLoadKsp2Install();
 

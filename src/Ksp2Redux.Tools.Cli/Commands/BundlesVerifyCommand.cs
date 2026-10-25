@@ -22,21 +22,24 @@ public sealed class BundlesVerifyCommand : ReduxCommand<BundlesVerifySettings>
             return exitCode;
         }
 
-        var result = await BundleCommandSupport.RunAsync(
+        var (result, unrecorded) = await BundleCommandSupport.RunAsync(
             context,
             game,
             "Checking the bundle conversion",
-            converter => converter.Verify(cancellationToken));
+            converter => (converter.Verify(cancellationToken), converter.FindUnrecordedEdits(cancellationToken)));
 
         var badEdits = result.Edits.Where(edit => edit.State != EditState.Applied).ToList();
         var badOutputs = result.Outputs.Where(output => output.State != OutputState.Ok).ToList();
+        // Converted shader references no journal records stop a later revert, whatever the journal says.
+        var ok = result.IsComplete && unrecorded.Count == 0;
 
         context.Output.Payload(
             new
             {
-                ok = result.IsComplete,
+                ok,
                 game,
                 hasJournal = result.HasJournal,
+                unrecordedEdits = unrecorded,
                 manifestSha256 = result.ManifestSha256,
                 edits = new
                 {
@@ -59,6 +62,15 @@ public sealed class BundlesVerifyCommand : ReduxCommand<BundlesVerifySettings>
             },
             () =>
             {
+                if (unrecorded.Count > 0)
+                {
+                    context.Output.Result($"Unrecorded converted bundles {unrecorded.Count}, only Steam's copies can put them back:");
+                    foreach (var file in unrecorded.Take(LISTED_PROBLEMS))
+                    {
+                        context.Output.Result($"  {file}");
+                    }
+                }
+
                 if (!result.HasJournal)
                 {
                     context.Output.Result("Not converted: no conversion journal.");
@@ -86,6 +98,6 @@ public sealed class BundlesVerifyCommand : ReduxCommand<BundlesVerifySettings>
                 }
             });
 
-        return result.IsComplete ? ExitCode.SUCCESS : ExitCode.BUNDLES_NOT_CONVERTED;
+        return ok ? ExitCode.SUCCESS : ExitCode.BUNDLES_NOT_CONVERTED;
     }
 }
