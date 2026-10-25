@@ -37,6 +37,7 @@ public sealed class BundlesRevertCommand : ReduxCommand<BundlesRevertSettings>
                 editsAlreadyStock = result.EditsAlreadyStock,
                 unreverted = result.Unreverted.Select(edit => new { file = edit.File, offset = edit.Offset, state = edit.State.ToString() }),
                 copiesDeleted = result.CopiesDeleted,
+                overlaysDeleted = result.OverlaysDeleted,
                 journalDeleted = result.JournalDeleted,
                 failures = result.Failures.Select(failure => new { file = failure.File, message = failure.Message }),
             },
@@ -49,7 +50,7 @@ public sealed class BundlesRevertCommand : ReduxCommand<BundlesRevertSettings>
                 }
 
                 context.Output.Result($"edits reverted {result.EditsReverted}, already stock {result.EditsAlreadyStock}, left alone {result.Unreverted.Count}");
-                context.Output.Result($"copies deleted {result.CopiesDeleted}");
+                context.Output.Result($"copies deleted {result.CopiesDeleted}, texture overlays deleted {result.OverlaysDeleted}");
                 context.Output.Result(result.JournalDeleted ? "journal deleted" : "journal kept, run revert again once the problems below are fixed");
             });
 

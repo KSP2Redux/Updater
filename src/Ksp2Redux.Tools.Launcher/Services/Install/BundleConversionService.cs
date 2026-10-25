@@ -125,10 +125,16 @@ public class BundleConversionService(
     {
         var result = converter.Apply(manifest, false, ct);
         log($"Bundle conversion: {result.EditsWritten} edits written, {result.EditsAlreadyApplied} already applied, " +
-            $"{result.CopiesWritten} bundle copies written, {result.CopiesUpToDate} up to date, {result.CopiesDeleted} removed.");
+            $"{result.CopiesWritten} bundle copies written, {result.CopiesUpToDate} up to date, {result.CopiesDeleted} removed, " +
+            $"{result.OverlaysWritten} texture overlays written, {result.OverlaysUpToDate} up to date, {result.OverlaysDeleted} removed.");
         foreach (var edit in result.ForeignEdits)
         {
             log($"Left alone, {edit.File} holds unexpected bytes at offset {edit.Offset}.");
+        }
+
+        foreach (var failure in result.TextureFailures)
+        {
+            log($"Kept the stock cloud textures of {failure.File}: {failure.Message}");
         }
 
         foreach (var failure in result.Failures)
@@ -148,7 +154,7 @@ public class BundleConversionService(
             return result;
         }
 
-        log($"Bundle conversion reverted: {result.EditsReverted} edits undone, {result.CopiesDeleted} bundle copies removed.");
+        log($"Bundle conversion reverted: {result.EditsReverted} edits undone, {result.CopiesDeleted} bundle copies and {result.OverlaysDeleted} texture overlays removed.");
         foreach (var edit in result.Unreverted)
         {
             log($"Could not undo, {edit.File} holds unexpected bytes at offset {edit.Offset}.");

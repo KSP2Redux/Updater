@@ -12,6 +12,7 @@ internal static class UnityClassId
     public const int SHADER = 48;
     public const int MONO_BEHAVIOUR = 114;
     public const int MONO_SCRIPT = 115;
+    public const int CUBEMAP = 89;
     public const int ASSET_BUNDLE = 142;
 }
 
@@ -40,7 +41,18 @@ internal sealed class ScannedBundle
 
     /// <summary>Gets the serialized files inside the bundle.</summary>
     public List<ScannedSerializedFile> Files { get; } = [];
+
+    /// <summary>Gets every file inside the bundle, serialized or not, with its place in the data stream.</summary>
+    public List<BundleEntry> Entries { get; } = [];
 }
+
+/// <summary>
+/// One file inside a bundle.
+/// </summary>
+/// <param name="Name">The file name, such as CAB-x or CAB-x.resS.</param>
+/// <param name="DataOffset">The offset of the file in the bundle's data stream.</param>
+/// <param name="Size">The file size in bytes.</param>
+internal sealed record BundleEntry(string Name, long DataOffset, long Size);
 
 /// <summary>
 /// Everything the planner needs from one serialized file inside a bundle.
@@ -76,6 +88,9 @@ internal sealed class ScannedSerializedFile
 
     /// <summary>Gets every AssetBundle preload table entry.</summary>
     public List<ScannedPreloadEntry> Preloads { get; } = [];
+
+    /// <summary>Gets every cubemap.</summary>
+    public List<ScannedTexture> Textures { get; } = [];
 
     /// <summary>Gets objects that could not be read.</summary>
     public List<string> Warnings { get; } = [];
@@ -130,7 +145,46 @@ internal sealed record ScannedShaderField(
 internal sealed record ScannedPreloadEntry(long AssetBundlePathId, string FieldPath, long DataOffset, int FileId, long PathId);
 
 /// <summary>
-/// Reads the shaders, shader references and preload tables out of one bundle.
+/// A texture's header, with where its fields sit in the bundle's data stream.
+/// </summary>
+/// <param name="ObjectPathId">The texture's path ID.</param>
+/// <param name="Name">The texture's m_Name.</param>
+/// <param name="ObjectDataOffset">The offset of the object in the bundle's data stream.</param>
+/// <param name="Fields">The captured header fields by name, with offsets from the start of the object.</param>
+/// <param name="StreamPath">The m_StreamData path, or an empty string when the pixels sit inside the object.</param>
+internal sealed record ScannedTexture(
+    long ObjectPathId,
+    string Name,
+    long ObjectDataOffset,
+    IReadOnlyDictionary<string, CapturedNumber> Fields,
+    string StreamPath)
+{
+    // The header fields the scanner captures, by their path in the Texture2D and Cubemap type trees.
+    internal const string FORMAT = "m_TextureFormat";
+    internal const string WIDTH = "m_Width";
+    internal const string HEIGHT = "m_Height";
+    internal const string MIP_COUNT = "m_MipCount";
+    internal const string IMAGE_COUNT = "m_ImageCount";
+    internal const string COMPLETE_IMAGE_SIZE = "m_CompleteImageSize";
+    internal const string IS_READABLE = "m_IsReadable";
+    internal const string STREAM_OFFSET = "m_StreamData.offset";
+    internal const string STREAM_SIZE = "m_StreamData.size";
+    internal const string STREAM_PATH = "m_StreamData.path";
+
+    /// <summary>The fields that come before the pixel data, which a texture with its pixels inside the object can be read up to.</summary>
+    internal static readonly string[] HEADER_FIELDS = ["m_Name", FORMAT, WIDTH, HEIGHT, MIP_COUNT, IMAGE_COUNT, COMPLETE_IMAGE_SIZE, IS_READABLE];
+
+    /// <summary>The header fields and the stream location after the pixel data.</summary>
+    internal static readonly string[] ALL_FIELDS = [.. HEADER_FIELDS, STREAM_OFFSET, STREAM_SIZE, STREAM_PATH];
+
+    /// <summary>Gets a captured field's value, or -1 when the field was not found.</summary>
+    /// <param name="field">The field path.</param>
+    /// <returns>The value.</returns>
+    public long Value(string field) => Fields.TryGetValue(field, out var number) ? number.Value : -1;
+}
+
+/// <summary>
+/// Reads the shaders, shader references, preload tables and cubemap headers out of one bundle.
 /// </summary>
 internal static class BundleScanner
 {
@@ -138,6 +192,10 @@ internal static class BundleScanner
     private const ushort NO_SCRIPT = 0xFFFF;
     private const string PRELOAD_TABLE = "m_PreloadTable[";
     private const string ARCHIVE_PREFIX = "archive:/";
+
+    // A texture object holding no more than its header and stream location, which a cubemap whose pixels live in a
+    // resource file always fits in.
+    private const int TEXTURE_HEADER_BYTES = 4096;
 
     private static readonly string[] SHADER_NAME_PATHS = ["m_ParsedForm.m_Name"];
     private static readonly string[] SCRIPT_NAME_PATHS = ["m_ClassName", "m_Namespace", "m_AssemblyName"];
@@ -167,6 +225,7 @@ internal static class BundleScanner
             result.Layout = bundle.Layout;
             foreach (var entry in bundle.Directory)
             {
+                result.Entries.Add(new BundleEntry(entry.Name, entry.Offset, entry.DecompressedSize));
                 if ((entry.Flags & SERIALIZED_FILE_FLAG) != 0)
                 {
                     result.Files.Add(ScanSerializedFile(bundle, entry));
@@ -294,6 +353,30 @@ internal static class BundleScanner
 
                 return;
             }
+
+            case UnityClassId.CUBEMAP:
+            {
+                // A cubemap with its pixels inside the object is read only up to them, so learning its format does
+                // not mean reading a few hundred megabytes.
+                var inline = info.ByteSize > TEXTURE_HEADER_BYTES;
+                var walker = Walk(
+                    file,
+                    info,
+                    root,
+                    WalkTargets.None,
+                    inline ? ScannedTexture.HEADER_FIELDS : ScannedTexture.ALL_FIELDS,
+                    types,
+                    inline ? TEXTURE_HEADER_BYTES : int.MaxValue);
+                walker.Strings.TryGetValue("m_Name", out var textureName);
+                walker.Strings.TryGetValue(ScannedTexture.STREAM_PATH, out var streamPath);
+                result.Textures.Add(new ScannedTexture(
+                    info.PathId,
+                    textureName ?? "",
+                    fileOffset + info.GetAbsoluteByteOffset(file),
+                    walker.Numbers,
+                    streamPath ?? ""));
+                return;
+            }
         }
 
         if (!root.HasShaderPPtr && !(root.HasRegistry && types.RefTypesHaveShaderPPtr))
@@ -332,11 +415,13 @@ internal static class BundleScanner
         TypeField root,
         WalkTargets targets,
         IReadOnlyList<string> capturePaths,
-        FileTypes types)
+        FileTypes types,
+        int maxBytes = int.MaxValue)
     {
         file.Reader.Position = info.GetAbsoluteByteOffset(file);
-        var bytes = file.Reader.ReadBytes((int)info.ByteSize);
-        if (bytes.Length != info.ByteSize)
+        var length = (int)Math.Min(info.ByteSize, (uint)maxBytes);
+        var bytes = file.Reader.ReadBytes(length);
+        if (bytes.Length != length)
         {
             throw new EndOfStreamException($"Object {info.PathId} is cut short: {bytes.Length} of {info.ByteSize} bytes.");
         }

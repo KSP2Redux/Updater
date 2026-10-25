@@ -51,10 +51,10 @@ public enum OutputState
 }
 
 /// <summary>
-/// The state of one journaled converted copy.
+/// The state of one journaled converted copy or texture overlay.
 /// </summary>
 /// <param name="File">The bundle file name.</param>
-/// <param name="Output">The copy, relative to the game folder.</param>
+/// <param name="Output">The copy or the overlay's data file relative to the game folder, empty for an overlay with header edits only.</param>
 /// <param name="State">What was found.</param>
 public sealed record OutputStatus(string File, string Output, OutputState State);
 
@@ -106,6 +106,21 @@ public sealed class ConversionResult
     /// <summary>Gets the number of converted copies deleted because the plan no longer wants them.</summary>
     public int CopiesDeleted { get; internal set; }
 
+    /// <summary>Gets the number of texture overlay data files written this run.</summary>
+    public int OverlaysWritten { get; internal set; }
+
+    /// <summary>Gets the number of texture overlays already up to date.</summary>
+    public int OverlaysUpToDate { get; internal set; }
+
+    /// <summary>Gets the number of texture overlay data files deleted because the plan no longer wants them.</summary>
+    public int OverlaysDeleted { get; internal set; }
+
+    /// <summary>
+    /// Gets the bundles whose texture overlay could not be made. Their cloud textures stay stock, which the game
+    /// runs with, so these are not failures of the conversion.
+    /// </summary>
+    public List<BundleProblem> TextureFailures { get; } = [];
+
     /// <summary>Gets the bundles whose conversion failed, which are left out of the journal.</summary>
     public List<BundleProblem> Failures { get; } = [];
 
@@ -138,6 +153,9 @@ public sealed class RevertResult
     /// <summary>Gets the number of converted copies deleted.</summary>
     public int CopiesDeleted { get; internal set; }
 
+    /// <summary>Gets the number of texture overlay data files deleted.</summary>
+    public int OverlaysDeleted { get; internal set; }
+
     /// <summary>Gets a value indicating whether the journal was deleted.</summary>
     public bool JournalDeleted { get; internal set; }
 
@@ -165,10 +183,10 @@ public sealed class VerifyResult
     /// <summary>Gets the state of every journaled in-place edit.</summary>
     public List<EditStatus> Edits { get; } = [];
 
-    /// <summary>Gets the state of every journaled converted copy.</summary>
+    /// <summary>Gets the state of every journaled converted copy and texture overlay.</summary>
     public List<OutputStatus> Outputs { get; } = [];
 
-    /// <summary>Gets a value indicating whether every edit is applied and every copy is present and intact.</summary>
+    /// <summary>Gets a value indicating whether every edit is applied and every copy and overlay is present and intact.</summary>
     public bool IsComplete => HasJournal
                               && Edits.All(edit => edit.State == EditState.Applied)
                               && Outputs.All(output => output.State == OutputState.Ok);

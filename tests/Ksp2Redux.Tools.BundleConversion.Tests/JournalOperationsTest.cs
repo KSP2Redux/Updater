@@ -213,6 +213,21 @@ public class JournalOperationsTest
             InPlace = [new JournalInPlaceFile { File = "x.bundle", Size = 123, Edits = [new JournalEdit { Offset = 7, Old = "00", New = "01" }] }],
             Rewritten = [new JournalRewrittenFile { File = "y.bundle", StockSize = 456, StockSha256 = "cd", Output = "Redux/BundleConversion/StandaloneWindows64/y.bundle", OutputSha256 = "ef" }],
             Skipped = [new JournalSkipped { File = "z.bundle", Shader = "<CAB-1:2>", Reason = "not in manifest" }],
+            Overlaid =
+            [
+                new JournalOverlayFile
+                {
+                    File = "w.bundle",
+                    Size = 789,
+                    Revision = 1,
+                    Edits = [new JournalEdit { Offset = 9, Old = "11", New = "04" }],
+                    Data = "Redux/BundleConversion/Overlays/w.bundle.overlay",
+                    DataSha256 = "aa",
+                    Ranges = [new JournalRange { Offset = 100, Length = 50, DataOffset = 0 }],
+                    Textures = ["w_scaledclouds_01_Normal"],
+                },
+            ],
+            TextureRevision = 1,
         };
 
         // Act
@@ -221,7 +236,9 @@ public class JournalOperationsTest
         // Assert
         using var document = JsonDocument.Parse(game.FileSystem.File.ReadAllText(game.Layout.JournalPath));
         var root = document.RootElement;
-        Assert.That(Names(root), Is.EqualTo(new[] { "Version", "ShaderManifestSha256", "ShaderTargetsSha256", "BundleRoot", "GameDirectory", "InPlace", "Rewritten", "Skipped" }));
+        Assert.That(Names(root), Is.EqualTo(new[] { "Version", "ShaderManifestSha256", "ShaderTargetsSha256", "BundleRoot", "GameDirectory", "InPlace", "Rewritten", "Skipped", "Overlaid", "TextureRevision" }));
+        Assert.That(Names(root.GetProperty("Overlaid")[0]), Is.EqualTo(new[] { "File", "Size", "Revision", "Edits", "Data", "DataSha256", "Ranges", "Textures" }));
+        Assert.That(Names(root.GetProperty("Overlaid")[0].GetProperty("Ranges")[0]), Is.EqualTo(new[] { "Offset", "Length", "DataOffset" }));
         Assert.That(root.GetProperty("Version").GetInt32(), Is.EqualTo(1));
         Assert.That(root.GetProperty("BundleRoot").GetString(), Is.EqualTo("KSP2_x64_Data/StreamingAssets/aa/StandaloneWindows64"));
         Assert.That(Names(root.GetProperty("InPlace")[0]), Is.EqualTo(new[] { "File", "Size", "Edits" }));

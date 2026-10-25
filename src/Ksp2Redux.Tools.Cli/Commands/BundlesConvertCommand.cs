@@ -69,6 +69,23 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
                 newExternalBundles = plan.Bundles.Count(bundle => !bundle.IsSameSize),
                 materialsOnReplacement = plan.MaterialsOnReplacement,
                 unrecordedEdits = plan.UnrecordedEdits,
+                textures = new
+                {
+                    bundles = plan.TextureBundles.Count,
+                    converted = Textures(plan).Count(texture => texture.ChangesFormat),
+                    cpuCopiesDropped = Textures(plan).Count(texture => !texture.ChangesFormat),
+                    stockBytes = Textures(plan).Where(texture => texture.ChangesFormat).Sum(texture => texture.StockBytes),
+                    convertedBytes = Textures(plan).Where(texture => texture.ChangesFormat).Sum(texture => texture.ConvertedBytes),
+                    items = Textures(plan).Select(texture => new
+                    {
+                        name = texture.Name,
+                        sourceFormat = texture.SourceFormat,
+                        targetFormat = texture.TargetFormat,
+                        stockBytes = texture.StockBytes,
+                        convertedBytes = texture.ConvertedBytes,
+                    }),
+                    skipped = plan.SkippedTextures.Select(skip => new { file = skip.File, name = skip.Name, reason = skip.Reason }),
+                },
                 retargeted = retargeted.Select(group => new
                 {
                     shader = group.Shader,
@@ -107,6 +124,10 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
                         copiesWritten = result.CopiesWritten,
                         copiesUpToDate = result.CopiesUpToDate,
                         copiesDeleted = result.CopiesDeleted,
+                        overlaysWritten = result.OverlaysWritten,
+                        overlaysUpToDate = result.OverlaysUpToDate,
+                        overlaysDeleted = result.OverlaysDeleted,
+                        textureFailures = Problems(result.TextureFailures),
                         foreignEdits = result.ForeignEdits.Select(edit => new { file = edit.File, offset = edit.Offset }),
                         failures = Problems(result.Failures),
                         droppedEntries = Problems(result.DroppedEntries),
@@ -136,8 +157,15 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
             context.Output.Warn($"{dropped.File}: {dropped.Message}");
         }
 
+        foreach (var failure in result.TextureFailures)
+        {
+            context.Output.Warn($"{failure.File} keeps its stock cloud textures: {failure.Message}");
+        }
+
         return succeeded ? ExitCode.SUCCESS : ExitCode.BUNDLE_CONVERSION_FAILED;
     }
+
+    private static IEnumerable<PlannedTexture> Textures(ConversionPlan plan) => plan.TextureBundles.SelectMany(bundle => bundle.Textures);
 
     private static IEnumerable<object> Problems(IEnumerable<BundleProblem> problems) =>
         problems.Select(problem => new { file = problem.File, message = problem.Message });
@@ -233,6 +261,11 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
         output.Result($"  MonoBehaviour fields       {plan.CountEdits(BundleEditMode.InPlace, ShaderReferenceKind.MonoBehaviour)} in place, {plan.CountEdits(BundleEditMode.Rewrite, ShaderReferenceKind.MonoBehaviour)} via rewrite");
         output.Result($"  preload entries            {plan.CountEdits(BundleEditMode.InPlace, ShaderReferenceKind.Preload)} in place, {plan.CountEdits(BundleEditMode.Rewrite, ShaderReferenceKind.Preload)} via rewrite");
         output.Result($"  materials already on a replacement bundle {plan.MaterialsOnReplacement}");
+        var converted = Textures(plan).Where(texture => texture.ChangesFormat).ToList();
+        output.Result(
+            $"  cloud textures             {converted.Count} smaller in {plan.TextureBundles.Count} bundles, " +
+            $"{CliFormat.Bytes(converted.Sum(texture => texture.StockBytes))} to {CliFormat.Bytes(converted.Sum(texture => texture.ConvertedBytes))}, " +
+            $"{Textures(plan).Count(texture => !texture.ChangesFormat)} CPU copies dropped, {plan.SkippedTextures.Count} left as they are");
         if (plan.UnrecordedEdits.Count > 0)
         {
             output.Result($"  unrecorded converted bundles {plan.UnrecordedEdits.Count}, only Steam's copies can put them back: {string.Join(", ", plan.UnrecordedEdits)}");
@@ -242,7 +275,13 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
         {
             output.Result($"  edits written {result.EditsWritten}, already applied {result.EditsAlreadyApplied}, updated {result.EditsUpdated}, reverted {result.EditsReverted}");
             output.Result($"  copies written {result.CopiesWritten}, up to date {result.CopiesUpToDate}, deleted {result.CopiesDeleted}");
+            output.Result($"  texture overlays written {result.OverlaysWritten}, up to date {result.OverlaysUpToDate}, deleted {result.OverlaysDeleted}");
             output.Result($"  journal {result.JournalPath}");
+        }
+
+        foreach (var texture in plan.SkippedTextures)
+        {
+            output.Result($"  {texture.Name} in {texture.File} stays as it is: {texture.Reason}");
         }
 
         foreach (var error in plan.Errors)
