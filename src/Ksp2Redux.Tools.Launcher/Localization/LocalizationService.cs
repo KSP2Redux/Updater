@@ -10,7 +10,7 @@ public sealed class LocalizationService : ILocalizationService
     // The cultures the translation pipeline writes Strings.<culture>.resx for. One only shows up as a
     // language once its file is actually in the build.
     internal static readonly string[] TranslationCultures =
-        ["de", "es", "fr", "it", "ja", "ko", "pl", "pt-BR", "ro", "ru", "sr", "sv", "zh-Hans", "zh-Hant"];
+        ["de", "es", "fr", "it", "ja", "ko", "pl", "pt-BR", "ru", "zh-Hans", "zh-Hant"];
 
     private static readonly CultureInfo EnglishCulture = CultureInfo.GetCultureInfo("en");
 
