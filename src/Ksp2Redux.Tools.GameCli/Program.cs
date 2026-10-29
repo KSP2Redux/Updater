@@ -93,6 +93,7 @@ static async Task<JsonNode> RunCommand(string[] args)
         "part" => await Part(port, args, options),
         "transfer-start" => await TransferStart(port, options),
         "transfer-stop" => await CallRaw(port, "part.transfer_stop", []),
+        "tutorial" => await Tutorial(port, args),
         "teleport" => await Teleport(port, args, options),
         "screenshot" => await CallRaw(port, "camera.screenshot", Obj(("path", args.Length > 1 && !args[1].StartsWith("--") ? args[1] : null))),
         "eval" => await Eval(port, args),
@@ -2164,6 +2165,19 @@ static async Task<JsonNode> Part(int port, string[] args, Dictionary<string, str
     };
 }
 
+static async Task<JsonNode> Tutorial(int port, string[] args)
+{
+    string action = RequiredArg(args, 1, "list|start|state|next");
+    return action switch
+    {
+        "list" => await CallRaw(port, "tutorial.list", []),
+        "start" => await CallRaw(port, "tutorial.start", Obj(("missionId", RequiredArg(args, 2, "missionId")))),
+        "state" => await CallRaw(port, "tutorial.state", []),
+        "next" => await CallRaw(port, "tutorial.next", []),
+        _ => throw new ArgumentException("tutorial action must be list, start, state, or next.")
+    };
+}
+
 static async Task<JsonNode> TransferStart(int port, Dictionary<string, string?> options)
 {
     return await CallRaw(
@@ -3202,6 +3216,10 @@ static void PrintHelp()
           part undock <partGuid>
           transfer-start --resource <name> --from g1,g2 --to g3,g4 [--rate 1.0]
           transfer-stop
+          tutorial list
+          tutorial start <missionId>
+          tutorial state
+          tutorial next
           teleport orbit --body Kerbin --sma 700000 --ecc 0 --inc 0 --lan 0 --argPe 0 --meanAnomaly 0 [--guid <guid>]
           teleport surface --body Kerbin --lat 0 --lon 0 --altitude 100 [--guid <guid>]
           screenshot [path]
