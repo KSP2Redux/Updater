@@ -3,14 +3,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Shared"
+             xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Shared.NewsCollectionView"
              x:DataType="shared:NewsCollectionViewModel">
     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
         <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="{StaticResource JetBrainsMonoLight}"
-                   FontSize="24" TextAlignment="Center" Margin="0,16,0,8">
-            LATEST NEWS
-        </TextBlock>
+                   FontSize="24" TextAlignment="Center" Margin="0,16,0,8"
+                   Text="{loc:T Sidebar.LatestNews}" />
         <Border x:Name="NewsPanel" Grid.Row="1" Grid.Column="0"
                 Background="{StaticResource GlassSurfaceBrush}"
                 BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="2"

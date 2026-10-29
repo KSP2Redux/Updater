@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.ViewModels.Steam;
@@ -35,7 +36,8 @@ public class SteamDialogService(
     IKsp2InstallService installService,
     IFileSystem fileSystem,
     IEnvironmentProvider environmentProvider,
-    ILogService log) : ISteamDialogService
+    ILogService log,
+    ILocalizationService localization) : ISteamDialogService
 {
     private static Window? OwnerWindow =>
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
@@ -44,7 +46,7 @@ public class SteamDialogService(
     {
         if (OwnerWindow is not { } owner) return false;
 
-        var window = new SteamSignInWindow(new SteamSignInViewModel(session, log));
+        var window = new SteamSignInWindow(new SteamSignInViewModel(session, log, localization));
         return await window.ShowDialog<bool>(owner);
     }
 
@@ -60,7 +62,7 @@ public class SteamDialogService(
         var target = await PickTargetFolderAsync(owner);
         if (target is null) return null;
 
-        var window = new SteamDownloadWindow(new SteamDownloadViewModel(target, downloader, installService, fileSystem, log));
+        var window = new SteamDownloadWindow(new SteamDownloadViewModel(target, downloader, installService, fileSystem, log, localization));
         return await window.ShowDialog<string?>(owner);
     }
 
@@ -72,7 +74,7 @@ public class SteamDialogService(
         var start = await owner.StorageProvider.TryGetFolderFromPathAsync(games);
         var folders = await owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Choose where to download Kerbal Space Program 2",
+            Title = localization["Steam.FolderPicker.Title"],
             AllowMultiple = false,
             SuggestedStartLocation = start
         });

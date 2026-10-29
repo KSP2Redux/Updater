@@ -2,9 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:steam="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Steam"
         xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+        xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
         x:Class="Ksp2Redux.Tools.Launcher.Views.Steam.SteamSignInWindow"
         x:DataType="steam:SteamSignInViewModel"
-        Title="Sign in with Steam"
+        Title="{loc:T Steam.SignIn.Title}"
         Width="760" SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
@@ -41,10 +42,10 @@
 
 	<Grid RowDefinitions="Auto,Auto,Auto" Margin="32,28,32,24">
 		<StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,22">
-			<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="22" Foreground="White">SIGN IN WITH STEAM</TextBlock>
-			<TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap">
-				Redux downloads your own copy of Kerbal Space Program 2 straight from Steam. Sign in with the account that owns the game.
-			</TextBlock>
+			<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="22" Foreground="White"
+			           Text="{loc:T Steam.SignIn.Heading}" />
+			<TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
+			           Text="{loc:T Steam.SignIn.Intro}" />
 		</StackPanel>
 
 		<Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
@@ -55,48 +56,50 @@
 						<Image Source="{Binding QrCode}" Stretch="Uniform" Margin="6"
 						       RenderOptions.BitmapInterpolationMode="None"
 						       IsVisible="{Binding QrCode, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-						<TextBlock Text="Getting a code..." Foreground="#555555" FontSize="12"
+						<TextBlock Text="{loc:T Steam.SignIn.GettingCode}" Foreground="#555555" FontSize="12"
 						           HorizontalAlignment="Center" VerticalAlignment="Center"
 						           IsVisible="{Binding QrCode, Converter={x:Static conv:ObjectConverters.IsNull}}" />
 					</Grid>
 				</Border>
 				<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
-				           HorizontalAlignment="Center">Scan with the Steam app</TextBlock>
+				           HorizontalAlignment="Center" Text="{loc:T Steam.SignIn.ScanTitle}" />
 				<TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center"
-				           TextWrapping="Wrap">In the Steam Mobile App, open Steam Guard and tap the QR scanner.</TextBlock>
+				           TextWrapping="Wrap" Text="{loc:T Steam.SignIn.ScanHint}" />
 			</StackPanel>
 
 			<Grid Grid.Column="1" RowDefinitions="*,Auto,*" Margin="26,0">
 				<Rectangle Grid.Row="0" Width="1" Fill="{StaticResource GlassSurfaceBorderBrush}" />
 				<TextBlock Grid.Row="1" Margin="0,10" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-				           HorizontalAlignment="Center">OR</TextBlock>
+				           HorizontalAlignment="Center" Text="{loc:T Steam.SignIn.Or}" />
 				<Rectangle Grid.Row="2" Width="1" Fill="{StaticResource GlassSurfaceBorderBrush}" />
 			</Grid>
 
 			<Panel Grid.Column="2" VerticalAlignment="Center">
 				<StackPanel Spacing="12" IsVisible="{Binding IsChoosing}">
 					<StackPanel>
-						<TextBlock Classes="label">STEAM ACCOUNT NAME</TextBlock>
+						<TextBlock Classes="label" Text="{loc:T Steam.SignIn.AccountName}" />
 						<TextBox Name="AccountNameBox" Text="{Binding AccountName}" />
 					</StackPanel>
 					<StackPanel>
-						<TextBlock Classes="label">PASSWORD</TextBlock>
+						<TextBlock Classes="label" Text="{loc:T Steam.SignIn.Password}" />
 						<TextBox Text="{Binding Password}" PasswordChar="•" RevealPassword="False">
 							<TextBox.KeyBindings>
 								<KeyBinding Gesture="Enter" Command="{Binding SignInWithPasswordCommand}" />
 							</TextBox.KeyBindings>
 						</TextBox>
 					</StackPanel>
-					<Button Classes="primary" Command="{Binding SignInWithPasswordCommand}" Margin="0,6,0,0">Sign in</Button>
+					<Button Classes="primary" Command="{Binding SignInWithPasswordCommand}" Margin="0,6,0,0"
+					        Content="{loc:T Steam.SignIn.SignInButton}" />
 				</StackPanel>
 
 				<StackPanel Spacing="14" IsVisible="{Binding IsWorking}" VerticalAlignment="Center">
-					<TextBlock FontSize="13" Foreground="White">Signing in...</TextBlock>
+					<TextBlock FontSize="13" Foreground="White" Text="{loc:T Steam.SignIn.SigningIn}" />
 					<ProgressBar IsIndeterminate="True" Foreground="{StaticResource BrandOrangeBrush}" />
 				</StackPanel>
 
 				<StackPanel Spacing="12" IsVisible="{Binding IsEnteringGuardCode}">
-					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White">STEAM GUARD</TextBlock>
+					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
+					           Text="{loc:T Steam.SignIn.SteamGuard}" />
 					<TextBlock Text="{Binding GuardPrompt}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
 					<TextBox Name="GuardCodeBox" Text="{Binding GuardCodeInput}" FontSize="22"
 					         FontFamily="{StaticResource JetBrainsMonoBold}" HorizontalContentAlignment="Center"
@@ -105,11 +108,13 @@
 							<KeyBinding Gesture="Enter" Command="{Binding SubmitGuardCodeCommand}" />
 						</TextBox.KeyBindings>
 					</TextBox>
-					<Button Classes="primary" Command="{Binding SubmitGuardCodeCommand}">Continue</Button>
+					<Button Classes="primary" Command="{Binding SubmitGuardCodeCommand}"
+					        Content="{loc:T Steam.SignIn.Continue}" />
 				</StackPanel>
 
 				<StackPanel Spacing="14" IsVisible="{Binding IsAwaitingApproval}">
-					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White">STEAM GUARD</TextBlock>
+					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
+					           Text="{loc:T Steam.SignIn.SteamGuard}" />
 					<TextBlock Text="{Binding GuardPrompt}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
 					<ProgressBar IsIndeterminate="True" Foreground="{StaticResource BrandOrangeBrush}" />
 				</StackPanel>
@@ -122,7 +127,8 @@
 				           Text="{Binding ErrorMessage}"
 				           IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
 			</StackPanel>
-			<Button Grid.Column="1" Margin="16,0,0,0" Padding="18,8" Command="{Binding CancelCommand}">Cancel</Button>
+			<Button Grid.Column="1" Margin="16,0,0,0" Padding="18,8" Command="{Binding CancelCommand}"
+			        Content="{loc:T Common.Cancel}" />
 		</Grid>
 	</Grid>
 </Window>

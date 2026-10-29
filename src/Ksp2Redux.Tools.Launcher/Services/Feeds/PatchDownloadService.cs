@@ -5,6 +5,7 @@ using System.IO.Abstractions;
 using System.Net;
 using System.Security.Cryptography;
 using Ksp2Redux.Tools.Common.Models;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -30,7 +31,7 @@ public interface IPatchDownloadService
         IReadOnlyList<PatchDownloadRequest> requests,
         PatchDownloadSource source,
         int maxConcurrency,
-        Action<string> log,
+        Action<LogMessage> log,
         Action<long, long> progress,
         CancellationToken ct);
 }
@@ -45,12 +46,15 @@ public sealed class PatchDownloadService(
     private const int MAX_ATTEMPTS = 3;
     private const int BUFFER_SIZE = 1024 * 1024;
 
+    // The download lines go to the install log, and the service is shared with the CLI, so it reads the shared service.
+    private static ILocalizationService Loc => LocalizationService.Default;
+
     /// <inheritdoc />
     public IReadOnlyList<Task<string>> EnqueueAll(
         IReadOnlyList<PatchDownloadRequest> requests,
         PatchDownloadSource source,
         int maxConcurrency,
-        Action<string> log,
+        Action<LogMessage> log,
         Action<long, long> progress,
         CancellationToken ct)
     {
@@ -71,7 +75,7 @@ public sealed class PatchDownloadService(
         SemaphoreSlim transferLimit,
         StagingSpaceCoordinator stagingSpace,
         AggregateDownloadProgress aggregate,
-        Action<string> log,
+        Action<LogMessage> log,
         CancellationToken ct)
     {
         ReleaseManifestValidator.ValidatePatch(request.Patch);
@@ -85,7 +89,7 @@ public sealed class PatchDownloadService(
         if (await MatchesChecksumAsync(completedPatchPath, request.Patch.Size, patchHash, ct))
         {
             aggregate.Complete($"patch:{patchHash}", request.Patch.Size);
-            log($"Using verified cached patch for {request.Patch.Version}.");
+            log(Loc.Message("Download.UsingCached", request.Patch.Version));
             return completedPatchPath;
         }
 
@@ -100,11 +104,10 @@ public sealed class PatchDownloadService(
                 source == PatchDownloadSource.GitHub &&
                 !string.IsNullOrWhiteSpace(request.Feed.R2ManifestUrl))
             {
-                throw new PatchDownloadException(
-                    PatchDownloadSource.R2,
-                    "This legacy patch is available only from GitHub. Select the GitHub backup to continue.");
+                throw Loc.Message("Download.LegacyGitHubOnly")
+                    .ToException(message => new PatchDownloadException(PatchDownloadSource.R2, message));
             }
-            log($"Downloading legacy patch for {request.Patch.Version}.");
+            log(Loc.Message("Download.Legacy", request.Patch.Version));
             await DownloadVerifiedFileAsync(
                 request.Feed,
                 legacyUrl,
@@ -144,7 +147,7 @@ public sealed class PatchDownloadService(
                 ct);
         }).ToList();
 
-        log($"Downloading {chunks.Count} part(s) for patch {request.Patch.Version} from {selectedSource}.");
+        log(Loc.Message("Download.Parts", chunks.Count, request.Patch.Version, selectedSource));
         await Task.WhenAll(chunkTasks);
 
         string temporaryPatchPath = completedPatchPath + ".tmp";
@@ -177,7 +180,7 @@ public sealed class PatchDownloadService(
                     fileSystem.File.Delete(chunkPath);
             }
             TryDeleteEmptyDirectory(chunkDirectory);
-            log($"Patch {request.Patch.Version} was reconstructed and verified.");
+            log(Loc.Message("Download.Reconstructed", request.Patch.Version));
             return completedPatchPath;
         }
         catch
@@ -323,11 +326,8 @@ public sealed class PatchDownloadService(
             await Task.Delay(delayMilliseconds, ct);
         }
 
-        throw new PatchDownloadException(
-            source,
-            $"Could not download a verified patch part from {source}.",
-            lastFailure,
-            canSwitchSource);
+        throw Loc.Message("Download.CouldNotDownload", source).ToException(message =>
+            new PatchDownloadException(source, message, lastFailure, canSwitchSource));
     }
 
     private async Task<bool> MatchesChecksumAsync(string path, long expectedSize, string expectedHash, CancellationToken ct)

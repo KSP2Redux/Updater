@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.Net;
 using System.Security.Cryptography;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using SteamKit2;
 using SteamKit2.CDN;
@@ -54,6 +55,12 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
     public const uint KSP2_APP_ID = 954850;
     public const string GAME_FOLDER_NAME = "Kerbal Space Program 2";
 
+    // Stage names the download window shows. It words them in the current language.
+    public const string STAGE_CHECKING = "Checking your Steam library";
+    public const string STAGE_READING = "Reading the file list";
+
+    private static ILocalizationService Loc => LocalizationService.Default;
+
     /// <summary>
     /// Works out the folder a download into <paramref name="chosen"/> goes to.
     /// </summary>
@@ -86,12 +93,12 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
             .Where(pair => pair.Key == appId)
             .Select(pair => pair.Value)
             .FirstOrDefault()
-            ?? throw new SteamSignInException("Steam didn't return any information about Kerbal Space Program 2.");
+            ?? throw new SteamSignInException(Loc.Message("Steam.Depot.NoInfo"));
 
         var depots = SelectWindowsDepots(app.KeyValues["depots"], BRANCH);
         if (depots.Count == 0)
         {
-            throw new SteamSignInException("Steam didn't list any downloadable Windows content for Kerbal Space Program 2.");
+            throw new SteamSignInException(Loc.Message("Steam.Depot.NoContent"));
         }
 
         // Steam only issues depot keys to owners, so this doubles as the ownership check.
@@ -100,9 +107,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
             var key = await connection.Apps.GetDepotDecryptionKey(depot.DepotId, appId);
             if (key.Result != EResult.OK)
             {
-                throw new SteamSignInException(
-                    "This Steam account doesn't own Kerbal Space Program 2. Sign in with the account you bought it on.",
-                    key.Result);
+                throw new SteamSignInException(Loc.Message("Steam.Depot.NotOwned"), key.Result);
             }
         }
 
@@ -128,7 +133,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
         IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
     {
         var connection = RequireConnection();
-        progress.Report(new SteamDownloadProgress(0, 0, 0, 0, "Checking your Steam library"));
+        progress.Report(new SteamDownloadProgress(0, 0, 0, 0, STAGE_CHECKING));
         var depots = await GetDepotsAsync(appId, cancellationToken);
 
         var servers = await GetContentServersAsync(connection, appId);
@@ -138,7 +143,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
         var work = new List<(SteamDepot Depot, byte[] Key, DepotManifest Manifest)>();
         foreach (var depot in depots)
         {
-            progress.Report(new SteamDownloadProgress(0, 0, 0, 0, "Reading the file list"));
+            progress.Report(new SteamDownloadProgress(0, 0, 0, 0, STAGE_READING));
             var key = (await connection.Apps.GetDepotDecryptionKey(depot.DepotId, appId)).DepotKey;
             var requestCode = await connection.Content.GetManifestRequestCode(depot.DepotId, appId, depot.ManifestId, BRANCH);
             var manifest = await WithServerRetry(servers, depot, appId, connection, authTokens, cancellationToken,
@@ -156,7 +161,8 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
             var missing = only.Except(files.Select(item => NormalizeDepotPath(item.File.FileName)), StringComparer.OrdinalIgnoreCase).ToList();
             if (missing.Count > 0)
             {
-                throw new InvalidDataException($"Steam's file list for the game does not have {string.Join(", ", missing)}.");
+                throw Loc.Message("Steam.Depot.MissingFiles", string.Join(", ", missing))
+                    .ToException(message => new InvalidDataException(message));
             }
         }
         long totalBytes = files.Where(f => !IsDirectory(f.File)).Sum(f => (long)f.File.TotalSize);
@@ -232,7 +238,8 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
                     if (!await IsAlreadyComplete(destination, item.File, token))
                     {
                         fileSystem.File.Delete(destination);
-                        throw new IOException($"The copy of {item.File.FileName} downloaded from Steam does not match Steam's checksum.");
+                        throw Loc.Message("Steam.Depot.ChecksumMismatch", item.File.FileName)
+                            .ToException(message => new IOException(message));
                     }
 
                     fileSystem.File.Move(destination, path, true);
@@ -306,7 +313,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
     }
 
     private SteamConnection RequireConnection() =>
-        session.Connection ?? throw new SteamSignInException("Sign in with Steam first.");
+        session.Connection ?? throw new SteamSignInException(Loc.Message("Steam.Depot.SignInFirst"));
 
     private async Task<IReadOnlyList<Server>> GetContentServersAsync(SteamConnection connection, uint appId)
     {
@@ -318,7 +325,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
 
         return servers.Count > 0
             ? servers
-            : throw new SteamSignInException("Steam didn't return any content servers. Try again in a moment.");
+            : throw new SteamSignInException(Loc.Message("Steam.Depot.NoServers"));
     }
 
     // A 403 means the server wants a CDN auth token for this depot.
@@ -353,6 +360,6 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
             }
         }
 
-        throw new IOException("Steam's content servers kept failing. Check your connection and try again.", last);
+        throw Loc.Message("Steam.Depot.ServersFailed").ToException(message => new IOException(message, last));
     }
 }

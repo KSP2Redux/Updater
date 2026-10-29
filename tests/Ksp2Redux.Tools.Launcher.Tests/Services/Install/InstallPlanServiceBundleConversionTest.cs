@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -38,9 +39,9 @@ public class InstallPlanServiceBundleConversionTest
         cacheService.Setup(c => c.RecursivelyRestoreCache(It.IsAny<string>(), It.IsAny<bool>()))
             .Callback(() => calls.Add("restore"));
         var conversion = new Mock<IBundleConversionService>();
-        conversion.Setup(c => c.Revert(InstallDir, It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.Revert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("revert"));
-        conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("convert"));
 
         // Every patch, the prepatch included, fails to open, so a plan that reaches one rolls back.
@@ -59,7 +60,7 @@ public class InstallPlanServiceBundleConversionTest
         var patchDownloadService = new Mock<IPatchDownloadService>();
         patchDownloadService.Setup(service => service.EnqueueAll(
                 It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
-                It.IsAny<int>(), It.IsAny<Action<string>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
+                It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
             .Returns([]);
         var configService = new Mock<ILauncherConfigService>();
         configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
@@ -98,7 +99,7 @@ public class InstallPlanServiceBundleConversionTest
     public async Task UninstallStopsBeforeTheRestoreWhenABundleCannotBePutBack()
     {
         var (service, _, conversion, calls, _) = MakeService();
-        conversion.Setup(c => c.Revert(InstallDir, It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.Revert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("revert"))
             .Throws(new IOException("A stock bundle could not be put back to stock."));
         var plan = new InstallPlan();
@@ -115,11 +116,11 @@ public class InstallPlanServiceBundleConversionTest
     public async Task AFailedConversionAfterThePatchRollsTheInstallBack()
     {
         var (service, _, conversion, calls, _) = MakeService(patchesApply: true);
-        conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("convert"))
             .Throws(new IOException("4 stock bundles could not be converted."));
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "empty patch");
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), LogMessage.Literal("empty patch"));
 
         var ex = await Assert.ThrowsAsync<InstallFailedException>(async () =>
             await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
@@ -159,7 +160,7 @@ public class InstallPlanServiceBundleConversionTest
         var (service, _, _, calls, _) = MakeService();
         // Each step goes in front of the ones already planned.
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "corrupt patch");
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), LogMessage.Literal("corrupt patch"));
         plan.RevertToStock();
 
         await Assert.ThrowsAsync<InstallFailedException>(async () =>
@@ -182,7 +183,7 @@ public class InstallPlanServiceBundleConversionTest
         fs.Directory.CreateDirectory(fs.Path.Combine(InstallDir, "Redux", "BundleConversion"));
         fs.File.WriteAllText(fs.Path.Combine(InstallDir, "Redux", "BundleConversion", "journal.json"), "{}");
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "snapshot patch");
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), LogMessage.Literal("snapshot patch"));
         plan.Prepatch();
         plan.RevertToStock();
 

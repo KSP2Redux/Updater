@@ -1,5 +1,6 @@
 ﻿using System.IO.Abstractions;
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Game;
@@ -30,6 +31,12 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
         serviceCollection.AddSingleton<ILogService, LogService>();
+        serviceCollection.AddSingleton<ILocalizationService>(provider =>
+        {
+            var localization = LocalizationService.Default;
+            localization.Log = provider.GetRequiredService<ILogService>();
+            return localization;
+        });
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();

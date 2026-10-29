@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.BundleConversion;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
@@ -17,7 +18,7 @@ public interface IBundleConversionService
     /// <param name="log">Receives progress and summary lines.</param>
     /// <param name="ct">Cancels the conversion between bundles.</param>
     /// <exception cref="IOException">A bundle could not be converted, after the others were.</exception>
-    void Convert(string install, Action<string> log, CancellationToken ct);
+    void Convert(string install, Action<LogMessage> log, CancellationToken ct);
 
     /// <summary>
     /// Puts every converted bundle back to stock from the conversion journal, if the install has one.
@@ -26,7 +27,7 @@ public interface IBundleConversionService
     /// <param name="log">Receives progress and summary lines.</param>
     /// <param name="ct">Cancels the revert between bundles.</param>
     /// <exception cref="IOException">A bundle could not be put back, after the others were. The journal keeps it.</exception>
-    void Revert(string install, Action<string> log, CancellationToken ct);
+    void Revert(string install, Action<LogMessage> log, CancellationToken ct);
 }
 
 /// <inheritdoc />
@@ -44,12 +45,12 @@ public class BundleConversionService(
     public const string SHADER_MANIFEST = "Redux/ShaderBundles/StandaloneWindows64/manifest.json";
 
     /// <inheritdoc />
-    public void Convert(string install, Action<string> log, CancellationToken ct)
+    public void Convert(string install, Action<LogMessage> log, CancellationToken ct)
     {
         var manifestPath = fileSystem.Path.Combine(install, SHADER_MANIFEST);
         if (!fileSystem.File.Exists(manifestPath))
         {
-            log("This Redux build has no URP shader bundles, so the stock bundles stay unconverted.");
+            log(Loc.Message("Bundles.NoShaderBundles"));
             Revert(install, log, ct);
             return;
         }
@@ -57,11 +58,11 @@ public class BundleConversionService(
         var manifest = ShaderManifestIndex.Load(fileSystem, manifestPath);
         foreach (var warning in manifest.Warnings)
         {
-            log($"Shader manifest: {warning}");
+            log(Loc.Message("Bundles.ManifestWarning", warning));
         }
 
-        log("Converting the stock bundles to the URP shaders...");
-        var converter = new BundleConverter(fileSystem, install, new BundleConversionOptions { Progress = new Progress<string>(log) });
+        log(Loc.Message("Bundles.Converting"));
+        var converter = new BundleConverter(fileSystem, install, new BundleConversionOptions { Progress = ConverterProgress(log) });
         var unrecorded = Apply(converter, manifest, log, ct);
         if (unrecorded.Count == 0)
         {
@@ -77,22 +78,23 @@ public class BundleConversionService(
         }
         catch (IOException e)
         {
-            log($"Warning: {e.Message}");
+            log(Loc.Message("Bundles.Warning", e.ToLogMessage()));
             return;
         }
 
-        log("Converting the bundles restored from Steam...");
+        log(Loc.Message("Bundles.ConvertingRestored"));
         unrecorded = Apply(converter, manifest, log, ct);
         if (unrecorded.Count > 0)
         {
-            throw new IOException($"{unrecorded.Count} stock bundles still hold unrecorded converted shaders after Steam's copies were put back, the first is {unrecorded[0]}.");
+            throw Loc.Message("Bundles.StillUnrecorded", unrecorded.Count, unrecorded[0])
+                .ToException(message => new IOException(message));
         }
     }
 
     /// <inheritdoc />
-    public void Revert(string install, Action<string> log, CancellationToken ct)
+    public void Revert(string install, Action<LogMessage> log, CancellationToken ct)
     {
-        var converter = new BundleConverter(fileSystem, install, new BundleConversionOptions { Progress = new Progress<string>(log) });
+        var converter = new BundleConverter(fileSystem, install, new BundleConversionOptions { Progress = ConverterProgress(log) });
         var result = RevertJournal(converter, log, ct);
 
         // Without a journal there may still be converted bundles, from a launcher that lost or never kept it.
@@ -116,37 +118,44 @@ public class BundleConversionService(
         result = RevertJournal(converter, log, ct);
         if (result.Unreverted.Count > 0)
         {
-            throw new IOException($"{result.Unreverted.Count} converted shader references could not be undone even after Steam's copies were put back, the first in {result.Unreverted[0].File}.");
+            throw Loc.Message("Bundles.StillUnreverted", result.Unreverted.Count, result.Unreverted[0].File)
+                .ToException(message => new IOException(message));
         }
     }
 
+    // The conversion lines reach the install log from static and instance members alike, so they read the shared service.
+    private static ILocalizationService Loc => LocalizationService.Default;
+
+    // The converter reports plain text, which is never translated.
+    private static IProgress<string> ConverterProgress(Action<LogMessage> log) =>
+        new Progress<string>(text => log(LogMessage.Literal(text)));
+
     // Returns the bundles holding converted shaders the journal does not record.
-    private static IReadOnlyList<string> Apply(BundleConverter converter, ShaderManifestIndex manifest, Action<string> log, CancellationToken ct)
+    private static IReadOnlyList<string> Apply(BundleConverter converter, ShaderManifestIndex manifest, Action<LogMessage> log, CancellationToken ct)
     {
         var result = converter.Apply(manifest, false, ct);
-        log($"Bundle conversion: {result.EditsWritten} edits written, {result.EditsAlreadyApplied} already applied, " +
-            $"{result.CopiesWritten} bundle copies written, {result.CopiesUpToDate} up to date, {result.CopiesDeleted} removed, " +
-            $"{result.OverlaysWritten} texture overlays written, {result.OverlaysUpToDate} up to date, {result.OverlaysDeleted} removed.");
+        log(Loc.Message("Bundles.ApplySummary", result.EditsWritten, result.EditsAlreadyApplied, result.CopiesWritten,
+            result.CopiesUpToDate, result.CopiesDeleted, result.OverlaysWritten, result.OverlaysUpToDate, result.OverlaysDeleted));
         foreach (var edit in result.ForeignEdits)
         {
-            log($"Left alone, {edit.File} holds unexpected bytes at offset {edit.Offset}.");
+            log(Loc.Message("Bundles.LeftAlone", edit.File, edit.Offset));
         }
 
         foreach (var failure in result.TextureFailures)
         {
-            log($"Kept the stock cloud textures of {failure.File}: {failure.Message}");
+            log(Loc.Message("Bundles.KeptCloudTextures", failure.File, failure.Message));
         }
 
         foreach (var failure in result.Failures)
         {
-            log($"Could not convert {failure.File}: {failure.Message}");
+            log(Loc.Message("Bundles.ConvertFailed", failure.File, failure.Message));
         }
 
-        ThrowIfAnyFailed(result.Failures, "converted");
+        ThrowIfAnyFailed(result.Failures, "Bundles.ConvertFailedOne", "Bundles.ConvertFailedMany");
         return result.Plan.UnrecordedEdits;
     }
 
-    private static RevertResult RevertJournal(BundleConverter converter, Action<string> log, CancellationToken ct)
+    private static RevertResult RevertJournal(BundleConverter converter, Action<LogMessage> log, CancellationToken ct)
     {
         var result = converter.Revert(ct);
         if (!result.HadJournal)
@@ -154,38 +163,37 @@ public class BundleConversionService(
             return result;
         }
 
-        log($"Bundle conversion reverted: {result.EditsReverted} edits undone, {result.CopiesDeleted} bundle copies and {result.OverlaysDeleted} texture overlays removed.");
+        log(Loc.Message("Bundles.RevertSummary", result.EditsReverted, result.CopiesDeleted, result.OverlaysDeleted));
         foreach (var edit in result.Unreverted)
         {
-            log($"Could not undo, {edit.File} holds unexpected bytes at offset {edit.Offset}.");
+            log(Loc.Message("Bundles.CouldNotUndo", edit.File, edit.Offset));
         }
 
         foreach (var failure in result.Failures)
         {
-            log($"Could not revert {failure.File}: {failure.Message}");
+            log(Loc.Message("Bundles.RevertFailed", failure.File, failure.Message));
         }
 
-        ThrowIfAnyFailed(result.Failures, "put back to stock");
+        ThrowIfAnyFailed(result.Failures, "Bundles.RevertFailedOne", "Bundles.RevertFailedMany");
         return result;
     }
 
     // Steam's copies are the only stock bytes there are for an edit nobody recorded.
-    private void RestoreFromSteam(string install, IReadOnlyList<string> bundles, Action<string> log, CancellationToken ct)
+    private void RestoreFromSteam(string install, IReadOnlyList<string> bundles, Action<LogMessage> log, CancellationToken ct)
     {
-        log($"{bundles.Count} stock bundles hold converted shaders that no conversion record covers: {string.Join(", ", bundles)}.");
-        const string HELP = "Sign in with Steam in the launcher's settings (or run 'redux-launcher-cli steam login') and install " +
-                            "again, or have Steam verify the game files and then reinstall Redux.";
+        log(Loc.Message("Bundles.Unrecorded", bundles.Count, string.Join(", ", bundles)));
+        var help = Loc.Message("Bundles.SteamHelp");
         if (steamSession is null || steamDownloader is null || !steamSession.HasSavedLogin)
         {
-            throw new IOException($"{bundles.Count} stock bundles hold converted shaders that only Steam's copies can put back. {HELP}");
+            throw Loc.Message("Bundles.NeedSteamCopies", bundles.Count, help).ToException(message => new IOException(message));
         }
 
         if (!steamSession.IsSignedIn && !steamSession.TryResumeAsync(ct).GetAwaiter().GetResult())
         {
-            throw new IOException($"Steam did not accept the saved login, which is needed to put {bundles.Count} stock bundles back. {HELP}");
+            throw Loc.Message("Bundles.SteamLoginRejected", bundles.Count, help).ToException(message => new IOException(message));
         }
 
-        log("Downloading Steam's copies of those bundles...");
+        log(Loc.Message("Bundles.DownloadingFromSteam"));
         try
         {
             steamDownloader.RestoreFilesAsync(
@@ -197,15 +205,16 @@ public class BundleConversionService(
         }
         catch (Exception e) when (e is SteamSignInException or InvalidDataException)
         {
-            throw new IOException($"Steam's copies of {bundles.Count} stock bundles could not be downloaded: {e.Message} {HELP}", e);
+            throw Loc.Message("Bundles.SteamDownloadFailed", bundles.Count, e.ToLogMessage(), help)
+                .ToException(message => new IOException(message, e));
         }
 
-        log($"Put back Steam's copies of {bundles.Count} stock bundles.");
+        log(Loc.Message("Bundles.PutBack", bundles.Count));
     }
 
     // A bundle the conversion could not write stays as it was while the rest move on, so the caller has to treat
     // the step as failed rather than carry on with a mixed set.
-    private static void ThrowIfAnyFailed(IReadOnlyList<BundleProblem> failures, string action)
+    private static void ThrowIfAnyFailed(IReadOnlyList<BundleProblem> failures, string oneKey, string manyKey)
     {
         if (failures.Count == 0)
         {
@@ -213,8 +222,9 @@ public class BundleConversionService(
         }
 
         var first = failures[0];
-        throw new IOException(failures.Count == 1
-            ? $"A stock bundle could not be {action} ({first.File}: {first.Message})."
-            : $"{failures.Count} stock bundles could not be {action}, the first was {first.File} ({first.Message}).");
+        var message = failures.Count == 1
+            ? Loc.Message(oneKey, first.File, first.Message)
+            : Loc.Message(manyKey, failures.Count, first.File, first.Message);
+        throw message.ToException(text => new IOException(text));
     }
 }

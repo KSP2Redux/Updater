@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -40,6 +41,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IMessageBoxService _messageBoxService;
     private readonly IWindowPlacementService _windowPlacementService;
     private readonly ILogService _log;
+    private readonly ILocalizationService _localization;
     private readonly TaskCompletionSource _mainWindowOpened = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     [ObservableProperty]
@@ -70,8 +72,9 @@ public partial class MainWindowViewModel : ViewModelBase
         IReleasesFeedService releasesFeedService, ITabNavigatorService tabNavigatorService, IFileSystem fileSystem,
         INewsService newsService, IManifestReleasesFeedProviderService manifestReleasesFeedProviderService, IUpdateService updateService,
         IKsp2DetectorService ksp2DetectorService, IMessageBoxService messageBoxService, IWindowPlacementService windowPlacementService, ILogService log,
-        ISteamDialogService steamDialogs)
+        ISteamDialogService steamDialogs, ILocalizationService localization)
     {
+        _localization = localization;
         _steamDialogs = steamDialogs;
         _newsCollectionService = newsCollectionService;
         _launcherConfigService = launcherConfigService;
@@ -96,6 +99,9 @@ public partial class MainWindowViewModel : ViewModelBase
             Dispatcher.UIThread.Post(async () => await CheckActiveInstallWarnings());
 
         _ = LoadNews().ContinueWith(LogErrors);
+        // The news come from the feed of the language, so a new language needs a new fetch.
+        _localization.LanguageChanged += (_, _) =>
+            Dispatcher.UIThread.Post(() => _ = LoadNews().ContinueWith(LogErrors));
         ksp2InstallService.TryLoadKsp2Install();
         ksp2InstallService.ApplyActiveInstallBootConfig();
         // ReleasesFeed =
@@ -185,8 +191,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _log.Error("Startup initialization failed.", antecedent.Exception);
         Dispatcher.UIThread.Post(async () =>
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Startup Error",
-                "Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Main.StartupError.Title"],
+                _localization["Main.StartupError.Message"], windowStartupLocation: WindowStartupLocation.CenterOwner);
         });
     }
 
@@ -211,8 +217,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _log.Warn("Partial update detected from a prior launch.");
             var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Partial Update Complete",
-                $"After closing, please delete {updateDir}\nand confirm you still have the Updater locally.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Main.PartialUpdate.Title"],
+                _localization.Format("Main.PartialUpdate.Message", updateDir), windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
 
         if (_ksp2InstallService.Entries.Count == 0)
@@ -254,9 +260,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     var alternateSource = downloadFailure.DownloadSource.GetAlternate();
                     var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                        $"{downloadFailure.DownloadSource} Manifest Failed",
-                        $"The release list could not be downloaded from {downloadFailure.DownloadSource}. " +
-                        $"Retry using {alternateSource}? This choice will be saved in Advanced Downloads.",
+                        _localization.Format("Mirror.Manifest.Title", downloadFailure.DownloadSource),
+                        _localization.Format("Mirror.Manifest.Message", downloadFailure.DownloadSource, alternateSource),
                         ButtonEnum.YesNo,
                         windowStartupLocation: WindowStartupLocation.CenterOwner);
                     if (result == ButtonResult.Yes)
@@ -284,8 +289,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_ksp2DetectorService.DetectKsp2InstallLocation() is { } installLocation)
         {
             _log.Info($"Detected KSP2 install at {installLocation}, prompting user to add.");
-            var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Found",
-                $"Found KSP2 install at: {installLocation}\nWould you like to add it to Redux?\n(This can be changed in the settings.)", ButtonEnum.YesNo,
+            var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Main.InstallFound.Title"],
+                _localization.Format("Main.InstallFound.Message", installLocation), ButtonEnum.YesNo,
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
 
             if (option == ButtonResult.Yes)
@@ -301,9 +306,8 @@ public partial class MainWindowViewModel : ViewModelBase
         else
         {
             _log.Warn("KSP2 install was not auto-detected.");
-            var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync("KSP2 Install Not Found",
-                "No KSP2 install was found on this computer.\n\n" +
-                "Download it now with your Steam account? You can also add an existing install from the settings tab.",
+            var option = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Main.InstallNotFound.Title"],
+                _localization["Main.InstallNotFound.Message"],
                 ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
 
             if (option == ButtonResult.Yes)
@@ -315,7 +319,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 catch (Exception ex)
                 {
                     _log.Error("Downloading KSP2 from Steam failed.", ex);
-                    await _messageBoxService.ShowMessageBoxAsOwnedAsync("Download Failed", ex.Message,
+                    await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Steam.DownloadFailed.Title"], ex.UserMessage(),
                         windowStartupLocation: WindowStartupLocation.CenterOwner);
                 }
             }
@@ -341,8 +345,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!ksp2.IsValid)
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Invalid EXE",
-                $"The configured KSP2 EXE path is not valid:\n{ksp2.ExePath}",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Main.InvalidExe.Title"],
+                _localization.Format("Main.InvalidExe.Message", ksp2.ExePath),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -350,11 +354,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ksp2.VersionDetectionException is { } e)
         {
             _log.Error("Could not detect the installed KSP2 version.", e);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Detect Game Version",
-                "KSP2 Redux couldn't figure out which version of the game is installed. " +
-                "This can happen if the game files are missing, corrupted, or from an unsupported source.\n\n" +
-                "You can still try launching or installing, but update checks may be unreliable. " +
-                "Details were written to the log file (see Settings > Open Logs Folder) if you'd like to report this.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Main.VersionDetection.Title"],
+                _localization["Main.VersionDetection.Message"], windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 
@@ -362,6 +363,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await _newsService.FetchNews();
         List<News> newsList = await _newsService.FindAllNews();
+        // Only after a successful fetch, so a failed refresh in a new language keeps the old list.
+        _newsCollectionService.NewsCollection.Clear();
         foreach (News news in newsList)
         {
             _newsCollectionService.Add(new Shared.NewsItemViewModel(news));

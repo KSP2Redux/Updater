@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:mods="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Mods"
+             xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
              x:DataType="mods:ModsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Mods.ModsTabView">
@@ -11,12 +12,12 @@
             BoxShadow="{StaticResource GlassPanelShadow}"
             HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <TextBlock Text="COMING SOON"
+            <TextBlock Text="{loc:T Mods.ComingSoon}"
                        FontFamily="{StaticResource JetBrainsMonoLight}"
                        FontSize="32"
                        Foreground="{StaticResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="Mod support is on the roadmap :3"
+            <TextBlock Text="{loc:T Mods.Roadmap}"
                        FontFamily="{StaticResource JetBrainsMonoRegular}"
                        FontSize="14"
                        Foreground="{StaticResource TextMutedBrush}"

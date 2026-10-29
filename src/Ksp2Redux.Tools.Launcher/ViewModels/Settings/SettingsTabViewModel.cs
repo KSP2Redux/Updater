@@ -10,6 +10,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -21,6 +22,7 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
 public partial class SettingsTabViewModel : ViewModelBase
 {
+    private readonly ILocalizationService _localization;
     private readonly IFileSystem _fileSystem;
     private readonly ICacheService _cacheService;
     private readonly ILauncherConfigService _launcherConfigService;
@@ -79,7 +81,8 @@ public partial class SettingsTabViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(UninstallKsp2ButtonText))]
     public partial bool IsUninstallingKsp2 { get; set; }
 
-    public string UninstallKsp2ButtonText => IsUninstallingKsp2 ? "Uninstalling..." : "Uninstall KSP2";
+    public string UninstallKsp2ButtonText =>
+        _localization[IsUninstallingKsp2 ? "Settings.UninstallKsp2.ButtonBusy" : "Settings.UninstallKsp2.Button"];
 
     [ObservableProperty]
     public partial string RenameText { get; set; } = string.Empty;
@@ -92,7 +95,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     public partial bool IsSteamSignedIn { get; set; }
 
     [ObservableProperty]
-    public partial string SteamStatus { get; set; } = "Not signed in";
+    public partial string SteamStatus { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial bool IsSteamBusy { get; set; }
@@ -106,19 +109,13 @@ public partial class SettingsTabViewModel : ViewModelBase
     public partial bool IsSteamConnecting { get; set; }
 
     [ObservableProperty]
-    public partial string SteamIndicatorTooltip { get; set; } = "Not signed in to Steam. Click to sign in.";
+    public partial string SteamIndicatorTooltip { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial bool CanDownloadFromSteam { get; set; }
 
     [ObservableProperty]
-    public partial string DownloadFromSteamTooltip { get; set; } = SIGN_IN_TO_DOWNLOAD_TOOLTIP;
-
-    private const string DOWNLOAD_TOOLTIP =
-        "Download your own copy of Kerbal Space Program 2 from Steam and add it as an install. It's a clean copy that Steam's own updates never touch, so it stays ready for Redux.";
-
-    private const string SIGN_IN_TO_DOWNLOAD_TOOLTIP =
-        "Sign in with Steam to download KSP2. Click the Steam icon in the bottom-right corner and sign in with the account that owns the game.";
+    public partial string DownloadFromSteamTooltip { get; set; } = string.Empty;
 
     private bool _isResumingSteam;
     private bool _steamResumeFailed;
@@ -127,6 +124,54 @@ public partial class SettingsTabViewModel : ViewModelBase
 
 
     public string LauncherVersion => _assemblyService.GetVersion()?.ToString(4) ?? "?";
+
+    public string LauncherVersionText => _localization.Format("Settings.LauncherVersion", LauncherVersion);
+
+    // English alone is no choice at all, so the picker stays hidden until a translation is in the build.
+    public bool ShowLanguagePicker => _localization.AvailableLanguages.Count > 1;
+
+    public ObservableCollection<LanguageOption> LanguageChoices { get; } = [];
+
+    [ObservableProperty]
+    public partial LanguageOption? SelectedLanguage { get; set; }
+
+    private bool _suppressLanguageChange;
+
+    partial void OnSelectedLanguageChanged(LanguageOption? value)
+    {
+        if (_suppressLanguageChange || value is null) return;
+        _launcherConfigService.Config.Language = value.CultureName;
+        _launcherConfigService.Save();
+        _localization.SetLanguage(value.CultureName);
+    }
+
+    // The "Automatic" entry carries text, so the list is rebuilt whenever the language changes.
+    private void RebuildLanguageChoices()
+    {
+        var configured = _launcherConfigService.Config.Language;
+        _suppressLanguageChange = true;
+        try
+        {
+            LanguageChoices.Clear();
+            LanguageChoices.Add(new LanguageOption(string.Empty, _localization["Settings.Language.Automatic"]));
+            foreach (var language in _localization.AvailableLanguages) LanguageChoices.Add(language);
+            SelectedLanguage = LanguageChoices.FirstOrDefault(language =>
+                string.Equals(language.CultureName, configured, StringComparison.OrdinalIgnoreCase)) ?? LanguageChoices[0];
+        }
+        finally
+        {
+            _suppressLanguageChange = false;
+        }
+    }
+
+    private void OnLanguageChanged()
+    {
+        RebuildLanguageChoices();
+        foreach (var row in Installs) row.RefreshLocalizedText();
+        OnPropertyChanged(nameof(UninstallKsp2ButtonText));
+        OnPropertyChanged(nameof(LauncherVersionText));
+        SyncSteamStatus();
+    }
 
     private bool _suppressActiveSync;
 
@@ -151,8 +196,10 @@ public partial class SettingsTabViewModel : ViewModelBase
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
         IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
         IGameDataFolderService gameDataFolderService, ISteamSessionService steamSession, ISteamDialogService steamDialogs,
-        IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService)
+        IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService,
+        ILocalizationService localization)
     {
+        _localization = localization;
         _gameUninstallService = gameUninstallService;
         IsSteamLaunchSupported = !operatingSystemService.IsMacOS();
         _steamSession = steamSession;
@@ -189,6 +236,9 @@ public partial class SettingsTabViewModel : ViewModelBase
             _suppressSettingsSave = false;
         }
         _log.MinimumLevel = VerboseLogging ? LogLevel.Debug : LogLevel.Info;
+
+        RebuildLanguageChoices();
+        _localization.LanguageChanged += (_, _) => OnLanguageChanged();
     }
 
     private void SyncDownloadSettings()
@@ -263,7 +313,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             Installs.Clear();
             foreach (var entry in entries)
             {
-                Installs.Add(new Ksp2InstallRowViewModel(_fileSystem, _ksp2InstallService, _messageBoxService, entry, entry.Id == activeId));
+                Installs.Add(new Ksp2InstallRowViewModel(_fileSystem, _ksp2InstallService, _messageBoxService, _localization, entry, entry.Id == activeId));
             }
         }
         SyncSelectedInstall();
@@ -291,12 +341,12 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     private const string STEAM_INSTALL_DIR = "C:/Program Files (x86)/Steam/steamapps/common/Kerbal Space Program 2/KSP2_x64.exe";
 
-    private static readonly FilePickerFileType Ksp2Exe = new("KSP2 installation")
+    private FilePickerFileType Ksp2Exe => new(_localization["Settings.FilePicker.Ksp2Exe.FileType"])
     {
         Patterns = ["KSP2_x64.exe"]
     };
 
-    private static readonly FilePickerFileType Patch = new("KSP2 Patch File")
+    private FilePickerFileType Patch => new(_localization["Settings.FilePicker.Patch.FileType"])
     {
         Patterns = ["*.patch"]
     };
@@ -316,8 +366,8 @@ public partial class SettingsTabViewModel : ViewModelBase
             catch (Exception ex)
             {
                 _log.Error("Failed to open the file picker for adding an install.", ex);
-                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                    $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                    _localization.Format("Settings.FilePicker.Failed", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
                 return;
             }
             if (chosenPath is null) return;
@@ -376,8 +426,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error("Failed to open the file picker for an install path.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.FilePicker.Failed", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
@@ -411,8 +461,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         SyncSteamStatus();
         if (revoked) return;
 
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Signed Out",
-            SteamSessionService.REVOKE_FAILED_MESSAGE, icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Steam.SignedOut.Title"],
+            SteamSessionService.RevokeFailedMessage, icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
     [RelayCommand]
@@ -425,15 +475,15 @@ public partial class SettingsTabViewModel : ViewModelBase
             var exePath = await _steamDialogs.DownloadGameAsync();
             if (exePath is null) return;
 
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Download Complete",
-                "Kerbal Space Program 2 is downloaded and added as an install. Head to the Home tab to install Redux.",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Steam.DownloadComplete.Title"],
+                _localization["Steam.DownloadComplete.Message"],
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             _tabNavigatorService.GoToHome();
         }
         catch (Exception ex)
         {
             _log.Error("Downloading KSP2 from Steam failed.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Download Failed", ex.Message,
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Steam.DownloadFailed.Title"], ex.UserMessage(),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
         finally
@@ -489,23 +539,23 @@ public partial class SettingsTabViewModel : ViewModelBase
         var savedAccount = _steamSession.SavedAccountName;
         IsSteamSignedIn = _steamSession.IsSignedIn || savedAccount is not null;
         SteamStatus = _steamSession.Account is { } account
-            ? $"Signed in as {account.DisplayName}"
+            ? _localization.Format("Steam.Status.SignedIn", account.DisplayName)
             : savedAccount is null
-                ? "Not signed in"
+                ? _localization["Steam.Status.NotSignedIn"]
                 : _isResumingSteam
-                    ? $"Signed in as {savedAccount} (connecting...)"
+                    ? _localization.Format("Steam.Status.SignedInConnecting", savedAccount)
                     : _steamResumeFailed
-                        ? $"Signed in as {savedAccount} (offline)"
-                        : $"Signed in as {savedAccount}";
+                        ? _localization.Format("Steam.Status.SignedInOffline", savedAccount)
+                        : _localization.Format("Steam.Status.SignedIn", savedAccount);
 
         IsSteamConnected = _steamSession.IsSignedIn;
         IsSteamConnecting = !IsSteamConnected && (_isResumingSteam || IsSteamBusy);
         CanDownloadFromSteam = IsSteamSignedIn && !IsSteamBusy;
-        DownloadFromSteamTooltip = IsSteamSignedIn ? DOWNLOAD_TOOLTIP : SIGN_IN_TO_DOWNLOAD_TOOLTIP;
-        SteamIndicatorTooltip = IsSteamConnected ? $"Steam: {SteamStatus}"
-            : IsSteamConnecting ? "Connecting to Steam..."
-            : savedAccount is not null ? $"Steam: {SteamStatus}. Click to reconnect."
-            : "Not signed in to Steam. Click to sign in.";
+        DownloadFromSteamTooltip = _localization[IsSteamSignedIn ? "Settings.DownloadFromSteam.Tooltip" : "Settings.DownloadFromSteam.SignInTooltip"];
+        SteamIndicatorTooltip = IsSteamConnected ? _localization.Format("Steam.Indicator.Connected", SteamStatus)
+            : IsSteamConnecting ? _localization["Steam.Indicator.Connecting"]
+            : savedAccount is not null ? _localization.Format("Steam.Indicator.Reconnect", SteamStatus)
+            : _localization["Steam.Indicator.NotSignedIn"];
     }
 
     [RelayCommand]
@@ -513,8 +563,8 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         if (SelectedInstall is not { } row) return;
 
-        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Confirm",
-            $"Are you sure you want to remove \"{row.Name}\"? Its name, launch arguments, and Steam settings will be lost.",
+        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Confirm.Title"],
+            _localization.Format("Settings.RemoveProfile.Message", row.Name),
             ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes) return;
 
@@ -528,7 +578,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         var folder = string.IsNullOrWhiteSpace(exePath) ? null : _fileSystem.Path.GetDirectoryName(exePath);
         if (string.IsNullOrWhiteSpace(folder) || !_fileSystem.Directory.Exists(folder))
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", "The install folder could not be found.",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization["Settings.OpenInstallFolder.NotFound"],
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -539,7 +590,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
         catch (Exception e)
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", $"Could not open the install folder.\n{e.Message}",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.OpenInstallFolder.Failed", e.Message),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
@@ -556,16 +608,16 @@ public partial class SettingsTabViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(folder))
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                "The game data folder could not be worked out for this install.",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization["Settings.GameData.Unknown"],
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
         if (!_fileSystem.Directory.Exists(folder))
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Nothing there yet",
-                $"KSP2 has not created its data folder yet. Run the game once and it will appear at\n{folder}",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Settings.GameData.NotYet.Title"],
+                _localization.Format("Settings.GameData.NotYet.Message", folder),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -577,8 +629,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         catch (Exception e)
         {
             _log.Error($"Failed to open the game data folder at {folder}.", e);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                $"Could not open the game data folder.\n{e.Message}",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.GameData.OpenFailed", e.Message),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
@@ -587,7 +639,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
             desktop.MainWindow?.StorageProvider is not { } provider)
-            throw new InvalidOperationException("Could not access the file picker (no active window).");
+            throw _localization.Message("Settings.FilePicker.NoWindow").ToException(message => new InvalidOperationException(message));
 
         IStorageFolder? startFolder = null;
         var lastKnownPath = startNear ?? _ksp2InstallService.ActiveEntry?.ExePath;
@@ -601,7 +653,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
         {
-            Title = "Open KSP2_x64.exe",
+            Title = _localization["Settings.FilePicker.Ksp2Exe.Title"],
             AllowMultiple = false,
             FileTypeFilter = [Ksp2Exe],
             SuggestedStartLocation = startFolder
@@ -622,24 +674,22 @@ public partial class SettingsTabViewModel : ViewModelBase
         switch (removal.Kind)
         {
             case Ksp2GameRemovalKind.NotAGameFolder:
-                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Can't Uninstall KSP2",
-                    $"{removal.Folder}\n\ndoesn't look like a KSP2 install folder (there is no {Ksp2Install.KSP2_EXE_NAME} with KSP2_x64_Data beside it), " +
-                    "so nothing was deleted. Remove the profile instead if it points at the wrong place.",
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Settings.UninstallKsp2.NotAGameFolder.Title"],
+                    _localization.Format("Settings.UninstallKsp2.NotAGameFolder.Message", removal.Folder, Ksp2Install.KSP2_EXE_NAME),
                     icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
                 return;
 
             case Ksp2GameRemovalKind.Missing:
-                if (await ConfirmAsync("KSP2 Already Gone",
-                        $"The game folder for \"{row.Name}\" no longer exists. Remove the profile from the launcher?"))
+                if (await ConfirmAsync(_localization["Settings.UninstallKsp2.Missing.Title"],
+                        _localization.Format("Settings.UninstallKsp2.Missing.Message", row.Name)))
                 {
                     _ksp2InstallService.RemoveInstall(row.Id);
                 }
                 return;
 
             case Ksp2GameRemovalKind.UninstallThroughSteam:
-                if (!await ConfirmAsync("Uninstall KSP2",
-                        "This copy of KSP2 is managed by Steam, so Steam will uninstall it and ask you to confirm there. " +
-                        $"The \"{row.Name}\" profile is removed from the launcher.\n\nYour saves and settings are kept."))
+                if (!await ConfirmAsync(_localization["Settings.UninstallKsp2.Confirm.Title"],
+                        _localization.Format("Settings.UninstallKsp2.ThroughSteam.Message", row.Name)))
                 {
                     return;
                 }
@@ -650,18 +700,16 @@ public partial class SettingsTabViewModel : ViewModelBase
                 catch (Exception ex)
                 {
                     _log.Error("Failed to hand the KSP2 uninstall to Steam.", ex);
-                    await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                        $"Couldn't open Steam to uninstall KSP2: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                        _localization.Format("Settings.UninstallKsp2.SteamFailed", ex.Message), windowStartupLocation: WindowStartupLocation.CenterOwner);
                     return;
                 }
                 _ksp2InstallService.RemoveInstall(row.Id);
                 return;
         }
 
-        if (!await ConfirmAsync("Uninstall KSP2",
-                $"Delete Kerbal Space Program 2 from this computer?\n\n{removal.Folder}\n\n" +
-                $"The whole folder is deleted, Redux included, and the \"{row.Name}\" profile is removed. " +
-                "This can't be undone.\n\nYour saves and settings are stored elsewhere and are kept."))
+        if (!await ConfirmAsync(_localization["Settings.UninstallKsp2.Confirm.Title"],
+                _localization.Format("Settings.UninstallKsp2.Confirm.Message", removal.Folder, row.Name)))
         {
             return;
         }
@@ -676,8 +724,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         {
             _log.Error($"Failed to delete the KSP2 install at {removal.Folder}.", ex);
             _ksp2InstallService.TryLoadKsp2Install();
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                $"Couldn't finish uninstalling KSP2: {ex.Message}\n\nMake sure the game isn't running, then try again.",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.UninstallKsp2.Failed", ex.UserMessage()),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -686,7 +734,8 @@ public partial class SettingsTabViewModel : ViewModelBase
             IsUninstallingKsp2 = false;
         }
 
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Done!", "Kerbal Space Program 2 was uninstalled.",
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
+            _localization["Settings.UninstallKsp2.Done"],
             windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
@@ -699,18 +748,21 @@ public partial class SettingsTabViewModel : ViewModelBase
         var activeExe = _ksp2InstallService.ActiveEntry?.ExePath;
         if (string.IsNullOrWhiteSpace(activeExe))
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", "No active KSP2 install selected.",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization["Settings.UninstallRedux.NoInstall"],
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
         var installDir = _fileSystem.Path.GetDirectoryName(activeExe);
         if (string.IsNullOrEmpty(installDir) || !_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!", "Redux is not installed...", windowStartupLocation:WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization["Settings.UninstallRedux.NotInstalled"], windowStartupLocation:WindowStartupLocation.CenterOwner);
             return;
         }
 
-        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Confirm", "Are you sure you want to uninstall Redux?",
+        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Confirm.Title"],
+            _localization["Settings.UninstallRedux.Confirm"],
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes) return;
 
@@ -721,8 +773,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error($"Failed to uninstall Redux from {installDir}.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                $"Couldn't uninstall Redux: {ex.Message}",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.UninstallRedux.Failed", ex.UserMessage()),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -731,7 +783,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         await _homeTabViewModel.UpdateVersionsList();
 
 
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Done!", "KSP2 Redux Successfully Uninstalled", windowStartupLocation: WindowStartupLocation.CenterOwner);
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
+            _localization["Settings.UninstallRedux.Done"], windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
     public async Task InstallFromPatchFile()
@@ -744,8 +797,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error("Failed to open the file picker for a patch file.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                $"Couldn't open the file picker: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.FilePicker.Failed", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
@@ -761,12 +814,12 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
             desktop.MainWindow?.StorageProvider is not { } provider)
-            throw new InvalidOperationException("Could not access the file picker (no active window).");
+            throw _localization.Message("Settings.FilePicker.NoWindow").ToException(message => new InvalidOperationException(message));
         var startFolder = await provider.TryGetWellKnownFolderAsync(WellKnownFolder.Downloads);
 
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions()
         {
-            Title = "Open Patch File",
+            Title = _localization["Settings.FilePicker.Patch.Title"],
             AllowMultiple = false,
             FileTypeFilter = [Patch],
             SuggestedStartLocation = startFolder
@@ -786,8 +839,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error("Failed to open the logs folder.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Error!",
-                $"Couldn't open the logs folder: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.LogsFolder.Failed", ex.Message), windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 

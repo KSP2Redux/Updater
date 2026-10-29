@@ -2,6 +2,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using QRCoder;
@@ -32,14 +33,16 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
 {
     private readonly ISteamSessionService _session;
     private readonly ILogService _log;
+    private readonly ILocalizationService _localization;
     private CancellationTokenSource? _qrCancellation;
     private CancellationTokenSource? _credentialsCancellation;
     private TaskCompletionSource<string>? _guardCode;
 
-    public SteamSignInViewModel(ISteamSessionService session, ILogService log)
+    public SteamSignInViewModel(ISteamSessionService session, ILogService log, ILocalizationService localization)
     {
         _session = session;
         _log = log;
+        _localization = localization;
     }
 
     /// <summary>Raised when sign-in ends. The argument is true if the player signed in.</summary>
@@ -83,7 +86,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
     {
         if (string.IsNullOrWhiteSpace(AccountName) || string.IsNullOrEmpty(Password))
         {
-            ErrorMessage = "Enter your Steam account name and password.";
+            ErrorMessage = _localization["Steam.SignIn.EnterCredentials"];
             return;
         }
 
@@ -105,7 +108,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         catch (Exception ex)
         {
             _log.Warn($"Steam password sign-in failed: {ex.Message}");
-            ErrorMessage = ex is SteamSignInException ? ex.Message : $"Couldn't sign in: {ex.Message}";
+            ErrorMessage = ex is SteamSignInException ? ex.UserMessage() : _localization.Format("Steam.SignIn.Failed", ex.UserMessage());
             Stage = SteamSignInStage.Choose;
             _ = RunQrSignInAsync();
         }
@@ -134,15 +137,11 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
 
     /// <inheritdoc />
     public Task<string> GetEmailCodeAsync(string email, bool previousCodeWasIncorrect) =>
-        AskForCode(previousCodeWasIncorrect
-            ? $"That code didn't work. Enter the new code Steam sent to {email}."
-            : $"Steam sent a code to {email}. Enter it below.");
+        AskForCode(_localization.Format(previousCodeWasIncorrect ? "Steam.SignIn.EmailCodeWrong" : "Steam.SignIn.EmailCode", email));
 
     /// <inheritdoc />
     public Task<string> GetDeviceCodeAsync(bool previousCodeWasIncorrect) =>
-        AskForCode(previousCodeWasIncorrect
-            ? "That code didn't work. Enter the current code from your Steam Mobile App."
-            : "Enter the code shown in your Steam Mobile App.");
+        AskForCode(_localization[previousCodeWasIncorrect ? "Steam.SignIn.DeviceCodeWrong" : "Steam.SignIn.DeviceCode"]);
 
     /// <inheritdoc />
     public async Task<bool> AcceptDeviceConfirmationAsync()
@@ -150,7 +149,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         // Shown before answering, because Steam starts waiting for the approval as soon as this returns.
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            GuardPrompt = "Open the Steam Mobile App and approve the sign-in.";
+            GuardPrompt = _localization["Steam.SignIn.Approve"];
             Stage = SteamSignInStage.AwaitingApproval;
         });
         return true;

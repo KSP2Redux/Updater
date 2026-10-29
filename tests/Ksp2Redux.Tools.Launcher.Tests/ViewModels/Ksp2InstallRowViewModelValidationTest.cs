@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -36,7 +37,7 @@ public class Ksp2InstallRowViewModelValidationTest
         };
         var ksp2InstallService = new Mock<IKsp2InstallService>();
         var messageBoxService = new Mock<IMessageBoxService>();
-        var row = new Ksp2InstallRowViewModel(fs, ksp2InstallService.Object, messageBoxService.Object, entry, isActive: true);
+        var row = new Ksp2InstallRowViewModel(fs, ksp2InstallService.Object, messageBoxService.Object, LocalizationService.Default, entry, isActive: true);
         return (row, fs, messageBoxService, entry);
     }
 

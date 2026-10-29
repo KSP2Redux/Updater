@@ -7,6 +7,7 @@
         xmlns:mods="using:Ksp2Redux.Tools.Launcher.Views.Mods"
         xmlns:settings="using:Ksp2Redux.Tools.Launcher.Views.Settings"
         xmlns:controls="using:Ksp2Redux.Tools.Launcher.Controls"
+        xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
@@ -267,13 +268,13 @@
 
                     <Border Grid.Column="1" Padding="0,0,24,24">
                         <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
-                            <TabItem Name="HomeTab" Header="Home">
+                            <TabItem Name="HomeTab" Header="{loc:T Tab.Home}">
                                 <home:HomeTabView Name="HomeView" DataContext="{Binding HomeTab}"/>
                             </TabItem>
-                            <TabItem Name="CommunityTab" Header="Community">
+                            <TabItem Name="CommunityTab" Header="{loc:T Tab.Community}">
                                 <community:CommunityTabView Name="CommunityView" DataContext="{Binding CommunityTab}"/>
                             </TabItem>
-                            <TabItem Name="ModsTab" Header="Mods">
+                            <TabItem Name="ModsTab" Header="{loc:T Tab.Mods}">
                                 <mods:ModsTabView Name="ModsView" DataContext="{Binding ModsTab}"/>
                             </TabItem>
                             <TabItem Name="SettingsTab">
@@ -312,12 +313,12 @@
                                 </MenuItem.Icon>
                             </MenuItem>
                             <Separator />
-                            <MenuItem Header="Download KSP2" Command="{Binding SettingsTab.DownloadFromSteamCommand}">
+                            <MenuItem Header="{loc:T Steam.Menu.DownloadKsp2}" Command="{Binding SettingsTab.DownloadFromSteamCommand}">
                                 <MenuItem.Icon>
                                     <PathIcon Width="14" Height="14" Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" />
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <MenuItem Header="Sign out of Steam" Command="{Binding SettingsTab.SignOutOfSteamCommand}">
+                            <MenuItem Header="{loc:T Steam.Menu.SignOut}" Command="{Binding SettingsTab.SignOutOfSteamCommand}">
                                 <MenuItem.Icon>
                                     <PathIcon Width="14" Height="14"
                                               Data="M17 7L15.59 8.41L18.17 11H8V13H18.17L15.59 15.58L17 17L22 12M4 5H12V3H4C2.9 3 2 3.9 2 5V19C2 20.1 2.9 21 4 21H12V19H4V5Z" />
@@ -330,7 +331,7 @@
                 </Button>
 
                 <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="{StaticResource ScrimMediumBrush}">
-                    <TextBlock Text="Update Downloading..."
+                    <TextBlock Text="{loc:T Window.UpdateDownloading}"
                                Foreground="{StaticResource TextPrimaryBrush}" FontSize="32"
                                FontFamily="{StaticResource JetBrainsMonoLight}"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />

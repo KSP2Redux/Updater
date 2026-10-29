@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using CodeHollow.FeedReader;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -88,9 +89,9 @@ public class MacSteamLaunchOptionsTest
 
         // Assert
         TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(
-                "Rosetta Needed", WineRuntimeService.ROSETTA_MISSING_MESSAGE,
+                "Rosetta Needed", WineRuntimeService.RosettaMissingMessage,
                 It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()),
             Times.Once);
-        TestAppBuilder.WineRuntimeService.Verify(w => w.PrepareAsync(It.IsAny<WineRuntime>(), It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        TestAppBuilder.WineRuntimeService.Verify(w => w.PrepareAsync(It.IsAny<WineRuntime>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

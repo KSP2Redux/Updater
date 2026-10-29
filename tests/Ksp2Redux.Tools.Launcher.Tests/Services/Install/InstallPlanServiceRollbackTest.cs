@@ -1,4 +1,5 @@
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -30,7 +31,7 @@ public class InstallPlanServiceRollbackTest
         var patchDownloadService = new Mock<IPatchDownloadService>();
         patchDownloadService.Setup(service => service.EnqueueAll(
                 It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
-                It.IsAny<int>(), It.IsAny<Action<string>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
+                It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
             .Returns([]);
         var configService = new Mock<ILauncherConfigService>();
         configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
@@ -44,7 +45,7 @@ public class InstallPlanServiceRollbackTest
     private static InstallPlan MakeCorruptPatchPlan()
     {
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), "corrupt patch");
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), LogMessage.Literal("corrupt patch"));
         return plan;
     }
 

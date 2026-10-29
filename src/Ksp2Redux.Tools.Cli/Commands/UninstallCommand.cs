@@ -53,7 +53,7 @@ public sealed class UninstallCommand : ReduxCommand<UninstallSettings>
 
         var plan = new InstallPlan();
         plan.Uninstall();
-        context.InstallPlanService.Describe(plan, context.Output.Detail);
+        context.InstallPlanService.Describe(plan, line => context.Output.Detail(line.English));
 
         try
         {
@@ -62,7 +62,7 @@ public sealed class UninstallCommand : ReduxCommand<UninstallSettings>
                 (log, _, steps) => context.InstallPlanService.ApplyToFolder(
                     plan,
                     install.InstallDir,
-                    log,
+                    line => log(line.English),
                     (_, _) => { },
                     steps,
                     cancellationToken));

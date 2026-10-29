@@ -2,6 +2,7 @@
 using Avalonia;
 using Avalonia.Headless;
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Game;
@@ -84,6 +85,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton<IGameDataFolderService, GameDataFolderService>();
         serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
         serviceCollection.AddSingleton<ILogService, LogService>();
+        serviceCollection.AddSingleton<ILocalizationService>(LocalizationService.Default);
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();

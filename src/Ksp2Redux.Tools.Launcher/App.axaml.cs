@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
@@ -41,7 +42,7 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
             return;
         }
 
-        var log = _serviceProvider.GetRequiredService<ILogService>();
+        var log =_serviceProvider.GetRequiredService<ILogService>();
         log.Info($"Launcher starting. Log file: {log.CurrentLogFilePath ?? "(console only)"}");
         log.Info($"Launcher {typeof(App).Assembly.GetName().Version} on {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture}), {RuntimeInformation.FrameworkDescription}.");
         if (Program.RenderingFlags.Length > 0) log.Info($"Rendering overridden with {Program.RenderingFlags}.");
@@ -53,6 +54,10 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // Before the window, so it is created in the language the player chose.
+            _serviceProvider.GetRequiredService<ILocalizationService>()
+                .SetLanguage(_serviceProvider.GetRequiredService<ILauncherConfigService>().Config.Language);
+
             var mainWindow = new MainWindow
             {
                 DataContext = _serviceProvider.GetRequiredService<MainWindowViewModel>()
@@ -73,12 +78,11 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
     private async void AboutMenuItem_OnClick(object? sender, EventArgs e)
     {
         if (_serviceProvider is null) return;
-        var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+        var localization = _serviceProvider.GetRequiredService<ILocalizationService>();
+        var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? localization["App.About.UnknownVersion"];
         await _serviceProvider.GetRequiredService<IMessageBoxService>().ShowMessageBoxAsOwnedAsync(
-            "About KSP2 Redux",
-            $"KSP2 Redux Launcher\nVersion {version}\n\n" +
-            "The installer, updater and launcher for KSP2 Redux.\n" +
-            "https://ksp2redux.org");
+            localization["App.About.Title"],
+            localization.Format("App.About.Message", version));
     }
 
     private async void CheckForUpdatesMenuItem_OnClick(object? sender, EventArgs e)
