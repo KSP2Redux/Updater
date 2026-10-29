@@ -5,6 +5,7 @@
              xmlns:community="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Community"
              xmlns:launcher="clr-namespace:Ksp2Redux.Tools.Launcher"
              xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
+             xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
              mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="530"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Community.CommunityTabView"
              x:DataType="community:CommunityTabViewModel">
@@ -19,7 +20,7 @@
                             <LineBreak/>
                             <Run Text="{Binding Subtitle}"/>
                         </TextBlock.Inlines></TextBlock>
-                    <Button Grid.Column="1" Classes="link-button" ToolTip.Tip="View On Blog" Margin="0, 0, 20, 0" VerticalAlignment="Top" Click="NewsLink_OnClick">
+                    <Button Grid.Column="1" Classes="link-button" ToolTip.Tip="{loc:T Community.ViewOnBlog.Tooltip}" Margin="0, 0, 20, 0" VerticalAlignment="Top" Click="NewsLink_OnClick">
                         <Canvas>
                             <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-general.webp" Canvas.Left="0"
                                    Canvas.Top="0" />

@@ -14,6 +14,8 @@
         <AssemblyTitle>KSP2 Redux</AssemblyTitle>
         <Description>Launcher and updater for KSP2 Redux</Description>
         <IsPackable>false</IsPackable>
+        <!-- Keep only the satellite assemblies of packages for the languages the launcher can be translated into. -->
+        <SatelliteResourceLanguages>en;de;es;fr;it;ja;ko;pl;pt-BR;ro;ru;sr;sv;zh-Hans;zh-Hant</SatelliteResourceLanguages>
     </PropertyGroup>
 
     <ItemGroup>

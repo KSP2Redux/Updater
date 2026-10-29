@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -13,6 +14,7 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     private readonly IFileSystem _fileSystem;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly ILocalizationService _localization;
     private readonly Ksp2InstallEntry _entry;
 
     public Guid Id => _entry.Id;
@@ -48,11 +50,12 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     public partial bool DisableGraphicsJobs { get; set; }
 
     public Ksp2InstallRowViewModel(IFileSystem fileSystem, IKsp2InstallService ksp2InstallService,
-        IMessageBoxService messageBoxService, Ksp2InstallEntry entry, bool isActive)
+        IMessageBoxService messageBoxService, ILocalizationService localization, Ksp2InstallEntry entry, bool isActive)
     {
         _fileSystem = fileSystem;
         _ksp2InstallService = ksp2InstallService;
         _messageBoxService = messageBoxService;
+        _localization = localization;
         _entry = entry;
         Name = entry.Name;
         ExePath = entry.ExePath;
@@ -85,9 +88,8 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     }
 
     private Task WarnAboutSnapshotChannelAsync()
-        => _messageBoxService.ShowMessageBoxAsOwnedAsync("Switching to Snapshot",
-            "The snapshot channel is for QA testing. Builds are unstable and can break at any time.\n\n" +
-            "We recommend not using it with existing campaigns.",
+        => _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Settings.SnapshotWarning.Title"],
+            _localization["Settings.SnapshotWarning.Message"],
             icon: Icon.Warning,
             windowStartupLocation: WindowStartupLocation.CenterOwner);
     partial void OnIsActiveChanged(bool value)
@@ -122,17 +124,24 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     partial void OnDisableGraphicsJobsChanged(bool value)
         => _ksp2InstallService.UpdateInstallDisableGraphicsJobs(_entry.Id, value);
 
+    /// <summary>Words the validation errors again, after the language changed.</summary>
+    public void RefreshLocalizedText()
+    {
+        ExePathError = ValidateExePath(ExePath);
+        SteamAppIdError = ValidateSteamAppId(SteamAppId?.Trim() ?? "");
+    }
+
     private string? ValidateExePath(string value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return "An install path is required.";
-        if (_fileSystem.Path.GetFileName(value) != Ksp2Install.KSP2_EXE_NAME) return $"Path must point to {Ksp2Install.KSP2_EXE_NAME}.";
-        if (!_fileSystem.File.Exists(value)) return "That file doesn't exist.";
+        if (string.IsNullOrWhiteSpace(value)) return _localization["Settings.Exe.Error.Required"];
+        if (_fileSystem.Path.GetFileName(value) != Ksp2Install.KSP2_EXE_NAME) return _localization.Format("Settings.Exe.Error.WrongFile", Ksp2Install.KSP2_EXE_NAME);
+        if (!_fileSystem.File.Exists(value)) return _localization["Settings.Exe.Error.Missing"];
         return null;
     }
 
-    private static string? ValidateSteamAppId(string value)
+    private string? ValidateSteamAppId(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
-        return value.All(char.IsAsciiDigit) ? null : "Steam App ID must be numeric.";
+        return value.All(char.IsAsciiDigit) ? null : _localization["Settings.SteamAppId.Error.NotNumeric"];
     }
 }

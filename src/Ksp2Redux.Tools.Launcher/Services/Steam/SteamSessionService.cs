@@ -1,3 +1,4 @@
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using SteamKit2;
 using SteamKit2.Authentication;
@@ -40,11 +41,18 @@ public sealed record SteamConnection(SteamClient Client, SteamApps Apps, SteamCo
 /// <summary>
 /// A sign-in that Steam refused, carrying a message the player can act on.
 /// </summary>
-public class SteamSignInException(string message, EResult result = EResult.Fail, Exception? inner = null)
-    : Exception(message, inner)
+public class SteamSignInException : Exception
 {
+    // The message is English for the log, and the user's language rides along in Data for UserMessage().
+    public SteamSignInException(LogMessage message, EResult result = EResult.Fail, Exception? inner = null)
+        : base(message.English, inner)
+    {
+        Data[LogMessageExceptionExtensions.LOCALIZED_KEY] = message.Localized;
+        Result = result;
+    }
+
     /// <summary>Steam's result code for the failure.</summary>
-    public EResult Result { get; } = result;
+    public EResult Result { get; }
 }
 
 public interface ISteamSessionService
@@ -100,9 +108,11 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
     private const string DEVICE_NAME = "KSP2 Redux Launcher";
 
     /// <summary>Tells the player how to cancel a saved login that signing out could not revoke.</summary>
-    public const string REVOKE_FAILED_MESSAGE =
-        "You are signed out here, but Steam could not be reached to cancel the saved login. To cancel it yourself, " +
-        "remove \"" + DEVICE_NAME + "\" from the devices in your Steam account's security settings.";
+    public static string RevokeFailedMessage => Loc.Format("Steam.RevokeFailed", DEVICE_NAME);
+
+    // Static members and exception messages cannot take the service by injection, so they read the shared one.
+    private static ILocalizationService Loc => LocalizationService.Default;
+
     private static readonly TimeSpan CONNECT_TIMEOUT = TimeSpan.FromSeconds(30);
 
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -368,8 +378,8 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
 
     private void OnDisconnected(SteamClient.DisconnectedCallback callback)
     {
-        _connected?.TrySetException(new SteamSignInException("Couldn't reach Steam. Check your internet connection and try again."));
-        _loggedOn?.TrySetException(new SteamSignInException("Steam closed the connection during sign-in. Try again."));
+        _connected?.TrySetException(new SteamSignInException(Loc.Message("Steam.Error.Unreachable")));
+        _loggedOn?.TrySetException(new SteamSignInException(Loc.Message("Steam.Error.ConnectionClosed")));
 
         if (Account is null) return;
 
@@ -392,16 +402,15 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
         client?.Disconnect();
     }
 
-    internal static string DescribeFailure(EResult result) => result switch
+    internal static LogMessage DescribeFailure(EResult result) => result switch
     {
-        EResult.InvalidPassword => "The account name or password is incorrect.",
-        EResult.RateLimitExceeded or EResult.AccountLoginDeniedThrottle =>
-            "Steam has temporarily blocked sign-ins after too many attempts. Wait a while and try again.",
-        EResult.Expired or EResult.InvalidSignature or EResult.Revoked => "Your saved Steam sign-in has expired. Please sign in again.",
-        EResult.FileNotFound => "The QR code expired. A new one has been generated, scan that instead.",
-        EResult.TwoFactorCodeMismatch or EResult.InvalidLoginAuthCode => "The Steam Guard code was incorrect.",
-        EResult.ServiceUnavailable or EResult.TryAnotherCM or EResult.Timeout => "Steam is unavailable right now. Try again in a moment.",
-        _ => $"Steam refused the sign-in ({result})."
+        EResult.InvalidPassword => Loc.Message("Steam.Error.InvalidPassword"),
+        EResult.RateLimitExceeded or EResult.AccountLoginDeniedThrottle => Loc.Message("Steam.Error.RateLimited"),
+        EResult.Expired or EResult.InvalidSignature or EResult.Revoked => Loc.Message("Steam.Error.Expired"),
+        EResult.FileNotFound => Loc.Message("Steam.Error.QrExpired"),
+        EResult.TwoFactorCodeMismatch or EResult.InvalidLoginAuthCode => Loc.Message("Steam.Error.GuardCodeWrong"),
+        EResult.ServiceUnavailable or EResult.TryAnotherCM or EResult.Timeout => Loc.Message("Steam.Error.Unavailable"),
+        _ => Loc.Message("Steam.Error.Refused", result)
     };
 
     private sealed class GuardPromptAuthenticator(ISteamGuardPrompt prompt) : IAuthenticator

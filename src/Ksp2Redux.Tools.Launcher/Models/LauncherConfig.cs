@@ -40,6 +40,11 @@ public class LauncherConfig(string storagePath)
     public string LauncherRepo { get; set; } = "https://github.com/KSP2Redux/Updater";
 
     /// <summary>
+    /// Culture name of the language the launcher shows, for example "de". Empty follows the operating system.
+    /// </summary>
+    public string Language { get; set; } = "";
+
+    /// <summary>
     /// When enabled, lowers the log file's minimum level to Debug for more detailed troubleshooting output.
     /// </summary>
     public bool VerboseLogging { get; set; } = false;

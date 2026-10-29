@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Abstractions;
 using System.Security.Cryptography;
 using Ksp2Redux.Tools.Common.Models;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
@@ -55,7 +56,7 @@ public class ManifestReleasesFeed(
     /// Downloads a legacy single-URL patch. New install plans use the shared chunk download service.
     /// </summary>
     public async Task<string> DownloadPatch(
-        ReleasePatch patch, Action<string> downloadLog, Action<long, long> progress, CancellationToken ct)
+        ReleasePatch patch, Action<LogMessage> downloadLog, Action<long, long> progress, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(patch.Url))
             throw new InvalidOperationException("The patch does not have a legacy download URL.");
@@ -93,7 +94,7 @@ public class ManifestReleasesFeed(
             }
         }
         progress(patch.Size, patch.Size);
-        downloadLog("Download complete.");
+        downloadLog(LocalizationService.Default.Message("Download.Complete"));
         return destination;
     }
 
@@ -182,14 +183,14 @@ public class ManifestReleasesFeed(
                     if (patch.Requires.Version == from)
                     {
                         bestPlan = new InstallPlan();
-                        bestPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), $"applying patch for version: {to} from version {from}");
+                        bestPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), LocalizationService.Default.Message("Plan.ApplyPatchFromVersion", to, from));
                         break;
                     }
 
                     if (patch.Requires.IsBasePatch)
                     {
                         var testPlan = new InstallPlan();
-                        testPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), $"applying patch for version: {to} from prepatch");
+                        testPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), LocalizationService.Default.Message("Plan.ApplyPatchFromPrepatch", to));
                         testPlan.Prepatch();
                         testPlan.RevertToStock();
                         if (bestPlan == null || bestPlan.Cost > testPlan.Cost) bestPlan = testPlan;
@@ -197,7 +198,7 @@ public class ManifestReleasesFeed(
                     else
                     {
                         var newInitialPlan = new InstallPlan();
-                        newInitialPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), $"applying patch for version: {to} from version {patch.Requires.Version}");
+                        newInitialPlan.ApplyPatchFile(new PatchDownloadRequest(feed, patch, downloadStorageDir), LocalizationService.Default.Message("Plan.ApplyPatchFromVersion", to, patch.Requires.Version));
                         var testPlan = GetPlan(from, patch.Requires.Version!, newInitialPlan);
                         if (testPlan != null && (bestPlan == null || bestPlan.Cost > testPlan.Cost)) bestPlan = testPlan;
                     }

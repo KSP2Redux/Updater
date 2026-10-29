@@ -2,6 +2,7 @@
 using System.Runtime.ExceptionServices;
 using Ksp2Redux.Tools.Common.Patching;
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -10,9 +11,9 @@ namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 public interface IInstallPlanService
 {
-    void Describe(InstallPlan installPlan, Action<string> log);
+    void Describe(InstallPlan installPlan, Action<LogMessage> log);
 
-    Task ApplyToFolder(InstallPlan installPlan, string install, Action<string> log,
+    Task ApplyToFolder(InstallPlan installPlan, string install, Action<LogMessage> log,
         Action<long, long> downloadProgress, Action<int, int> stepsProgress, CancellationToken ct);
 }
 
@@ -30,28 +31,31 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     // Extra headroom on top of the raw estimate below, since patch application briefly holds both the
     // old and new copy of a changed file, and the download itself needs to sit on disk before it's applied.
     private const double RequiredSpaceSafetyMargin = 1.2;
-    
-    public void Describe(InstallPlan installPlan, Action<string> log)
+
+    // The plan's lines reach the install log from instance and static members alike, so they read the shared service.
+    private static ILocalizationService Loc => LocalizationService.Default;
+
+    public void Describe(InstallPlan installPlan, Action<LogMessage> log)
     {
-        log($"Install/Update plan has been made, it has {installPlan.Steps.Count} steps.");
+        log(Loc.Message("Install.PlanMade", installPlan.Steps.Count));
         for (var i = 0; i < installPlan.Steps.Count; i++)
         {
             switch (installPlan.Steps[i].Action)
             {
                 case InstallPlanAction.Uninstall:
-                    log($"Step {i + 1}: Uninstalling KSP2 Redux");
+                    log(Loc.Message("Install.Step.Uninstall", i + 1));
                     break;
                 case InstallPlanAction.RevertToStock:
-                    log($"Step {i + 1}: Revert to Stock Install");
+                    log(Loc.Message("Install.Step.RevertToStock", i + 1));
                     break;
                 case InstallPlanAction.Prepatch:
-                    log($"Step {i + 1}: Going to prepatch from stock");
+                    log(Loc.Message("Install.Step.Prepatch", i + 1));
                     break;
                 case InstallPlanAction.ApplyPatchFile:
-                    log($"Step {i + 1}: {installPlan.Steps[i].ArgumentDescription}");
+                    log(Loc.Message("Install.Step.ApplyPatchFile", i + 1, installPlan.Steps[i].ArgumentDescription));
                     break;
                 case InstallPlanAction.CopyFrom:
-                    log($"Step {i + 1}: (This should be impossible rn)");
+                    log(LogMessage.Literal($"Step {i + 1}: (This should be impossible rn)"));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -59,15 +63,18 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         }
     }
 
-    public async Task ApplyToFolder(InstallPlan installPlan, string install, Action<string> log,
+    public async Task ApplyToFolder(InstallPlan installPlan, string install, Action<LogMessage> log,
         Action<long, long> downloadProgress, Action<int, int> stepsProgress, CancellationToken ct)
     {
+        // Ksp2Patch reports plain text, which is never translated.
+        Action<string> patchLog = text => log(LogMessage.Literal(text));
+
         // Patching, rollback and bundle conversion rewrite files in place. A file another program holds open (a
         // running KSP2, or a Unity editor that loaded the game's bundles) fails partway through and leaves old and
         // new files mixed, so nothing starts while any is held.
         if (installFileLockService is not null)
         {
-            log("Checking that no other program is using the game files...");
+            log(Loc.Message("Install.CheckingFiles"));
             await Task.Run(() => installFileLockService.EnsureNoFilesInUse(install), ct);
         }
 
@@ -98,7 +105,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 switch (step.Action)
                 {
                 case InstallPlanAction.Uninstall:
-                    log("Uninstalling KSP2 Redux");
+                    log(Loc.Message("Install.Uninstalling"));
                     // The bundle folder is not in the snapshot, and the restore deletes the journal, so undo
                     // the bundle conversion first. A bundle it could not put back would stay converted for good
                     // once the journal is gone, so a failed revert stops here with the Redux install intact.
@@ -117,22 +124,22 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
                     if (fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
-                        log("Reverting KSP2 Redux to Stock for repatching");
+                        log(Loc.Message("Install.RevertingForRepatch"));
                         mutationStarted = true;
                         cacheService.RecursivelyRestoreCache(install, true);
                     }
                     else
                     {
-                        log("Did not need to revert to stock");
+                        log(Loc.Message("Install.NoRevertNeeded"));
                     }
                     break;
                 case InstallPlanAction.Prepatch:
                 {
-                    log("Applying the correct prepatch");
+                    log(Loc.Message("Install.ApplyingPrepatch"));
                     mutationStarted = true;
                     if (fileSystem.File.Exists(fileSystem.Path.Combine(install, "winhttp.dll")))
                     {
-                        log("Deleting old modloader!");
+                        log(Loc.Message("Install.DeletingModloader"));
                         fileSystem.File.Delete(fileSystem.Path.Combine(install, "winhttp.dll"));
                     }
                     
@@ -148,7 +155,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     {
                         case Distribution.Portable:
                         {
-                            log("Applying portable prepatch");
+                            log(Loc.Message("Install.Prepatch.Portable"));
                             await using var stream = assemblyService.GetManifestResourceStream(PORTABLE_PREPATCH_NAME);
                             await using var fstream =
                                 fileSystem.FileStream.New(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
@@ -158,7 +165,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         }
                         case Distribution.Steam:
                         {
-                            log("Applying steam prepatch");
+                            log(Loc.Message("Install.Prepatch.Steam"));
                             await using var stream = assemblyService.GetManifestResourceStream(STEAM_PREPATCH_NAME);
                             await using var fstream =
                                 fileSystem.FileStream.New(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
@@ -168,7 +175,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         }
                         case Distribution.Epic:
                         {
-                            log("Applying epic prepatch");
+                            log(Loc.Message("Install.Prepatch.Epic"));
                             await using var stream = assemblyService.GetManifestResourceStream(EPIC_PREPATCH_NAME);
                             await using var fstream =
                                 fileSystem.FileStream.New(patchFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
@@ -177,7 +184,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             break;
                         }
                         case Distribution.Redux:
-                            throw new Exception("Cannot apply prepatch to Redux install");
+                            throw Loc.Message("Install.Error.PrepatchOnRedux").ToException(message => new Exception(message));
                         case Distribution.Prepatched:
                             // Shouldn't happen, but *could*
                             goto delete_patch;
@@ -187,7 +194,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
                     using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile))
                     {
-                        await patch.AsyncApply(environmentProvider, install, install, log, log);
+                        await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
                     }
 
                     delete_patch:
@@ -210,13 +217,13 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     mutationStarted = true;
                     using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath))
                     {
-                        await patch.AsyncApply(environmentProvider, install, install, log, log);
+                        await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
                     }
                     if (step.DeleteAfter && fileSystem.File.Exists(patchPath))
                     {
-                        log($"Cleaning up downloaded patch {patchPath}");
+                        log(Loc.Message("Install.CleaningPatch", patchPath));
                         try { fileSystem.File.Delete(patchPath); }
-                        catch (Exception ex) { log($"Failed to delete patch {patchPath}: {ex.Message}"); }
+                        catch (Exception ex) { log(Loc.Message("Install.PatchDeleteFailed", patchPath, ex.ToLogMessage())); }
                     }
                     break;
                 }
@@ -264,7 +271,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         }
     }
 
-    private async Task RevertBundleConversion(string install, Action<string> log, CancellationToken ct)
+    private async Task RevertBundleConversion(string install, Action<LogMessage> log, CancellationToken ct)
     {
         if (bundleConversionService is null)
         {
@@ -275,7 +282,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     }
 
     // Runs during a rollback, which may follow a cancellation, so it does not take the plan's token.
-    private void TryRevertBundleConversion(string install, Action<string> log)
+    private void TryRevertBundleConversion(string install, Action<LogMessage> log)
     {
         if (bundleConversionService is null)
         {
@@ -288,7 +295,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         }
         catch (Exception ex)
         {
-            log($"Could not revert the bundle conversion: {ex.Message}");
+            log(Loc.Message("Install.BundleRevertFailed", ex.ToLogMessage()));
         }
     }
 
@@ -301,7 +308,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     /// If there is no snapshot to restore (nothing has been written to the install dir yet), rethrows the
     /// original exception unchanged.
     /// </summary>
-    private void RollbackOrRethrow(string install, Action<string> log, Exception original)
+    private void RollbackOrRethrow(string install, Action<LogMessage> log, Exception original)
     {
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
         {
@@ -309,7 +316,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             return; // unreachable, keeps the compiler happy
         }
 
-        log($"Install step failed ({original.Message}). Rolling back to the last known-good state...");
+        log(Loc.Message("Install.StepFailed", original.ToLogMessage()));
 
         // The snapshot is a stock install, and the restore leaves the bundles in StreamingAssets as they are.
         // Converted bundles draw magenta in stock and in Redux builds from before the URP port, so the
@@ -328,24 +335,21 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
         if (rollbackFailure is null)
         {
-            log("Rolled back successfully.");
+            log(Loc.Message("Install.RolledBack"));
             if (original is OperationCanceledException)
             {
                 ExceptionDispatchInfo.Capture(original).Throw();
             }
-            throw new InstallFailedException(
-                $"Installation failed and was automatically rolled back to the previous state. Original error: {original.Message}",
-                original, rolledBack: true);
+            throw Loc.Message("Install.Error.RolledBack", original.ToLogMessage()).ToException(message =>
+                new InstallFailedException(message, original, rolledBack: true));
         }
 
-        log($"Rollback also failed: {rollbackFailure.Message}");
-        throw new InstallFailedException(
-            $"Installation failed ({original.Message}) and the automatic rollback also failed ({rollbackFailure.Message}). " +
-            "The install may be in a broken state - try Uninstall or Revert to Stock from Settings.",
-            original, rolledBack: false);
+        log(Loc.Message("Install.RollbackFailed", rollbackFailure.ToLogMessage()));
+        throw Loc.Message("Install.Error.RollbackFailed", original.ToLogMessage(), rollbackFailure.ToLogMessage())
+            .ToException(message => new InstallFailedException(message, original, rolledBack: false));
     }
 
-    private void EnsureEnoughDiskSpace(InstallPlan installPlan, string install, Action<string> log)
+    private void EnsureEnoughDiskSpace(InstallPlan installPlan, string install, Action<LogMessage> log)
     {
         var remotePatches = installPlan.Steps
             .Where(step => step.DownloadRequest is not null)
@@ -357,10 +361,10 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             long stagingRequired = checked(largestPatch * 2 + DISK_SAFETY_BYTES);
             EnsureVolumeSpace(
                 remotePatches[0].StorageDirectory, stagingRequired,
-                "download and reconstruction storage", log);
+                "Install.Disk.Download", log);
             EnsureVolumeSpace(
                 fileSystem.Path.GetTempPath(), checked(largestPatch + DISK_SAFETY_BYTES),
-                "system temporary storage", log);
+                "Install.Disk.Temporary", log);
         }
 
         long requiredBytes = installPlan.Cost;
@@ -377,25 +381,25 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         requiredBytes = (long)(requiredBytes * RequiredSpaceSafetyMargin);
         if (requiredBytes <= 0) return;
 
-        EnsureVolumeSpace(install, requiredBytes, "installation storage", log);
+        EnsureVolumeSpace(install, requiredBytes, "Install.Disk.Install", log);
     }
 
-    private void EnsureVolumeSpace(string path, long requiredBytes, string purpose, Action<string> log)
+    // Each purpose has its own pair of whole sentences, since the purpose cannot be spliced into one in every language.
+    private void EnsureVolumeSpace(string path, long requiredBytes, string purposeKey, Action<LogMessage> log)
     {
         if (requiredBytes <= 0) return;
         var availableBytes = diskSpaceService.GetAvailableFreeSpace(path);
         if (availableBytes is null)
         {
-            log($"Could not determine available {purpose} space, skipping that pre-flight check.");
+            log(Loc.Message(purposeKey + ".Unknown"));
             return;
         }
 
         if (availableBytes < requiredBytes)
         {
-            throw new InsufficientDiskSpaceException(
-                $"Not enough free disk space for {purpose}: need approximately {FormatBytes(requiredBytes)}, " +
-                $"but only {FormatBytes(availableBytes.Value)} is available. Free up some space and try again.",
-                path, requiredBytes, availableBytes.Value);
+            throw Loc.Message(purposeKey + ".NotEnough", FormatBytes(requiredBytes), FormatBytes(availableBytes.Value))
+                .ToException(message => new InsufficientDiskSpaceException(
+                    message, path, requiredBytes, availableBytes.Value));
         }
     }
 

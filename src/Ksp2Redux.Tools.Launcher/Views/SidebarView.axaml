@@ -6,6 +6,7 @@
              xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
              xmlns:controls="clr-namespace:Ksp2Redux.Tools.Launcher.Controls"
              xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.Views.Shared"
+             xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
              mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="700"
              x:Class="Ksp2Redux.Tools.Launcher.Views.SidebarView"
              x:DataType="vm:MainWindowViewModel">
@@ -49,8 +50,21 @@
             <Style Selector="^ Border.main-button-tint">
                 <Setter Property="Background" Value="Transparent" />
             </Style>
+            <!-- The artwork has its icon baked in from x=178, so a label that is longer than English shrinks
+                 to fit between the left margin and the icon instead of running over it. The box is as high as
+                 the 32 px label line, so a shrunk label stays centered on the line instead of hugging the top. -->
+            <Style Selector="^ Grid.main-button-label">
+                <Setter Property="Canvas.Left" Value="24" />
+                <Setter Property="Canvas.Top" Value="16" />
+                <Setter Property="Width" Value="146" />
+                <Setter Property="Height" Value="32" />
+            </Style>
+            <Style Selector="^ Grid.main-button-label > Viewbox">
+                <Setter Property="HorizontalAlignment" Value="Left" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="StretchDirection" Value="DownOnly" />
+            </Style>
             <Style Selector="^ TextBlock">
-                <Setter Property="Margin" Value="24,16,0,0" />
                 <Setter Property="Foreground" Value="{StaticResource MainButtonTextBrush}" />
             </Style>
             <Style Selector="^:pointerover">
@@ -169,14 +183,14 @@
                     Name="RefreshVersionsButton"
                     Command="{Binding RefreshFeedsCommand}"
                     Content="⟳"
-                    ToolTip.Tip="Refresh versions (F5)"
+                    ToolTip.Tip="{loc:T Sidebar.RefreshVersions.Tooltip}"
                     Width="32"
                     VerticalAlignment="Stretch"
                     Margin="6,0,0,0" />
             </Grid>
             <TextBlock Name="FeedRefreshWarning"
                        IsVisible="{Binding FeedRefreshFailed}"
-                       Text="Couldn't refresh versions - showing the last known list."
+                       Text="{loc:T Sidebar.FeedRefreshWarning}"
                        Foreground="{StaticResource WarningBrush}"
                        FontSize="10" TextWrapping="Wrap"
                        Margin="2,4,0,0" />
@@ -191,7 +205,11 @@
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-install.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
-                    <TextBlock FontFamily="{StaticResource LedCounter7}">INSTALL</TextBlock>
+                    <Grid Classes="main-button-label">
+                        <Viewbox>
+                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.InstallButton}" />
+                        </Viewbox>
+                    </Grid>
                 </Canvas>
             </Button>
             <Button Classes="main-button" IsVisible="False" Name="UpdateButton" Command="{Binding UpdateRedux}"
@@ -200,7 +218,11 @@
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-update.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
-                    <TextBlock FontFamily="{StaticResource LedCounter7}">UPDATE</TextBlock>
+                    <Grid Classes="main-button-label">
+                        <Viewbox>
+                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.UpdateButton}" />
+                        </Viewbox>
+                    </Grid>
                 </Canvas>
             </Button>
             <Button Classes="main-button" IsVisible="False" Name="CancelButton" ClickMode="Press" Command="{Binding CancelCurrentMainButtonAction}"
@@ -209,7 +231,11 @@
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-cancel.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
-                    <TextBlock FontFamily="{StaticResource LedCounter7}">CANCEL</TextBlock>
+                    <Grid Classes="main-button-label">
+                        <Viewbox>
+                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.CancelButton}" />
+                        </Viewbox>
+                    </Grid>
                 </Canvas>
             </Button>
             <Button Classes="main-button" IsVisible="False" Name="LaunchButton" Command="{Binding LaunchGame}"
@@ -218,7 +244,11 @@
                 <Canvas Width="260" Height="76">
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/button-launch.webp" Canvas.Left="0" Canvas.Top="0" Width="260" />
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
-                    <TextBlock FontFamily="{StaticResource LedCounter7}">LAUNCH</TextBlock>
+                    <Grid Classes="main-button-label">
+                        <Viewbox>
+                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.LaunchButton}" />
+                        </Viewbox>
+                    </Grid>
                 </Canvas>
             </Button>
           </Panel>
@@ -226,13 +256,13 @@
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center"
                     VerticalAlignment="Bottom" Margin="0,14,0,0">
-            <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Redux Website" Click="WebsiteLink_OnClick">
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="{loc:T Sidebar.Link.Website.Tooltip}" Click="WebsiteLink_OnClick">
                 <Canvas>
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-website.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
-            <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP2 Modding Discord" Click="DiscordLink_OnClick">
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="{loc:T Sidebar.Link.Discord.Tooltip}" Click="DiscordLink_OnClick">
                 <Canvas>
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-discord.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />
@@ -244,7 +274,7 @@
                     <Border Classes="button-tint" />
                 </Canvas>
             </Button>
-            <Button Classes="link-button sidebar-link" ToolTip.Tip="KSP Forums" Click="ForumsLink_OnClick">
+            <Button Classes="link-button sidebar-link" ToolTip.Tip="{loc:T Sidebar.Link.Forums.Tooltip}" Click="ForumsLink_OnClick">
                 <Canvas>
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-forums.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />
                     <Border Classes="button-tint" />

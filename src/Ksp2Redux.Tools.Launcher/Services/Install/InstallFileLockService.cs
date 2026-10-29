@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.Runtime.InteropServices;
 using System.Text;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
@@ -48,7 +49,8 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
 
         var programs = FindProgramsHolding(held);
         var relative = held.Select(file => fileSystem.Path.GetRelativePath(install, file)).ToList();
-        throw new FilesInUseException(DescribeHeldFiles(relative, programs), relative, programs);
+        throw DescribeHeldFiles(relative, programs).ToException(message =>
+            new FilesInUseException(message, relative, programs.Select(program => program.English).ToList()));
     }
 
     private IEnumerable<string> EnumerateGameFiles(string install)
@@ -98,25 +100,32 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
         return held.Order(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    private static string DescribeHeldFiles(List<string> files, IReadOnlyList<string> programs)
+    private static LogMessage DescribeHeldFiles(List<string> files, IReadOnlyList<LogMessage> programs)
     {
-        var builder = new StringBuilder();
-        builder.Append(files.Count == 1 ? "A game file is" : $"{files.Count} game files are");
-        builder.Append(programs.Count > 0
-            ? $" in use by {string.Join(", ", programs)}."
-            : " in use by another program.");
-        builder.Append(" Close it, and any Unity project that uses this KSP2 folder, then try again. Nothing was changed.");
-        builder.Append("\nIn use: ");
-        builder.Append(string.Join(", ", files.Take(SHOWN_FILE_COUNT)));
-        if (files.Count > SHOWN_FILE_COUNT)
+        LogMessage? heldBy = programs.Count > 0
+            ? new LogMessage(string.Join(", ", programs.Select(program => program.English)),
+                string.Join(", ", programs.Select(program => program.Localized)))
+            : null;
+        var cause = (files.Count == 1, heldBy) switch
         {
-            builder.Append($" and {files.Count - SHOWN_FILE_COUNT} more");
-        }
+            (true, null) => Loc.Message("Locks.OneFile.OtherProgram"),
+            (true, _) => Loc.Message("Locks.OneFile.Programs", heldBy),
+            (false, null) => Loc.Message("Locks.ManyFiles.OtherProgram", files.Count),
+            _ => Loc.Message("Locks.ManyFiles.Programs", files.Count, heldBy)
+        };
+        var shown = string.Join(", ", files.Take(SHOWN_FILE_COUNT));
+        var inUse = files.Count > SHOWN_FILE_COUNT
+            ? Loc.Message("Locks.InUseMore", shown, files.Count - SHOWN_FILE_COUNT)
+            : Loc.Message("Locks.InUse", shown);
+        var advice = Loc.Message("Locks.Advice");
 
-        return builder.ToString();
+        return new LogMessage($"{cause.English} {advice.English}\n{inUse.English}",
+            $"{cause.Localized} {advice.Localized}\n{inUse.Localized}");
     }
 
-    private IReadOnlyList<string> FindProgramsHolding(List<string> files)
+    private static ILocalizationService Loc => LocalizationService.Default;
+
+    private IReadOnlyList<LogMessage> FindProgramsHolding(List<string> files)
     {
         if (!operatingSystemService.IsWindows())
         {
@@ -182,7 +191,7 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
         private static extern int RmGetList(uint sessionHandle, out uint processInfoNeeded, ref uint processInfoCount,
             [In, Out] RmProcessInfo[]? affectedApps, ref uint rebootReasons);
 
-        public static IReadOnlyList<string> FindProgramsHolding(List<string> files)
+        public static IReadOnlyList<LogMessage> FindProgramsHolding(List<string> files)
         {
             if (RmStartSession(out var session, 0, new StringBuilder(CCH_RM_SESSION_KEY + 1)) != 0)
             {
@@ -213,7 +222,7 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
 
                 return processes
                     .Take((int)count)
-                    .Select(process => $"{process.AppName} (process {process.Process.ProcessId})")
+                    .Select(process => Loc.Message("Locks.Process", process.AppName, process.Process.ProcessId))
                     .Distinct()
                     .ToList();
             }

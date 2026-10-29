@@ -1,0 +1,1452 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- App menu and about box -->
+  <data name="App.Menu.About" xml:space="preserve">
+    <value>About KSP2 Redux</value>
+    <comment>macOS application menu item that opens the about box.</comment>
+  </data>
+  <data name="App.Menu.CheckForUpdates" xml:space="preserve">
+    <value>Check for Updates…</value>
+    <comment>macOS application menu item that checks for a new launcher version.</comment>
+  </data>
+  <data name="App.About.Title" xml:space="preserve">
+    <value>About KSP2 Redux</value>
+    <comment>Title of the about box.</comment>
+  </data>
+  <data name="App.About.Message" xml:space="preserve">
+    <value>KSP2 Redux Launcher
+Version {0}
+
+The installer, updater and launcher for KSP2 Redux.
+https://ksp2redux.org</value>
+    <comment>Body of the about box, four lines. {0} = launcher version number. Keep the web address as it is.</comment>
+  </data>
+  <data name="App.About.UnknownVersion" xml:space="preserve">
+    <value>unknown</value>
+    <comment>Shown in the about box in place of the version number when it cannot be read.</comment>
+  </data>
+  <!-- Main window -->
+  <data name="Tab.Home" xml:space="preserve">
+    <value>Home</value>
+    <comment>Header of the first tab. Shown in capital letters, keep it to one short word.</comment>
+  </data>
+  <data name="Tab.Community" xml:space="preserve">
+    <value>Community</value>
+    <comment>Header of the news tab. Shown in capital letters, keep it to one short word.</comment>
+  </data>
+  <data name="Tab.Mods" xml:space="preserve">
+    <value>Mods</value>
+    <comment>Header of the mods tab. Shown in capital letters, keep it to one short word.</comment>
+  </data>
+  <data name="Window.Maximize.Tooltip" xml:space="preserve">
+    <value>Maximize</value>
+    <comment>Tooltip of the title bar button that maximizes the window.</comment>
+  </data>
+  <data name="Window.Restore.Tooltip" xml:space="preserve">
+    <value>Restore</value>
+    <comment>Tooltip of the title bar button that returns a maximized window to its normal size.</comment>
+  </data>
+  <data name="Window.UpdateDownloading" xml:space="preserve">
+    <value>Update Downloading...</value>
+    <comment>Large text over the whole window while a new launcher version is downloading.</comment>
+  </data>
+  <data name="Steam.Menu.DownloadKsp2" xml:space="preserve">
+    <value>Download KSP2</value>
+    <comment>Item in the menu of the Steam icon in the bottom-right corner. Downloads the game from Steam.</comment>
+  </data>
+  <data name="Steam.Menu.SignOut" xml:space="preserve">
+    <value>Sign out of Steam</value>
+    <comment>Item in the menu of the Steam icon in the bottom-right corner.</comment>
+  </data>
+  <!-- Sidebar -->
+  <data name="Sidebar.LatestNews" xml:space="preserve">
+    <value>LATEST NEWS</value>
+    <comment>Heading above the news list in the left sidebar.</comment>
+  </data>
+  <data name="Sidebar.RefreshVersions.Tooltip" xml:space="preserve">
+    <value>Refresh versions (F5)</value>
+    <comment>Tooltip of the refresh button next to the version drop-down. F5 is the keyboard shortcut.</comment>
+  </data>
+  <data name="Sidebar.FeedRefreshWarning" xml:space="preserve">
+    <value>Couldn't refresh versions - showing the last known list.</value>
+    <comment>Small warning under the version drop-down when the list of game versions could not be downloaded.</comment>
+  </data>
+  <data name="Sidebar.InstallButton" xml:space="preserve">
+    <value>INSTALL</value>
+    <comment>Label of the big button that installs a version. Write it in capital letters. The button has room for about 8 characters, a longer word is shrunk until it is hard to read, so use a short word or an abbreviation.</comment>
+  </data>
+  <data name="Sidebar.UpdateButton" xml:space="preserve">
+    <value>UPDATE</value>
+    <comment>Label of the big button that updates the installed version. Write it in capital letters. The button has room for about 8 characters, a longer word is shrunk until it is hard to read, so use a short word or an abbreviation.</comment>
+  </data>
+  <data name="Sidebar.CancelButton" xml:space="preserve">
+    <value>CANCEL</value>
+    <comment>Label of the big button that cancels the running install, or stops the running game. Write it in capital letters. The button has room for about 8 characters, a longer word is shrunk until it is hard to read, so use a short word or an abbreviation.</comment>
+  </data>
+  <data name="Sidebar.LaunchButton" xml:space="preserve">
+    <value>LAUNCH</value>
+    <comment>Label of the big button that starts the game. Write it in capital letters. The button has room for about 8 characters, a longer word is shrunk until it is hard to read, so use a short word or an abbreviation.</comment>
+  </data>
+  <data name="Sidebar.Link.Website.Tooltip" xml:space="preserve">
+    <value>KSP2 Redux Website</value>
+    <comment>Tooltip of the link icon that opens the project website.</comment>
+  </data>
+  <data name="Sidebar.Link.Discord.Tooltip" xml:space="preserve">
+    <value>KSP2 Modding Discord</value>
+    <comment>Tooltip of the link icon that opens the Discord server.</comment>
+  </data>
+  <data name="Sidebar.Link.Forums.Tooltip" xml:space="preserve">
+    <value>KSP Forums</value>
+    <comment>Tooltip of the link icon that opens the forum thread.</comment>
+  </data>
+  <!-- Community and Mods tabs -->
+  <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
+    <value>View On Blog</value>
+    <comment>Tooltip of the button next to a news post title that opens the post in the browser.</comment>
+  </data>
+  <data name="Mods.ComingSoon" xml:space="preserve">
+    <value>COMING SOON</value>
+    <comment>Large heading on the Mods tab, which has no content yet.</comment>
+  </data>
+  <data name="Mods.Roadmap" xml:space="preserve">
+    <value>Mod support is on the roadmap :3</value>
+    <comment>Line under the heading on the Mods tab. The ":3" is a smiley.</comment>
+  </data>
+  <!-- Home tab -->
+  <data name="Home.Progress.Downloaded" xml:space="preserve">
+    <value>Downloaded:</value>
+    <comment>Label in front of the download progress bar on the Home tab.</comment>
+  </data>
+  <data name="Home.Progress.Installed" xml:space="preserve">
+    <value>Installed:</value>
+    <comment>Label in front of the install progress bar on the Home tab.</comment>
+  </data>
+  <data name="Home.Progress.DownloadFormat" xml:space="preserve">
+    <value>{0:F1}/{3:F1} MB ({1:0}%)</value>
+    <comment>Text on the download progress bar. {0} = megabytes downloaded, {3} = megabytes in total, {1} = percent done. Keep the placeholders with their formats.</comment>
+  </data>
+  <data name="Home.Progress.InstallFormat" xml:space="preserve">
+    <value>{0}/{3} steps ({1:0}%)</value>
+    <comment>Text on the install progress bar. {0} = steps done, {3} = steps in total, {1} = percent done. Keep the placeholders with their formats.</comment>
+  </data>
+  <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
+    <value>New version of the updater app is necessary to install or update redux</value>
+    <comment>Red bar at the bottom of the Home tab when the launcher itself must be updated first.</comment>
+  </data>
+  <data name="Home.InstallUpdateButton" xml:space="preserve">
+    <value>Install update</value>
+    <comment>Button in the red bar at the bottom of the Home tab. Updates the launcher itself.</comment>
+  </data>
+  <!-- Settings tab -->
+  <data name="Settings.Title" xml:space="preserve">
+    <value>SETTINGS</value>
+    <comment>Heading of the Settings tab, shown in capital letters.</comment>
+  </data>
+  <data name="Settings.Profile.Section" xml:space="preserve">
+    <value>INSTALL PROFILE</value>
+    <comment>Heading of the settings section for the selected KSP2 install. A profile is the launcher's saved entry for one copy of the game.</comment>
+  </data>
+  <data name="Settings.Profile.Label" xml:space="preserve">
+    <value>Profile</value>
+    <comment>Label of the drop-down that selects the install profile.</comment>
+  </data>
+  <data name="Settings.Profile.NamePlaceholder" xml:space="preserve">
+    <value>Profile name</value>
+    <comment>Hint shown in the empty text box while a profile is being renamed.</comment>
+  </data>
+  <data name="Settings.Profile.Rename.Tooltip" xml:space="preserve">
+    <value>Rename this profile</value>
+    <comment>Tooltip of the pencil button next to the profile drop-down.</comment>
+  </data>
+  <data name="Settings.Profile.RenameSave.Tooltip" xml:space="preserve">
+    <value>Save the name (Enter). Esc cancels.</value>
+    <comment>Tooltip of the check mark button shown while a profile is being renamed. Enter and Esc are keyboard keys.</comment>
+  </data>
+  <data name="Settings.Profile.Add" xml:space="preserve">
+    <value>Add</value>
+    <comment>Button that adds a profile for another KSP2 install.</comment>
+  </data>
+  <data name="Settings.Profile.Add.Tooltip" xml:space="preserve">
+    <value>Add a profile for another KSP2 install on this computer</value>
+    <comment>Tooltip of the Add button.</comment>
+  </data>
+  <data name="Settings.Profile.Remove" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button that removes the selected profile from the launcher.</comment>
+  </data>
+  <data name="Settings.Profile.Remove.Tooltip" xml:space="preserve">
+    <value>Remove this profile from the launcher. The game files are left where they are.</value>
+    <comment>Tooltip of the Remove button.</comment>
+  </data>
+  <data name="Settings.Profile.OpenFolder" xml:space="preserve">
+    <value>Open Folder</value>
+    <comment>Button that opens the game's install folder in the file browser.</comment>
+  </data>
+  <data name="Settings.Profile.OpenFolder.Tooltip" xml:space="preserve">
+    <value>Open this install's folder in your file browser.</value>
+    <comment>Tooltip of the Open Folder button.</comment>
+  </data>
+  <data name="Settings.Profile.DownloadKsp2" xml:space="preserve">
+    <value>Download KSP2</value>
+    <comment>Button in the profile section that downloads the game from Steam. Its tooltip is set elsewhere.</comment>
+  </data>
+  <data name="Settings.Exe.Label" xml:space="preserve">
+    <value>Game executable</value>
+    <comment>Label of the text box that holds the path of KSP2_x64.exe.</comment>
+  </data>
+  <data name="Settings.Exe.Browse" xml:space="preserve">
+    <value>Browse</value>
+    <comment>Button next to the game executable path that opens a file picker.</comment>
+  </data>
+  <data name="Settings.Exe.Browse.Tooltip" xml:space="preserve">
+    <value>Find KSP2_x64.exe with the file browser</value>
+    <comment>Tooltip of the Browse button. KSP2_x64.exe is a file name.</comment>
+  </data>
+  <data name="Settings.Channel.Label" xml:space="preserve">
+    <value>Release channel</value>
+    <comment>Label of the drop-down that selects where Redux versions are taken from, for example stable or snapshot.</comment>
+  </data>
+  <data name="Settings.LaunchViaSteam.Label" xml:space="preserve">
+    <value>Launch via Steam</value>
+    <comment>Label of a check box. When ticked, the game is started through the Steam client.</comment>
+  </data>
+  <data name="Settings.LaunchViaSteam.Tooltip" xml:space="preserve">
+    <value>Start KSP2 through the Steam client instead of running KSP2_x64.exe directly.</value>
+    <comment>Tooltip of the Launch via Steam label. KSP2_x64.exe is a file name.</comment>
+  </data>
+  <data name="Settings.SteamAppId.Label" xml:space="preserve">
+    <value>Steam app id</value>
+    <comment>Label of the text box that holds the Steam application number of the game.</comment>
+  </data>
+  <data name="Settings.SteamAppId.Tooltip" xml:space="preserve">
+    <value>Override to launch a Steam 'Add a Non-Steam Game' shortcut for KSP2. Leave as 954850 for the normal Steam release.</value>
+    <comment>Tooltip of the Steam app id label. 'Add a Non-Steam Game' is the name of a Steam menu entry, translate it like Steam does.</comment>
+  </data>
+  <data name="Settings.LaunchArguments.Label" xml:space="preserve">
+    <value>Launch arguments</value>
+    <comment>Label of the text box with extra command line arguments for the game.</comment>
+  </data>
+  <data name="Settings.LaunchArguments.Tooltip" xml:space="preserve">
+    <value>Arguments passed to KSP2_x64.exe on launch. Ignored when 'Launch via Steam' is enabled.</value>
+    <comment>Tooltip of the Launch arguments label. 'Launch via Steam' is the label of another setting on the same page, use the same wording.</comment>
+  </data>
+  <data name="Settings.DisableGfxJobs.Label" xml:space="preserve">
+    <value>Disable gfx jobs</value>
+    <comment>Label of a check box that turns off Unity graphics jobs.</comment>
+  </data>
+  <data name="Settings.DisableGfxJobs.Tooltip" xml:space="preserve">
+    <value>Disable Unity graphics jobs by setting gfx-enable-gfx-jobs=0 in boot.config. Workaround for crashes on some hardware.</value>
+    <comment>Tooltip of the Disable gfx jobs label. gfx-enable-gfx-jobs=0 and boot.config are literal settings, do not translate them.</comment>
+  </data>
+  <data name="Settings.InstallPatch.Button" xml:space="preserve">
+    <value>Install Patch File</value>
+    <comment>Button that installs Redux from a .patch file picked on disk.</comment>
+  </data>
+  <data name="Settings.InstallPatch.Tooltip" xml:space="preserve">
+    <value>Install Redux from a .patch file you already have</value>
+    <comment>Tooltip of the Install Patch File button.</comment>
+  </data>
+  <data name="Settings.UninstallRedux.Button" xml:space="preserve">
+    <value>Uninstall Redux</value>
+    <comment>Button that removes Redux and restores the unmodified game.</comment>
+  </data>
+  <data name="Settings.UninstallRedux.Tooltip" xml:space="preserve">
+    <value>Put the game back to stock KSP2</value>
+    <comment>Tooltip of the Uninstall Redux button. Stock means the unmodified game.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Button" xml:space="preserve">
+    <value>Uninstall KSP2</value>
+    <comment>Button that deletes the whole game folder of the selected profile.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.ButtonBusy" xml:space="preserve">
+    <value>Uninstalling...</value>
+    <comment>Text of the Uninstall KSP2 button while the game folder is being deleted.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Tooltip" xml:space="preserve">
+    <value>Delete this copy of KSP2 from the computer and remove its profile. Saves are kept.</value>
+    <comment>Tooltip of the Uninstall KSP2 button.</comment>
+  </data>
+  <data name="Settings.Advanced.Section" xml:space="preserve">
+    <value>ADVANCED DOWNLOADS</value>
+    <comment>Heading of the settings section about how patches are downloaded.</comment>
+  </data>
+  <data name="Settings.PatchSource.Label" xml:space="preserve">
+    <value>Patch source</value>
+    <comment>Label of the drop-down that selects the download service.</comment>
+  </data>
+  <data name="Settings.PatchSource.Tooltip" xml:space="preserve">
+    <value>R2 is the primary download service. Select GitHub to use the permanent backup copies.</value>
+    <comment>Tooltip of the Patch source drop-down. R2 and GitHub are the names of the two choices.</comment>
+  </data>
+  <data name="Settings.ConcurrentChunks.Label" xml:space="preserve">
+    <value>Concurrent chunks</value>
+    <comment>Label of the number box that sets how many pieces of a patch download at the same time.</comment>
+  </data>
+  <data name="Settings.ConcurrentChunks.Tooltip" xml:space="preserve">
+    <value>Maximum simultaneous patch-part downloads (1-8).</value>
+    <comment>Tooltip of the Concurrent chunks number box.</comment>
+  </data>
+  <data name="Settings.Language.Label" xml:space="preserve">
+    <value>Language</value>
+    <comment>Label of the drop-down that selects the language of the launcher. Only shown once at least one translation exists.</comment>
+  </data>
+  <data name="Settings.Language.Automatic" xml:space="preserve">
+    <value>Automatic</value>
+    <comment>First entry of the language drop-down. Means the launcher uses the language of the operating system.</comment>
+  </data>
+  <data name="Settings.OpenLogsFolder" xml:space="preserve">
+    <value>Open Logs Folder</value>
+    <comment>Button that opens the folder with the launcher's log files.</comment>
+  </data>
+  <data name="Settings.OpenGameDataFolder" xml:space="preserve">
+    <value>Open Game Data Folder</value>
+    <comment>Button that opens the folder where KSP2 keeps its saves and settings.</comment>
+  </data>
+  <data name="Settings.OpenGameDataFolder.Tooltip" xml:space="preserve">
+    <value>Open the folder KSP2 keeps its saves, settings and its own Player.log in.</value>
+    <comment>Tooltip of the Open Game Data Folder button. Player.log is a file name.</comment>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo" xml:space="preserve">
+    <value>Copy Diagnostic Info</value>
+    <comment>Button that copies version, system and log information to the clipboard for bug reports.</comment>
+  </data>
+  <data name="Settings.VerboseLogging" xml:space="preserve">
+    <value>Verbose logging</value>
+    <comment>Label of a check box.</comment>
+  </data>
+  <data name="Settings.VerboseLogging.Tooltip" xml:space="preserve">
+    <value>Write more detailed information to the log file. Useful when troubleshooting an issue.</value>
+    <comment>Tooltip of the Verbose logging check box.</comment>
+  </data>
+  <data name="Settings.BackgroundMotion" xml:space="preserve">
+    <value>Background motion</value>
+    <comment>Label of a check box.</comment>
+  </data>
+  <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
+    <value>Shift the background slightly as the mouse moves. Turn this off if the motion is distracting or uncomfortable.</value>
+    <comment>Tooltip of the Background motion check box.</comment>
+  </data>
+  <data name="Settings.LauncherVersion" xml:space="preserve">
+    <value>Launcher v{0}</value>
+    <comment>Small text at the bottom right of the Settings tab. {0} = launcher version number.</comment>
+  </data>
+  <!-- Shared button texts -->
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+    <comment>Button that abandons the current window or action.</comment>
+  </data>
+  <data name="Common.Close" xml:space="preserve">
+    <value>Close</value>
+    <comment>Button that closes a window once its work has stopped.</comment>
+  </data>
+  <!-- Steam sign-in window -->
+  <data name="Steam.SignIn.Title" xml:space="preserve">
+    <value>Sign in with Steam</value>
+    <comment>Title bar of the Steam sign-in window.</comment>
+  </data>
+  <data name="Steam.SignIn.Heading" xml:space="preserve">
+    <value>SIGN IN WITH STEAM</value>
+    <comment>Heading inside the Steam sign-in window, shown in capital letters.</comment>
+  </data>
+  <data name="Steam.SignIn.Intro" xml:space="preserve">
+    <value>Redux downloads your own copy of Kerbal Space Program 2 straight from Steam. Sign in with the account that owns the game.</value>
+    <comment>Explanation under the heading of the Steam sign-in window.</comment>
+  </data>
+  <data name="Steam.SignIn.GettingCode" xml:space="preserve">
+    <value>Getting a code...</value>
+    <comment>Shown in the empty square where the QR code appears, until Steam has sent the code.</comment>
+  </data>
+  <data name="Steam.SignIn.ScanTitle" xml:space="preserve">
+    <value>Scan with the Steam app</value>
+    <comment>Heading under the QR code.</comment>
+  </data>
+  <data name="Steam.SignIn.ScanHint" xml:space="preserve">
+    <value>In the Steam Mobile App, open Steam Guard and tap the QR scanner.</value>
+    <comment>Instruction under the QR code. Steam Mobile App and Steam Guard are Steam names, translate them like Steam does.</comment>
+  </data>
+  <data name="Steam.SignIn.Or" xml:space="preserve">
+    <value>OR</value>
+    <comment>Separator between the QR code and the password form.</comment>
+  </data>
+  <data name="Steam.SignIn.AccountName" xml:space="preserve">
+    <value>STEAM ACCOUNT NAME</value>
+    <comment>Small label above the account name text box, shown in capital letters.</comment>
+  </data>
+  <data name="Steam.SignIn.Password" xml:space="preserve">
+    <value>PASSWORD</value>
+    <comment>Small label above the password text box, shown in capital letters.</comment>
+  </data>
+  <data name="Steam.SignIn.SignInButton" xml:space="preserve">
+    <value>Sign in</value>
+    <comment>Button that signs in with the typed account name and password.</comment>
+  </data>
+  <data name="Steam.SignIn.SigningIn" xml:space="preserve">
+    <value>Signing in...</value>
+    <comment>Shown while Steam checks the password.</comment>
+  </data>
+  <data name="Steam.SignIn.SteamGuard" xml:space="preserve">
+    <value>STEAM GUARD</value>
+    <comment>Heading of the step where Steam asks for a second proof of identity. Shown in capital letters. Steam Guard is a Steam name.</comment>
+  </data>
+  <data name="Steam.SignIn.Continue" xml:space="preserve">
+    <value>Continue</value>
+    <comment>Button that sends the typed Steam Guard code.</comment>
+  </data>
+  <data name="Steam.SignIn.EnterCredentials" xml:space="preserve">
+    <value>Enter your Steam account name and password.</value>
+    <comment>Error shown when the account name or the password was left empty.</comment>
+  </data>
+  <data name="Steam.SignIn.Failed" xml:space="preserve">
+    <value>Couldn't sign in: {0}</value>
+    <comment>Error shown when signing in failed. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Steam.SignIn.EmailCode" xml:space="preserve">
+    <value>Steam sent a code to {0}. Enter it below.</value>
+    <comment>Prompt for the Steam Guard code sent by email. {0} = the email address.</comment>
+  </data>
+  <data name="Steam.SignIn.EmailCodeWrong" xml:space="preserve">
+    <value>That code didn't work. Enter the new code Steam sent to {0}.</value>
+    <comment>Prompt shown after a wrong emailed Steam Guard code. {0} = the email address.</comment>
+  </data>
+  <data name="Steam.SignIn.DeviceCode" xml:space="preserve">
+    <value>Enter the code shown in your Steam Mobile App.</value>
+    <comment>Prompt for the Steam Guard code from the phone app.</comment>
+  </data>
+  <data name="Steam.SignIn.DeviceCodeWrong" xml:space="preserve">
+    <value>That code didn't work. Enter the current code from your Steam Mobile App.</value>
+    <comment>Prompt shown after a wrong Steam Guard code from the phone app.</comment>
+  </data>
+  <data name="Steam.SignIn.Approve" xml:space="preserve">
+    <value>Open the Steam Mobile App and approve the sign-in.</value>
+    <comment>Prompt shown while waiting for the sign-in to be approved on the phone.</comment>
+  </data>
+  <!-- Steam download window -->
+  <data name="Steam.Download.Title" xml:space="preserve">
+    <value>Downloading KSP2</value>
+    <comment>Title bar of the window that downloads the game from Steam.</comment>
+  </data>
+  <data name="Steam.Download.Target" xml:space="preserve">
+    <value>Into {0}</value>
+    <comment>Line under the stage heading. {0} = the folder the game is downloaded into.</comment>
+  </data>
+  <data name="Steam.Download.Hint" xml:space="preserve">
+    <value>You can stop and come back later. Finished files are kept and the download picks up where it left off.</value>
+    <comment>Small note at the bottom of the download window.</comment>
+  </data>
+  <data name="Steam.Download.Stage.Connecting" xml:space="preserve">
+    <value>Connecting to Steam</value>
+    <comment>Heading of the download window before the download starts. Shown in capital letters.</comment>
+  </data>
+  <data name="Steam.Download.Stage.Downloading" xml:space="preserve">
+    <value>Downloading Kerbal Space Program 2</value>
+    <comment>Heading of the download window while files download. Shown in capital letters.</comment>
+  </data>
+  <data name="Steam.Download.Stage.Finished" xml:space="preserve">
+    <value>Download complete</value>
+    <comment>Heading of the download window when everything is downloaded. Shown in capital letters.</comment>
+  </data>
+  <data name="Steam.Download.Stage.Stopped" xml:space="preserve">
+    <value>Download stopped</value>
+    <comment>Heading of the download window after an error. Shown in capital letters.</comment>
+  </data>
+  <data name="Steam.Download.Detail" xml:space="preserve">
+    <value>{0} of {1}  ·  {2}  ·  {3}/{4} files</value>
+    <comment>Progress line of the download window. {0} = size downloaded, for example 1.2 GB. {1} = total size. {2} = speed, see Steam.Download.Speed. {3} = files done. {4} = files in total.</comment>
+  </data>
+  <data name="Steam.Download.Speed" xml:space="preserve">
+    <value>{0}/s</value>
+    <comment>Download speed. {0} = size per second, for example 12.3 MB.</comment>
+  </data>
+  <data name="Steam.Download.Measuring" xml:space="preserve">
+    <value>measuring...</value>
+    <comment>Shown in place of the download speed until enough data has arrived to work it out.</comment>
+  </data>
+  <data name="Steam.Download.MissingExe" xml:space="preserve">
+    <value>The download finished but {0} is missing from it.</value>
+    <comment>Error shown when the downloaded folder has no game executable. {0} = the executable's file name.</comment>
+  </data>
+  <data name="Steam.Download.Stage.Checking" xml:space="preserve">
+    <value>Checking your Steam library</value>
+    <comment>Heading of the download window while the launcher checks that the account owns the game. Shown in capital letters.</comment>
+  </data>
+  <data name="Steam.Download.Stage.Reading" xml:space="preserve">
+    <value>Reading the file list</value>
+    <comment>Heading of the download window while the launcher reads the list of game files from Steam. Shown in capital letters.</comment>
+  </data>
+  <data name="Steam.FolderPicker.Title" xml:space="preserve">
+    <value>Choose where to download Kerbal Space Program 2</value>
+    <comment>Title of the folder picker that asks where the game is downloaded to.</comment>
+  </data>
+  <!-- Shared dialog titles -->
+  <data name="Dialog.Error.Title" xml:space="preserve">
+    <value>Error!</value>
+    <comment>Title of a message box that reports an error.</comment>
+  </data>
+  <data name="Dialog.Confirm.Title" xml:space="preserve">
+    <value>Confirm</value>
+    <comment>Title of a message box that asks Yes or No.</comment>
+  </data>
+  <data name="Dialog.Done.Title" xml:space="preserve">
+    <value>Done!</value>
+    <comment>Title of a message box that reports success.</comment>
+  </data>
+  <!-- Settings tab dialogs and messages -->
+  <data name="Settings.FilePicker.Failed" xml:space="preserve">
+    <value>Couldn't open the file picker: {0}</value>
+    <comment>Message box text when the file picker could not be opened. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Settings.FilePicker.NoWindow" xml:space="preserve">
+    <value>Could not access the file picker (no active window).</value>
+    <comment>Reason shown after "Couldn't open the file picker" when there is no window to attach the picker to.</comment>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.FileType" xml:space="preserve">
+    <value>KSP2 installation</value>
+    <comment>Name of the only file type in the picker that selects KSP2_x64.exe.</comment>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.Title" xml:space="preserve">
+    <value>Open KSP2_x64.exe</value>
+    <comment>Title of the file picker that selects the game executable. KSP2_x64.exe is a file name.</comment>
+  </data>
+  <data name="Settings.FilePicker.Patch.FileType" xml:space="preserve">
+    <value>KSP2 Patch File</value>
+    <comment>Name of the only file type in the picker that selects a .patch file.</comment>
+  </data>
+  <data name="Settings.FilePicker.Patch.Title" xml:space="preserve">
+    <value>Open Patch File</value>
+    <comment>Title of the file picker that selects a .patch file.</comment>
+  </data>
+  <data name="Settings.RemoveProfile.Message" xml:space="preserve">
+    <value>Are you sure you want to remove "{0}"? Its name, launch arguments, and Steam settings will be lost.</value>
+    <comment>Yes/No question before a profile is removed. {0} = the profile name.</comment>
+  </data>
+  <data name="Settings.OpenInstallFolder.NotFound" xml:space="preserve">
+    <value>The install folder could not be found.</value>
+    <comment>Message box text when the Open Folder button finds no folder.</comment>
+  </data>
+  <data name="Settings.OpenInstallFolder.Failed" xml:space="preserve">
+    <value>Could not open the install folder.
+{0}</value>
+    <comment>Message box text when the install folder could not be opened. Two lines. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Settings.GameData.Unknown" xml:space="preserve">
+    <value>The game data folder could not be worked out for this install.</value>
+    <comment>Message box text when the launcher cannot tell where KSP2 keeps its saves for the selected profile.</comment>
+  </data>
+  <data name="Settings.GameData.NotYet.Title" xml:space="preserve">
+    <value>Nothing there yet</value>
+    <comment>Title of a message box shown when the game data folder does not exist yet.</comment>
+  </data>
+  <data name="Settings.GameData.NotYet.Message" xml:space="preserve">
+    <value>KSP2 has not created its data folder yet. Run the game once and it will appear at
+{0}</value>
+    <comment>Message box text. Two lines. {0} = the folder path that will exist after the game ran once.</comment>
+  </data>
+  <data name="Settings.GameData.OpenFailed" xml:space="preserve">
+    <value>Could not open the game data folder.
+{0}</value>
+    <comment>Message box text when the game data folder could not be opened. Two lines. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Settings.LogsFolder.Failed" xml:space="preserve">
+    <value>Couldn't open the logs folder: {0}</value>
+    <comment>Message box text when the logs folder could not be opened. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Title" xml:space="preserve">
+    <value>Can't Uninstall KSP2</value>
+    <comment>Title of a message box shown when the profile's folder does not look like a KSP2 install.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Message" xml:space="preserve">
+    <value>{0}
+
+doesn't look like a KSP2 install folder (there is no {1} with KSP2_x64_Data beside it), so nothing was deleted. Remove the profile instead if it points at the wrong place.</value>
+    <comment>Message box text. {0} = the folder path, shown on its own first line. {1} = the game executable file name. KSP2_x64_Data is a folder name.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Title" xml:space="preserve">
+    <value>KSP2 Already Gone</value>
+    <comment>Title of a Yes/No box shown when the game folder of the profile no longer exists.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Message" xml:space="preserve">
+    <value>The game folder for "{0}" no longer exists. Remove the profile from the launcher?</value>
+    <comment>Yes/No question. {0} = the profile name.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Title" xml:space="preserve">
+    <value>Uninstall KSP2</value>
+    <comment>Title of the Yes/No boxes that ask whether to uninstall the game.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.ThroughSteam.Message" xml:space="preserve">
+    <value>This copy of KSP2 is managed by Steam, so Steam will uninstall it and ask you to confirm there. The "{0}" profile is removed from the launcher.
+
+Your saves and settings are kept.</value>
+    <comment>Yes/No question for a game installed by Steam. {0} = the profile name.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.SteamFailed" xml:space="preserve">
+    <value>Couldn't open Steam to uninstall KSP2: {0}</value>
+    <comment>Message box text. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Message" xml:space="preserve">
+    <value>Delete Kerbal Space Program 2 from this computer?
+
+{0}
+
+The whole folder is deleted, Redux included, and the "{1}" profile is removed. This can't be undone.
+
+Your saves and settings are stored elsewhere and are kept.</value>
+    <comment>Yes/No question before the game folder is deleted. {0} = the folder path, on its own line. {1} = the profile name.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Failed" xml:space="preserve">
+    <value>Couldn't finish uninstalling KSP2: {0}
+
+Make sure the game isn't running, then try again.</value>
+    <comment>Message box text when deleting the game folder failed. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Settings.UninstallKsp2.Done" xml:space="preserve">
+    <value>Kerbal Space Program 2 was uninstalled.</value>
+    <comment>Message box text after the game folder was deleted.</comment>
+  </data>
+  <data name="Settings.UninstallRedux.NoInstall" xml:space="preserve">
+    <value>No active KSP2 install selected.</value>
+    <comment>Message box text when Uninstall Redux is used without a selected profile.</comment>
+  </data>
+  <data name="Settings.UninstallRedux.NotInstalled" xml:space="preserve">
+    <value>Redux is not installed...</value>
+    <comment>Message box text when Uninstall Redux is used on a game without Redux.</comment>
+  </data>
+  <data name="Settings.UninstallRedux.Confirm" xml:space="preserve">
+    <value>Are you sure you want to uninstall Redux?</value>
+    <comment>Yes/No question before Redux is removed.</comment>
+  </data>
+  <data name="Settings.UninstallRedux.Failed" xml:space="preserve">
+    <value>Couldn't uninstall Redux: {0}</value>
+    <comment>Message box text when removing Redux failed. {0} = the reason.</comment>
+  </data>
+  <data name="Settings.UninstallRedux.Done" xml:space="preserve">
+    <value>KSP2 Redux Successfully Uninstalled</value>
+    <comment>Message box text after Redux was removed.</comment>
+  </data>
+  <data name="Settings.SnapshotWarning.Title" xml:space="preserve">
+    <value>Switching to Snapshot</value>
+    <comment>Title of the warning shown when the release channel is switched to snapshot. Snapshot is the name of the test channel.</comment>
+  </data>
+  <data name="Settings.SnapshotWarning.Message" xml:space="preserve">
+    <value>The snapshot channel is for QA testing. Builds are unstable and can break at any time.
+
+We recommend not using it with existing campaigns.</value>
+    <comment>Text of the warning shown when the release channel is switched to snapshot. A campaign is a saved game.</comment>
+  </data>
+  <data name="Settings.Exe.Error.Required" xml:space="preserve">
+    <value>An install path is required.</value>
+    <comment>Red error under the game executable path when it is empty.</comment>
+  </data>
+  <data name="Settings.Exe.Error.WrongFile" xml:space="preserve">
+    <value>Path must point to {0}.</value>
+    <comment>Red error under the game executable path. {0} = the executable file name.</comment>
+  </data>
+  <data name="Settings.Exe.Error.Missing" xml:space="preserve">
+    <value>That file doesn't exist.</value>
+    <comment>Red error under the game executable path when the file is not there.</comment>
+  </data>
+  <data name="Settings.SteamAppId.Error.NotNumeric" xml:space="preserve">
+    <value>Steam App ID must be numeric.</value>
+    <comment>Red error under the Steam app id box when it holds something other than digits.</comment>
+  </data>
+  <data name="Settings.DownloadFromSteam.Tooltip" xml:space="preserve">
+    <value>Download your own copy of Kerbal Space Program 2 from Steam and add it as an install. It's a clean copy that Steam's own updates never touch, so it stays ready for Redux.</value>
+    <comment>Tooltip of the Download KSP2 button while signed in to Steam.</comment>
+  </data>
+  <data name="Settings.DownloadFromSteam.SignInTooltip" xml:space="preserve">
+    <value>Sign in with Steam to download KSP2. Click the Steam icon in the bottom-right corner and sign in with the account that owns the game.</value>
+    <comment>Tooltip of the Download KSP2 button while it is disabled because the player is not signed in to Steam.</comment>
+  </data>
+  <!-- Steam account -->
+  <data name="Steam.Status.NotSignedIn" xml:space="preserve">
+    <value>Not signed in</value>
+    <comment>Steam account status in the menu of the Steam icon.</comment>
+  </data>
+  <data name="Steam.Status.SignedIn" xml:space="preserve">
+    <value>Signed in as {0}</value>
+    <comment>Steam account status. {0} = the Steam account or persona name.</comment>
+  </data>
+  <data name="Steam.Status.SignedInConnecting" xml:space="preserve">
+    <value>Signed in as {0} (connecting...)</value>
+    <comment>Steam account status while the launcher reconnects to Steam. {0} = the Steam account name.</comment>
+  </data>
+  <data name="Steam.Status.SignedInOffline" xml:space="preserve">
+    <value>Signed in as {0} (offline)</value>
+    <comment>Steam account status when Steam could not be reached. {0} = the Steam account name.</comment>
+  </data>
+  <data name="Steam.Indicator.Connected" xml:space="preserve">
+    <value>Steam: {0}</value>
+    <comment>Tooltip of the Steam icon while connected. {0} = the account status, for example "Signed in as name".</comment>
+  </data>
+  <data name="Steam.Indicator.Connecting" xml:space="preserve">
+    <value>Connecting to Steam...</value>
+    <comment>Tooltip of the Steam icon while the launcher connects to Steam.</comment>
+  </data>
+  <data name="Steam.Indicator.Reconnect" xml:space="preserve">
+    <value>Steam: {0}. Click to reconnect.</value>
+    <comment>Tooltip of the Steam icon when a saved login exists but there is no connection. {0} = the account status.</comment>
+  </data>
+  <data name="Steam.Indicator.NotSignedIn" xml:space="preserve">
+    <value>Not signed in to Steam. Click to sign in.</value>
+    <comment>Tooltip of the Steam icon when nobody is signed in.</comment>
+  </data>
+  <data name="Steam.SignedOut.Title" xml:space="preserve">
+    <value>Signed Out</value>
+    <comment>Title of the message box shown after signing out of Steam when the saved login could not be cancelled.</comment>
+  </data>
+  <data name="Steam.RevokeFailed" xml:space="preserve">
+    <value>You are signed out here, but Steam could not be reached to cancel the saved login. To cancel it yourself, remove "{0}" from the devices in your Steam account's security settings.</value>
+    <comment>Message box text after signing out. {0} = the device name the launcher registered with Steam. Do not translate that name.</comment>
+  </data>
+  <data name="Steam.DownloadComplete.Title" xml:space="preserve">
+    <value>Download Complete</value>
+    <comment>Title of the message box shown when the game finished downloading.</comment>
+  </data>
+  <data name="Steam.DownloadComplete.Message" xml:space="preserve">
+    <value>Kerbal Space Program 2 is downloaded and added as an install. Head to the Home tab to install Redux.</value>
+    <comment>Message box text when the game finished downloading.</comment>
+  </data>
+  <data name="Steam.DownloadFailed.Title" xml:space="preserve">
+    <value>Download Failed</value>
+    <comment>Title of the message box shown when the Steam download failed. Its text is the reason, in English.</comment>
+  </data>
+  <data name="Steam.Error.Unreachable" xml:space="preserve">
+    <value>Couldn't reach Steam. Check your internet connection and try again.</value>
+    <comment>Error shown when connecting to Steam failed.</comment>
+  </data>
+  <data name="Steam.Error.ConnectionClosed" xml:space="preserve">
+    <value>Steam closed the connection during sign-in. Try again.</value>
+    <comment>Error shown when Steam dropped the connection while signing in.</comment>
+  </data>
+  <data name="Steam.Error.InvalidPassword" xml:space="preserve">
+    <value>The account name or password is incorrect.</value>
+    <comment>Error shown after a failed Steam sign-in.</comment>
+  </data>
+  <data name="Steam.Error.RateLimited" xml:space="preserve">
+    <value>Steam has temporarily blocked sign-ins after too many attempts. Wait a while and try again.</value>
+    <comment>Error shown when Steam refuses sign-ins for a while.</comment>
+  </data>
+  <data name="Steam.Error.Expired" xml:space="preserve">
+    <value>Your saved Steam sign-in has expired. Please sign in again.</value>
+    <comment>Error shown when the saved Steam login is no longer valid.</comment>
+  </data>
+  <data name="Steam.Error.QrExpired" xml:space="preserve">
+    <value>The QR code expired. A new one has been generated, scan that instead.</value>
+    <comment>Error shown when the QR code on the sign-in window timed out.</comment>
+  </data>
+  <data name="Steam.Error.GuardCodeWrong" xml:space="preserve">
+    <value>The Steam Guard code was incorrect.</value>
+    <comment>Error shown after a wrong Steam Guard code. Steam Guard is a Steam name.</comment>
+  </data>
+  <data name="Steam.Error.Unavailable" xml:space="preserve">
+    <value>Steam is unavailable right now. Try again in a moment.</value>
+    <comment>Error shown when the Steam servers are not available.</comment>
+  </data>
+  <data name="Steam.Error.Refused" xml:space="preserve">
+    <value>Steam refused the sign-in ({0}).</value>
+    <comment>Error shown for a sign-in failure without its own text. {0} = Steam's result code name, in English.</comment>
+  </data>
+  <data name="Steam.Depot.NoInfo" xml:space="preserve">
+    <value>Steam didn't return any information about Kerbal Space Program 2.</value>
+    <comment>Error shown when Steam knows nothing about the game.</comment>
+  </data>
+  <data name="Steam.Depot.NoContent" xml:space="preserve">
+    <value>Steam didn't list any downloadable Windows content for Kerbal Space Program 2.</value>
+    <comment>Error shown when Steam lists no Windows files for the game.</comment>
+  </data>
+  <data name="Steam.Depot.NotOwned" xml:space="preserve">
+    <value>This Steam account doesn't own Kerbal Space Program 2. Sign in with the account you bought it on.</value>
+    <comment>Error shown when the signed-in Steam account does not own the game.</comment>
+  </data>
+  <data name="Steam.Depot.MissingFiles" xml:space="preserve">
+    <value>Steam's file list for the game does not have {0}.</value>
+    <comment>Error shown when files that should be restored are not on Steam. {0} = a comma separated list of file names.</comment>
+  </data>
+  <data name="Steam.Depot.ChecksumMismatch" xml:space="preserve">
+    <value>The copy of {0} downloaded from Steam does not match Steam's checksum.</value>
+    <comment>Error shown when a downloaded file is damaged. {0} = the file name.</comment>
+  </data>
+  <data name="Steam.Depot.SignInFirst" xml:space="preserve">
+    <value>Sign in with Steam first.</value>
+    <comment>Error shown when a download is started without a Steam sign-in.</comment>
+  </data>
+  <data name="Steam.Depot.NoServers" xml:space="preserve">
+    <value>Steam didn't return any content servers. Try again in a moment.</value>
+    <comment>Error shown when Steam names no download servers.</comment>
+  </data>
+  <data name="Steam.Depot.ServersFailed" xml:space="preserve">
+    <value>Steam's content servers kept failing. Check your connection and try again.</value>
+    <comment>Error shown when every Steam download server failed.</comment>
+  </data>
+  <!-- Startup prompts -->
+  <data name="Main.StartupError.Title" xml:space="preserve">
+    <value>Startup Error</value>
+    <comment>Title of the message box shown when the launcher's startup work failed.</comment>
+  </data>
+  <data name="Main.StartupError.Message" xml:space="preserve">
+    <value>Something went wrong while starting up, so setup may be incomplete (feeds, install detection, or the update check may not have run). Check the log file for details, and consider restarting the launcher.</value>
+    <comment>Message box text. A feed is the list of Redux versions the launcher downloads.</comment>
+  </data>
+  <data name="Main.PartialUpdate.Title" xml:space="preserve">
+    <value>Partial Update Complete</value>
+    <comment>Title of the message box shown after the launcher updated itself in several steps.</comment>
+  </data>
+  <data name="Main.PartialUpdate.Message" xml:space="preserve">
+    <value>After closing, please delete {0}
+and confirm you still have the Updater locally.</value>
+    <comment>Message box text. Two lines. {0} = the folder to delete. The Updater is this launcher program.</comment>
+  </data>
+  <data name="Main.InstallFound.Title" xml:space="preserve">
+    <value>KSP2 Install Found</value>
+    <comment>Title of the Yes/No box shown when a game install was found automatically.</comment>
+  </data>
+  <data name="Main.InstallFound.Message" xml:space="preserve">
+    <value>Found KSP2 install at: {0}
+Would you like to add it to Redux?
+(This can be changed in the settings.)</value>
+    <comment>Yes/No question, three lines. {0} = the folder path of the found game.</comment>
+  </data>
+  <data name="Main.InstallNotFound.Title" xml:space="preserve">
+    <value>KSP2 Install Not Found</value>
+    <comment>Title of the Yes/No box shown when no game install was found.</comment>
+  </data>
+  <data name="Main.InstallNotFound.Message" xml:space="preserve">
+    <value>No KSP2 install was found on this computer.
+
+Download it now with your Steam account? You can also add an existing install from the settings tab.</value>
+    <comment>Yes/No question that offers to download the game from Steam.</comment>
+  </data>
+  <data name="Main.InvalidExe.Title" xml:space="preserve">
+    <value>Invalid EXE</value>
+    <comment>Title of the message box shown when the saved game executable path is wrong. EXE is the Windows program file type.</comment>
+  </data>
+  <data name="Main.InvalidExe.Message" xml:space="preserve">
+    <value>The configured KSP2 EXE path is not valid:
+{0}</value>
+    <comment>Message box text. Two lines. {0} = the invalid path.</comment>
+  </data>
+  <data name="Main.VersionDetection.Title" xml:space="preserve">
+    <value>Couldn't Detect Game Version</value>
+    <comment>Title of the message box shown when the installed game version cannot be read.</comment>
+  </data>
+  <data name="Main.VersionDetection.Message" xml:space="preserve">
+    <value>KSP2 Redux couldn't figure out which version of the game is installed. This can happen if the game files are missing, corrupted, or from an unsupported source.
+
+You can still try launching or installing, but update checks may be unreliable. Details were written to the log file (see Settings &gt; Open Logs Folder) if you'd like to report this.</value>
+    <comment>Message box text. "Settings" and "Open Logs Folder" are the names of the Settings tab and its button, use the same wording.</comment>
+  </data>
+  <!-- Download source switch -->
+  <data name="Mirror.Manifest.Title" xml:space="preserve">
+    <value>{0} Manifest Failed</value>
+    <comment>Title of the Yes/No box shown when the release list could not be downloaded. {0} = the download service name, for example R2 or GitHub.</comment>
+  </data>
+  <data name="Mirror.Manifest.Message" xml:space="preserve">
+    <value>The release list could not be downloaded from {0}. Retry using {1}? This choice will be saved in Advanced Downloads.</value>
+    <comment>Yes/No question. {0} = the download service that failed. {1} = the other service. Advanced Downloads is the name of a section on the Settings tab, use the same wording.</comment>
+  </data>
+  <data name="Mirror.Download.Title" xml:space="preserve">
+    <value>{0} Download Failed</value>
+    <comment>Title of the Yes/No box shown when a patch could not be downloaded. {0} = the download service name.</comment>
+  </data>
+  <data name="Mirror.Download.Message" xml:space="preserve">
+    <value>A manifest or patch could not be downloaded from {0}. Retry the complete update using {1}? Verified files already on disk will be reused.</value>
+    <comment>Yes/No question. {0} = the download service that failed. {1} = the other service.</comment>
+  </data>
+  <!-- Home tab: button tooltips -->
+  <data name="Home.Tooltip.Loading" xml:space="preserve">
+    <value>Loading...</value>
+    <comment>Tooltip of the big sidebar button while the launcher starts.</comment>
+  </data>
+  <data name="Home.Tooltip.Stopping" xml:space="preserve">
+    <value>Stopping KSP2...</value>
+    <comment>Tooltip of the CANCEL button while the game is being stopped.</comment>
+  </data>
+  <data name="Home.Tooltip.Stop" xml:space="preserve">
+    <value>Stop KSP2. Anything unsaved is lost.</value>
+    <comment>Tooltip of the CANCEL button while the game runs.</comment>
+  </data>
+  <data name="Home.Tooltip.NotDetected" xml:space="preserve">
+    <value>KSP2 installation not detected.  Please select a directory containing KSP2 on the settings tab.</value>
+    <comment>Tooltip of the disabled big button when no game was found.</comment>
+  </data>
+  <data name="Home.Tooltip.VersionUnknown" xml:space="preserve">
+    <value>Couldn't detect the installed game version. Verifying game files through Steam/Epic, or reinstalling the game, may fix this.</value>
+    <comment>Tooltip of the disabled big button when the game version cannot be read.</comment>
+  </data>
+  <data name="Home.Tooltip.SelectVersion" xml:space="preserve">
+    <value>Please select a version to install or launch.</value>
+    <comment>Tooltip of the disabled big button when no version is selected in the drop-down.</comment>
+  </data>
+  <data name="Home.Tooltip.NoRuntime" xml:space="preserve">
+    <value>No Windows compatibility runtime found. Use the macOS download of the launcher, or install CrossOver.</value>
+    <comment>Tooltip of the disabled LAUNCH button on a Mac. CrossOver is a product name.</comment>
+  </data>
+  <data name="Home.Tooltip.LinuxSteam" xml:space="preserve">
+    <value>Enable "Launch via Steam" in settings to launch on Linux.</value>
+    <comment>Tooltip of the disabled LAUNCH button on Linux. "Launch via Steam" is the label of a setting, use the same wording.</comment>
+  </data>
+  <data name="Home.Tooltip.LauncherUpdate" xml:space="preserve">
+    <value>The launcher needs to update itself before you can install or update Redux.</value>
+    <comment>Tooltip of the disabled INSTALL and UPDATE buttons while a launcher update is pending.</comment>
+  </data>
+  <!-- Home tab: launching and stopping -->
+  <data name="Home.LaunchFailed.Title" xml:space="preserve">
+    <value>Couldn't Launch</value>
+    <comment>Title of the message boxes shown when the game could not be started.</comment>
+  </data>
+  <data name="Home.LaunchFailed.NotDetected" xml:space="preserve">
+    <value>KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.</value>
+    <comment>Message box text when LAUNCH is used without a valid game install.</comment>
+  </data>
+  <data name="Home.LaunchFailed.Steam" xml:space="preserve">
+    <value>Couldn't open Steam: {0}
+Make sure Steam is installed and try again.</value>
+    <comment>Message box text, two lines. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Home.LaunchFailed.Direct" xml:space="preserve">
+    <value>Couldn't start the game: {0}
+It may have been moved, removed, or blocked by antivirus software.</value>
+    <comment>Message box text, two lines. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Home.LaunchFailed.NoRuntime" xml:space="preserve">
+    <value>KSP2 needs a Windows compatibility runtime to run on a Mac, and none was found.
+Use the macOS download of the launcher, which includes one, or install CrossOver.</value>
+    <comment>Message box text on a Mac, two lines. CrossOver is a product name.</comment>
+  </data>
+  <data name="Home.LaunchFailed.Wine" xml:space="preserve">
+    <value>Couldn't start the game through {0}: {1}</value>
+    <comment>Message box text on a Mac. {0} = the name of the compatibility runtime. {1} = the reason, in English.</comment>
+  </data>
+  <data name="Home.StopGame.Title" xml:space="preserve">
+    <value>Stop KSP2</value>
+    <comment>Title of the Yes/No box that asks whether to stop the running game.</comment>
+  </data>
+  <data name="Home.StopGame.Message" xml:space="preserve">
+    <value>Stop the game? Anything unsaved is lost.</value>
+    <comment>Yes/No question before the running game is stopped.</comment>
+  </data>
+  <data name="Home.StopFailed.Title" xml:space="preserve">
+    <value>Couldn't Stop KSP2</value>
+    <comment>Title of the message box shown when the game could not be stopped.</comment>
+  </data>
+  <data name="Home.StopFailed.Message" xml:space="preserve">
+    <value>{0}
+Close the game from inside it instead.</value>
+    <comment>Message box text, two lines. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Home.Rosetta.Title" xml:space="preserve">
+    <value>Rosetta Needed</value>
+    <comment>Title of the message box shown on a Mac without Rosetta 2. Rosetta is an Apple product name.</comment>
+  </data>
+  <data name="Home.Rosetta.Message" xml:space="preserve">
+    <value>KSP2 runs through an Intel build of Wine, which needs Rosetta 2, and Rosetta is not installed on this Mac. Install it by running this in Terminal, then try again:
+
+softwareupdate --install-rosetta --agree-to-license</value>
+    <comment>Message box text on a Mac. Wine, Rosetta 2 and Terminal are product names. The last line is a command, keep it as it is.</comment>
+  </data>
+  <!-- Home tab: install log and install dialogs -->
+  <data name="Home.Log.VersionUnknown" xml:space="preserve">
+    <value>Couldn't detect the installed game version, so it's unclear which patches to apply. Verifying game files, or reinstalling the game, may fix this.</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Home.Log.CreatingPlan" xml:space="preserve">
+    <value>Creating install plan</value>
+    <comment>First line in the install log.</comment>
+  </data>
+  <data name="Home.Log.Retrying" xml:space="preserve">
+    <value>Retrying the update using {0}.</value>
+    <comment>Line in the install log. {0} = the download service name, for example R2 or GitHub.</comment>
+  </data>
+  <data name="Home.Log.Installed" xml:space="preserve">
+    <value>KSP2 Redux Successfully Installed</value>
+    <comment>Last line in the install log after a successful install or update.</comment>
+  </data>
+  <data name="Home.Log.Cancelled" xml:space="preserve">
+    <value>Installation cancelled</value>
+    <comment>Line in the install log after the player cancelled.</comment>
+  </data>
+  <data name="Home.Log.UpdateError" xml:space="preserve">
+    <value>Error updating Redux: {0}</value>
+    <comment>Line in the install log. {0} = the reason.</comment>
+  </data>
+  <data name="Home.Log.InvalidState" xml:space="preserve">
+    <value>Redux may be in an invalid state, try uninstalling and reinstalling</value>
+    <comment>Line in the install log after an unexpected error.</comment>
+  </data>
+  <data name="Home.Log.NothingChanged" xml:space="preserve">
+    <value>Nothing was changed.</value>
+    <comment>Line in the install log when an install stopped before it touched any file.</comment>
+  </data>
+  <data name="Home.CantInstallHere.Title" xml:space="preserve">
+    <value>Can't Install Here</value>
+    <comment>Title of the message box shown when the launcher runs from inside the game folder.</comment>
+  </data>
+  <data name="Home.CantInstallHere.Message" xml:space="preserve">
+    <value>The launcher is running from inside the KSP2 install folder, so installing or updating Redux would overwrite the launcher while it's running and fail.
+
+Move the launcher to a folder outside the game directory, then run it again and retry.</value>
+    <comment>Message box text.</comment>
+  </data>
+  <data name="Home.DiskSpace.Title" xml:space="preserve">
+    <value>Not Enough Disk Space</value>
+    <comment>Title of the message box shown when the drive is too full for the install.</comment>
+  </data>
+  <data name="Home.DiskSpace.Message" xml:space="preserve">
+    <value>{0}
+
+The space is needed on the drive that holds:
+{1}
+
+Nothing was changed.</value>
+    <comment>Message box text. {0} = a sentence that says how much space is needed and available. {1} = the folder path on the drive that is too full.</comment>
+  </data>
+  <data name="Home.FilesInUse.Title" xml:space="preserve">
+    <value>Game Files In Use</value>
+    <comment>Title of the message box shown when another program holds game files open. Its text is built from the Locks keys.</comment>
+  </data>
+  <data name="Home.UpdateFailed.Title" xml:space="preserve">
+    <value>Update Failed!</value>
+    <comment>Title of the message box shown when the manual launcher update check failed.</comment>
+  </data>
+  <data name="Home.UpdateFailed.Message" xml:space="preserve">
+    <value>Something went wrong while checking for launcher updates: {0}
+Please try again later.</value>
+    <comment>Message box text, two lines. {0} = the reason, in English.</comment>
+  </data>
+  <!-- Launcher self update -->
+  <data name="Update.Found.Title" xml:space="preserve">
+    <value>Update Found</value>
+    <comment>Title of the box that announces a new launcher version.</comment>
+  </data>
+  <data name="Update.ActionMessage" xml:space="preserve">
+    <value>The launcher will download and update, it may restart a few times during this.
+Without updating you cannot install new Redux versions.</value>
+    <comment>Last paragraph of the new-version box, two lines.</comment>
+  </data>
+  <data name="Update.WhatsNew.NoNotes" xml:space="preserve">
+    <value>What's new in v{0}:
+(No release notes provided.)
+
+{1}</value>
+    <comment>Text of the new-version box when the release has no notes. {0} = the new version number. {1} = the paragraph from Update.ActionMessage.</comment>
+  </data>
+  <data name="Update.WhatsNew.WithNotes" xml:space="preserve">
+    <value>What's new in v{0}:
+{1}
+
+{2}</value>
+    <comment>Text of the new-version box. {0} = the new version number. {1} = the release notes, in English. {2} = the paragraph from Update.ActionMessage.</comment>
+  </data>
+  <data name="Update.NotSingleFile.Message" xml:space="preserve">
+    <value>You are not running in a single file build, rebuild from the latest main to be able to install Redux.</value>
+    <comment>Message box text for developers who run the launcher from source. "main" is the name of a source code branch.</comment>
+  </data>
+  <data name="Update.Failed.Title" xml:space="preserve">
+    <value>Update Failed!</value>
+    <comment>Title of the message box shown when the launcher could not update itself.</comment>
+  </data>
+  <data name="Update.Failed.Message" xml:space="preserve">
+    <value>Please download the latest version of the launcher from
+{0}</value>
+    <comment>Message box text, two lines. {0} = the web address of the releases page.</comment>
+  </data>
+  <!-- Links and settings file -->
+  <data name="Link.Failed.Title" xml:space="preserve">
+    <value>Couldn't Open Link</value>
+    <comment>Title of the message boxes shown when a web link could not be opened.</comment>
+  </data>
+  <data name="Link.Invalid.Message" xml:space="preserve">
+    <value>That link doesn't look valid.</value>
+    <comment>Message box text.</comment>
+  </data>
+  <data name="Link.Failed.Message" xml:space="preserve">
+    <value>Couldn't open the link: {0}</value>
+    <comment>Message box text. {0} = the reason, in English.</comment>
+  </data>
+  <data name="Config.SaveFailed.Title" xml:space="preserve">
+    <value>Couldn't Save Settings</value>
+    <comment>Title of the message box shown when the launcher's settings file could not be written.</comment>
+  </data>
+  <data name="Config.SaveFailed.Message" xml:space="preserve">
+    <value>Your changes could not be saved: {0}
+They may be lost if you close the launcher. Check that {1} is writable and try again.</value>
+    <comment>Message box text, two lines. {0} = the reason, in English. {1} = the path of the settings file.</comment>
+  </data>
+  <!-- Messages from the install services -->
+  <data name="Cache.StockDeleted" xml:space="preserve">
+    <value>Original stock files were deleted - expected "{0}" under "{1}", uninstallation is impossible.</value>
+    <comment>Error shown when the backup of the unmodified game is missing. {0} = the backup file name. {1} = the game folder. Stock means the unmodified game.</comment>
+  </data>
+  <data name="Wine.CreatingBottle" xml:space="preserve">
+    <value>Creating the CrossOver bottle "{0}"...</value>
+    <comment>Line in the install log on a Mac. A bottle is CrossOver's name for a Windows environment. {0} = the bottle name.</comment>
+  </data>
+  <data name="Wine.SettingUp" xml:space="preserve">
+    <value>Setting up the Windows environment for KSP2. This only happens once...</value>
+    <comment>Line in the install log on a Mac.</comment>
+  </data>
+  <data name="Wine.SetupFailed" xml:space="preserve">
+    <value>Setting up {0} failed with exit code {1}.</value>
+    <comment>Error on a Mac. {0} = the name of the compatibility runtime. {1} = the exit code number.</comment>
+  </data>
+  <data name="Game.DidNotStart" xml:space="preserve">
+    <value>{0} did not start.</value>
+    <comment>Error shown when the game process could not be started. {0} = the program that was started.</comment>
+  </data>
+  <data name="Game.StopFailure" xml:space="preserve">
+    <value>pid {0}: {1}</value>
+    <comment>One entry in the list of processes that could not be ended. pid is the process number. {0} = the process number. {1} = the reason, in English.</comment>
+  </data>
+  <data name="Game.CouldNotStop" xml:space="preserve">
+    <value>Could not stop KSP2 ({0}).</value>
+    <comment>Error shown when the game could not be stopped. {0} = a comma separated list of entries, see Game.StopFailure.</comment>
+  </data>
+  <data name="Locks.OneFile.OtherProgram" xml:space="preserve">
+    <value>A game file is in use by another program.</value>
+    <comment>First sentence of the message shown when one game file is held open. The advice from Locks.Advice follows it.</comment>
+  </data>
+  <data name="Locks.OneFile.Programs" xml:space="preserve">
+    <value>A game file is in use by {0}.</value>
+    <comment>First sentence of the message shown when one game file is held open. {0} = a comma separated list of the programs, see Locks.Process.</comment>
+  </data>
+  <data name="Locks.ManyFiles.OtherProgram" xml:space="preserve">
+    <value>{0} game files are in use by another program.</value>
+    <comment>First sentence of the message shown when several game files are held open. {0} = the number of files, at least 2.</comment>
+  </data>
+  <data name="Locks.ManyFiles.Programs" xml:space="preserve">
+    <value>{0} game files are in use by {1}.</value>
+    <comment>First sentence of the message shown when several game files are held open. {0} = the number of files, at least 2. {1} = a comma separated list of the programs, see Locks.Process.</comment>
+  </data>
+  <data name="Locks.Advice" xml:space="preserve">
+    <value>Close it, and any Unity project that uses this KSP2 folder, then try again. Nothing was changed.</value>
+    <comment>Second sentence of the message shown when game files are held open. "It" is the program named before.</comment>
+  </data>
+  <data name="Locks.InUse" xml:space="preserve">
+    <value>In use: {0}</value>
+    <comment>Last line of the message shown when game files are held open. {0} = a comma separated list of file names.</comment>
+  </data>
+  <data name="Locks.InUseMore" xml:space="preserve">
+    <value>In use: {0} and {1} more</value>
+    <comment>Last line of the message when many game files are held open. {0} = a comma separated list of the first file names. {1} = how many more files there are.</comment>
+  </data>
+  <data name="Locks.Process" xml:space="preserve">
+    <value>{0} (process {1})</value>
+    <comment>One program that holds a game file open. {0} = the program name. {1} = its process number.</comment>
+  </data>
+  <!-- Install log lines -->
+  <data name="Install.PlanMade" xml:space="preserve">
+    <value>Install/Update plan has been made, it has {0} steps.</value>
+    <comment>Line in the install log. {0} = the number of steps.</comment>
+  </data>
+  <data name="Install.Step.Uninstall" xml:space="preserve">
+    <value>Step {0}: Uninstalling KSP2 Redux</value>
+    <comment>Line in the install log that lists the plan. {0} = the step number.</comment>
+  </data>
+  <data name="Install.Step.RevertToStock" xml:space="preserve">
+    <value>Step {0}: Revert to Stock Install</value>
+    <comment>Line in the install log that lists the plan. {0} = the step number. Stock means the unmodified game.</comment>
+  </data>
+  <data name="Install.Step.Prepatch" xml:space="preserve">
+    <value>Step {0}: Going to prepatch from stock</value>
+    <comment>Line in the install log that lists the plan. {0} = the step number. Stock means the unmodified game.</comment>
+  </data>
+  <data name="Install.Step.ApplyPatchFile" xml:space="preserve">
+    <value>Step {0}: {1}</value>
+    <comment>Line in the install log that lists the plan. {0} = the step number. {1} = the step description, see the Plan keys.</comment>
+  </data>
+  <data name="Plan.ApplyingPatchFile" xml:space="preserve">
+    <value>Applying patch file at {0}</value>
+    <comment>Description of a plan step. {0} = the path of the patch file.</comment>
+  </data>
+  <data name="Plan.ApplyPatchFromVersion" xml:space="preserve">
+    <value>applying patch for version: {0} from version {1}</value>
+    <comment>Description of a plan step. {0} = the version the patch leads to. {1} = the version it starts from.</comment>
+  </data>
+  <data name="Plan.ApplyPatchFromPrepatch" xml:space="preserve">
+    <value>applying patch for version: {0} from prepatch</value>
+    <comment>Description of a plan step. {0} = the version the patch leads to. A prepatch is the first patch that turns the unmodified game into a Redux base.</comment>
+  </data>
+  <data name="Install.CheckingFiles" xml:space="preserve">
+    <value>Checking that no other program is using the game files...</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Install.Uninstalling" xml:space="preserve">
+    <value>Uninstalling KSP2 Redux</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Install.RevertingForRepatch" xml:space="preserve">
+    <value>Reverting KSP2 Redux to Stock for repatching</value>
+    <comment>Line in the install log. Stock means the unmodified game.</comment>
+  </data>
+  <data name="Install.NoRevertNeeded" xml:space="preserve">
+    <value>Did not need to revert to stock</value>
+    <comment>Line in the install log. Stock means the unmodified game.</comment>
+  </data>
+  <data name="Install.ApplyingPrepatch" xml:space="preserve">
+    <value>Applying the correct prepatch</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Install.DeletingModloader" xml:space="preserve">
+    <value>Deleting old modloader!</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Install.Prepatch.Portable" xml:space="preserve">
+    <value>Applying portable prepatch</value>
+    <comment>Line in the install log for a game copy that is neither from Steam nor Epic.</comment>
+  </data>
+  <data name="Install.Prepatch.Steam" xml:space="preserve">
+    <value>Applying steam prepatch</value>
+    <comment>Line in the install log for a game copy from Steam.</comment>
+  </data>
+  <data name="Install.Prepatch.Epic" xml:space="preserve">
+    <value>Applying epic prepatch</value>
+    <comment>Line in the install log for a game copy from the Epic Games Store.</comment>
+  </data>
+  <data name="Install.Error.PrepatchOnRedux" xml:space="preserve">
+    <value>Cannot apply prepatch to Redux install</value>
+    <comment>Error shown when the base patch is applied to a game that already has Redux.</comment>
+  </data>
+  <data name="Install.CleaningPatch" xml:space="preserve">
+    <value>Cleaning up downloaded patch {0}</value>
+    <comment>Line in the install log. {0} = the path of the patch file.</comment>
+  </data>
+  <data name="Install.PatchDeleteFailed" xml:space="preserve">
+    <value>Failed to delete patch {0}: {1}</value>
+    <comment>Line in the install log. {0} = the path of the patch file. {1} = the reason, in English.</comment>
+  </data>
+  <data name="Install.BundleRevertFailed" xml:space="preserve">
+    <value>Could not revert the bundle conversion: {0}</value>
+    <comment>Line in the install log. {0} = the reason. See the Bundles keys for what the bundle conversion is.</comment>
+  </data>
+  <data name="Install.StepFailed" xml:space="preserve">
+    <value>Install step failed ({0}). Rolling back to the last known-good state...</value>
+    <comment>Line in the install log. {0} = the reason.</comment>
+  </data>
+  <data name="Install.RolledBack" xml:space="preserve">
+    <value>Rolled back successfully.</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Install.Error.RolledBack" xml:space="preserve">
+    <value>Installation failed and was automatically rolled back to the previous state. Original error: {0}</value>
+    <comment>Error shown in the install log. {0} = the original error.</comment>
+  </data>
+  <data name="Install.RollbackFailed" xml:space="preserve">
+    <value>Rollback also failed: {0}</value>
+    <comment>Line in the install log. {0} = the reason.</comment>
+  </data>
+  <data name="Install.Error.RollbackFailed" xml:space="preserve">
+    <value>Installation failed ({0}) and the automatic rollback also failed ({1}). The install may be in a broken state - try Uninstall or Revert to Stock from Settings.</value>
+    <comment>Error shown in the install log. {0} = the original error. {1} = why the rollback failed. Uninstall is the Uninstall Redux button on the Settings tab. Revert to Stock is not a button, it means to restore the unmodified game.</comment>
+  </data>
+  <data name="Install.Disk.Download.Unknown" xml:space="preserve">
+    <value>Could not determine available download and reconstruction storage space, skipping that pre-flight check.</value>
+    <comment>Line in the install log. The space check is skipped because the free space could not be read. Storage here is the drive that holds downloaded patch parts.</comment>
+  </data>
+  <data name="Install.Disk.Download.NotEnough" xml:space="preserve">
+    <value>Not enough free disk space for download and reconstruction storage: need approximately {0}, but only {1} is available. Free up some space and try again.</value>
+    <comment>Error shown when the drive for downloaded patch parts is too full. {0} = the space needed, for example 512 MB. {1} = the space available.</comment>
+  </data>
+  <data name="Install.Disk.Temporary.Unknown" xml:space="preserve">
+    <value>Could not determine available system temporary storage space, skipping that pre-flight check.</value>
+    <comment>Line in the install log. The space check is skipped because the free space could not be read.</comment>
+  </data>
+  <data name="Install.Disk.Temporary.NotEnough" xml:space="preserve">
+    <value>Not enough free disk space for system temporary storage: need approximately {0}, but only {1} is available. Free up some space and try again.</value>
+    <comment>Error shown when the drive for temporary files is too full. {0} = the space needed. {1} = the space available.</comment>
+  </data>
+  <data name="Install.Disk.Install.Unknown" xml:space="preserve">
+    <value>Could not determine available installation storage space, skipping that pre-flight check.</value>
+    <comment>Line in the install log. The space check is skipped because the free space could not be read.</comment>
+  </data>
+  <data name="Install.Disk.Install.NotEnough" xml:space="preserve">
+    <value>Not enough free disk space for installation storage: need approximately {0}, but only {1} is available. Free up some space and try again.</value>
+    <comment>Error shown when the drive that holds the game is too full. {0} = the space needed. {1} = the space available.</comment>
+  </data>
+  <!-- Patch downloads -->
+  <data name="Download.UsingCached" xml:space="preserve">
+    <value>Using verified cached patch for {0}.</value>
+    <comment>Line in the install log. {0} = the version the patch is for.</comment>
+  </data>
+  <data name="Download.LegacyGitHubOnly" xml:space="preserve">
+    <value>This legacy patch is available only from GitHub. Select the GitHub backup to continue.</value>
+    <comment>Error shown when an old patch exists only on GitHub. The GitHub backup is a choice in the Patch source drop-down on the Settings tab.</comment>
+  </data>
+  <data name="Download.Legacy" xml:space="preserve">
+    <value>Downloading legacy patch for {0}.</value>
+    <comment>Line in the install log. {0} = the version the patch is for.</comment>
+  </data>
+  <data name="Download.Parts" xml:space="preserve">
+    <value>Downloading {0} part(s) for patch {1} from {2}.</value>
+    <comment>Line in the install log. {0} = the number of parts. {1} = the version the patch is for. {2} = the download service name.</comment>
+  </data>
+  <data name="Download.Reconstructed" xml:space="preserve">
+    <value>Patch {0} was reconstructed and verified.</value>
+    <comment>Line in the install log. {0} = the version the patch is for.</comment>
+  </data>
+  <data name="Download.CouldNotDownload" xml:space="preserve">
+    <value>Could not download a verified patch part from {0}.</value>
+    <comment>Error shown when downloading a patch part failed every time. {0} = the download service name.</comment>
+  </data>
+  <data name="Download.Complete" xml:space="preserve">
+    <value>Download complete.</value>
+    <comment>Line in the install log after a patch finished downloading.</comment>
+  </data>
+  <!-- Bundle conversion -->
+  <data name="Bundles.NoShaderBundles" xml:space="preserve">
+    <value>This Redux build has no URP shader bundles, so the stock bundles stay unconverted.</value>
+    <comment>Line in the install log. Bundles are the game's asset files. URP is a Unity rendering pipeline. Stock means the unmodified game.</comment>
+  </data>
+  <data name="Bundles.ManifestWarning" xml:space="preserve">
+    <value>Shader manifest: {0}</value>
+    <comment>Line in the install log. {0} = a warning about the shader list, in English.</comment>
+  </data>
+  <data name="Bundles.Converting" xml:space="preserve">
+    <value>Converting the stock bundles to the URP shaders...</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Bundles.Warning" xml:space="preserve">
+    <value>Warning: {0}</value>
+    <comment>Line in the install log. {0} = the warning text.</comment>
+  </data>
+  <data name="Bundles.ConvertingRestored" xml:space="preserve">
+    <value>Converting the bundles restored from Steam...</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Bundles.StillUnrecorded" xml:space="preserve">
+    <value>{0} stock bundles still hold unrecorded converted shaders after Steam's copies were put back, the first is {1}.</value>
+    <comment>Error shown in the install log. {0} = the number of bundles. {1} = the first bundle file name.</comment>
+  </data>
+  <data name="Bundles.StillUnreverted" xml:space="preserve">
+    <value>{0} converted shader references could not be undone even after Steam's copies were put back, the first in {1}.</value>
+    <comment>Error shown in the install log. {0} = the number of references. {1} = the first bundle file name.</comment>
+  </data>
+  <data name="Bundles.ApplySummary" xml:space="preserve">
+    <value>Bundle conversion: {0} edits written, {1} already applied, {2} bundle copies written, {3} up to date, {4} removed, {5} texture overlays written, {6} up to date, {7} removed.</value>
+    <comment>Summary line in the install log. Every placeholder is a count. {0} edits written, {1} edits already applied, {2} bundle copies written, {3} copies up to date, {4} copies removed, {5} texture overlays written, {6} overlays up to date, {7} overlays removed.</comment>
+  </data>
+  <data name="Bundles.LeftAlone" xml:space="preserve">
+    <value>Left alone, {0} holds unexpected bytes at offset {1}.</value>
+    <comment>Line in the install log. {0} = the bundle file name. {1} = the byte position in the file.</comment>
+  </data>
+  <data name="Bundles.KeptCloudTextures" xml:space="preserve">
+    <value>Kept the stock cloud textures of {0}: {1}</value>
+    <comment>Line in the install log. {0} = the bundle file name. {1} = the reason, in English.</comment>
+  </data>
+  <data name="Bundles.ConvertFailed" xml:space="preserve">
+    <value>Could not convert {0}: {1}</value>
+    <comment>Line in the install log. {0} = the bundle file name. {1} = the reason, in English.</comment>
+  </data>
+  <data name="Bundles.ConvertFailedOne" xml:space="preserve">
+    <value>A stock bundle could not be converted ({0}: {1}).</value>
+    <comment>Error shown in the install log when exactly one bundle failed. {0} = the bundle file name. {1} = the reason.</comment>
+  </data>
+  <data name="Bundles.ConvertFailedMany" xml:space="preserve">
+    <value>{0} stock bundles could not be converted, the first was {1} ({2}).</value>
+    <comment>Error shown in the install log when several bundles failed. {0} = how many. {1} = the first bundle file name. {2} = the reason.</comment>
+  </data>
+  <data name="Bundles.RevertSummary" xml:space="preserve">
+    <value>Bundle conversion reverted: {0} edits undone, {1} bundle copies and {2} texture overlays removed.</value>
+    <comment>Summary line in the install log. Every placeholder is a count. {0} edits undone, {1} bundle copies removed, {2} texture overlays removed.</comment>
+  </data>
+  <data name="Bundles.CouldNotUndo" xml:space="preserve">
+    <value>Could not undo, {0} holds unexpected bytes at offset {1}.</value>
+    <comment>Line in the install log. {0} = the bundle file name. {1} = the byte position in the file.</comment>
+  </data>
+  <data name="Bundles.RevertFailed" xml:space="preserve">
+    <value>Could not revert {0}: {1}</value>
+    <comment>Line in the install log. {0} = the bundle file name. {1} = the reason, in English.</comment>
+  </data>
+  <data name="Bundles.RevertFailedOne" xml:space="preserve">
+    <value>A stock bundle could not be put back to stock ({0}: {1}).</value>
+    <comment>Error shown in the install log when exactly one bundle failed. {0} = the bundle file name. {1} = the reason.</comment>
+  </data>
+  <data name="Bundles.RevertFailedMany" xml:space="preserve">
+    <value>{0} stock bundles could not be put back to stock, the first was {1} ({2}).</value>
+    <comment>Error shown in the install log when several bundles failed. {0} = how many. {1} = the first bundle file name. {2} = the reason.</comment>
+  </data>
+  <data name="Bundles.Unrecorded" xml:space="preserve">
+    <value>{0} stock bundles hold converted shaders that no conversion record covers: {1}.</value>
+    <comment>Line in the install log. {0} = the number of bundles. {1} = a comma separated list of bundle file names.</comment>
+  </data>
+  <data name="Bundles.SteamHelp" xml:space="preserve">
+    <value>Sign in with Steam in the launcher's settings (or run 'redux-launcher-cli steam login') and install again, or have Steam verify the game files and then reinstall Redux.</value>
+    <comment>Advice added to errors about bundles that only Steam's copies can restore. The command in quotes is typed in a terminal, keep it as it is.</comment>
+  </data>
+  <data name="Bundles.NeedSteamCopies" xml:space="preserve">
+    <value>{0} stock bundles hold converted shaders that only Steam's copies can put back. {1}</value>
+    <comment>Error shown in the install log. {0} = the number of bundles. {1} = the advice from Bundles.SteamHelp.</comment>
+  </data>
+  <data name="Bundles.SteamLoginRejected" xml:space="preserve">
+    <value>Steam did not accept the saved login, which is needed to put {0} stock bundles back. {1}</value>
+    <comment>Error shown in the install log. {0} = the number of bundles. {1} = the advice from Bundles.SteamHelp.</comment>
+  </data>
+  <data name="Bundles.DownloadingFromSteam" xml:space="preserve">
+    <value>Downloading Steam's copies of those bundles...</value>
+    <comment>Line in the install log.</comment>
+  </data>
+  <data name="Bundles.SteamDownloadFailed" xml:space="preserve">
+    <value>Steam's copies of {0} stock bundles could not be downloaded: {1} {2}</value>
+    <comment>Error shown in the install log. {0} = the number of bundles. {1} = the reason. {2} = the advice from Bundles.SteamHelp.</comment>
+  </data>
+  <data name="Bundles.PutBack" xml:space="preserve">
+    <value>Put back Steam's copies of {0} stock bundles.</value>
+    <comment>Line in the install log. {0} = the number of bundles.</comment>
+  </data>
+</root>

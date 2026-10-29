@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Ksp2Redux.Tools.Launcher.Controls;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -45,6 +46,7 @@ public partial class MainWindow : Window
             if (WindowState == WindowState.Normal) _lastNormalPosition = e.Point;
         };
         Closing += (_, _) => SaveWindowPlacement();
+        TExtension.Service.LanguageChanged += (_, _) => Dispatcher.UIThread.Post(UpdateMaximizedState);
 
         // Which panel is "active" changes on every tab switch and every time Home's log
         // or Community's article shows/hides, none of which fire a single one-shot event
@@ -244,7 +246,10 @@ public partial class MainWindow : Window
         this.FindControl<Border>("TitleBar")?.Classes.Set("maximized", maximized);
         if (ResizeGrips is not null) ResizeGrips.IsVisible = !maximized && !_isMac;
         if (MaximizeGlyph is not null) MaximizeGlyph.Text = maximized ? "❐" : "◻";
-        if (MaximizeButton is not null) ToolTip.SetTip(MaximizeButton, maximized ? "Restore" : "Maximize");
+        if (MaximizeButton is not null)
+        {
+            ToolTip.SetTip(MaximizeButton, TExtension.Service[maximized ? "Window.Restore.Tooltip" : "Window.Maximize.Tooltip"]);
+        }
     }
 
     private void RefreshBackdropClips()

@@ -80,12 +80,12 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
 
         if (!context.WineRuntimeService.IsRosettaInstalled())
         {
-            return context.Output.Fail(ExitCode.LAUNCH_FAILED, WineRuntimeService.ROSETTA_MISSING_MESSAGE);
+            return context.Output.Fail(ExitCode.LAUNCH_FAILED, WineRuntimeService.RosettaMissingMessage);
         }
 
         try
         {
-            await context.WineRuntimeService.PrepareAsync(runtime, context.Output.Progress, cancellationToken);
+            await context.WineRuntimeService.PrepareAsync(runtime, line => context.Output.Progress(line.English), cancellationToken);
         }
         catch (OperationCanceledException)
         {

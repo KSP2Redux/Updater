@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
@@ -45,7 +46,8 @@ public class GameProcessService(IOperatingSystemService operatingSystem, IWineRu
         using var process = Process.Start(startInfo);
         if (process is null && !startInfo.UseShellExecute)
         {
-            throw new InvalidOperationException($"{startInfo.FileName} did not start.");
+            throw LocalizationService.Default.Message("Game.DidNotStart", startInfo.FileName)
+                .ToException(message => new InvalidOperationException(message));
         }
     }
 
@@ -85,7 +87,7 @@ public class GameProcessService(IOperatingSystemService operatingSystem, IWineRu
             }
         }
 
-        List<string> failures = [];
+        List<LogMessage> failures = [];
         foreach (var pid in FindGame())
         {
             try
@@ -99,13 +101,17 @@ public class GameProcessService(IOperatingSystemService operatingSystem, IWineRu
             }
             catch (Exception e)
             {
-                failures.Add($"pid {pid}: {e.Message}");
+                failures.Add(LocalizationService.Default.Message("Game.StopFailure", pid, LogMessage.Literal(e.Message)));
             }
         }
 
         if (failures.Count > 0)
         {
-            throw new InvalidOperationException($"Could not stop KSP2 ({string.Join(", ", failures)}).");
+            var joined = new LogMessage(
+                string.Join(", ", failures.Select(failure => failure.English)),
+                string.Join(", ", failures.Select(failure => failure.Localized)));
+            throw LocalizationService.Default.Message("Game.CouldNotStop", joined)
+                .ToException(message => new InvalidOperationException(message));
         }
     }
 

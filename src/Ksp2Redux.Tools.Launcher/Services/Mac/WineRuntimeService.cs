@@ -2,6 +2,7 @@
 using System.IO.Abstractions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Mac;
@@ -44,7 +45,7 @@ public interface IWineRuntimeService
     /// Creates the Wine prefix or CrossOver bottle on first use. Safe to call before every launch.
     /// </summary>
     /// <exception cref="InvalidOperationException">Setting up the prefix or bottle failed.</exception>
-    Task PrepareAsync(WineRuntime runtime, Action<string> log, CancellationToken cancellationToken);
+    Task PrepareAsync(WineRuntime runtime, Action<LogMessage> log, CancellationToken cancellationToken);
 
     /// <summary>
     /// Builds the process that starts KSP2 inside the runtime.
@@ -90,9 +91,7 @@ public class WineRuntimeService(
     public const string ROSETTA_MARKER = "/Library/Apple/usr/share/rosetta/rosetta";
 
     /// <summary>Tells the player how to install Rosetta 2 when it is missing.</summary>
-    public const string ROSETTA_MISSING_MESSAGE =
-        "KSP2 runs through an Intel build of Wine, which needs Rosetta 2, and Rosetta is not installed on this Mac. " +
-        "Install it by running this in Terminal, then try again:\n\nsoftwareupdate --install-rosetta --agree-to-license";
+    public static string RosettaMissingMessage => LocalizationService.Default["Home.Rosetta.Message"];
     private const string CROSSOVER_BIN = "Contents/SharedSupport/CrossOver/bin";
     private const string CROSSOVER_WINDOWS_USER = "crossover";
     private const string PUBLISHER_FOLDER = "Intercept Games";
@@ -119,7 +118,7 @@ public class WineRuntimeService(
         return null;
     }
 
-    public async Task PrepareAsync(WineRuntime runtime, Action<string> logLine, CancellationToken cancellationToken)
+    public async Task PrepareAsync(WineRuntime runtime, Action<LogMessage> logLine, CancellationToken cancellationToken)
     {
         if (fileSystem.Directory.Exists(fileSystem.Path.Combine(runtime.PrefixPath, "drive_c")))
         {
@@ -130,7 +129,7 @@ public class WineRuntimeService(
         int exitCode;
         if (runtime.Kind == WineRuntimeKind.CrossOver)
         {
-            logLine($"Creating the CrossOver bottle \"{CROSSOVER_BOTTLE}\"...");
+            logLine(LocalizationService.Default.Message("Wine.CreatingBottle", CROSSOVER_BOTTLE));
             var startInfo = new ProcessStartInfo(fileSystem.Path.Combine(runtime.RuntimeRoot, "cxbottle"));
             foreach (var argument in new[]
                      {
@@ -147,7 +146,7 @@ public class WineRuntimeService(
         }
         else
         {
-            logLine("Setting up the Windows environment for KSP2. This only happens once...");
+            logLine(LocalizationService.Default.Message("Wine.SettingUp"));
             fileSystem.Directory.CreateDirectory(runtime.PrefixPath);
             var startInfo = new ProcessStartInfo(runtime.WineBinary);
             startInfo.ArgumentList.Add("wineboot");
@@ -160,7 +159,8 @@ public class WineRuntimeService(
 
         if (exitCode != 0)
         {
-            throw new InvalidOperationException($"Setting up {runtime.DisplayName} failed with exit code {exitCode}.");
+            throw LocalizationService.Default.Message("Wine.SetupFailed", runtime.DisplayName, exitCode)
+                .ToException(message => new InvalidOperationException(message));
         }
 
         log.Info($"Prepared {runtime.Kind} runtime at {runtime.PrefixPath}.");

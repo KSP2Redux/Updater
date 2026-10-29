@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ksp2Redux.Tools.Launcher.Localization;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
@@ -17,8 +18,8 @@ internal static class ExternalLinkLauncher
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
             log.Warn($"Ignored invalid link: {url}");
-            await messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Open Link",
-                "That link doesn't look valid.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await messageBoxService.ShowMessageBoxAsOwnedAsync(Loc["Link.Failed.Title"],
+                Loc["Link.Invalid.Message"], windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
@@ -29,8 +30,11 @@ internal static class ExternalLinkLauncher
         catch (Exception ex)
         {
             log.Error($"Failed to open link: {url}", ex);
-            await messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Open Link",
-                $"Couldn't open the link: {ex.Message}", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await messageBoxService.ShowMessageBoxAsOwnedAsync(Loc["Link.Failed.Title"],
+                Loc.Format("Link.Failed.Message", ex.Message), windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
+
+    // A static helper without a constructor, so it reads the shared service.
+    private static ILocalizationService Loc => LocalizationService.Default;
 }

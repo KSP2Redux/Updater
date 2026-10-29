@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Text;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Common.Wrappers;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -63,7 +64,7 @@ public class InstallPlanServicePatchCleanupTest
         var patchDownloadService = new Mock<IPatchDownloadService>();
         patchDownloadService.Setup(instance => instance.EnqueueAll(
                 It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
-                It.IsAny<int>(), It.IsAny<Action<string>>(), It.IsAny<Action<long, long>>(),
+                It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(),
                 It.IsAny<CancellationToken>()))
             .Returns([]);
         var configService = new Mock<ILauncherConfigService>();
@@ -80,7 +81,7 @@ public class InstallPlanServicePatchCleanupTest
             patchDownloadService.Object,
             configService.Object);
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PATCH_PATH), "downloaded patch");
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult(PATCH_PATH), LogMessage.Literal("downloaded patch"));
 
         await service.ApplyToFolder(
             plan, INSTALL_DIR, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None);

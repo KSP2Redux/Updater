@@ -6,6 +6,7 @@ using System.Text.Json;
 using Ksp2Redux.Tools.BundleConversion;
 using Ksp2Redux.Tools.Common.Patching;
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -124,7 +125,7 @@ public class InstallRevertEndToEndTest
             modules, zip, new DiskSpaceService(fileSystem), new LocalPatchDownloads(), config.Object,
             new BundleConversionService(fileSystem));
 
-        Task ExecuteAsync(InstallPlan plan) => service.ApplyToFolder(plan, install, Log,
+        Task ExecuteAsync(InstallPlan plan) => service.ApplyToFolder(plan, install, message => Log(message.English),
             (_, _) => { }, (done, total) => Log($"Plan steps: {done}/{total}"), CancellationToken.None);
 
         Task UninstallAsync()
@@ -178,10 +179,10 @@ public class InstallRevertEndToEndTest
                 // built directly because the helper for resolved paths deletes the patch after applying it.
                 plan.Steps.Insert(0, new InstallPlan.Step(InstallPlanAction.ApplyPatchFile,
                     (_, _, ct) => GeneratePatchAsync(fileSystem, install, build, patch, Log, ct),
-                    $"Generating {patch} from the prepatched install and {build}, then applying it"));
+                    LogMessage.Literal($"Generating {patch} from the prepatched install and {build}, then applying it")));
             }
             plan.Prepatch();
-            service.Describe(plan, Log);
+            service.Describe(plan, message => Log(message.English));
             await TimeAsync("3. Install and convert bundles", () => ExecuteAsync(plan), Log);
 
             await TimeAsync("4. Verify installed bundles", () =>
@@ -382,7 +383,7 @@ public class InstallRevertEndToEndTest
     private sealed class LocalPatchDownloads : IPatchDownloadService
     {
         public IReadOnlyList<Task<string>> EnqueueAll(IReadOnlyList<PatchDownloadRequest> requests,
-            PatchDownloadSource source, int maxConcurrency, Action<string> log, Action<long, long> progress,
+            PatchDownloadSource source, int maxConcurrency, Action<LogMessage> log, Action<long, long> progress,
             CancellationToken ct)
         {
             if (requests.Count != 0)

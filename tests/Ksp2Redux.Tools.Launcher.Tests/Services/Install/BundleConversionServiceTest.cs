@@ -1,5 +1,6 @@
 using Ksp2Redux.Tools.BundleConversion;
 using Ksp2Redux.Tools.BundleConversion.Tests;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Moq;
@@ -101,14 +102,14 @@ public class BundleConversionServiceTest
         WriteManifest(game);
         var session = new Mock<ISteamSessionService>();
         session.SetupGet(steam => steam.HasSavedLogin).Returns(false);
-        List<string> log = [];
+        List<LogMessage> log = [];
 
         // Act
         new BundleConversionService(game.FileSystem, session.Object, new Mock<ISteamDepotDownloader>().Object)
             .Convert(TestGame.ROOT, log.Add, CancellationToken.None);
 
         // Assert
-        Assert.That(log, Has.Some.StartsWith("Warning:"));
+        Assert.That(log.Select(line => line.English), Has.Some.StartsWith("Warning:"));
         Assert.That(game.FileSystem.File.Exists(game.Layout.JournalPath), Is.True);
     }
 

@@ -1,6 +1,7 @@
 using Ksp2Redux.Tools.Cli.Commands;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Moq;
 
@@ -218,6 +219,6 @@ public class InstallsProfileCommandsTest
         // Assert
         Assert.That(exit, Is.EqualTo(ExitCode.LAUNCH_FAILED));
         Assert.That(harness.Json.GetProperty("error").GetString(), Does.Contain("softwareupdate --install-rosetta"));
-        harness.Wine.Verify(w => w.PrepareAsync(It.IsAny<WineRuntime>(), It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        harness.Wine.Verify(w => w.PrepareAsync(It.IsAny<WineRuntime>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

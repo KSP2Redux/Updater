@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using Avalonia.Controls;
 using MsBox.Avalonia.Enums;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -63,7 +64,7 @@ public class UpdateService : IUpdateService
     // at build time. Pure and dependency-free so it's unit-testable without standing up the whole service.
     public static string BuildUpdateFoundMessage(Version newVersion, string? releaseNotes)
     {
-        const string actionMessage = "The launcher will download and update, it may restart a few times during this.\nWithout updating you cannot install new Redux versions.";
+        var actionMessage = Loc["Update.ActionMessage"];
 
         // The body is markdown meant for the releases page. This dialog is a plain text control, so
         // it gets the words without the markup, and without the part of the page aimed at someone
@@ -72,11 +73,14 @@ public class UpdateService : IUpdateService
 
         if (string.IsNullOrWhiteSpace(plain))
         {
-            return $"What's new in v{newVersion}:\n(No release notes provided.)\n\n{actionMessage}";
+            return Loc.Format("Update.WhatsNew.NoNotes", newVersion, actionMessage);
         }
 
-        return $"What's new in v{newVersion}:\n{plain.Trim()}\n\n{actionMessage}";
+        return Loc.Format("Update.WhatsNew.WithNotes", newVersion, plain.Trim(), actionMessage);
     }
+
+    // The message builder is static and public, so this reads the shared service.
+    private static ILocalizationService Loc => LocalizationService.Default;
 
     public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log)
     {
@@ -191,13 +195,13 @@ public class UpdateService : IUpdateService
             if (!_isSingleFile)
             {
                 _log.Warn("Running in non-single-file build, refusing to self-update.");
-                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Found",
-                    "You are not running in a single file build, rebuild from the latest main to be able to install Redux.",
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync(Loc["Update.Found.Title"],
+                    Loc["Update.NotSingleFile.Message"],
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
                 return false;
             }
 
-            var result = await _messageBoxService.ShowScrollableMessageBoxAsOwnedAsync("Update Found",
+            var result = await _messageBoxService.ShowScrollableMessageBoxAsOwnedAsync(Loc["Update.Found.Title"],
                 BuildUpdateFoundMessage(latestRelease.Version, latestRelease.Release.Body), UPDATE_DIALOG_MSBOX_MAX_HEIGHT, ButtonEnum.OkCancel,
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
 
@@ -269,8 +273,8 @@ public class UpdateService : IUpdateService
     {
         var repo = _launcherConfigService.Config.LauncherRepo.TrimEnd('/');
         var releasesUrl = $"{repo}/releases";
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
-            $"Please download the latest version of the launcher from\n{releasesUrl}",
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(Loc["Update.Failed.Title"],
+            Loc.Format("Update.Failed.Message", releasesUrl),
             windowStartupLocation: WindowStartupLocation.CenterOwner);
         try
         {

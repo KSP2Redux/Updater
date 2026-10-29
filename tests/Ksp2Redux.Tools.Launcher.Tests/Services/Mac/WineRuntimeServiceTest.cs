@@ -1,4 +1,5 @@
 ﻿using EnvironmentAbstractions;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
@@ -177,8 +178,8 @@ public class WineRuntimeServiceTest
         fileSystem.File.WriteAllText(prefixFile, "dxmt");
 
         var runner = new Mock<IProcessRunner>();
-        runner.Setup(r => r.RunAsync(It.IsAny<System.Diagnostics.ProcessStartInfo>(), It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()))
-            .Callback<System.Diagnostics.ProcessStartInfo, Action<string>, CancellationToken>((info, _, _) =>
+        runner.Setup(r => r.RunAsync(It.IsAny<System.Diagnostics.ProcessStartInfo>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+            .Callback<System.Diagnostics.ProcessStartInfo, Action<LogMessage>, CancellationToken>((info, _, _) =>
                 fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(info.Environment["WINEPREFIX"]!, "drive_c")))
             .ReturnsAsync(0);
         var service = Build(fileSystem, runner);
@@ -190,7 +191,7 @@ public class WineRuntimeServiceTest
         // Assert
         runner.Verify(r => r.RunAsync(
             It.Is<System.Diagnostics.ProcessStartInfo>(i => i.ArgumentList.SequenceEqual(new[] { "wineboot", "--init" })),
-            It.IsAny<Action<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()), Times.Once);
         var copied = fileSystem.Path.Combine(runtime.PrefixPath, "drive_c", "windows", "system32", "winemetal.dll");
         Assert.That(fileSystem.File.ReadAllText(copied), Is.EqualTo("dxmt"));
     }

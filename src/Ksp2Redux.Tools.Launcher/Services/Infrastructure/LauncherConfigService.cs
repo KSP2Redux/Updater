@@ -3,6 +3,7 @@ using System.IO.Abstractions;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -207,9 +208,10 @@ public class LauncherConfigService : ILauncherConfigService
             {
                 try
                 {
-                    await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Save Settings",
-                        $"Your changes could not be saved: {ex.Message}\nThey may be lost if you close the launcher. " +
-                        $"Check that {Config.StoragePath} is writable and try again.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+                    // The config is read before the container finishes, so this service reads the shared localization.
+                    await _messageBoxService.ShowMessageBoxAsOwnedAsync(LocalizationService.Default["Config.SaveFailed.Title"],
+                        LocalizationService.Default.Format("Config.SaveFailed.Message", ex.Message, Config.StoragePath),
+                        windowStartupLocation: WindowStartupLocation.CenterOwner);
                 }
                 finally
                 {

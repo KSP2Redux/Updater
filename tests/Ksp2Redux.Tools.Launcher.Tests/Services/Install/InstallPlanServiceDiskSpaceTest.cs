@@ -1,4 +1,5 @@
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -28,7 +29,7 @@ public class InstallPlanServiceDiskSpaceTest
         var patchDownloadService = new Mock<IPatchDownloadService>();
         patchDownloadService.Setup(service => service.EnqueueAll(
                 It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
-                It.IsAny<int>(), It.IsAny<Action<string>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
+                It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
             .Returns([]);
         var configService = new Mock<ILauncherConfigService>();
         configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
@@ -46,7 +47,7 @@ public class InstallPlanServiceDiskSpaceTest
         diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(1024); // basically nothing
 
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, _) => Task.FromResult("unused"), "big patch", downloadSize: 10L * 1024 * 1024 * 1024); // 10 GB
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult("unused"), LogMessage.Literal("big patch"), downloadSize: 10L * 1024 * 1024 * 1024); // 10 GB
 
         Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
             Throws.TypeOf<InsufficientDiskSpaceException>());
@@ -59,7 +60,7 @@ public class InstallPlanServiceDiskSpaceTest
         diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(100L * 1024 * 1024 * 1024); // 100 GB
 
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, ct) => Task.FromResult(InstallDir), "small patch", downloadSize: 1024);
+        plan.ApplyPatchFile((_, _, ct) => Task.FromResult(InstallDir), LogMessage.Literal("small patch"), downloadSize: 1024);
 
         // A missing/invalid patch file will fail later in Ksp2Patch.FromFile - that's fine, it means the
         // space check itself let it through.
@@ -77,7 +78,7 @@ public class InstallPlanServiceDiskSpaceTest
         diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns((long?)null);
 
         var plan = new InstallPlan();
-        plan.ApplyPatchFile((_, _, _) => Task.FromResult("unused"), "big patch", downloadSize: 10L * 1024 * 1024 * 1024);
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult("unused"), LogMessage.Literal("big patch"), downloadSize: 10L * 1024 * 1024 * 1024);
 
         // Should not throw due to disk space (unknown => skip check); it'll fail later for other reasons instead.
         Exception? thrown = null;

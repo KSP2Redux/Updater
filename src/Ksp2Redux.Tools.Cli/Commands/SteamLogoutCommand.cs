@@ -19,7 +19,7 @@ public sealed class SteamLogoutCommand : ReduxCommand<SteamLogoutSettings>
         var revoked = account is null || await context.SteamSession.SignOutAsync();
         if (!revoked)
         {
-            context.Output.Warn(SteamSessionService.REVOKE_FAILED_MESSAGE);
+            context.Output.Warn(SteamSessionService.RevokeFailedMessage);
         }
 
         context.Output.Payload(

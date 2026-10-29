@@ -196,7 +196,7 @@ public class SteamStartupResumeTest
 
         // Assert
         TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(
-            "Signed Out", SteamSessionService.REVOKE_FAILED_MESSAGE, It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(),
+            "Signed Out", SteamSessionService.RevokeFailedMessage, It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(),
             It.IsAny<Avalonia.Controls.WindowStartupLocation>()), Times.Once);
     }
 

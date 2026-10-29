@@ -1,4 +1,6 @@
-﻿namespace Ksp2Redux.Tools.Launcher.Models;
+﻿using Ksp2Redux.Tools.Launcher.Localization;
+
+namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class InstallPlan
 {
@@ -7,8 +9,8 @@ public class InstallPlan
     // DownloadSize is the size in bytes of the file that will be fetched by Argument, or 0 if the step performs no download.
     public record struct Step(
         InstallPlanAction Action,
-        Func<Action<string>, Action<long, long>, CancellationToken, Task<string>>? Argument = null,
-        string ArgumentDescription = "Undescribed",
+        Func<Action<LogMessage>, Action<long, long>, CancellationToken, Task<string>>? Argument = null,
+        LogMessage ArgumentDescription = default,
         bool DeleteAfter = false,
         long DownloadSize = 0,
         PatchDownloadRequest? DownloadRequest = null);
@@ -32,10 +34,10 @@ public class InstallPlan
 
     public void ApplyPatchFile(string path)
     {
-        Steps.Insert(0,new Step(InstallPlanAction.ApplyPatchFile, (_,_,_) => Task.FromResult(path),$"Applying patch file at {path}"));
+        Steps.Insert(0,new Step(InstallPlanAction.ApplyPatchFile, (_,_,_) => Task.FromResult(path), LocalizationService.Default.Message("Plan.ApplyingPatchFile", path)));
     }
 
-    public void ApplyPatchFile(Func<Action<string>, Action<long, long>,CancellationToken,Task<string>> path, string description, long downloadSize = 0)
+    public void ApplyPatchFile(Func<Action<LogMessage>, Action<long, long>,CancellationToken,Task<string>> path, LogMessage description, long downloadSize = 0)
     {
         Steps.Insert(0, new Step(InstallPlanAction.ApplyPatchFile, path, description, DeleteAfter: true, DownloadSize: downloadSize));
     }
@@ -45,7 +47,7 @@ public class InstallPlan
     /// </summary>
     /// <param name="request">The patch download request.</param>
     /// <param name="description">The user-facing step description.</param>
-    public void ApplyPatchFile(PatchDownloadRequest request, string description)
+    public void ApplyPatchFile(PatchDownloadRequest request, LogMessage description)
     {
         Steps.Insert(0, new Step(
             InstallPlanAction.ApplyPatchFile,

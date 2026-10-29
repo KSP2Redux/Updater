@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:home="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Home"
+             xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Home.HomeTabView"
              x:DataType="home:HomeTabViewModel">
@@ -73,18 +74,16 @@
 				<Grid Grid.Row="1" Margin="16,0,16,16"
 	                  ColumnDefinitions="Auto,*" RowDefinitions="*,*"
 					  IsVisible="{Binding IsProgressVisible}">
-					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0">
-						Downloaded:
-					</TextBlock>
+					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0"
+					           Text="{loc:T Home.Progress.Downloaded}" />
 					<ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0"
 								 Value="{Binding DownloadProgressMb}" Maximum="{Binding DownloadProgressTotalMb}"
-	                             ProgressTextFormat="{}{0:F1}/{3:F1} MB ({1:0}%)" />
-					<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0">
-						Installed:
-					</TextBlock>
+	                             ProgressTextFormat="{loc:T Home.Progress.DownloadFormat}" />
+					<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0"
+					           Text="{loc:T Home.Progress.Installed}" />
 					<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0"
 								 Value="{Binding InstallProgressSteps}" Maximum="{Binding InstallProgressTotalSteps}"
-	                             ProgressTextFormat="{}{0}/{3} steps ({1:0}%)" />
+	                             ProgressTextFormat="{loc:T Home.Progress.InstallFormat}" />
 				</Grid>
 			</Grid>
 		</Border>
@@ -99,9 +98,9 @@
 		                   FontFamily="{StaticResource JetBrainsMonoRegular}"
 		                   FontSize="11"
 		                   VerticalAlignment="Center"
-		                   Text="New version of the updater app is necessary to install or update redux" />
+		                   Text="{loc:T Home.LauncherUpdateNeeded}" />
 		        <Button Grid.Column="1"
-		                Content="Install update"
+		                Content="{loc:T Home.InstallUpdateButton}"
 		                Click="TriggerInstall"
 		                FontSize="11"
 		                Padding="8,2"

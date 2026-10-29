@@ -3,6 +3,7 @@ using System.IO.Abstractions;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -19,27 +20,38 @@ public partial class SteamDownloadViewModel : ViewModelBase
     private readonly IKsp2InstallService _installService;
     private readonly IFileSystem _fileSystem;
     private readonly ILogService _log;
+    private readonly ILocalizationService _localization;
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Stopwatch _clock = new();
     private readonly TransferRateMeter _rate = new();
     private TimeSpan? _lastDetailRefresh;
+    private string _stage = CONNECTING_STAGE;
 
     private static readonly TimeSpan DETAIL_REFRESH_INTERVAL = TimeSpan.FromMilliseconds(100);
 
+    // The downloader's own stage names, plus the two this window adds.
+    private const string CONNECTING_STAGE = "Connecting";
+    private const string STOPPED_STAGE = "Stopped";
+
     public SteamDownloadViewModel(string targetDirectory, ISteamDepotDownloader downloader, IKsp2InstallService installService,
-        IFileSystem fileSystem, ILogService log)
+        IFileSystem fileSystem, ILogService log, ILocalizationService localization)
     {
         TargetDirectory = targetDirectory;
         _downloader = downloader;
         _installService = installService;
         _fileSystem = fileSystem;
         _log = log;
+        _localization = localization;
+        SetStage(CONNECTING_STAGE);
+        _localization.LanguageChanged += (_, _) => OnLanguageChanged();
     }
 
     /// <summary>Raised when the window should close, with the new install's exe path when the download finished.</summary>
     public event EventHandler<string?>? Completed;
 
     public string TargetDirectory { get; }
+
+    public string TargetDirectoryText => _localization.Format("Steam.Download.Target", TargetDirectory);
 
     [ObservableProperty]
     public partial double ProgressPercent { get; set; }
@@ -48,7 +60,7 @@ public partial class SteamDownloadViewModel : ViewModelBase
     public partial bool IsIndeterminate { get; set; } = true;
 
     [ObservableProperty]
-    public partial string StageText { get; set; } = "Connecting to Steam";
+    public partial string StageText { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string DetailText { get; set; } = string.Empty;
@@ -60,7 +72,7 @@ public partial class SteamDownloadViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CloseButtonText))]
     public partial bool IsRunning { get; set; } = true;
 
-    public string CloseButtonText => IsRunning ? "Cancel" : "Close";
+    public string CloseButtonText => _localization[IsRunning ? "Common.Cancel" : "Common.Close"];
 
     /// <summary>
     /// Downloads KSP2 into <see cref="TargetDirectory"/>, registers it as the active install and raises
@@ -77,7 +89,8 @@ public partial class SteamDownloadViewModel : ViewModelBase
             var exePath = _fileSystem.Path.Combine(TargetDirectory, Ksp2Install.KSP2_EXE_NAME);
             if (!_fileSystem.File.Exists(exePath))
             {
-                throw new InvalidDataException($"The download finished but {Ksp2Install.KSP2_EXE_NAME} is missing from it.");
+                throw _localization.Message("Steam.Download.MissingExe", Ksp2Install.KSP2_EXE_NAME)
+                    .ToException(message => new InvalidDataException(message));
             }
 
             var existing = _installService.Entries.FirstOrDefault(e => string.Equals(e.ExePath, exePath, StringComparison.Ordinal));
@@ -99,8 +112,8 @@ public partial class SteamDownloadViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error("Downloading KSP2 from Steam failed.", ex);
-            ErrorMessage = ex.Message;
-            StageText = "Download stopped";
+            ErrorMessage = ex.UserMessage();
+            SetStage(STOPPED_STAGE);
             IsRunning = false;
         }
     }
@@ -121,12 +134,7 @@ public partial class SteamDownloadViewModel : ViewModelBase
     private void OnProgress(SteamDownloadProgress progress)
     {
         Dispatcher.UIThread.VerifyAccess();
-        StageText = progress.Stage switch
-        {
-            "Downloading" => "Downloading Kerbal Space Program 2",
-            "Finished" => "Download complete",
-            _ => progress.Stage
-        };
+        SetStage(progress.Stage);
 
         if (progress.TotalBytes <= 0)
         {
@@ -147,11 +155,38 @@ public partial class SteamDownloadViewModel : ViewModelBase
         DetailText = FormatDetail(progress, _rate.BytesPerSecond);
     }
 
+    private void SetStage(string stage)
+    {
+        _stage = stage;
+        StageText = stage switch
+        {
+            CONNECTING_STAGE => _localization["Steam.Download.Stage.Connecting"],
+            "Downloading" => _localization["Steam.Download.Stage.Downloading"],
+            "Finished" => _localization["Steam.Download.Stage.Finished"],
+            SteamDepotDownloader.STAGE_CHECKING => _localization["Steam.Download.Stage.Checking"],
+            SteamDepotDownloader.STAGE_READING => _localization["Steam.Download.Stage.Reading"],
+            STOPPED_STAGE => _localization["Steam.Download.Stage.Stopped"],
+            _ => stage
+        };
+    }
+
+    // The progress line is worded again with the next progress report.
+    private void OnLanguageChanged()
+    {
+        SetStage(_stage);
+        OnPropertyChanged(nameof(TargetDirectoryText));
+        OnPropertyChanged(nameof(CloseButtonText));
+    }
+
     internal static string FormatDetail(SteamDownloadProgress progress, double? bytesPerSecond)
     {
-        var speed = bytesPerSecond is { } rate ? $"{FormatBytes((long)Math.Max(0, rate))}/s" : "measuring...";
-        return $"{FormatBytes(progress.DownloadedBytes)} of {FormatBytes(progress.TotalBytes)}  ·  {speed}  ·  " +
-               $"{progress.FilesDone}/{progress.FilesTotal} files";
+        // Static, so it reads the shared service instead of the injected one.
+        var localization = LocalizationService.Default;
+        var speed = bytesPerSecond is { } rate
+            ? localization.Format("Steam.Download.Speed", FormatBytes((long)Math.Max(0, rate)))
+            : localization["Steam.Download.Measuring"];
+        return localization.Format("Steam.Download.Detail", FormatBytes(progress.DownloadedBytes),
+            FormatBytes(progress.TotalBytes), speed, progress.FilesDone, progress.FilesTotal);
     }
 
     internal static string FormatBytes(long bytes)

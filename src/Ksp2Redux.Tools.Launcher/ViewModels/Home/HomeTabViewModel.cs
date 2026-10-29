@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -31,7 +32,8 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly IFileSystem _fileSystem;
     private readonly ILogService _log;
-    
+    private readonly ILocalizationService _localization;
+
     public ObservableCollection<GameVersionViewModel> Versions { get; } = [];
     public ObservableCollection<Ksp2InstallChoiceViewModel> Installs { get; } = [];
 
@@ -65,7 +67,7 @@ public partial class HomeTabViewModel : ViewModelBase
     // labeled INSTALL button) is redundant clutter. It's only worth showing when it explains why
     // the button is disabled, which the label alone can't do.
     [ObservableProperty]
-    public partial string? MainButtonTooltip { get; set; } = "Loading...";
+    public partial string? MainButtonTooltip { get; set; }
 
     [ObservableProperty]
     public partial bool IsProgressVisible { get; set; }
@@ -108,8 +110,10 @@ public partial class HomeTabViewModel : ViewModelBase
         item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService, IGameProcessService gameProcessService)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService, IGameProcessService gameProcessService, ILocalizationService localization)
     {
+        _localization = localization;
+        MainButtonTooltip = _localization["Home.Tooltip.Loading"];
         _gameProcessService = gameProcessService;
         _ksp2InstallService = ksp2InstallService;
         _launcherConfigService = launcherConfigService;
@@ -147,6 +151,9 @@ public partial class HomeTabViewModel : ViewModelBase
         };
         feedRefreshTimer.Tick += (_, _) => RefreshFeedsCommand.Execute(null);
         feedRefreshTimer.Start();
+
+        // The tooltip is computed text that is kept between updates, so it is worded again here.
+        _localization.LanguageChanged += (_, _) => UpdateMainButtonState();
     }
 
     private void RebuildInstallsCollection()
@@ -194,9 +201,8 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 var alternateSource = downloadFailure.DownloadSource.GetAlternate();
                 var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                    $"{downloadFailure.DownloadSource} Manifest Failed",
-                    $"The release list could not be downloaded from {downloadFailure.DownloadSource}. " +
-                    $"Retry using {alternateSource}? This choice will be saved in Advanced Downloads.",
+                    _localization.Format("Mirror.Manifest.Title", downloadFailure.DownloadSource),
+                    _localization.Format("Mirror.Manifest.Message", downloadFailure.DownloadSource, alternateSource),
                     ButtonEnum.YesNo,
                     windowStartupLocation: WindowStartupLocation.CenterOwner);
                 if (result == ButtonResult.Yes)
@@ -263,8 +269,8 @@ public partial class HomeTabViewModel : ViewModelBase
         _ksp2InstallService.TryLoadKsp2Install();
         if (_ksp2InstallService.Ksp2 is not { IsValid: true })
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                "KSP2 installation not detected. Please select a directory containing KSP2 on the settings tab.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.LaunchFailed.Title"],
+                _localization["Home.LaunchFailed.NotDetected"], windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
         var activeEntry = _ksp2InstallService.ActiveEntry;
@@ -287,7 +293,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 UseShellExecute = true
             };
             if (!await TryStartGame(steamLaunch, "Failed to launch through Steam.",
-                    ex => $"Couldn't open Steam: {ex.Message}\nMake sure Steam is installed and try again.")) return;
+                    ex => _localization.Format("Home.LaunchFailed.Steam", ex.UserMessage()))) return;
             await TrackRunningGame(SlowStartTimeout);
             return;
         }
@@ -302,7 +308,7 @@ public partial class HomeTabViewModel : ViewModelBase
             directLaunch.Arguments = activeEntry.LaunchArguments;
         }
         if (!await TryStartGame(directLaunch, "Failed to launch KSP2.",
-                ex => $"Couldn't start the game: {ex.Message}\nIt may have been moved, removed, or blocked by antivirus software.")) return;
+                ex => _localization.Format("Home.LaunchFailed.Direct", ex.UserMessage()))) return;
         await TrackRunningGame(DirectStartTimeout);
     }
 
@@ -316,7 +322,7 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error(failureLog, ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch", failureMessage(ex),
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.LaunchFailed.Title"], failureMessage(ex),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return false;
         }
@@ -358,8 +364,8 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         if (_stoppingGame || _gameSession is null) return;
 
-        var answer = await _messageBoxService.ShowMessageBoxAsOwnedAsync("Stop KSP2",
-            "Stop the game? Anything unsaved is lost.", ButtonEnum.YesNo, Icon.Warning,
+        var answer = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.StopGame.Title"],
+            _localization["Home.StopGame.Message"], ButtonEnum.YesNo, Icon.Warning,
             windowStartupLocation: WindowStartupLocation.CenterOwner);
         if (answer != ButtonResult.Yes || _gameSession is null) return;
 
@@ -375,8 +381,8 @@ public partial class HomeTabViewModel : ViewModelBase
             _log.Error("Failed to stop KSP2.", ex);
             _stoppingGame = false;
             UpdateMainButtonState();
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Stop KSP2",
-                $"{ex.Message}\nClose the game from inside it instead.", icon: Icon.Error,
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.StopFailed.Title"],
+                _localization.Format("Home.StopFailed.Message", ex.UserMessage()), icon: Icon.Error,
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
@@ -385,16 +391,15 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         if (_wineRuntimeService.Detect() is not { } runtime)
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                "KSP2 needs a Windows compatibility runtime to run on a Mac, and none was found.\n" +
-                "Use the macOS download of the launcher, which includes one, or install CrossOver.",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.LaunchFailed.Title"],
+                _localization["Home.LaunchFailed.NoRuntime"],
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
         if (!_wineRuntimeService.IsRosettaInstalled())
         {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Rosetta Needed", WineRuntimeService.ROSETTA_MISSING_MESSAGE,
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.Rosetta.Title"], WineRuntimeService.RosettaMissingMessage,
                 icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -402,7 +407,7 @@ public partial class HomeTabViewModel : ViewModelBase
         MainButtonEnabled = false;
         try
         {
-            await _wineRuntimeService.PrepareAsync(runtime, line => AppendToInstallLog(line), CancellationToken.None);
+            await _wineRuntimeService.PrepareAsync(runtime, line => AppendToInstallLog(line.Localized), CancellationToken.None);
 
             var startInfo = _wineRuntimeService.CreateLaunchInfo(runtime, ksp2.ExePath, ksp2.InstallDir!, launchArguments);
             _log.Info($"Launching KSP2 through {runtime.DisplayName} ({runtime.WineBinary}).");
@@ -412,8 +417,8 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             _log.Error($"Failed to launch KSP2 through {runtime.DisplayName}.", ex);
             UpdateMainButtonState();
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch",
-                $"Couldn't start the game through {runtime.DisplayName}: {ex.Message}",
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.LaunchFailed.Title"],
+                _localization.Format("Home.LaunchFailed.Wine", runtime.DisplayName, ex.UserMessage()),
                 windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
@@ -457,7 +462,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonShown = MainButtonState.Cancel;
             MainButtonEnabled = !_stoppingGame;
-            MainButtonTooltip = _stoppingGame ? "Stopping KSP2..." : "Stop KSP2. Anything unsaved is lost.";
+            MainButtonTooltip = _localization[_stoppingGame ? "Home.Tooltip.Stopping" : "Home.Tooltip.Stop"];
             return;
         }
 
@@ -467,7 +472,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = false;
             MainButtonShown = MainButtonState.Launch;
-            MainButtonTooltip = "KSP2 installation not detected.  Please select a directory containing KSP2 on the settings tab.";
+            MainButtonTooltip = _localization["Home.Tooltip.NotDetected"];
             return;
         }
 
@@ -478,7 +483,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = false;
             MainButtonShown = MainButtonState.Launch;
-            MainButtonTooltip = "Couldn't detect the installed game version. Verifying game files through Steam/Epic, or reinstalling the game, may fix this.";
+            MainButtonTooltip = _localization["Home.Tooltip.VersionUnknown"];
             return;
         }
 
@@ -487,17 +492,17 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = false;
             MainButtonShown = MainButtonState.Install;
-            MainButtonTooltip = "Please select a version to install or launch.";
+            MainButtonTooltip = _localization["Home.Tooltip.SelectVersion"];
             return;
         }
 
         var linuxLaunchBlocked = (_operatingSystemService.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false))
                                  || (_operatingSystemService.IsMacOS() && _wineRuntimeService.Detect() is null);
         var linuxLaunchBlockedTooltip = _operatingSystemService.IsMacOS()
-            ? "No Windows compatibility runtime found. Use the macOS download of the launcher, or install CrossOver."
-            : "Enable \"Launch via Steam\" in settings to launch on Linux.";
+            ? _localization["Home.Tooltip.NoRuntime"]
+            : _localization["Home.Tooltip.LinuxSteam"];
 
-        const string installationDisabledTooltip = "The launcher needs to update itself before you can install or update Redux.";
+        var installationDisabledTooltip = _localization["Home.Tooltip.LauncherUpdate"];
 
         if (ksp2.Distribution != Distribution.Redux)
         {
@@ -630,7 +635,7 @@ public partial class HomeTabViewModel : ViewModelBase
         // patch graph that was never meant to be reached from "unknown".
         if (ksp2.GameVersion is null)
         {
-            Log("Couldn't detect the installed game version, so it's unclear which patches to apply. Verifying game files, or reinstalling the game, may fix this.");
+            Log(_localization.Message("Home.Log.VersionUnknown"));
             return;
         }
 
@@ -640,7 +645,7 @@ public partial class HomeTabViewModel : ViewModelBase
         MainButtonTooltip = null;
         _cancelCurrentOperation = new CancellationTokenSource();
 
-        Log("Creating install plan");
+        Log(_localization.Message("Home.Log.CreatingPlan"));
 
         try
         {
@@ -658,9 +663,8 @@ public partial class HomeTabViewModel : ViewModelBase
                     var failedSource = _launcherConfigService.Config.PatchDownloadSource;
                     var alternateSource = failedSource.GetAlternate();
                     var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                        $"{failedSource} Download Failed",
-                        $"A manifest or patch could not be downloaded from {failedSource}. " +
-                        $"Retry the complete update using {alternateSource}? Verified files already on disk will be reused.",
+                        _localization.Format("Mirror.Download.Title", failedSource),
+                        _localization.Format("Mirror.Download.Message", failedSource, alternateSource),
                         ButtonEnum.YesNo,
                         windowStartupLocation: WindowStartupLocation.CenterOwner);
                     if (result != ButtonResult.Yes)
@@ -673,14 +677,14 @@ public partial class HomeTabViewModel : ViewModelBase
                     _cancelCurrentOperation = new CancellationTokenSource();
                     _launcherConfigService.Config.PatchDownloadSource = alternateSource;
                     _launcherConfigService.Save();
-                    Log($"Retrying the update using {alternateSource}.");
+                    Log(_localization.Message("Home.Log.Retrying", alternateSource));
                 }
             }
-            Log("KSP2 Redux Successfully Installed");
+            Log(_localization.Message("Home.Log.Installed"));
         }
         catch (OperationCanceledException)
         {
-            Log("Installation cancelled");
+            Log(_localization.Message("Home.Log.Cancelled"));
         }
         catch (InsufficientDiskSpaceException e)
         {
@@ -692,12 +696,12 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         catch (InstallFailedException e)
         {
-            LogError(e.Message, e);
+            LogError(e.ToLogMessage(), e);
         }
         catch (Exception e)
         {
-            LogError($"Error updating Redux: {e.Message}", e);
-            Log("Redux may be in an invalid state, try uninstalling and reinstalling");
+            LogError(_localization.Message("Home.Log.UpdateError", e.ToLogMessage()), e);
+            Log(_localization.Message("Home.Log.InvalidState"));
         }
         finally
         {
@@ -761,11 +765,11 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
-            Log("KSP2 Redux Successfully Installed");
+            Log(_localization.Message("Home.Log.Installed"));
         }
         catch (OperationCanceledException)
         {
-            Log("Installation cancelled");
+            Log(_localization.Message("Home.Log.Cancelled"));
         }
         catch (InsufficientDiskSpaceException e)
         {
@@ -777,12 +781,12 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         catch (InstallFailedException e)
         {
-            LogError(e.Message, e);
+            LogError(e.ToLogMessage(), e);
         }
         catch (Exception e)
         {
-            LogError($"Error updating Redux: {e.Message}", e);
-            Log("Redux may be in an invalid state, try uninstalling and reinstalling");
+            LogError(_localization.Message("Home.Log.UpdateError", e.ToLogMessage()), e);
+            Log(_localization.Message("Home.Log.InvalidState"));
         }
         finally
         {
@@ -804,27 +808,25 @@ public partial class HomeTabViewModel : ViewModelBase
         if (!IsLauncherInsideInstallDir(ksp2.InstallDir)) return false;
 
         _log.Warn($"Refusing to install: launcher is running from inside the install directory \"{ksp2.InstallDir}\".");
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Can't Install Here",
-            "The launcher is running from inside the KSP2 install folder, so installing or updating Redux would " +
-            "overwrite the launcher while it's running and fail.\n\n" +
-            "Move the launcher to a folder outside the game directory, then run it again and retry.",
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.CantInstallHere.Title"],
+            _localization["Home.CantInstallHere.Message"],
             ButtonEnum.Ok, windowStartupLocation: WindowStartupLocation.CenterOwner);
         return true;
     }
 
     private async Task ShowNotEnoughDiskSpace(InsufficientDiskSpaceException e)
     {
-        LogError(e.Message, e);
-        Log("Nothing was changed.");
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Not Enough Disk Space",
-            $"{e.Message}\n\nThe space is needed on the drive that holds:\n{e.Path}\n\nNothing was changed.",
+        LogError(e.ToLogMessage(), e);
+        Log(_localization.Message("Home.Log.NothingChanged"));
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.DiskSpace.Title"],
+            _localization.Format("Home.DiskSpace.Message", e.UserMessage(), e.Path),
             ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
     private async Task ShowFilesInUse(FilesInUseException e)
     {
-        LogError(e.Message, e);
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync("Game Files In Use", e.Message,
+        LogError(e.ToLogMessage(), e);
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.FilesInUse.Title"], e.UserMessage(),
             ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
     }
 
@@ -882,19 +884,20 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
-    private void Log(string message)
+    // The log file always gets English, and the install log on screen the user's language.
+    internal void Log(LogMessage message)
     {
-        _log.Info(message);
-        AppendToInstallLog(message);
+        _log.Info(message.English);
+        AppendToInstallLog(message.Localized);
     }
 
     // Real install/patch failures used to go through Log(), which always writes at Info - grepping a
     // user's log file for "ERROR" to find out what went wrong turned up nothing, since the failure and
     // its stack trace were filed alongside routine progress lines.
-    private void LogError(string message, Exception? exception = null)
+    internal void LogError(LogMessage message, Exception? exception = null)
     {
-        _log.Error(message, exception);
-        AppendToInstallLog(message);
+        _log.Error(message.English, exception);
+        AppendToInstallLog(message.Localized);
     }
 
     private void AppendToInstallLog(string message)
@@ -950,8 +953,8 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             _log.Error("Manual launcher update failed.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Update Failed!",
-                $"Something went wrong while checking for launcher updates: {ex.Message}\nPlease try again later.", windowStartupLocation: WindowStartupLocation.CenterOwner);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.UpdateFailed.Title"],
+                _localization.Format("Home.UpdateFailed.Message", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
 }

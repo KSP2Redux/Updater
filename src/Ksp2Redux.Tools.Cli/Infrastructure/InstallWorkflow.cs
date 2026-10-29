@@ -20,7 +20,7 @@ public static class InstallWorkflow
     public static int Describe(CliContext context, InstallPlan plan, GameVersion? current, GameVersion? target)
     {
         List<string> steps = [];
-        context.InstallPlanService.Describe(plan, steps.Add);
+        context.InstallPlanService.Describe(plan, line => steps.Add(line.English));
 
         context.Output.Payload(
             new
@@ -88,7 +88,7 @@ public static class InstallWorkflow
         GameVersion? target,
         CancellationToken cancellationToken)
     {
-        context.InstallPlanService.Describe(plan, context.Output.Detail);
+        context.InstallPlanService.Describe(plan, line => context.Output.Detail(line.English));
 
         try
         {
@@ -97,7 +97,7 @@ public static class InstallWorkflow
                 (log, download, steps) => context.InstallPlanService.ApplyToFolder(
                     plan,
                     install.InstallDir,
-                    log,
+                    line => log(line.English),
                     download,
                     steps,
                     cancellationToken));
