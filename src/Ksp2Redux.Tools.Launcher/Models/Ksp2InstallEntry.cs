@@ -9,6 +9,6 @@ public class Ksp2InstallEntry
     public GameVersion? LastInstalledVersion { get; set; }
     public bool LaunchThroughSteam { get; set; } = false;
     public string SteamAppId { get; set; } = "954850";
-    public string LaunchArguments { get; set; } = "-popupwindow";
+    public string LaunchArguments { get; set; } = "";
     public bool DisableGraphicsJobs { get; set; } = false;
 }

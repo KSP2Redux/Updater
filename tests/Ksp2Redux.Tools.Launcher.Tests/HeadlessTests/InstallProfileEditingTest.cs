@@ -157,6 +157,8 @@ public class InstallProfileEditingTest
     {
         // Arrange
         var (window, settings) = Start();
+        settings.SelectedInstall!.LaunchArguments = "-popupwindow";
+        RunJobs();
         var box = window.GetVisualDescendants().OfType<TextBox>()
             .Single(t => t.Text == settings.SelectedInstall!.LaunchArguments && t.IsVisible && t.Name != "RenameBox" && t.PlaceholderText is null);
         box.Focus();
