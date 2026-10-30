@@ -14,6 +14,7 @@ public class InstallsProfileCommandsTest
     {
         var harness = new CliCommandHarness();
         var entry = harness.Installs.AddInstall(harness.CreateGame(GAME), "Testing");
+        entry.LaunchArguments = "-popupwindow";
         return (harness, entry.Id);
     }
 

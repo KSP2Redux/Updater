@@ -69,7 +69,8 @@ public class LaunchStopButtonTest
             Assert.That(SidebarButton("CancelButton").IsEffectivelyEnabled, Is.True);
             Assert.That(SidebarButton("LaunchButton").IsVisible, Is.False);
         });
-        TestAppBuilder.GameProcessService.Verify(g => g.Start(It.Is<ProcessStartInfo>(s => s.FileName.EndsWith("KSP2_x64.exe"))), Times.Once);
+        TestAppBuilder.GameProcessService.Verify(g => g.Start(It.Is<ProcessStartInfo>(s =>
+            s.FileName.EndsWith("KSP2_x64.exe") && s.Arguments == "")), Times.Once);
 
         _gameExited.SetResult();
         await launching;
