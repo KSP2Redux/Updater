@@ -1,0 +1,534 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="App.Menu.About" xml:space="preserve">
+    <value>关于KSP2 Redux</value>
+  </data>
+  <data name="App.Menu.CheckForUpdates" xml:space="preserve">
+    <value>检查更新…</value>
+  </data>
+  <data name="App.About.Title" xml:space="preserve">
+    <value>关于KSP2 Redux</value>
+  </data>
+  <data name="App.About.Message" xml:space="preserve">
+    <value>KSP2 Redux启动器
+版本 {0}
+
+KSP2 Redux的安装程序、更新程序和启动器。
+https://ksp2redux.org</value>
+  </data>
+  <data name="App.About.UnknownVersion" xml:space="preserve">
+    <value>未知</value>
+  </data>
+  <data name="Tab.Home" xml:space="preserve">
+    <value>首页</value>
+  </data>
+  <data name="Tab.Community" xml:space="preserve">
+    <value>社区</value>
+  </data>
+  <data name="Tab.Mods" xml:space="preserve">
+    <value>模组</value>
+  </data>
+  <data name="Window.Maximize.Tooltip" xml:space="preserve">
+    <value>最大化</value>
+  </data>
+  <data name="Window.Restore.Tooltip" xml:space="preserve">
+    <value>还原</value>
+  </data>
+  <data name="Window.UpdateDownloading" xml:space="preserve">
+    <value>下载更新中……</value>
+  </data>
+  <data name="Steam.Menu.DownloadKsp2" xml:space="preserve">
+    <value>下载KSP2</value>
+  </data>
+  <data name="Steam.Menu.SignOut" xml:space="preserve">
+    <value>退出Steam</value>
+  </data>
+  <data name="Sidebar.LatestNews" xml:space="preserve">
+    <value>最新资讯</value>
+  </data>
+  <data name="Sidebar.RefreshVersions.Tooltip" xml:space="preserve">
+    <value>刷新版本(F5)</value>
+  </data>
+  <data name="Sidebar.FeedRefreshWarning" xml:space="preserve">
+    <value>无法刷新版本 - 正在显示最后获取的列表。</value>
+  </data>
+  <data name="Sidebar.InstallButton" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="Sidebar.UpdateButton" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="Sidebar.CancelButton" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Sidebar.LaunchButton" xml:space="preserve">
+    <value>发射</value>
+  </data>
+  <data name="Sidebar.Link.Website.Tooltip" xml:space="preserve">
+    <value>KSP2 Redux官网</value>
+  </data>
+  <data name="Sidebar.Link.Discord.Tooltip" xml:space="preserve">
+    <value>KSP2 模组 Discord</value>
+  </data>
+  <data name="Sidebar.Link.Forums.Tooltip" xml:space="preserve">
+    <value>KSP论坛</value>
+  </data>
+  <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
+    <value>在博客上查看</value>
+  </data>
+  <data name="Mods.ComingSoon" xml:space="preserve">
+    <value>COMING SOON</value>
+  </data>
+  <data name="Mods.Roadmap" xml:space="preserve">
+    <value>模组支持已在路线图中 :3</value>
+  </data>
+  <data name="Home.Progress.Downloaded" xml:space="preserve">
+    <value>已下载：</value>
+  </data>
+  <data name="Home.Progress.Installed" xml:space="preserve">
+    <value>已安装：</value>
+  </data>
+  <data name="Home.Progress.DownloadFormat" xml:space="preserve">
+    <value>{0:F1}/{3:F1} MB ({1:0}%)</value>
+  </data>
+  <data name="Home.Progress.InstallFormat" xml:space="preserve">
+    <value>{0}/{3}步骤({1:0}%)</value>
+  </data>
+  <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
+    <value>需要新版本的更新程序才能安装或更新Redux</value>
+  </data>
+  <data name="Home.InstallUpdateButton" xml:space="preserve">
+    <value>安装更新</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="Settings.Profile.Section" xml:space="preserve">
+    <value>安装配置</value>
+  </data>
+  <data name="Settings.Profile.Label" xml:space="preserve">
+    <value>安装配置</value>
+  </data>
+  <data name="Settings.Profile.NamePlaceholder" xml:space="preserve">
+    <value>配置名称</value>
+  </data>
+  <data name="Settings.Profile.Rename.Tooltip" xml:space="preserve">
+    <value>重命名此配置</value>
+  </data>
+  <data name="Settings.Profile.RenameSave.Tooltip" xml:space="preserve">
+    <value>保存名称(Enter)。Esc取消。</value>
+  </data>
+  <data name="Settings.Profile.Add" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="Settings.Profile.Add.Tooltip" xml:space="preserve">
+    <value>为这台电脑上的另一个KSP2安装添加配置</value>
+  </data>
+  <data name="Settings.Profile.Remove" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="Settings.Profile.Remove.Tooltip" xml:space="preserve">
+    <value>从启动器中移除此配置。游戏文件将保留在原处。</value>
+  </data>
+  <data name="Settings.Profile.OpenFolder" xml:space="preserve">
+    <value>打开文件夹</value>
+  </data>
+  <data name="Settings.Profile.OpenFolder.Tooltip" xml:space="preserve">
+    <value>在资源管理器中打开此安装的文件夹。</value>
+  </data>
+  <data name="Settings.Profile.DownloadKsp2" xml:space="preserve">
+    <value>下载KSP2</value>
+  </data>
+  <data name="Settings.Exe.Label" xml:space="preserve">
+    <value>游戏主程序</value>
+  </data>
+  <data name="Settings.Exe.Browse" xml:space="preserve">
+    <value>浏览</value>
+  </data>
+  <data name="Settings.Exe.Browse.Tooltip" xml:space="preserve">
+    <value>使用文件浏览器查找KSP2_x64.exe</value>
+  </data>
+  <data name="Settings.Channel.Label" xml:space="preserve">
+    <value>发布渠道</value>
+  </data>
+  <data name="Settings.LaunchViaSteam.Label" xml:space="preserve">
+    <value>通过Steam启动</value>
+  </data>
+  <data name="Settings.LaunchViaSteam.Tooltip" xml:space="preserve">
+    <value>通过Steam客户端启动KSP2，而不是直接运行KSP2_x64.exe。</value>
+  </data>
+  <data name="Settings.SteamAppId.Label" xml:space="preserve">
+    <value>Steam app id</value>
+  </data>
+  <data name="Settings.SteamAppId.Tooltip" xml:space="preserve">
+    <value>覆盖此项以启动KSP2的Steam“添加非Steam游戏”快捷方式。正常Steam发行版请保留为954850。</value>
+  </data>
+  <data name="Settings.LaunchArguments.Label" xml:space="preserve">
+    <value>启动参数</value>
+  </data>
+  <data name="Settings.LaunchArguments.Tooltip" xml:space="preserve">
+    <value>启动时传递给KSP2_x64.exe的参数。启用“通过Steam启动”时忽略此项。</value>
+  </data>
+  <data name="Settings.DisableGfxJobs.Label" xml:space="preserve">
+    <value>禁用图形作业</value>
+  </data>
+  <data name="Settings.DisableGfxJobs.Tooltip" xml:space="preserve">
+    <value>通过在boot.config中设置gfx-enable-gfx-jobs=0来禁用Unity图形作业。这是针对某些硬件上崩溃问题的临时解决方案。</value>
+  </data>
+  <data name="Settings.InstallPatch.Button" xml:space="preserve">
+    <value>安装补丁文件</value>
+  </data>
+  <data name="Settings.InstallPatch.Tooltip" xml:space="preserve">
+    <value>从已有的.patch文件安装Redux</value>
+  </data>
+  <data name="Settings.UninstallRedux.Button" xml:space="preserve">
+    <value>卸载Redux</value>
+  </data>
+  <data name="Settings.UninstallRedux.Tooltip" xml:space="preserve">
+    <value>将游戏恢复为原版KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Button" xml:space="preserve">
+    <value>卸载KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.ButtonBusy" xml:space="preserve">
+    <value>正在卸载...</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Tooltip" xml:space="preserve">
+    <value>从电脑上删除此KSP2副本并移除其配置。存档将保留。</value>
+  </data>
+  <data name="Settings.Advanced.Section" xml:space="preserve">
+    <value>高级下载</value>
+  </data>
+  <data name="Settings.PatchSource.Label" xml:space="preserve">
+    <value>Patch来源</value>
+  </data>
+  <data name="Settings.PatchSource.Tooltip" xml:space="preserve">
+    <value>R2是主要的下载服务。选择GitHub以使用永久备份副本。</value>
+  </data>
+  <data name="Settings.ConcurrentChunks.Label" xml:space="preserve">
+    <value>并发分块数</value>
+  </data>
+  <data name="Settings.ConcurrentChunks.Tooltip" xml:space="preserve">
+    <value>最大并发Patch分块下载数(1-8)。</value>
+  </data>
+  <data name="Settings.Language.Label" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Settings.Language.Automatic" xml:space="preserve">
+    <value>自动</value>
+  </data>
+  <data name="Settings.OpenLogsFolder" xml:space="preserve">
+    <value>打开Logs文件夹</value>
+  </data>
+  <data name="Settings.OpenGameDataFolder" xml:space="preserve">
+    <value>打开Game Data文件夹</value>
+  </data>
+  <data name="Settings.OpenGameDataFolder.Tooltip" xml:space="preserve">
+    <value>打开KSP2存放存档、设置以及Player.log文件的文件夹。</value>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo" xml:space="preserve">
+    <value>复制诊断信息</value>
+  </data>
+  <data name="Settings.VerboseLogging" xml:space="preserve">
+    <value>记录详细日志</value>
+  </data>
+  <data name="Settings.VerboseLogging.Tooltip" xml:space="preserve">
+    <value>将更详细的信息写入日志文件。有助于排查问题。</value>
+  </data>
+  <data name="Settings.BackgroundMotion" xml:space="preserve">
+    <value>动态背景</value>
+  </data>
+  <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
+    <value>背景将会跟随鼠标移动。如果该动态效果引起分心或不适，请关闭此项。</value>
+  </data>
+  <data name="Settings.LauncherVersion" xml:space="preserve">
+    <value>启动器 v{0}</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Common.Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Steam.SignIn.Title" xml:space="preserve">
+    <value>使用Steam登录</value>
+  </data>
+  <data name="Steam.SignIn.Heading" xml:space="preserve">
+    <value>使用STEAM登陆</value>
+  </data>
+  <data name="Steam.SignIn.Intro" xml:space="preserve">
+    <value>Redux直接从Steam下载属于你自己的《坎巴拉太空计划2》副本。请使用拥有该游戏的账号登录。</value>
+  </data>
+  <data name="Steam.SignIn.GettingCode" xml:space="preserve">
+    <value>正在获取代码……</value>
+  </data>
+  <data name="Steam.SignIn.ScanTitle" xml:space="preserve">
+    <value>使用Steam app扫码</value>
+  </data>
+  <data name="Steam.SignIn.ScanHint" xml:space="preserve">
+    <value>在Steam手机应用中，打开Steam令牌并点击扫码。</value>
+  </data>
+  <data name="Steam.SignIn.Or" xml:space="preserve">
+    <value>或</value>
+  </data>
+  <data name="Steam.SignIn.AccountName" xml:space="preserve">
+    <value>STEAM账号名称</value>
+  </data>
+  <data name="Steam.SignIn.Password" xml:space="preserve">
+    <value>密码</value>
+  </data>
+  <data name="Steam.SignIn.SignInButton" xml:space="preserve">
+    <value>登录</value>
+  </data>
+  <data name="Steam.SignIn.SigningIn" xml:space="preserve">
+    <value>正在登录...</value>
+  </data>
+  <data name="Steam.SignIn.SteamGuard" xml:space="preserve">
+    <value>STEAM令牌</value>
+  </data>
+  <data name="Steam.SignIn.Continue" xml:space="preserve">
+    <value>继续</value>
+  </data>
+  <data name="Steam.SignIn.EnterCredentials" xml:space="preserve">
+    <value>输入你的Steam账号名称和密码。</value>
+  </data>
+  <data name="Steam.SignIn.Failed" xml:space="preserve">
+    <value>无法登录：{0}</value>
+  </data>
+  <data name="Steam.SignIn.EmailCode" xml:space="preserve">
+    <value>Steam已向{0}发送验证码。请在下方输入。</value>
+  </data>
+  <data name="Steam.SignIn.EmailCodeWrong" xml:space="preserve">
+    <value>该验证码无效。请输入Steam发送至{0}的新验证码。</value>
+  </data>
+  <data name="Steam.SignIn.DeviceCode" xml:space="preserve">
+    <value>输入Steam手机应用中显示的验证码。</value>
+  </data>
+  <data name="Steam.SignIn.DeviceCodeWrong" xml:space="preserve">
+    <value>该验证码无效。请输入你Steam手机应用中当前的验证码。</value>
+  </data>
+  <data name="Steam.SignIn.Approve" xml:space="preserve">
+    <value>打开Steam手机应用并批准登录。</value>
+  </data>
+  <data name="Steam.Download.Title" xml:space="preserve">
+    <value>正在下载KSP2</value>
+  </data>
+  <data name="Steam.Download.Target" xml:space="preserve">
+    <value>至 {0}</value>
+  </data>
+  <data name="Steam.Download.Hint" xml:space="preserve">
+    <value>你可以随时停止，稍后再继续。已完成的文件会被保留，下载会从中断处继续。</value>
+  </data>
+  <data name="Steam.Download.Stage.Connecting" xml:space="preserve">
+    <value>正在连接到Steam</value>
+  </data>
+  <data name="Steam.Download.Stage.Downloading" xml:space="preserve">
+    <value>正在下载坎巴拉太空计划2</value>
+  </data>
+  <data name="Steam.Download.Stage.Finished" xml:space="preserve">
+    <value>下载完成</value>
+  </data>
+  <data name="Steam.Download.Stage.Stopped" xml:space="preserve">
+    <value>下载已停止</value>
+  </data>
+  <data name="Steam.Download.Detail" xml:space="preserve">
+    <value>{0} / {1}  ·  {2}  ·  {3}/{4}个文件</value>
+  </data>
+  <data name="Steam.Download.Speed" xml:space="preserve">
+    <value>{0}/s</value>
+  </data>
+  <data name="Steam.Download.Measuring" xml:space="preserve">
+    <value>测速中……</value>
+  </data>
+  <data name="Steam.Download.MissingExe" xml:space="preserve">
+    <value>下载已结束，但其中缺少了{0}。</value>
+  </data>
+  <data name="Steam.Download.Stage.Checking" xml:space="preserve">
+    <value>正在检查你的Steam库</value>
+  </data>
+  <data name="Steam.Download.Stage.Reading" xml:space="preserve">
+    <value>正在读取文件列表</value>
+  </data>
+  <data name="Steam.FolderPicker.Title" xml:space="preserve">
+    <value>选择坎巴拉太空计划2的下载位置</value>
+  </data>
+  <data name="Dialog.Error.Title" xml:space="preserve">
+    <value>错误！</value>
+  </data>
+  <data name="Dialog.Confirm.Title" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="Dialog.Done.Title" xml:space="preserve">
+    <value>完成！</value>
+  </data>
+  <data name="Settings.FilePicker.Failed" xml:space="preserve">
+    <value>无法打开文件选择器：{0}</value>
+  </data>
+  <data name="Settings.FilePicker.NoWindow" xml:space="preserve">
+    <value>无法访问文件选择器(无活动窗口)。</value>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.FileType" xml:space="preserve">
+    <value>KSP2主程序</value>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.Title" xml:space="preserve">
+    <value>打开KSP2_x64.exe</value>
+  </data>
+  <data name="Settings.FilePicker.Patch.FileType" xml:space="preserve">
+    <value>KSP2补丁文件</value>
+  </data>
+  <data name="Settings.FilePicker.Patch.Title" xml:space="preserve">
+    <value>打开补丁文件</value>
+  </data>
+  <data name="Settings.RemoveProfile.Message" xml:space="preserve">
+    <value>你确定要移除“{0}”吗？其名称、启动参数和Steam设置将会丢失。</value>
+  </data>
+  <data name="Settings.OpenInstallFolder.NotFound" xml:space="preserve">
+    <value>无法找到安装文件夹。</value>
+  </data>
+  <data name="Settings.OpenInstallFolder.Failed" xml:space="preserve">
+    <value>无法打开安装文件夹。
+{0}</value>
+  </data>
+  <data name="Settings.GameData.Unknown" xml:space="preserve">
+    <value>无法确定此安装的游戏数据文件夹。</value>
+  </data>
+  <data name="Settings.GameData.NotYet.Title" xml:space="preserve">
+    <value>空空如也</value>
+  </data>
+  <data name="Settings.GameData.NotYet.Message" xml:space="preserve">
+    <value>KSP2尚未创建其数据文件夹。运行一次游戏后，它就会出现在：
+{0}</value>
+  </data>
+  <data name="Settings.GameData.OpenFailed" xml:space="preserve">
+    <value>无法打开游戏数据文件夹。
+{0}</value>
+  </data>
+  <data name="Settings.LogsFolder.Failed" xml:space="preserve">
+    <value>无法打开日志文件夹：{0}</value>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Title" xml:space="preserve">
+    <value>无法卸载KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Message" xml:space="preserve">
+    <value>{0}
+
+看起来不像是KSP2的安装文件夹（{1}旁边没有KSP2_x64_Data），因此没有删除任何内容。如果它指向了错误的位置，请改为移除该配置。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Title" xml:space="preserve">
+    <value>KSP2已移除</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Message" xml:space="preserve">
+    <value>“{0}”的游戏文件夹已不存在。要从启动器中移除该配置吗？</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Title" xml:space="preserve">
+    <value>卸载KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.ThroughSteam.Message" xml:space="preserve">
+    <value>此KSP2副本由Steam管理，因此Steam将执行卸载，并在Steam中要求你进行确认。启动器中的“{0}”配置将被移除。
+
+你的存档和设置将被保留。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.SteamFailed" xml:space="preserve">
+    <value>卸载KSP2失败，无法打开Steam：{0}</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Message" xml:space="preserve">
+    <value>从这台计算机上删除《坎巴拉太空计划2》？
+
+{0}
+
+整个文件夹将被删除（包括Redux），并且“{1}”配置将被移除。此操作无法撤销。
+
+你的存档和设置存储在别处，将被保留。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Failed" xml:space="preserve">
+    <value>无法卸载KSP2：{0}
+
+请确保游戏不在运行，然后重试。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Done" xml:space="preserve">
+    <value>坎巴拉太空计划2已卸载。</value>
+  </data>
+  <data name="Settings.UninstallRedux.NoInstall" xml:space="preserve">
+    <value>当前未选中有效的KSP2主程序。</value>
+  </data>
+  <data name="Settings.UninstallRedux.NotInstalled" xml:space="preserve">
+    <value>Redux尚未安装……</value>
+  </data>
+  <data name="Settings.UninstallRedux.Confirm" xml:space="preserve">
+    <value>你确定要卸载Redux吗？</value>
+  </data>
+  <data name="Settings.UninstallRedux.Failed" xml:space="preserve">
+    <value>无法卸载Redux：{0}</value>
+  </data>
+  <data name="Settings.UninstallRedux.Done" xml:space="preserve">
+    <value>KSP2 Redux已成功卸载</value>
+  </data>
+  <data name="Settings.SnapshotWarning.Title" xml:space="preserve">
+    <value>正在切换到快照</value>
+  </data>
+  <data name="Settings.SnapshotWarning.Message" xml:space="preserve">
+    <value>快照渠道用于QA测试。构建版本不稳定，随时可能崩溃。
+
+我们建议不要将其用于现有战役。</value>
+  </data>
+  <data name="Settings.Exe.Error.Required" xml:space="preserve">
+    <value>需要安装路径。</value>
+  </data>
+  <data name="Settings.Exe.Error.WrongFile" xml:space="preserve">
+    <value>路径必须指向{0}。</value>
+  </data>
+  <data name="Settings.Exe.Error.Missing" xml:space="preserve">
+    <value>该文件不存在。</value>
+  </data>
+  <data name="Settings.SteamAppId.Error.NotNumeric" xml:space="preserve">
+    <value>Steam App ID必须是数字。</value>
+  </data>
+  <data name="Settings.DownloadFromSteam.Tooltip" xml:space="preserve">
+    <value>从Steam下载属于你自己的坎巴拉太空计划2副本，并将其添加为安装项。这是一个纯净副本，Steam自身的更新永远不会干涉它，因此它能随时为Redux保持就绪状态。</value>
+  </data>
+  <data name="Settings.DownloadFromSteam.SignInTooltip" xml:space="preserve">
+    <value>使用Steam登录以下载KSP2。点击右下角的Steam图标，并使用拥有该游戏的账号登录。</value>
+  </data>
+  <data name="Steam.Status.NotSignedIn" xml:space="preserve">
+    <value>未登录</value>
+  </data>
+  <data name="Steam.Status.SignedIn" xml:space="preserve">
+    <value>已登录为{0}</value>
+  </data>
+  <data name="Steam.Status.SignedInConnecting" xml:space="preserve">
+    <value>已登录为{0}（正在连接...）</value>
+  </data>
+  <data name="Steam.Status.SignedInOffline" xml:space="preserve">
+    <value>已登录为{0}（离线）</value>
+  </data>
+  <data name="Steam.Indicator.Connected" xml:space="preserve">
+    <value>Steam: {0}</value>
+  </data>
+  <data name="Steam.Indicator.Connecting" xml:space="preserve">
+    <value>正在连接到Steam...</value>
+  </data>
+  <data name="Steam.Indicator.Reconnect" xml:space="preserve">
+    <value>Steam: {0}. 点击重新连接。</value>
+  </data>
+  <data name="Steam.Indicator.NotSignedIn" xml:space="preserve">
+    <value>未登录Steam。点击登录。</value>
+  </data>
+  <data name="Steam.SignedOut.Title" xml:space="preserve">
+    <value>已退出登录</value>
+  </data>
+  <data name="Steam.RevokeFailed" xml:space="preserve">
+    <value>你已在此处登出，但无法连接Steam以取消已保存的登录。要自行取消，请从你Steam账号安全设置中的设备列表里移除“{0}”。</value>
+  </data>
+</root>
