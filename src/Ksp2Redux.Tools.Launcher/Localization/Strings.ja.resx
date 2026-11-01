@@ -188,10 +188,10 @@ https://ksp2redux.org</value>
     <value>「boot.config」 に 「gfx-enable-gfx-jobs=0」 を設定して、Unityのグラフィックスジョブを無効にします。これは、一部のハードウェア環境で発生するクラッシュに対する回避策です。</value>
   </data>
   <data name="Settings.InstallPatch.Button" xml:space="preserve">
-    <value>パッチファイルをインストールする</value>
+    <value>パッチファイルをインストール</value>
   </data>
   <data name="Settings.InstallPatch.Tooltip" xml:space="preserve">
-    <value>既に持っている.patchファイルからReduxをインストールする</value>
+    <value>既に持っている.patchファイルからReduxをインストール</value>
   </data>
   <data name="Settings.UninstallRedux.Button" xml:space="preserve">
     <value>Reduxをアンインストール</value>
@@ -528,6 +528,9 @@ https://ksp2redux.org</value>
   <data name="Steam.SignedOut.Title" xml:space="preserve">
     <value>サインアウト済み</value>
   </data>
+  <data name="Steam.RevokeFailed" xml:space="preserve">
+    <value>ここではサインアウト済みですが、保存されたログイン情報を解除するためにSteamへ接続することができませんでした。ご自身で解除を行う場合は、Steamアカウントのセキュリティ設定にあるデバイス一覧から「{0}」を削除してください。</value>
+  </data>
   <data name="Steam.DownloadComplete.Title" xml:space="preserve">
     <value>ダウンロード完了</value>
   </data>
@@ -581,5 +584,27 @@ https://ksp2redux.org</value>
   </data>
   <data name="Steam.Depot.SignInFirst" xml:space="preserve">
     <value>まずはSteamでサインインしてください。</value>
+  </data>
+  <data name="Steam.Depot.NoServers" xml:space="preserve">
+    <value>Steamからコンテンツサーバーが返されませんでした。しばらくしてからもう一度試してください。</value>
+  </data>
+  <data name="Steam.Depot.ServersFailed" xml:space="preserve">
+    <value>Steamのコンテンツサーバーでエラーが繰り返し発生しました。接続状況を確認し、再度試してください。</value>
+  </data>
+  <data name="Main.StartupError.Title" xml:space="preserve">
+    <value>起動時エラー</value>
+  </data>
+  <data name="Main.StartupError.Message" xml:space="preserve">
+    <value>起動時に何かの問題が発生したため、セットアップが完了していない可能性があります（フィードの読み込み、インストール状況の確認、またはアップデート確認などが実行されなかった可能性）。詳細についてはログファイルを確認してください。ランチャーの再起動をおすすめします。</value>
+  </data>
+  <data name="Main.PartialUpdate.Title" xml:space="preserve">
+    <value>部分的な更新が完了</value>
+  </data>
+  <data name="Main.PartialUpdate.Message" xml:space="preserve">
+    <value>これを閉じた後、{0} を削除してください。
+また、Updater がローカル環境にまだ残っていることを確認してください。</value>
+  </data>
+  <data name="Main.InstallFound.Title" xml:space="preserve">
+    <value>KSP2のインストールが見つかりました</value>
   </data>
 </root>
