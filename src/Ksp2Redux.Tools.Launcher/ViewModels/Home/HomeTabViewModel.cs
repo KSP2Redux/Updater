@@ -798,6 +798,77 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
+    // Runs the same uninstall plan as the command line. The plan undoes the bundle conversion before it restores
+    // the stock files, because the restore deletes the conversion journal and the converted bundles in
+    // StreamingAssets would stay converted, which draws the main menu magenta.
+    public async Task UninstallRedux()
+    {
+        _ksp2InstallService.TryLoadKsp2Install();
+        if (_ksp2InstallService.Ksp2 is not { } ksp2)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization["Settings.UninstallRedux.NoInstall"], windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+
+        if (await BlockIfLauncherInsideInstallDir(ksp2))
+        {
+            return;
+        }
+
+        ResetInstallLog();
+        IsInstallLogVisible = true;
+        IsProgressVisible = true;
+        DownloadProgressMb = 0;
+        DownloadProgressTotalMb = 0;
+        InstallProgressSteps = 0;
+        InstallProgressTotalSteps = 1;
+
+        MainButtonShown = MainButtonState.Cancel;
+        MainButtonEnabled = true;
+        MainButtonTooltip = null;
+        _cancelCurrentOperation = new CancellationTokenSource();
+
+        var plan = new InstallPlan();
+        plan.Uninstall();
+
+        var uninstalled = false;
+        try
+        {
+            await RunPlanOnInstall(plan, ksp2);
+            Log(_localization.Message("Settings.UninstallRedux.Done"));
+            uninstalled = true;
+        }
+        catch (OperationCanceledException)
+        {
+            Log(_localization.Message("Home.Log.Cancelled"));
+        }
+        catch (FilesInUseException e)
+        {
+            await ShowFilesInUse(e);
+        }
+        catch (Exception e)
+        {
+            LogError(e.ToLogMessage(), e);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.UninstallRedux.Failed", e.UserMessage()),
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        finally
+        {
+            _cancelCurrentOperation = null;
+            await FlushPendingLogWrites();
+            IsProgressVisible = false;
+            _ksp2InstallService.TryLoadKsp2Install();
+            await UpdateVersionsList();
+        }
+
+        if (uninstalled)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
+                _localization["Settings.UninstallRedux.Done"], windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+    }
 
     // Certain install plans replace or delete the launcher's own files. If the launcher is running
     // from inside the KSP2 install folder those files are locked (Windows) or would be pulled out

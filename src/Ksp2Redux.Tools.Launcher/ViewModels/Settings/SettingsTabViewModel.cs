@@ -24,7 +24,6 @@ public partial class SettingsTabViewModel : ViewModelBase
 {
     private readonly ILocalizationService _localization;
     private readonly IFileSystem _fileSystem;
-    private readonly ICacheService _cacheService;
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IKsp2InstallService _ksp2InstallService;
     private readonly ITabNavigatorService _tabNavigatorService;
@@ -191,7 +190,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         _homeTabViewModel.RefreshMainButtonState();
     }
 
-    public SettingsTabViewModel(IFileSystem fileSystem, ICacheService cacheService, ILauncherConfigService launcherConfigService,
+    public SettingsTabViewModel(IFileSystem fileSystem, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
         IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
@@ -208,7 +207,6 @@ public partial class SettingsTabViewModel : ViewModelBase
         SyncSteamStatus();
         _fileSystem = fileSystem;
         _gameDataFolderService = gameDataFolderService;
-        _cacheService = cacheService;
         _tabNavigatorService = tabNavigatorService;
         _launcherConfigService = launcherConfigService;
         _ksp2InstallService = ksp2InstallService;
@@ -766,25 +764,9 @@ public partial class SettingsTabViewModel : ViewModelBase
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes) return;
 
-        try
-        {
-            _cacheService.RecursivelyRestoreCache(installDir);
-        }
-        catch (Exception ex)
-        {
-            _log.Error($"Failed to uninstall Redux from {installDir}.", ex);
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
-                _localization.Format("Settings.UninstallRedux.Failed", ex.UserMessage()),
-                windowStartupLocation: WindowStartupLocation.CenterOwner);
-            return;
-        }
+        _tabNavigatorService.GoToHome();
 
-        _ksp2InstallService.TryLoadKsp2Install();
-        await _homeTabViewModel.UpdateVersionsList();
-
-
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
-            _localization["Settings.UninstallRedux.Done"], windowStartupLocation: WindowStartupLocation.CenterOwner);
+        await _homeTabViewModel.UninstallRedux();
     }
 
     public async Task InstallFromPatchFile()

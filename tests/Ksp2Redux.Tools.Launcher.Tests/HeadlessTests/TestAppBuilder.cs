@@ -38,6 +38,7 @@ public static class TestAppBuilder
     public static Mock<IGameProcessService> GameProcessService { get; private set; } = null!;
     public static Mock<ISteamSessionService> SteamSessionService { get; private set; } = null!;
     public static Mock<ISteamDialogService> SteamDialogService { get; private set; } = null!;
+    public static Mock<IBundleConversionService> BundleConversion { get; private set; } = null!;
 
     public static IServiceProvider ServiceProvider { get; set; } = null!;
 
@@ -73,6 +74,7 @@ public static class TestAppBuilder
         GameProcessService = new();
         SteamSessionService = new();
         SteamDialogService = new();
+        BundleConversion = new();
         DiskSpaceService.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
 
         ServiceCollection serviceCollection = new();
@@ -109,6 +111,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(GameProcessService.Object);
         serviceCollection.AddSingleton(SteamSessionService.Object);
         serviceCollection.AddSingleton(SteamDialogService.Object);
+        serviceCollection.AddSingleton(BundleConversion.Object);
         serviceCollection.AddSingleton<IWindowPlacementService, WindowPlacementService>();
         serviceCollection.AddSingleton<IKsp2GameUninstallService, Ksp2GameUninstallService>();
         ServiceProvider = serviceCollection.BuildServiceProvider();
