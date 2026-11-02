@@ -95,6 +95,7 @@ static async Task<JsonNode> RunCommand(string[] args)
         "transfer-stop" => await CallRaw(port, "part.transfer_stop", []),
         "tutorial" => await Tutorial(port, args),
         "teleport" => await Teleport(port, args, options),
+        "free-flight" => await FreeFlight(port, args, options),
         "screenshot" => await CallRaw(port, "camera.screenshot", Obj(("path", args.Length > 1 && !args[1].StartsWith("--") ? args[1] : null))),
         "eval" => await Eval(port, args),
         "cheat" => await Cheat(port, args),
@@ -285,6 +286,31 @@ static async Task<JsonNode> Telemetry(int port, string[] args)
     }
 
     return await CallRaw(port, "telemetry.vessel", Obj(("guid", target)));
+}
+
+static async Task<JsonNode> FreeFlight(int port, string[] args, Dictionary<string, string?> options)
+{
+    string action = RequiredArg(args, 1, "status|enable|teleport|set-view|disable");
+    return action switch
+    {
+        "status" => await CallRaw(port, "free_flight.status", []),
+        "enable" => await CallRaw(port, "free_flight.enable",
+            Obj(("confirmVesselLoss", GetBool(options, "confirm-vessel-loss", false)))),
+        "teleport" => await CallRaw(port, "free_flight.teleport", Obj(
+            ("body", RequiredOption(options, "body")),
+            ("lat", GetOptionalDouble(options, "lat")),
+            ("lon", GetOptionalDouble(options, "lon")),
+            ("altitude", GetOptionalDouble(options, "altitude")),
+            ("heading", GetOptionalDouble(options, "heading")),
+            ("pitch", GetOptionalDouble(options, "pitch")))),
+        "set-view" => await CallRaw(port, "free_flight.set_view", Obj(
+            ("heading", GetOptionalDouble(options, "heading")),
+            ("pitch", GetOptionalDouble(options, "pitch")),
+            ("fieldOfView", GetOptionalDouble(options, "field-of-view")))),
+        "disable" => await CallRaw(port, "free_flight.disable", Obj(
+            ("destination", args.Length > 2 && !args[2].StartsWith("--") ? args[2] : "vessel"))),
+        _ => throw new ArgumentException($"Unknown free-flight action '{action}'.")
+    };
 }
 
 static async Task<JsonNode> Teleport(int port, string[] args, Dictionary<string, string?> options)
@@ -3222,6 +3248,11 @@ static void PrintHelp()
           tutorial next
           teleport orbit --body Kerbin --sma 700000 --ecc 0 --inc 0 --lan 0 --argPe 0 --meanAnomaly 0 [--guid <guid>]
           teleport surface --body Kerbin --lat 0 --lon 0 --altitude 100 [--guid <guid>]
+          free-flight status
+          free-flight enable [--confirm-vessel-loss]
+          free-flight teleport --body Duna [--lat 0] [--lon 0] [--altitude <meters>] [--heading 0] [--pitch 90]
+          free-flight set-view [--heading <degrees>] [--pitch <degrees>] [--field-of-view <degrees>]
+          free-flight disable [vessel|ksc]
           screenshot [path]
           eval lua <script>
           eval csharp <code>
