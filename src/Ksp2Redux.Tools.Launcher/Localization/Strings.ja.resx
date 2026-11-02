@@ -598,7 +598,7 @@ https://ksp2redux.org</value>
     <value>起動時に何かの問題が発生したため、セットアップが完了していない可能性があります（フィードの読み込み、インストール状況の確認、またはアップデート確認などが実行されなかった可能性）。詳細についてはログファイルを確認してください。ランチャーの再起動をおすすめします。</value>
   </data>
   <data name="Main.PartialUpdate.Title" xml:space="preserve">
-    <value>部分的な更新が完了</value>
+    <value>部分的なアップデートが完了</value>
   </data>
   <data name="Main.PartialUpdate.Message" xml:space="preserve">
     <value>これを閉じた後、{0} を削除してください。
@@ -606,5 +606,132 @@ https://ksp2redux.org</value>
   </data>
   <data name="Main.InstallFound.Title" xml:space="preserve">
     <value>KSP2のインストールが見つかりました</value>
+  </data>
+  <data name="Main.InstallFound.Message" xml:space="preserve">
+    <value>KSP2のインストールが{0}で見つかりました。
+Reduxに追加しますか？
+（設定で変更できます。）</value>
+  </data>
+  <data name="Main.InstallNotFound.Title" xml:space="preserve">
+    <value>KSP2のインストールが見つかりません</value>
+  </data>
+  <data name="Main.InstallNotFound.Message" xml:space="preserve">
+    <value>このコンピュータにはKSP2がインストールされていません。
+
+Steamアカウントを使用してダウンロードしますか？ 設定タブから、既存のインストールを追加することもできます。</value>
+  </data>
+  <data name="Main.InvalidExe.Title" xml:space="preserve">
+    <value>無効なEXE</value>
+  </data>
+  <data name="Main.InvalidExe.Message" xml:space="preserve">
+    <value>設定されたKSP2 EXEのパスが無効です：
+{0}</value>
+  </data>
+  <data name="Main.VersionDetection.Title" xml:space="preserve">
+    <value>ゲームのバージョンを検出できませんでした</value>
+  </data>
+  <data name="Main.VersionDetection.Message" xml:space="preserve">
+    <value>KSP2 Reduxが、インストールされているゲームのバージョンを特定できませんでした。これは、ゲームファイルが欠落している、破損している、あるいはサポート対象外のソースから入手された場合に発生することがあります。
+
+起動やインストールをすることは可能ですが、アップデートの確認が正しく機能しない可能性があります。問題の報告をご希望の場合は、ログファイルに詳細が記録されていますのでご確認ください（「設定」&gt;「ログフォルダーを開く」からアクセスできます）。</value>
+  </data>
+  <data name="Mirror.Manifest.Title" xml:space="preserve">
+    <value>{0} マニフェストの処理に失敗しました</value>
+  </data>
+  <data name="Mirror.Manifest.Message" xml:space="preserve">
+    <value>{0} からリリースリストをダウンロードできませんでした。{1} を使用して再試行しますか？この選択は「高度なダウンロード」設定に保存されます。</value>
+  </data>
+  <data name="Mirror.Download.Title" xml:space="preserve">
+    <value>{0} ダウンロードに失敗しました</value>
+  </data>
+  <data name="Mirror.Download.Message" xml:space="preserve">
+    <value>{0} からマニフェストもしくはパッチをダウンロードできませんでした。{1} を使用して、アップデート全体を再試行しますか？ディスク上に既に存在する検証済みのファイルは再利用されます。</value>
+  </data>
+  <data name="Home.Tooltip.Loading" xml:space="preserve">
+    <value>ランチャーをロードしています...</value>
+  </data>
+  <data name="Home.Tooltip.Stopping" xml:space="preserve">
+    <value>KSP2を停止しています...</value>
+  </data>
+  <data name="Home.Tooltip.Stop" xml:space="preserve">
+    <value>KSP2を終了します。保存されていないデータはすべて失われます。</value>
+  </data>
+  <data name="Home.Tooltip.NotDetected" xml:space="preserve">
+    <value>KSP2のインストールが検出されませんでした。 設定タブで、KSP2が含まれるディレクトリーを選択してください。</value>
+  </data>
+  <data name="Home.Tooltip.VersionUnknown" xml:space="preserve">
+    <value>インストールされているゲームのバージョンを検出できませんでした。SteamもしくはEpicを通じてゲームファイルの整合性を確認するか、ゲームを再インストールすることで解決できる可能性があります。</value>
+  </data>
+  <data name="Home.Tooltip.SelectVersion" xml:space="preserve">
+    <value>インストールまたは起動するバージョンを選択してください。</value>
+  </data>
+  <data name="Home.Tooltip.NoRuntime" xml:space="preserve">
+    <value>Windows互換ランタイムソフトウェアが見つかりません。macOS用のランチャーをダウンロードするか、CrossOverをインストールしてください。</value>
+  </data>
+  <data name="Home.Tooltip.LinuxSteam" xml:space="preserve">
+    <value>Linuxで起動するには、設定で「Steamから起動する」を有効にしてください。</value>
+  </data>
+  <data name="Home.Tooltip.LauncherUpdate" xml:space="preserve">
+    <value>Reduxをインストールまたはアップデートするには、ランチャー自体をアップデートする必要があります。</value>
+  </data>
+  <data name="Home.LaunchFailed.Title" xml:space="preserve">
+    <value>ゲームを起動できませんでした</value>
+  </data>
+  <data name="Home.LaunchFailed.NotDetected" xml:space="preserve">
+    <value>KSP2のインストールが検出されませんでした。設定タブで、KSP2が含まれるディレクトリーを選択してください。</value>
+  </data>
+  <data name="Home.LaunchFailed.Steam" xml:space="preserve">
+    <value>Steamを開くことができませんでした: {0}
+Steamがインストールされていることを確認し、再度試してください。</value>
+  </data>
+  <data name="Home.LaunchFailed.Direct" xml:space="preserve">
+    <value>ゲームを起動することができませんでした: {0} 
+ファイルが移動または削除されたか、ウイルス対策ソフトウェアによってブロックされている可能性があります。</value>
+  </data>
+  <data name="Home.LaunchFailed.NoRuntime" xml:space="preserve">
+    <value>MacでKSP2を起動するにはWindows互換ランタイムソフトウェアが必要ですが、見つかりませんでした。
+macOS用のランチャーをダウンロードするか、CrossOverをインストールしてください。</value>
+  </data>
+  <data name="Home.LaunchFailed.Wine" xml:space="preserve">
+    <value>{0}からゲームを起動できませんでした: {1}</value>
+  </data>
+  <data name="Home.StopGame.Title" xml:space="preserve">
+    <value>KSP2を終了</value>
+  </data>
+  <data name="Home.StopGame.Message" xml:space="preserve">
+    <value>ゲームを終了しますか？保存されていないデータはすべて失われます。</value>
+  </data>
+  <data name="Home.StopFailed.Title" xml:space="preserve">
+    <value>KSP2を終了することができませんでした</value>
+  </data>
+  <data name="Home.StopFailed.Message" xml:space="preserve">
+    <value>{0}
+ゲーム内からゲームを終了してください。</value>
+  </data>
+  <data name="Home.Rosetta.Title" xml:space="preserve">
+    <value>Rosettaが必要</value>
+  </data>
+  <data name="Home.Rosetta.Message" xml:space="preserve">
+    <value>KSP2はIntel版のWineを通して実行されますが、これにはRosetta 2が必要です。現在、このMacにはRosettaがインストールされていません。ターミナルで以下のコマンドを実行してインストールを行い、再度試してみてください。
+
+softwareupdate --install-rosetta --agree-to-license</value>
+  </data>
+  <data name="Home.Log.VersionUnknown" xml:space="preserve">
+    <value>インストールされているゲームのバージョンを検出できなかったため、どのパッチを適用すべきかが不明です。ゲームファイルの整合性確認、またはゲームの再インストールを行うことで、この問題が解決できる可能性があります。</value>
+  </data>
+  <data name="Home.Log.CreatingPlan" xml:space="preserve">
+    <value>インストールプランを作成しています</value>
+  </data>
+  <data name="Home.Log.Retrying" xml:space="preserve">
+    <value>{0} を使用してアップデートを再試行しています。</value>
+  </data>
+  <data name="Home.Log.Installed" xml:space="preserve">
+    <value>KSP2 Reduxのインストールが完了しました</value>
+  </data>
+  <data name="Home.Log.Cancelled" xml:space="preserve">
+    <value>インストールがキャンセルされました</value>
+  </data>
+  <data name="Home.Log.UpdateError" xml:space="preserve">
+    <value>Reduxのアップデート中にエラーが発生しました: {0}</value>
   </data>
 </root>

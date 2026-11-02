@@ -152,7 +152,7 @@ https://ksp2redux.org</value>
     <value>下载KSP2</value>
   </data>
   <data name="Settings.Exe.Label" xml:space="preserve">
-    <value>游戏主程序</value>
+    <value>游戏文件位置</value>
   </data>
   <data name="Settings.Exe.Browse" xml:space="preserve">
     <value>浏览</value>
@@ -691,5 +691,364 @@ https://ksp2redux.org</value>
   <data name="Home.LaunchFailed.NoRuntime" xml:space="preserve">
     <value>KSP2在Mac上运行需要Windows兼容层，但未找到。
 请使用包含该兼容层的macOS版启动器，或安装CrossOver。</value>
+  </data>
+  <data name="Home.LaunchFailed.Wine" xml:space="preserve">
+    <value>无法通过{0}启动游戏：{1}</value>
+  </data>
+  <data name="Home.StopGame.Title" xml:space="preserve">
+    <value>停止KSP2</value>
+  </data>
+  <data name="Home.StopGame.Message" xml:space="preserve">
+    <value>停止游戏？未保存的内容将丢失。</value>
+  </data>
+  <data name="Home.StopFailed.Title" xml:space="preserve">
+    <value>无法停止KSP2</value>
+  </data>
+  <data name="Home.StopFailed.Message" xml:space="preserve">
+    <value>{0}
+请在游戏内关闭。</value>
+  </data>
+  <data name="Home.Rosetta.Title" xml:space="preserve">
+    <value>需要Rosetta</value>
+  </data>
+  <data name="Home.Rosetta.Message" xml:space="preserve">
+    <value>KSP2通过Intel版本的Wine运行，这需要Rosetta 2，而此Mac上未安装Rosetta。请在终端中运行以下命令进行安装，然后重试：
+
+softwareupdate --install-rosetta --agree-to-license</value>
+  </data>
+  <data name="Home.Log.VersionUnknown" xml:space="preserve">
+    <value>无法检测已安装的游戏版本，因此不清楚需要应用哪些补丁。验证游戏文件，或重新安装游戏，可能会解决此问题。</value>
+  </data>
+  <data name="Home.Log.CreatingPlan" xml:space="preserve">
+    <value>正在创建安装计划</value>
+  </data>
+  <data name="Home.Log.Retrying" xml:space="preserve">
+    <value>正在使用{0}重试更新。</value>
+  </data>
+  <data name="Home.Log.Installed" xml:space="preserve">
+    <value>KSP2 Redux已成功安装</value>
+  </data>
+  <data name="Home.Log.Cancelled" xml:space="preserve">
+    <value>安装已取消</value>
+  </data>
+  <data name="Home.Log.UpdateError" xml:space="preserve">
+    <value>更新Redux时出错：{0}</value>
+  </data>
+  <data name="Home.Log.InvalidState" xml:space="preserve">
+    <value>Redux可能处于无效状态，请尝试卸载并重新安装</value>
+  </data>
+  <data name="Home.Log.NothingChanged" xml:space="preserve">
+    <value>未做出任何更改。</value>
+  </data>
+  <data name="Home.CantInstallHere.Title" xml:space="preserve">
+    <value>不能在这里安装</value>
+  </data>
+  <data name="Home.CantInstallHere.Message" xml:space="preserve">
+    <value>启动器正从KSP2的游戏根目录内运行，因此安装或更新Redux会覆盖正在运行的启动器并导致失败。
+
+请将启动器移动到游戏目录之外的文件夹，然后重新运行并重试。</value>
+  </data>
+  <data name="Home.DiskSpace.Title" xml:space="preserve">
+    <value>磁盘空间不足</value>
+  </data>
+  <data name="Home.DiskSpace.Message" xml:space="preserve">
+    <value>{0}
+
+需要在以下路径所在的驱动器上腾出空间：
+{1}
+
+未做出任何更改。</value>
+  </data>
+  <data name="Home.FilesInUse.Title" xml:space="preserve">
+    <value>游戏文件被占用</value>
+  </data>
+  <data name="Home.UpdateFailed.Title" xml:space="preserve">
+    <value>更新失败！</value>
+  </data>
+  <data name="Home.UpdateFailed.Message" xml:space="preserve">
+    <value>检查启动器更新时出了点问题：{0}
+请稍后再试。</value>
+  </data>
+  <data name="Update.Found.Title" xml:space="preserve">
+    <value>发现新版本</value>
+  </data>
+  <data name="Update.ActionMessage" xml:space="preserve">
+    <value>启动器将下载并更新，在此过程中可能会重启几次。
+如果不进行更新，你将无法安装新的Redux版本。</value>
+  </data>
+  <data name="Update.WhatsNew.NoNotes" xml:space="preserve">
+    <value>v{0}更新内容：
+(未提供更新日志。)
+
+{1}</value>
+  </data>
+  <data name="Update.WhatsNew.WithNotes" xml:space="preserve">
+    <value>v{0}更新内容：
+{1}
+
+{2}</value>
+  </data>
+  <data name="Update.NotSingleFile.Message" xml:space="preserve">
+    <value>你当前并未运行在单文件构建版本中，请基于最新的main分支重新构建，这样才能安装Redux。</value>
+  </data>
+  <data name="Update.Failed.Title" xml:space="preserve">
+    <value>更新失败！</value>
+  </data>
+  <data name="Update.Failed.Message" xml:space="preserve">
+    <value>请从以下地址下载最新版本的启动器：
+{0}</value>
+  </data>
+  <data name="Link.Failed.Title" xml:space="preserve">
+    <value>无法打开链接</value>
+  </data>
+  <data name="Link.Invalid.Message" xml:space="preserve">
+    <value>该链接似乎无效。</value>
+  </data>
+  <data name="Link.Failed.Message" xml:space="preserve">
+    <value>无法打开链接：{0}</value>
+  </data>
+  <data name="Config.SaveFailed.Title" xml:space="preserve">
+    <value>无法保存设置</value>
+  </data>
+  <data name="Config.SaveFailed.Message" xml:space="preserve">
+    <value>你的更改无法保存：{0}
+如果关闭启动器，这些更改可能会丢失。请检查{1}是否可写，然后重试。</value>
+  </data>
+  <data name="Cache.StockDeleted" xml:space="preserve">
+    <value>原版文件已被删除——预期在“{1}”下找到“{0}”，无法卸载。</value>
+  </data>
+  <data name="Wine.CreatingBottle" xml:space="preserve">
+    <value>正在创建CrossOver瓶“{0}”...</value>
+  </data>
+  <data name="Wine.SettingUp" xml:space="preserve">
+    <value>正在为KSP2配置Windows环境。此过程仅会进行一次……</value>
+  </data>
+  <data name="Wine.SetupFailed" xml:space="preserve">
+    <value>配置{0}失败，退出代码为{1}。</value>
+  </data>
+  <data name="Game.DidNotStart" xml:space="preserve">
+    <value>{0}未能启动。</value>
+  </data>
+  <data name="Game.StopFailure" xml:space="preserve">
+    <value>pid {0}: {1}</value>
+  </data>
+  <data name="Game.CouldNotStop" xml:space="preserve">
+    <value>无法停止KSP2（{0}）。</value>
+  </data>
+  <data name="Locks.OneFile.OtherProgram" xml:space="preserve">
+    <value>一个游戏文件正被另一个程序使用。</value>
+  </data>
+  <data name="Locks.OneFile.Programs" xml:space="preserve">
+    <value>一个游戏文件正被{0}使用。</value>
+  </data>
+  <data name="Locks.ManyFiles.OtherProgram" xml:space="preserve">
+    <value>{0}个游戏文件正被另一个程序占用。</value>
+  </data>
+  <data name="Locks.ManyFiles.Programs" xml:space="preserve">
+    <value>{0}个游戏文件正被{1}占用。</value>
+  </data>
+  <data name="Locks.Advice" xml:space="preserve">
+    <value>关闭它以及任何使用此KSP2文件夹的Unity项目，然后重试。未做出任何更改。</value>
+  </data>
+  <data name="Locks.InUse" xml:space="preserve">
+    <value>正在使用：{0}</value>
+  </data>
+  <data name="Locks.InUseMore" xml:space="preserve">
+    <value>正在使用：{0} 以及另外{1}个</value>
+  </data>
+  <data name="Locks.Process" xml:space="preserve">
+    <value>{0} （进程 {1}）</value>
+  </data>
+  <data name="Install.PlanMade" xml:space="preserve">
+    <value>安装/更新计划已生成，共包含{0}个步骤。</value>
+  </data>
+  <data name="Install.Step.Uninstall" xml:space="preserve">
+    <value>步骤{0}：正在卸载KSP2 Redux</value>
+  </data>
+  <data name="Install.Step.RevertToStock" xml:space="preserve">
+    <value>步骤{0}：恢复为原版安装</value>
+  </data>
+  <data name="Install.Step.Prepatch" xml:space="preserve">
+    <value>步骤{0}：从原版准备打补丁</value>
+  </data>
+  <data name="Install.Step.ApplyPatchFile" xml:space="preserve">
+    <value>步骤{0}：{1}</value>
+  </data>
+  <data name="Plan.ApplyingPatchFile" xml:space="preserve">
+    <value>正在应用补丁，位于：{0}</value>
+  </data>
+  <data name="Plan.ApplyPatchFromVersion" xml:space="preserve">
+    <value>正在应用从版本{1}到版本{0}的补丁</value>
+  </data>
+  <data name="Plan.ApplyPatchFromPrepatch" xml:space="preserve">
+    <value>正在应用从预补丁到版本：{0}的补丁</value>
+  </data>
+  <data name="Install.CheckingFiles" xml:space="preserve">
+    <value>正在检查是否有其他程序占用游戏文件……</value>
+  </data>
+  <data name="Install.Uninstalling" xml:space="preserve">
+    <value>正在卸载KSP2 Redux</value>
+  </data>
+  <data name="Install.RevertingForRepatch" xml:space="preserve">
+    <value>正在将KSP2 Redux还原为原版以便重新打补丁</value>
+  </data>
+  <data name="Install.NoRevertNeeded" xml:space="preserve">
+    <value>无需还原为原版</value>
+  </data>
+  <data name="Install.ApplyingPrepatch" xml:space="preserve">
+    <value>正在应用正确的预补丁</value>
+  </data>
+  <data name="Install.DeletingModloader" xml:space="preserve">
+    <value>正在删除旧的模组加载器！</value>
+  </data>
+  <data name="Install.Prepatch.Portable" xml:space="preserve">
+    <value>正在应用便携式预补丁</value>
+  </data>
+  <data name="Install.Prepatch.Steam" xml:space="preserve">
+    <value>正在应用Steam预补丁</value>
+  </data>
+  <data name="Install.Prepatch.Epic" xml:space="preserve">
+    <value>正在应用Epic预补丁</value>
+  </data>
+  <data name="Install.Error.PrepatchOnRedux" xml:space="preserve">
+    <value>无法向Redux安装应用预补丁</value>
+  </data>
+  <data name="Install.CleaningPatch" xml:space="preserve">
+    <value>正在清理已下载的补丁{0}</value>
+  </data>
+  <data name="Install.PatchDeleteFailed" xml:space="preserve">
+    <value>无法删除补丁{0}：{1}</value>
+  </data>
+  <data name="Install.BundleRevertFailed" xml:space="preserve">
+    <value>无法还原包体转换：{0}</value>
+  </data>
+  <data name="Install.StepFailed" xml:space="preserve">
+    <value>安装步骤失败({0})。正在回滚到最近一次正常状态……</value>
+  </data>
+  <data name="Install.RolledBack" xml:space="preserve">
+    <value>回滚成功。</value>
+  </data>
+  <data name="Install.Error.RolledBack" xml:space="preserve">
+    <value>安装失败，并已自动回滚到先前的状态。原始错误：{0}</value>
+  </data>
+  <data name="Install.RollbackFailed" xml:space="preserve">
+    <value>回滚也失败了：{0}</value>
+  </data>
+  <data name="Install.Error.RollbackFailed" xml:space="preserve">
+    <value>安装失败（{0}），且自动回滚也失败（{1}）。安装可能已处于损坏状态——请尝试从设置中执行“卸载”或“恢复为原版”。</value>
+  </data>
+  <data name="Install.Disk.Download.Unknown" xml:space="preserve">
+    <value>无法确定可用的下载和重建存储空间，已跳过该预检。</value>
+  </data>
+  <data name="Install.Disk.Download.NotEnough" xml:space="preserve">
+    <value>下载和重建存储所需的可用磁盘空间不足：需要大约{0}，但仅有{1}可用。请腾出一些空间然后重试。</value>
+  </data>
+  <data name="Install.Disk.Temporary.Unknown" xml:space="preserve">
+    <value>无法确定可用的系统临时存储空间，已跳过该预检。</value>
+  </data>
+  <data name="Install.Disk.Temporary.NotEnough" xml:space="preserve">
+    <value>系统临时存储的可用磁盘空间不足：需要大约{0}，但仅有{1}可用。请腾出一些空间然后重试。</value>
+  </data>
+  <data name="Install.Disk.Install.Unknown" xml:space="preserve">
+    <value>无法确定可用的安装存储空间，已跳过该预检。</value>
+  </data>
+  <data name="Install.Disk.Install.NotEnough" xml:space="preserve">
+    <value>安装存储的可用磁盘空间不足：需要大约{0}，但仅有{1}可用。请腾出一些空间然后重试。</value>
+  </data>
+  <data name="Download.UsingCached" xml:space="preserve">
+    <value>正在使用{0}的已验证缓存补丁。</value>
+  </data>
+  <data name="Download.LegacyGitHubOnly" xml:space="preserve">
+    <value>此旧版补丁仅能从GitHub获取。请选择GitHub备份以继续。</value>
+  </data>
+  <data name="Download.Legacy" xml:space="preserve">
+    <value>正在下载{0}的旧版补丁。</value>
+  </data>
+  <data name="Download.Parts" xml:space="preserve">
+    <value>正在从{2}下载补丁{1}的{0}个部分。</value>
+  </data>
+  <data name="Download.Reconstructed" xml:space="preserve">
+    <value>补丁{0}已重建并校验完毕。</value>
+  </data>
+  <data name="Download.CouldNotDownload" xml:space="preserve">
+    <value>无法从{0}下载已验证的补丁部分。</value>
+  </data>
+  <data name="Download.Complete" xml:space="preserve">
+    <value>下载完成。</value>
+  </data>
+  <data name="Bundles.NoShaderBundles" xml:space="preserve">
+    <value>此Redux构建不包含URP着色器包，因此原版包将保持未转换状态。</value>
+  </data>
+  <data name="Bundles.ManifestWarning" xml:space="preserve">
+    <value>着色器清单: {0}</value>
+  </data>
+  <data name="Bundles.Converting" xml:space="preserve">
+    <value>正在将原版包转换为URP着色器...</value>
+  </data>
+  <data name="Bundles.Warning" xml:space="preserve">
+    <value>警告：{0}</value>
+  </data>
+  <data name="Bundles.ConvertingRestored" xml:space="preserve">
+    <value>正在转换从Steam恢复的包……</value>
+  </data>
+  <data name="Bundles.StillUnrecorded" xml:space="preserve">
+    <value>在恢复Steam的副本后，仍有{0}个原版包保留着未记录的已转换着色器，第一个是{1}。</value>
+  </data>
+  <data name="Bundles.StillUnreverted" xml:space="preserve">
+    <value>即使在恢复Steam的副本后，仍有{0}个已转换的着色器引用无法还原，第一个位于{1}。</value>
+  </data>
+  <data name="Bundles.ApplySummary" xml:space="preserve">
+    <value>包体转换：写入{0}项修改，{1}项已应用，写入{2}个包体副本，{3}个已是最新，{4}个已移除，写入{5}个纹理覆盖，{6}个已是最新，{7}个已移除。</value>
+  </data>
+  <data name="Bundles.LeftAlone" xml:space="preserve">
+    <value>若不作处理，{0}在偏移量{1}处包含意外的字节。</value>
+  </data>
+  <data name="Bundles.KeptCloudTextures" xml:space="preserve">
+    <value>保留了{0}的原版云层纹理：{1}</value>
+  </data>
+  <data name="Bundles.ConvertFailed" xml:space="preserve">
+    <value>无法转换{0}：{1}</value>
+  </data>
+  <data name="Bundles.ConvertFailedOne" xml:space="preserve">
+    <value>一个原版资产包无法转换（{0}：{1}）。</value>
+  </data>
+  <data name="Bundles.ConvertFailedMany" xml:space="preserve">
+    <value>{0}个原版资产包无法转换，第一个是{1} （{2}）。</value>
+  </data>
+  <data name="Bundles.RevertSummary" xml:space="preserve">
+    <value>资产包转换已回滚：撤销了{0}项修改，移除了{1}个资产包副本和{2}个纹理覆盖。</value>
+  </data>
+  <data name="Bundles.CouldNotUndo" xml:space="preserve">
+    <value>无法撤销，{0}在偏移量{1}处存在意外的字节。</value>
+  </data>
+  <data name="Bundles.RevertFailed" xml:space="preserve">
+    <value>无法撤销{0}：{1}</value>
+  </data>
+  <data name="Bundles.RevertFailedOne" xml:space="preserve">
+    <value>一个原版资产包无法恢复为原版状态（{0}：{1}）。</value>
+  </data>
+  <data name="Bundles.RevertFailedMany" xml:space="preserve">
+    <value>{0}个原版资产包无法恢复为原版状态，第一个是{1} （{2}）。</value>
+  </data>
+  <data name="Bundles.Unrecorded" xml:space="preserve">
+    <value>{0}个原版资产包中包含没有转换记录覆盖的已转换着色器：{1}。</value>
+  </data>
+  <data name="Bundles.SteamHelp" xml:space="preserve">
+    <value>在启动器设置中使用Steam登录（或运行'redux-launcher-cli steam login'），然后重新安装，或者让Steam验证游戏文件后再重新安装Redux。</value>
+  </data>
+  <data name="Bundles.NeedSteamCopies" xml:space="preserve">
+    <value>{0}个原版资产包包含已转换的着色器，只有Steam的副本才能将其还原。{1}</value>
+  </data>
+  <data name="Bundles.SteamLoginRejected" xml:space="preserve">
+    <value>Steam未接受保存的登录信息，而这是将{0}个原版资产包恢复原状所必需的。{1}</value>
+  </data>
+  <data name="Bundles.DownloadingFromSteam" xml:space="preserve">
+    <value>正在下载那些资产包的Steam副本...</value>
+  </data>
+  <data name="Bundles.SteamDownloadFailed" xml:space="preserve">
+    <value>Steam上{0}个原版资产包的副本无法下载：{1} {2}</value>
+  </data>
+  <data name="Bundles.PutBack" xml:space="preserve">
+    <value>已放回{0}个原版资产包的Steam副本。</value>
   </data>
 </root>
