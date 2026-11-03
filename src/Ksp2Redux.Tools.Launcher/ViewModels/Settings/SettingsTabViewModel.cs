@@ -165,7 +165,9 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     private void OnLanguageChanged()
     {
-        RebuildLanguageChoices();
+        // A pick in the picker switches the language while the picker is still handling it. Rebuilding the
+        // list there kept the pick selected but left the closed picker blank, so the rebuild waits for it.
+        Dispatcher.UIThread.Post(RebuildLanguageChoices);
         foreach (var row in Installs) row.RefreshLocalizedText();
         OnPropertyChanged(nameof(UninstallKsp2ButtonText));
         OnPropertyChanged(nameof(LauncherVersionText));
