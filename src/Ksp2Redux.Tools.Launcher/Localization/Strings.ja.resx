@@ -571,7 +571,7 @@ https://ksp2redux.org</value>
     <value>Steamからは、『カーバルスペースプログラム2』に関する情報は返ってきませんでした。</value>
   </data>
   <data name="Steam.Depot.NoContent" xml:space="preserve">
-    <value>Steamには、『カーバルスペースプログラム2』向けのWindows用ダウンロードコンテンツは掲載されてはいませんでした。</value>
+    <value>Steamは、『カーバルスペースプログラム2』用のWindows版ダウンロードコンテンツを掲載しませんでした。</value>
   </data>
   <data name="Steam.Depot.NotOwned" xml:space="preserve">
     <value>このSteamアカウントは『カーバルスペースプログラム2』を所有していません。購入時に使用したアカウントでサインインしてください。</value>
@@ -873,5 +873,173 @@ softwareupdate --install-rosetta --agree-to-license</value>
   </data>
   <data name="Plan.ApplyingPatchFile" xml:space="preserve">
     <value>{0} にパッチファイルを適用しています</value>
+  </data>
+  <data name="Plan.ApplyPatchFromVersion" xml:space="preserve">
+    <value>バージョン {1} からバージョン {0} へのパッチを適用しています</value>
+  </data>
+  <data name="Plan.ApplyPatchFromPrepatch" xml:space="preserve">
+    <value>バージョン {0} 用のパッチをプリパッチから適用しています</value>
+  </data>
+  <data name="Install.CheckingFiles" xml:space="preserve">
+    <value>他のプログラムがゲームファイルを使用していないか確認しています...</value>
+  </data>
+  <data name="Install.Uninstalling" xml:space="preserve">
+    <value>KSP2 Redux をアンインストールしています</value>
+  </data>
+  <data name="Install.RevertingForRepatch" xml:space="preserve">
+    <value>KSP2 Reduxをバニラ状態に戻し、再パッチを適用しています</value>
+  </data>
+  <data name="Install.NoRevertNeeded" xml:space="preserve">
+    <value>バニラ状態に戻す必要はありません</value>
+  </data>
+  <data name="Install.ApplyingPrepatch" xml:space="preserve">
+    <value>適切なプリパッチを適用しています</value>
+  </data>
+  <data name="Install.DeletingModloader" xml:space="preserve">
+    <value>古いMODローダーを削除しています！</value>
+  </data>
+  <data name="Install.Prepatch.Portable" xml:space="preserve">
+    <value>ポータブル版プリパッチを適用しています</value>
+  </data>
+  <data name="Install.Prepatch.Steam" xml:space="preserve">
+    <value>Steam版プリパッチを適用しています</value>
+  </data>
+  <data name="Install.Prepatch.Epic" xml:space="preserve">
+    <value>Epic版プリパッチを適用しています</value>
+  </data>
+  <data name="Install.Error.PrepatchOnRedux" xml:space="preserve">
+    <value>Reduxインストールにプリパッチを適用できません</value>
+  </data>
+  <data name="Install.CleaningPatch" xml:space="preserve">
+    <value>ダウンロードしたパッチ {0} をクリーンアップしています</value>
+  </data>
+  <data name="Install.PatchDeleteFailed" xml:space="preserve">
+    <value>パッチ {0} を削除できませんでした: {1}</value>
+  </data>
+  <data name="Install.BundleRevertFailed" xml:space="preserve">
+    <value>バンドル変換を元に戻せませんでした: {0}</value>
+  </data>
+  <data name="Install.StepFailed" xml:space="preserve">
+    <value>インストールステップが失敗しました ({0})。最後に正常だった状態へロールバックしています...</value>
+  </data>
+  <data name="Install.RolledBack" xml:space="preserve">
+    <value>正常にロールバックしました。</value>
+  </data>
+  <data name="Install.Error.RolledBack" xml:space="preserve">
+    <value>インストールに失敗したため、自動的に以前の状態へロールバックしました。元のエラー: {0}</value>
+  </data>
+  <data name="Install.RollbackFailed" xml:space="preserve">
+    <value>ロールバックも失敗しました: {0}</value>
+  </data>
+  <data name="Install.Error.RollbackFailed" xml:space="preserve">
+    <value>インストールに失敗しました ({0})。自動ロールバックも失敗しました ({1})。インストールが不完全な状態になっている可能性があります。設定から「アンインストール」または「バニラ状態に戻す」を試してください。</value>
+  </data>
+  <data name="Install.Disk.Download.Unknown" xml:space="preserve">
+    <value>ダウンロードおよび再構築に必要なストレージの空き容量を特定できなかったため、その事前チェックをスキップしました。</value>
+  </data>
+  <data name="Install.Disk.Download.NotEnough" xml:space="preserve">
+    <value>ダウンロードおよび再構築用データの保存に必要なディスクの空き容量が不足しています。約 {0} 必要ですが、現在 {1} しか利用できません。ディスクの空き容量を確保してから、再度試してください。</value>
+  </data>
+  <data name="Install.Disk.Temporary.Unknown" xml:space="preserve">
+    <value>利用可能なシステム一時ストレージ容量を特定できなかったため、その事前チェックをスキップしました。</value>
+  </data>
+  <data name="Install.Disk.Temporary.NotEnough" xml:space="preserve">
+    <value>システム一時ストレージとして使用するディスクの空き容量が不足しています。約 {0} 必要ですが、現在 {1} しか利用できません。ディスクの空き容量を確保してから、再度試してください。</value>
+  </data>
+  <data name="Install.Disk.Install.Unknown" xml:space="preserve">
+    <value>利用可能なインストールストレージ容量を特定できなかったため、その事前チェックをスキップしました。</value>
+  </data>
+  <data name="Install.Disk.Install.NotEnough" xml:space="preserve">
+    <value>インストールに必要なディスクの空き容量が不足しています。約 {0} 必要ですが、現在 {1} しか利用できません。ディスクの空き容量を確保してから、再度試してください。</value>
+  </data>
+  <data name="Download.UsingCached" xml:space="preserve">
+    <value>{0} 用の、検証されたキャッシュ済みパッチを使用しています。</value>
+  </data>
+  <data name="Download.LegacyGitHubOnly" xml:space="preserve">
+    <value>このレガシーパッチはGitHubからのみ入手可能です。続けるには、設定からGitHubバックアップを選択してください。</value>
+  </data>
+  <data name="Download.Legacy" xml:space="preserve">
+    <value>{0} 用のレガシーパッチをダウンロードしています。</value>
+  </data>
+  <data name="Download.Parts" xml:space="preserve">
+    <value>{2} からパッチ {1} 用の {0} 個のパーツをダウンロードしています。</value>
+  </data>
+  <data name="Download.Reconstructed" xml:space="preserve">
+    <value>パッチ {0} が再構築および検証されました。</value>
+  </data>
+  <data name="Download.CouldNotDownload" xml:space="preserve">
+    <value>{0} から検証済みのパッチパーツをダウンロードできませんでした。</value>
+  </data>
+  <data name="Download.Complete" xml:space="preserve">
+    <value>ダウンロード完了。</value>
+  </data>
+  <data name="Bundles.NoShaderBundles" xml:space="preserve">
+    <value>このReduxビルドにはURPシェーダーバンドルが含まれていないため、バニラゲームのバンドルは変換されないままとなります。</value>
+  </data>
+  <data name="Bundles.ManifestWarning" xml:space="preserve">
+    <value>シェーダーマニフェスト: {0}</value>
+  </data>
+  <data name="Bundles.Converting" xml:space="preserve">
+    <value>バニラバンドルをURPシェーダーに変換しています...</value>
+  </data>
+  <data name="Bundles.Warning" xml:space="preserve">
+    <value>警告: {0}</value>
+  </data>
+  <data name="Bundles.ConvertingRestored" xml:space="preserve">
+    <value>Steamから復元されたバンドルを変換しています...</value>
+  </data>
+  <data name="Bundles.StillUnrecorded" xml:space="preserve">
+    <value>Steamのコピーを元に戻した後も、{0}のバニラバンドルには変換済みのシェーダーが未記録のまま残っています。そのうちの最初は{1}です。</value>
+  </data>
+  <data name="Bundles.StillUnreverted" xml:space="preserve">
+    <value>Steam上のコピーを元に戻した後であっても、変換されたシェーダー{0}件を元に戻すことはできませんでした。そのうちの最初は{1}です。</value>
+  </data>
+  <data name="Bundles.ApplySummary" xml:space="preserve">
+    <value>バンドル変換: {0} 件の編集を書き込み、{1} 件は適用済み、{2} 件のバンドルコピーを書き込み、{3} 件のバンドルは最新状態、{4} 件のバンドルを削除、{5} 件のテクスチャーオーバーレイを書き込み、{6} 件のオーバーレイは最新状態、{7} 件のオーバーレイを削除。</value>
+  </data>
+  <data name="Bundles.KeptCloudTextures" xml:space="preserve">
+    <value>{0}のバニラゲームの雲テクスチャーをそのまま残しました: {1}</value>
+  </data>
+  <data name="Bundles.ConvertFailed" xml:space="preserve">
+    <value>{0} を変換できませんでした: {1}</value>
+  </data>
+  <data name="Bundles.ConvertFailedOne" xml:space="preserve">
+    <value>バニラゲームのバンドルを変換できませんでした ({0}: {1})。</value>
+  </data>
+  <data name="Bundles.ConvertFailedMany" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルを変換できませんでした。そのうちの最初は{1}です ({2})。</value>
+  </data>
+  <data name="Bundles.RevertSummary" xml:space="preserve">
+    <value>バンドル変換を元に戻しました：{0}件の編集を取り消し、{1}件のバンドルコピーと{2}件のテクスチャーオーバーレイを削除しました。</value>
+  </data>
+  <data name="Bundles.RevertFailed" xml:space="preserve">
+    <value>{0} を元に戻せませんでした: {1}</value>
+  </data>
+  <data name="Bundles.RevertFailedOne" xml:space="preserve">
+    <value>バニラゲームのバンドルをバニラ版に戻すことができませんでした ({0}: {1})。</value>
+  </data>
+  <data name="Bundles.RevertFailedMany" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルをバニラ版に戻すことができませんでした。そのうちの最初は{1}です ({2})。</value>
+  </data>
+  <data name="Bundles.Unrecorded" xml:space="preserve">
+    <value>{0} 件のバニラゲームのバンドルには、変換記録に含まれていない変換済みシェーダーが保存されています: {1}。</value>
+  </data>
+  <data name="Bundles.SteamHelp" xml:space="preserve">
+    <value>ランチャーの設定からSteamでサインインする（または「redux-launcher-cli steam login」を実行する）か、Steam内でゲームファイルの整合性を確認してからReduxを再インストールしてください。</value>
+  </data>
+  <data name="Bundles.NeedSteamCopies" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルには変換済みのシェーダーが含まれており、これらを元に戻せるのはSteam版のコピーのみです。{1}</value>
+  </data>
+  <data name="Bundles.SteamLoginRejected" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルを元に戻すために必要な、保存済みのログイン情報がSteamに受け入れられませんでした。{1}</value>
+  </data>
+  <data name="Bundles.DownloadingFromSteam" xml:space="preserve">
+    <value>それらのバンドルのSteam版のコピーをダウンロードしています…</value>
+  </data>
+  <data name="Bundles.SteamDownloadFailed" xml:space="preserve">
+    <value>Steam上の{0}件のバニラゲームのバンドルをダウンロードできませんでした: {1} {2}</value>
+  </data>
+  <data name="Bundles.PutBack" xml:space="preserve">
+    <value>Steam版の {0} 件のバニラゲームのバンドルを元に戻しています。</value>
   </data>
 </root>
