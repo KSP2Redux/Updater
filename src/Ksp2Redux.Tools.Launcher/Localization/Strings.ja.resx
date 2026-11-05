@@ -788,6 +788,9 @@ softwareupdate --install-rosetta --agree-to-license</value>
 
 {2}</value>
   </data>
+  <data name="Update.NotSingleFile.Message" xml:space="preserve">
+    <value>現在、単一ファイル形式のビルド環境では実行されていません。Reduxをインストールするには、最新の「main」ブランチからリビルドを行ってください。</value>
+  </data>
   <data name="Update.Failed.Title" xml:space="preserve">
     <value>アップデートが失敗しました！</value>
   </data>
@@ -997,6 +1000,9 @@ softwareupdate --install-rosetta --agree-to-license</value>
   <data name="Bundles.ApplySummary" xml:space="preserve">
     <value>バンドル変換: {0} 件の編集を書き込み、{1} 件は適用済み、{2} 件のバンドルコピーを書き込み、{3} 件のバンドルは最新状態、{4} 件のバンドルを削除、{5} 件のテクスチャーオーバーレイを書き込み、{6} 件のオーバーレイは最新状態、{7} 件のオーバーレイを削除。</value>
   </data>
+  <data name="Bundles.LeftAlone" xml:space="preserve">
+    <value>そのままの状態では、{0} のオフセット {1} の位置に予期しないバイトが含まれています。</value>
+  </data>
   <data name="Bundles.KeptCloudTextures" xml:space="preserve">
     <value>{0}のバニラゲームの雲テクスチャーをそのまま残しました: {1}</value>
   </data>
@@ -1011,6 +1017,9 @@ softwareupdate --install-rosetta --agree-to-license</value>
   </data>
   <data name="Bundles.RevertSummary" xml:space="preserve">
     <value>バンドル変換を元に戻しました：{0}件の編集を取り消し、{1}件のバンドルコピーと{2}件のテクスチャーオーバーレイを削除しました。</value>
+  </data>
+  <data name="Bundles.CouldNotUndo" xml:space="preserve">
+    <value>{0} のオフセット {1} の位置に予期しないバイトが含まれているため、もとに戻せませんでした。</value>
   </data>
   <data name="Bundles.RevertFailed" xml:space="preserve">
     <value>{0} を元に戻せませんでした: {1}</value>
@@ -1031,7 +1040,7 @@ softwareupdate --install-rosetta --agree-to-license</value>
     <value>{0}件のバニラゲームのバンドルには変換済みのシェーダーが含まれており、これらを元に戻せるのはSteam版のコピーのみです。{1}</value>
   </data>
   <data name="Bundles.SteamLoginRejected" xml:space="preserve">
-    <value>{0}件のバニラゲームのバンドルを元に戻すために必要な、保存済みのログイン情報がSteamに受け入れられませんでした。{1}</value>
+    <value>{0}件のバニラゲームのバンドルを元に戻すために必要なSteamが、保存済みのログイン情報を受け入れてくれませんでした。{1}</value>
   </data>
   <data name="Bundles.DownloadingFromSteam" xml:space="preserve">
     <value>それらのバンドルのSteam版のコピーをダウンロードしています…</value>
