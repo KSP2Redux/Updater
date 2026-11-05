@@ -15,7 +15,7 @@
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.104.1" />
     <PackageVersion Include="BsDiff" Version="1.1.0" />
-    <PackageVersion Include="CodeHollow.FeedReader" Version="1.2.6" />
+    <PackageVersion Include="CodeHollow.FeedReader" Version="2.1.1" />
     <PackageVersion Include="CommandLineParser" Version="2.9.1" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
