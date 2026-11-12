@@ -154,6 +154,10 @@ public static class Program
                 bundles.SetDescription("Retarget the stock bundles to the Redux URP shader bundles, and check or undo that.");
                 bundles.SetDefaultCommand<BundlesVerifyCommand>();
 
+                bundles.AddCommand<ShaderCacheCommand>("cache")
+                    .WithDescription("Report or prune the finished shader bundle cache shared with Unity.")
+                    .WithExample("bundles", "cache", "--prune");
+
                 bundles.AddCommand<BundlesConvertCommand>("convert")
                     .WithDescription("Retarget embedded shader copies in the stock bundles to the replacement shader bundles.")
                     .WithExample("bundles", "convert", "--game", "D:\\Games\\KSP2", "--shader-manifest", "manifest.json", "--dry-run");

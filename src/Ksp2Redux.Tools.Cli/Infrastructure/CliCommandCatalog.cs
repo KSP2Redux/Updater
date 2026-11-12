@@ -53,6 +53,7 @@ public static class CliCommandCatalog
         new("cache", typeof(CacheSettings)),
         new("cache clear", typeof(CacheClearSettings)),
         new("bundles", typeof(BundlesVerifySettings)),
+        new("bundles cache", typeof(ShaderCacheSettings)),
         new("bundles convert", typeof(BundlesConvertSettings)),
         new("bundles revert", typeof(BundlesRevertSettings)),
         new("bundles verify", typeof(BundlesVerifySettings)),

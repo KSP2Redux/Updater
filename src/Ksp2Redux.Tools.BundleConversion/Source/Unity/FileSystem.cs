@@ -27,6 +27,22 @@ public interface IFileSystem
 /// <summary>File operations, as <see cref="System.IO.File" /> has them.</summary>
 public interface IFile
 {
+    /// <summary>Gets a file or directory's attributes.</summary>
+    /// <param name="path">The entry path.</param>
+    /// <returns>The entry attributes.</returns>
+    FileAttributes GetAttributes(string path);
+
+    /// <summary>Gets the last write time of a file or directory.</summary>
+    /// <param name="path">The entry path.</param>
+    /// <returns>The UTC last write time.</returns>
+    DateTime GetLastWriteTimeUtc(string path);
+
+    /// <summary>Copies a file.</summary>
+    /// <param name="source">The source path.</param>
+    /// <param name="destination">The destination path.</param>
+    /// <param name="overwrite">True to replace an existing file.</param>
+    void Copy(string source, string destination, bool overwrite);
+
     /// <summary>Checks whether a file exists.</summary>
     /// <param name="path">The file path.</param>
     /// <returns>True if the file exists, false otherwise.</returns>
@@ -61,6 +77,21 @@ public interface IFile
 /// <summary>Directory operations, as <see cref="System.IO.Directory" /> has them.</summary>
 public interface IDirectory
 {
+    /// <summary>Moves a directory.</summary>
+    /// <param name="source">The source directory.</param>
+    /// <param name="destination">The destination directory.</param>
+    void Move(string source, string destination);
+
+    /// <summary>Lists direct child directories.</summary>
+    /// <param name="path">The parent directory.</param>
+    /// <returns>The child directory paths.</returns>
+    IEnumerable<string> EnumerateDirectories(string path);
+
+    /// <summary>Deletes a directory and optionally its contents.</summary>
+    /// <param name="path">The directory.</param>
+    /// <param name="recursive">True to remove its contents.</param>
+    void Delete(string path, bool recursive);
+
     /// <summary>Checks whether a directory exists.</summary>
     /// <param name="path">The directory path.</param>
     /// <returns>True if the directory exists, false otherwise.</returns>
@@ -93,6 +124,19 @@ public interface IDirectory
 /// <summary>Path operations, as <see cref="System.IO.Path" /> has them.</summary>
 public interface IPath
 {
+    /// <summary>Gets the native directory separator.</summary>
+    char DirectorySeparatorChar { get; }
+
+    /// <summary>Joins path parts.</summary>
+    /// <param name="paths">The parts to join.</param>
+    /// <returns>The combined path.</returns>
+    string Combine(params string[] paths);
+
+    /// <summary>Checks whether a path starts at a filesystem root.</summary>
+    /// <param name="path">The path.</param>
+    /// <returns>True if rooted, false otherwise.</returns>
+    bool IsPathRooted(string path);
+
     /// <summary>Joins two path parts.</summary>
     /// <param name="path1">The first part.</param>
     /// <param name="path2">The second part.</param>
@@ -177,6 +221,12 @@ public sealed class FileSystem : IFileSystem, IFile, IDirectory, IPath, IFileStr
 
     bool IFile.Exists(string path) => System.IO.File.Exists(path);
 
+    FileAttributes IFile.GetAttributes(string path) => System.IO.File.GetAttributes(path);
+
+    DateTime IFile.GetLastWriteTimeUtc(string path) => System.IO.File.GetLastWriteTimeUtc(path);
+
+    void IFile.Copy(string source, string destination, bool overwrite) => System.IO.File.Copy(source, destination, overwrite);
+
     void IFile.Delete(string path) => System.IO.File.Delete(path);
 
     void IFile.Move(string sourceFileName, string destFileName) => System.IO.File.Move(sourceFileName, destFileName);
@@ -190,6 +240,12 @@ public sealed class FileSystem : IFileSystem, IFile, IDirectory, IPath, IFileStr
 
     bool IDirectory.Exists(string path) => System.IO.Directory.Exists(path);
 
+    void IDirectory.Move(string source, string destination) => System.IO.Directory.Move(source, destination);
+
+    IEnumerable<string> IDirectory.EnumerateDirectories(string path) => System.IO.Directory.EnumerateDirectories(path);
+
+    void IDirectory.Delete(string path, bool recursive) => System.IO.Directory.Delete(path, recursive);
+
     DirectoryInfo IDirectory.CreateDirectory(string? path) => System.IO.Directory.CreateDirectory(path);
 
     void IDirectory.Delete(string path) => System.IO.Directory.Delete(path);
@@ -200,6 +256,12 @@ public sealed class FileSystem : IFileSystem, IFile, IDirectory, IPath, IFileStr
         System.IO.Directory.EnumerateFiles(path, searchPattern, searchOption);
 
     string IPath.Combine(string path1, string path2) => System.IO.Path.Combine(path1, path2);
+
+    char IPath.DirectorySeparatorChar => System.IO.Path.DirectorySeparatorChar;
+
+    string IPath.Combine(params string[] paths) => System.IO.Path.Combine(paths);
+
+    bool IPath.IsPathRooted(string path) => System.IO.Path.IsPathRooted(path);
 
     string? IPath.GetDirectoryName(string path) => System.IO.Path.GetDirectoryName(path);
 
