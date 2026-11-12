@@ -38,7 +38,7 @@
     <PackageVersion Include="QRCoder" Version="1.8.0" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <!-- Only the netstandard2.1 BundleConversion library needs this package; net10.0 projects get it from the framework. -->
-    <PackageVersion Include="System.Text.Json" Version="10.0.7" />
+    <PackageVersion Include="System.Text.Json" Version="11.0.0" />
     <!-- Spectre.Console.Cli has no 0.57 release, so it resolves against the newer renderer. The CLI
              smoke suite covers this pairing; re-run it when either line moves. -->
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
