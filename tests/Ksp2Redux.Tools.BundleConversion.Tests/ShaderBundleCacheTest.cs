@@ -13,10 +13,12 @@ public class ShaderBundleCacheTest
     private string _directory = null!;
     private string _root = null!;
     private ShaderBundleCache _cache = null!;
+    private readonly List<string> _directoryLinks = [];
 
     [SetUp]
     public void SetUp()
     {
+        _directoryLinks.Clear();
         _directory = Path.Combine(Path.GetTempPath(), "Redux Shader Cache " + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_directory);
         _root = Path.Combine(_directory, "shared");
@@ -24,7 +26,21 @@ public class ShaderBundleCacheTest
     }
 
     [TearDown]
-    public void TearDown() => Directory.Delete(_directory, true);
+    public void TearDown()
+    {
+        // Remove junctions before recursive cleanup, including those whose targets no longer exist.
+        foreach (string path in _directoryLinks.AsEnumerable().Reverse())
+        {
+            var link = new DirectoryInfo(path);
+            if (link.LinkTarget == null)
+                continue;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                link.Delete();
+            else
+                File.Delete(path);
+        }
+        Directory.Delete(_directory, true);
+    }
 
     [Test]
     public void PublishAndRestore_ShareVerifiedBytesAcrossIndependentCheckouts()
@@ -498,17 +514,19 @@ public class ShaderBundleCacheTest
         return path;
     }
 
-    private static void CreateDirectoryLink(string link, string target)
+    private void CreateDirectoryLink(string link, string target)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             Directory.CreateSymbolicLink(link, target);
+            _directoryLinks.Add(link);
             return;
         }
         using Process process = Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"),
             $"/d /c mklink /J \"{link}\" \"{target}\"") { UseShellExecute = false, CreateNoWindow = true })!;
         Assert.That(process.WaitForExit(10000), Is.True);
         Assert.That(process.ExitCode, Is.Zero);
+        _directoryLinks.Add(link);
     }
 
     private static void CreateFileLink(string link, string target)
