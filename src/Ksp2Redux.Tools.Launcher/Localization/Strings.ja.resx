@@ -1,0 +1,1054 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="App.Menu.About" xml:space="preserve">
+    <value>KSP2 Reduxについて</value>
+  </data>
+  <data name="App.Menu.CheckForUpdates" xml:space="preserve">
+    <value>アップデートを確認…</value>
+  </data>
+  <data name="App.About.Title" xml:space="preserve">
+    <value>KSP2 Reduxについて</value>
+  </data>
+  <data name="App.About.Message" xml:space="preserve">
+    <value>KSP2 Redux ランチャー
+バージョン {0}
+
+KSP2 Redux のためのインストーラー、アップデーター、ランチャー。
+https://ksp2redux.org</value>
+  </data>
+  <data name="App.About.UnknownVersion" xml:space="preserve">
+    <value>不明</value>
+  </data>
+  <data name="Tab.Home" xml:space="preserve">
+    <value>ホーム</value>
+  </data>
+  <data name="Tab.Community" xml:space="preserve">
+    <value>コミュニティ</value>
+  </data>
+  <data name="Tab.Mods" xml:space="preserve">
+    <value>MODS</value>
+  </data>
+  <data name="Window.Maximize.Tooltip" xml:space="preserve">
+    <value>ウィンドウを最大化</value>
+  </data>
+  <data name="Window.Restore.Tooltip" xml:space="preserve">
+    <value>ウィンドウの大きさをを元に戻ず</value>
+  </data>
+  <data name="Window.UpdateDownloading" xml:space="preserve">
+    <value>アップデートをダウンロード中…</value>
+  </data>
+  <data name="Steam.Menu.DownloadKsp2" xml:space="preserve">
+    <value>KSP2をダウンロード</value>
+  </data>
+  <data name="Steam.Menu.SignOut" xml:space="preserve">
+    <value>Steamからサインアウトする</value>
+  </data>
+  <data name="Sidebar.LatestNews" xml:space="preserve">
+    <value>最新ニュース</value>
+  </data>
+  <data name="Sidebar.RefreshVersions.Tooltip" xml:space="preserve">
+    <value>バージョンを更新 (F5)</value>
+  </data>
+  <data name="Sidebar.FeedRefreshWarning" xml:space="preserve">
+    <value>バージョンを更新できませんでした。最後に確認されたリストを表示しています。</value>
+  </data>
+  <data name="Sidebar.InstallButton" xml:space="preserve">
+    <value>インストール</value>
+  </data>
+  <data name="Sidebar.UpdateButton" xml:space="preserve">
+    <value>アップデート</value>
+  </data>
+  <data name="Sidebar.CancelButton" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="Sidebar.LaunchButton" xml:space="preserve">
+    <value>ゲーム起動</value>
+  </data>
+  <data name="Sidebar.Link.Website.Tooltip" xml:space="preserve">
+    <value>KSP2 Redux ウェブサイト</value>
+  </data>
+  <data name="Sidebar.Link.Discord.Tooltip" xml:space="preserve">
+    <value>KSP2 モッディング Discord</value>
+  </data>
+  <data name="Sidebar.Link.Forums.Tooltip" xml:space="preserve">
+    <value>KSPフォーラム</value>
+  </data>
+  <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
+    <value>ブラウザーで見る</value>
+  </data>
+  <data name="Mods.ComingSoon" xml:space="preserve">
+    <value>近日公開予定</value>
+  </data>
+  <data name="Mods.Roadmap" xml:space="preserve">
+    <value>MOD対応はロードマップに含まれています :3</value>
+  </data>
+  <data name="Home.Progress.Downloaded" xml:space="preserve">
+    <value>ダウンロード済み:</value>
+  </data>
+  <data name="Home.Progress.Installed" xml:space="preserve">
+    <value>インストール済み:</value>
+  </data>
+  <data name="Home.Progress.DownloadFormat" xml:space="preserve">
+    <value>{0:F1}/{3:F1} MB ({1:0}%)</value>
+  </data>
+  <data name="Home.Progress.InstallFormat" xml:space="preserve">
+    <value>{0}/{3} ステップ ({1:0}%)</value>
+  </data>
+  <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
+    <value>Reduxをインストールまたはアップデートするには、アップデーターアプリの新しいバージョンが必要です</value>
+  </data>
+  <data name="Home.InstallUpdateButton" xml:space="preserve">
+    <value>アップデートをインストールする</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>設定</value>
+  </data>
+  <data name="Settings.Profile.Section" xml:space="preserve">
+    <value>インストールプロファイル</value>
+  </data>
+  <data name="Settings.Profile.Label" xml:space="preserve">
+    <value>プロファイル</value>
+  </data>
+  <data name="Settings.Profile.NamePlaceholder" xml:space="preserve">
+    <value>プロファイル名</value>
+  </data>
+  <data name="Settings.Profile.Rename.Tooltip" xml:space="preserve">
+    <value>プロファイル名を変更</value>
+  </data>
+  <data name="Settings.Profile.RenameSave.Tooltip" xml:space="preserve">
+    <value>プロファイル名をセーブ (Enter)。Escでキャンセルできます。</value>
+  </data>
+  <data name="Settings.Profile.Add" xml:space="preserve">
+    <value>追加</value>
+  </data>
+  <data name="Settings.Profile.Add.Tooltip" xml:space="preserve">
+    <value>このコンピューター上の別のKSP2インストールのために、プロファイルを追加する</value>
+  </data>
+  <data name="Settings.Profile.Remove" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="Settings.Profile.Remove.Tooltip" xml:space="preserve">
+    <value>ランチャーからこのプロファイルを削除します。ゲームファイルはそのまま残ります。</value>
+  </data>
+  <data name="Settings.Profile.OpenFolder" xml:space="preserve">
+    <value>フォルダーを開く</value>
+  </data>
+  <data name="Settings.Profile.OpenFolder.Tooltip" xml:space="preserve">
+    <value>ファイルブラウザで、このインストール先のフォルダを開きます。</value>
+  </data>
+  <data name="Settings.Profile.DownloadKsp2" xml:space="preserve">
+    <value>KSP2をダウンロード</value>
+  </data>
+  <data name="Settings.Exe.Label" xml:space="preserve">
+    <value>ゲーム実行ファイル</value>
+  </data>
+  <data name="Settings.Exe.Browse" xml:space="preserve">
+    <value>ファイルを検索</value>
+  </data>
+  <data name="Settings.Exe.Browse.Tooltip" xml:space="preserve">
+    <value>ファイルブラウザで KSP2_x64.exe を探す</value>
+  </data>
+  <data name="Settings.Channel.Label" xml:space="preserve">
+    <value>リリースチャンネル</value>
+  </data>
+  <data name="Settings.LaunchViaSteam.Label" xml:space="preserve">
+    <value>Steamから起動する</value>
+  </data>
+  <data name="Settings.LaunchViaSteam.Tooltip" xml:space="preserve">
+    <value>KSP2_x64.exeを直接実行するのではなく、Steamクライアント経由でKSP2を起動します。</value>
+  </data>
+  <data name="Settings.SteamAppId.Label" xml:space="preserve">
+    <value>SteamアプリID</value>
+  </data>
+  <data name="Settings.SteamAppId.Tooltip" xml:space="preserve">
+    <value>KSP2を「非Steamゲームを追加」ショートカットで起動するための上書き設定です。通常のSteam版の場合は、954850のままにしておいてください。</value>
+  </data>
+  <data name="Settings.LaunchArguments.Label" xml:space="preserve">
+    <value>起動オプション</value>
+  </data>
+  <data name="Settings.LaunchArguments.Tooltip" xml:space="preserve">
+    <value>起動時に KSP2_x64.exe へ渡される引数です。「Steam経由で起動」が有効な場合は無視されます。</value>
+  </data>
+  <data name="Settings.DisableGfxJobs.Label" xml:space="preserve">
+    <value>グラフィックスジョブ（gfx jobs）を無効にする</value>
+  </data>
+  <data name="Settings.DisableGfxJobs.Tooltip" xml:space="preserve">
+    <value>「boot.config」 に 「gfx-enable-gfx-jobs=0」 を設定して、Unityのグラフィックスジョブを無効にします。これは、一部のハードウェア環境で発生するクラッシュに対する回避策です。</value>
+  </data>
+  <data name="Settings.InstallPatch.Button" xml:space="preserve">
+    <value>パッチファイルをインストール</value>
+  </data>
+  <data name="Settings.InstallPatch.Tooltip" xml:space="preserve">
+    <value>既に持っている.patchファイルからReduxをインストール</value>
+  </data>
+  <data name="Settings.UninstallRedux.Button" xml:space="preserve">
+    <value>Reduxをアンインストール</value>
+  </data>
+  <data name="Settings.UninstallRedux.Tooltip" xml:space="preserve">
+    <value>ゲームをバニラKSP2へ元に戻します</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Button" xml:space="preserve">
+    <value>KSP2をアンインストール</value>
+  </data>
+  <data name="Settings.UninstallKsp2.ButtonBusy" xml:space="preserve">
+    <value>アンインストール中...</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Tooltip" xml:space="preserve">
+    <value>このコンピューター上のKSP2インストールとプロファイルを削除します。セーブデータは保持されます。</value>
+  </data>
+  <data name="Settings.Advanced.Section" xml:space="preserve">
+    <value>高度なダウンロード設定</value>
+  </data>
+  <data name="Settings.PatchSource.Label" xml:space="preserve">
+    <value>パッチのソース</value>
+  </data>
+  <data name="Settings.PatchSource.Tooltip" xml:space="preserve">
+    <value>R2が主要なダウンロードサービスです。永続なバックアップコピーを利用する場合は、GitHubを選択してください。</value>
+  </data>
+  <data name="Settings.ConcurrentChunks.Label" xml:space="preserve">
+    <value>コンカレントチャンク</value>
+  </data>
+  <data name="Settings.ConcurrentChunks.Tooltip" xml:space="preserve">
+    <value>アップデータが同時にダウンロード可能なパッチパーツの最大数（1～8）。</value>
+  </data>
+  <data name="Settings.Language.Label" xml:space="preserve">
+    <value>言語</value>
+  </data>
+  <data name="Settings.Language.Automatic" xml:space="preserve">
+    <value>自動</value>
+  </data>
+  <data name="Settings.OpenLogsFolder" xml:space="preserve">
+    <value>Logsフォルダーを開く</value>
+  </data>
+  <data name="Settings.OpenGameDataFolder" xml:space="preserve">
+    <value>Game Dataフォルダーを開く</value>
+  </data>
+  <data name="Settings.OpenGameDataFolder.Tooltip" xml:space="preserve">
+    <value>KSP2のセーブデータ、設定、およびPlayer.logが保存されているフォルダーを開きます。</value>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo" xml:space="preserve">
+    <value>アプリの診断情報をコピーする</value>
+  </data>
+  <data name="Settings.VerboseLogging" xml:space="preserve">
+    <value>冗長なログを出力</value>
+  </data>
+  <data name="Settings.VerboseLogging.Tooltip" xml:space="preserve">
+    <value>ログファイルにより詳細な情報を書き込みます。トラブルシューティングを行う場合に役立ちます。</value>
+  </data>
+  <data name="Settings.BackgroundMotion" xml:space="preserve">
+    <value>背景写真の動き</value>
+  </data>
+  <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
+    <value>マウスの動きに合わせて、背景写真をわずかに動かします。この動きが気になったり、不快に感じられたりする場合は、チェックを外してください。</value>
+  </data>
+  <data name="Settings.LauncherVersion" xml:space="preserve">
+    <value>ランチャー v{0}</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="Common.Close" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
+  <data name="Steam.SignIn.Title" xml:space="preserve">
+    <value>Steamでサインイン</value>
+  </data>
+  <data name="Steam.SignIn.Heading" xml:space="preserve">
+    <value>Steamでサインイン</value>
+  </data>
+  <data name="Steam.SignIn.Intro" xml:space="preserve">
+    <value>ReduxがSteamから『カーバルスペースプログラム2』を直接ダウンロードします。ゲームを所有しているアカウントでサインインしてください。</value>
+  </data>
+  <data name="Steam.SignIn.GettingCode" xml:space="preserve">
+    <value>Steamコードを取得中…</value>
+  </data>
+  <data name="Steam.SignIn.ScanTitle" xml:space="preserve">
+    <value>Steamアプリでスキャンしてください</value>
+  </data>
+  <data name="Steam.SignIn.ScanHint" xml:space="preserve">
+    <value>Steamモバイルアプリで「Steamガード」を開き、QRコードスキャナーをタップしてください。</value>
+  </data>
+  <data name="Steam.SignIn.Or" xml:space="preserve">
+    <value>それか</value>
+  </data>
+  <data name="Steam.SignIn.AccountName" xml:space="preserve">
+    <value>Steamアカウント名</value>
+  </data>
+  <data name="Steam.SignIn.Password" xml:space="preserve">
+    <value>パスワード</value>
+  </data>
+  <data name="Steam.SignIn.SignInButton" xml:space="preserve">
+    <value>サインイン</value>
+  </data>
+  <data name="Steam.SignIn.SigningIn" xml:space="preserve">
+    <value>サインイン中...</value>
+  </data>
+  <data name="Steam.SignIn.SteamGuard" xml:space="preserve">
+    <value>Steamガード</value>
+  </data>
+  <data name="Steam.SignIn.Continue" xml:space="preserve">
+    <value>続ける</value>
+  </data>
+  <data name="Steam.SignIn.EnterCredentials" xml:space="preserve">
+    <value>Steamアカウント名とパスワードを入力してください。</value>
+  </data>
+  <data name="Steam.SignIn.Failed" xml:space="preserve">
+    <value>サインインできませんでした: {0}</value>
+  </data>
+  <data name="Steam.SignIn.EmailCode" xml:space="preserve">
+    <value>Steamが{0}にコードを送信しました。以下で入力してください。</value>
+  </data>
+  <data name="Steam.SignIn.EmailCodeWrong" xml:space="preserve">
+    <value>そのコードは機能しませんでした。Steamが {0} に送信した新しいコードを入力してください。</value>
+  </data>
+  <data name="Steam.SignIn.DeviceCode" xml:space="preserve">
+    <value>Steamモバイルアプリに表示されているコードを入力してください。</value>
+  </data>
+  <data name="Steam.SignIn.DeviceCodeWrong" xml:space="preserve">
+    <value>そのコードは機能しませんでした。Steamモバイルアプリに現在表示されているコードを入力してください。</value>
+  </data>
+  <data name="Steam.SignIn.Approve" xml:space="preserve">
+    <value>Steamモバイルアプリを開き、サインインを承認してください。</value>
+  </data>
+  <data name="Steam.Download.Title" xml:space="preserve">
+    <value>KSP2をダウンロードしています</value>
+  </data>
+  <data name="Steam.Download.Target" xml:space="preserve">
+    <value>{0}にダウンロードしています</value>
+  </data>
+  <data name="Steam.Download.Hint" xml:space="preserve">
+    <value>ダウンロードを途中で中断し、後から再開することも可能です。完了したファイルは保持され、ダウンロードは中断した箇所から再開されます。</value>
+  </data>
+  <data name="Steam.Download.Stage.Connecting" xml:space="preserve">
+    <value>Steamに接続しています</value>
+  </data>
+  <data name="Steam.Download.Stage.Downloading" xml:space="preserve">
+    <value>カーバルスペースプログラム2をダウンロードしています</value>
+  </data>
+  <data name="Steam.Download.Stage.Finished" xml:space="preserve">
+    <value>ダウンロード完了</value>
+  </data>
+  <data name="Steam.Download.Stage.Stopped" xml:space="preserve">
+    <value>ダウンロード停止</value>
+  </data>
+  <data name="Steam.Download.Detail" xml:space="preserve">
+    <value>{0} / {1}  ·  {2}  ·  {3}/{4} 個のファイル</value>
+  </data>
+  <data name="Steam.Download.Speed" xml:space="preserve">
+    <value>{0}/s</value>
+  </data>
+  <data name="Steam.Download.Measuring" xml:space="preserve">
+    <value>ダウンロード速度を測定中...</value>
+  </data>
+  <data name="Steam.Download.MissingExe" xml:space="preserve">
+    <value>ダウンロードは完了しましたが、フォルダー中に {0} が含まれていません。</value>
+  </data>
+  <data name="Steam.Download.Stage.Checking" xml:space="preserve">
+    <value>Steamライブラリを確認しています</value>
+  </data>
+  <data name="Steam.Download.Stage.Reading" xml:space="preserve">
+    <value>ファイルリストを読み込んでいます</value>
+  </data>
+  <data name="Steam.FolderPicker.Title" xml:space="preserve">
+    <value>『カーバルスペースプログラム2』のダウンロード先を選択してください</value>
+  </data>
+  <data name="Dialog.Error.Title" xml:space="preserve">
+    <value>エラー！</value>
+  </data>
+  <data name="Dialog.Confirm.Title" xml:space="preserve">
+    <value>確認する</value>
+  </data>
+  <data name="Dialog.Done.Title" xml:space="preserve">
+    <value>完了！</value>
+  </data>
+  <data name="Settings.FilePicker.Failed" xml:space="preserve">
+    <value>ファイル選択ツールを開くことができませんでした: {0}</value>
+  </data>
+  <data name="Settings.FilePicker.NoWindow" xml:space="preserve">
+    <value>ファイル選択ツールにアクセスできませんでした（アクティブなウィンドウがありません）。</value>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.FileType" xml:space="preserve">
+    <value>KSP2のインストール</value>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.Title" xml:space="preserve">
+    <value>KSP2_x64.exe を開く</value>
+  </data>
+  <data name="Settings.FilePicker.Patch.FileType" xml:space="preserve">
+    <value>KSP2パッチファイル</value>
+  </data>
+  <data name="Settings.FilePicker.Patch.Title" xml:space="preserve">
+    <value>パッチファイルを開く</value>
+  </data>
+  <data name="Settings.RemoveProfile.Message" xml:space="preserve">
+    <value>「{0}」を削除してもよろしいですか？名前、起動オプション、およびSteam設定が失われます。</value>
+  </data>
+  <data name="Settings.OpenInstallFolder.NotFound" xml:space="preserve">
+    <value>インストールフォルダーが見つかりませんでした。</value>
+  </data>
+  <data name="Settings.OpenInstallFolder.Failed" xml:space="preserve">
+    <value>インストールフォルダーを開けませんでした。
+{0}</value>
+  </data>
+  <data name="Settings.GameData.Unknown" xml:space="preserve">
+    <value>このインストールのゲームデータフォルダーを特定できませんでした。</value>
+  </data>
+  <data name="Settings.GameData.NotYet.Title" xml:space="preserve">
+    <value>まだ何もありません</value>
+  </data>
+  <data name="Settings.GameData.NotYet.Message" xml:space="preserve">
+    <value>KSP2はまだデータフォルダーを作成していません。ゲームを一度起動すると、データフォルダーがここに作成されます。
+{0}</value>
+  </data>
+  <data name="Settings.GameData.OpenFailed" xml:space="preserve">
+    <value>ゲームデータフォルダーを開けませんでした。
+{0}</value>
+  </data>
+  <data name="Settings.LogsFolder.Failed" xml:space="preserve">
+    <value>ログフォルダーを開けませんでした: {0}</value>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Title" xml:space="preserve">
+    <value>KSP2をアンインストールできませんでした</value>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Message" xml:space="preserve">
+    <value>{0}
+
+これはKSP2のインストールフォルダーではないようです（KSP2_x64_Dataの横に{1}が存在しません）。そのため、何も削除されてはいません。もし誤った場所が指定されている場合、代わりにそのプロファイルを削除してください。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Title" xml:space="preserve">
+    <value>KSP2はすでに削除されています</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Message" xml:space="preserve">
+    <value>「{0}」のゲームフォルダーは存在しません。ランチャーからこのプロファイルを削除しますか？</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Title" xml:space="preserve">
+    <value>KSP2をアンインストール</value>
+  </data>
+  <data name="Settings.UninstallKsp2.ThroughSteam.Message" xml:space="preserve">
+    <value>このKSP2のインストールはSteamによって管理されているため、Steamがアンインストールを行い、確認を求めます。「{0}」プロファイルはランチャーから削除されます。
+
+セーブデータと設定は保持されます。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.SteamFailed" xml:space="preserve">
+    <value>KSP2をアンインストールするためにSteamを開くことができませんでした: {0}</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Message" xml:space="preserve">
+    <value>このコンピューターから『カーバルスペースプログラム2』を削除しますか？
+
+{0}
+
+フォルダ全体（Reduxを含む）が削除され、「{1}」プロファイルも削除されます。この操作は取り消せません。
+
+セーブデータや設定は別の場所に保存されているため、そのまま残ります。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Failed" xml:space="preserve">
+    <value>KSP2のアンインストールを完了できませんでした: {0}
+
+ゲームが起動していないことを確認してから、再度試してください。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Done" xml:space="preserve">
+    <value>『カーバルスペースプログラム2』がアンインストールされました。</value>
+  </data>
+  <data name="Settings.UninstallRedux.NoInstall" xml:space="preserve">
+    <value>有効なKSP2インストールが選択されていません。</value>
+  </data>
+  <data name="Settings.UninstallRedux.NotInstalled" xml:space="preserve">
+    <value>Reduxはインストールされていません…</value>
+  </data>
+  <data name="Settings.UninstallRedux.Confirm" xml:space="preserve">
+    <value>Reduxを本当にアンインストールしてもよろしいですか？</value>
+  </data>
+  <data name="Settings.UninstallRedux.Failed" xml:space="preserve">
+    <value>Reduxをアンインストールできませんでした: {0}</value>
+  </data>
+  <data name="Settings.UninstallRedux.Done" xml:space="preserve">
+    <value>KSP2 Reduxのアンインストールが完了しました</value>
+  </data>
+  <data name="Settings.SnapshotWarning.Title" xml:space="preserve">
+    <value>スナップショットへの切り替え</value>
+  </data>
+  <data name="Settings.SnapshotWarning.Message" xml:space="preserve">
+    <value>スナップショットチャンネルは、QAテストを目的としています。ビルドは不安定であり、いつでも不具合が発生する可能性があります。
+
+既存のキャンペーンでは使用しないことを推奨します。</value>
+  </data>
+  <data name="Settings.Exe.Error.Required" xml:space="preserve">
+    <value>インストールパスが必要です。</value>
+  </data>
+  <data name="Settings.Exe.Error.WrongFile" xml:space="preserve">
+    <value>パスは {0} を指す必要があります。</value>
+  </data>
+  <data name="Settings.Exe.Error.Missing" xml:space="preserve">
+    <value>そのファイルは存在しません。</value>
+  </data>
+  <data name="Settings.SteamAppId.Error.NotNumeric" xml:space="preserve">
+    <value>SteamアプリIDは数値である必要があります。</value>
+  </data>
+  <data name="Settings.DownloadFromSteam.Tooltip" xml:space="preserve">
+    <value>Steamから『カーバルスペースプログラム2』をダウンロードし、インストールとして追加します。これはSteamのアップデートが一切適用されない「クリーンな」コピーとなるため、いつでもReduxを利用できる状態に保たれます。</value>
+  </data>
+  <data name="Settings.DownloadFromSteam.SignInTooltip" xml:space="preserve">
+    <value>KSP2をダウンロードするには、Steamでサインインしてください。右下にあるSteamアイコンをクリックし、ゲームを所有しているアカウントでサインインしてください。</value>
+  </data>
+  <data name="Steam.Status.NotSignedIn" xml:space="preserve">
+    <value>サインインしていません</value>
+  </data>
+  <data name="Steam.Status.SignedIn" xml:space="preserve">
+    <value>{0}としてサインインしています</value>
+  </data>
+  <data name="Steam.Status.SignedInConnecting" xml:space="preserve">
+    <value>{0} としてサインインしています (接続中...)</value>
+  </data>
+  <data name="Steam.Status.SignedInOffline" xml:space="preserve">
+    <value>{0} としてサインインしています（オフライン）</value>
+  </data>
+  <data name="Steam.Indicator.Connected" xml:space="preserve">
+    <value>Steam: {0}</value>
+  </data>
+  <data name="Steam.Indicator.Connecting" xml:space="preserve">
+    <value>Steamに接続中...</value>
+  </data>
+  <data name="Steam.Indicator.Reconnect" xml:space="preserve">
+    <value>Steam: {0}。クリックして再接続してください。</value>
+  </data>
+  <data name="Steam.Indicator.NotSignedIn" xml:space="preserve">
+    <value>Steamにサインインしていません。クリックしてサインインしてください。</value>
+  </data>
+  <data name="Steam.SignedOut.Title" xml:space="preserve">
+    <value>サインアウト済み</value>
+  </data>
+  <data name="Steam.RevokeFailed" xml:space="preserve">
+    <value>ここではサインアウト済みですが、保存されたログイン情報を解除するためにSteamへ接続することができませんでした。ご自身で解除を行う場合は、Steamアカウントのセキュリティ設定にあるデバイス一覧から「{0}」を削除してください。</value>
+  </data>
+  <data name="Steam.DownloadComplete.Title" xml:space="preserve">
+    <value>ダウンロード完了</value>
+  </data>
+  <data name="Steam.DownloadComplete.Message" xml:space="preserve">
+    <value>『カーバルスペースプログラム2』がダウンロードされ、インストールとして追加されました。ホームタブへ移動し、Reduxをインストールできます。</value>
+  </data>
+  <data name="Steam.DownloadFailed.Title" xml:space="preserve">
+    <value>ダウンロード失敗</value>
+  </data>
+  <data name="Steam.Error.Unreachable" xml:space="preserve">
+    <value>Steamに接続できませんでした。インターネット接続を確認し、もう一度試してください。</value>
+  </data>
+  <data name="Steam.Error.ConnectionClosed" xml:space="preserve">
+    <value>サインイン中にSteamが接続を閉じました。もう一度試してください。</value>
+  </data>
+  <data name="Steam.Error.InvalidPassword" xml:space="preserve">
+    <value>アカウント名もしくはパスワードが正しくありません。</value>
+  </data>
+  <data name="Steam.Error.RateLimited" xml:space="preserve">
+    <value>試行回数が多すぎたため、Steamへのサインインが一時的にブロックされました。しばらくしてからもう一度お試しください。</value>
+  </data>
+  <data name="Steam.Error.Expired" xml:space="preserve">
+    <value>保存されているSteamのサインイン情報が期限切れとなりました。再度サインインしてください。</value>
+  </data>
+  <data name="Steam.Error.QrExpired" xml:space="preserve">
+    <value>QRコードの有効期限が切れました。新しいQRコードが生成されましたので、そちらを読み取ってください。</value>
+  </data>
+  <data name="Steam.Error.GuardCodeWrong" xml:space="preserve">
+    <value>Steamガードコードが正しくありません。</value>
+  </data>
+  <data name="Steam.Error.Unavailable" xml:space="preserve">
+    <value>現在Steamは利用できません。しばらくしてからもう一度お試しください。</value>
+  </data>
+  <data name="Steam.Error.Refused" xml:space="preserve">
+    <value>Steamがサインインを拒否しました ({0})。</value>
+  </data>
+  <data name="Steam.Depot.NoInfo" xml:space="preserve">
+    <value>Steamからは、『カーバルスペースプログラム2』に関する情報は返ってきませんでした。</value>
+  </data>
+  <data name="Steam.Depot.NoContent" xml:space="preserve">
+    <value>Steamは、『カーバルスペースプログラム2』用のWindows版ダウンロードコンテンツを掲載しませんでした。</value>
+  </data>
+  <data name="Steam.Depot.NotOwned" xml:space="preserve">
+    <value>このSteamアカウントは『カーバルスペースプログラム2』を所有していません。購入時に使用したアカウントでサインインしてください。</value>
+  </data>
+  <data name="Steam.Depot.MissingFiles" xml:space="preserve">
+    <value>Steam上の当該ゲームのファイルリストに、{0}は含まれていませんでした。</value>
+  </data>
+  <data name="Steam.Depot.ChecksumMismatch" xml:space="preserve">
+    <value>Steamからダウンロードした{0}のコピーは、Steamのチェックサムと一致しません。</value>
+  </data>
+  <data name="Steam.Depot.SignInFirst" xml:space="preserve">
+    <value>まずはSteamでサインインしてください。</value>
+  </data>
+  <data name="Steam.Depot.NoServers" xml:space="preserve">
+    <value>Steamからコンテンツサーバーが返されませんでした。しばらくしてからもう一度試してください。</value>
+  </data>
+  <data name="Steam.Depot.ServersFailed" xml:space="preserve">
+    <value>Steamのコンテンツサーバーでエラーが繰り返し発生しました。接続状況を確認し、再度試してください。</value>
+  </data>
+  <data name="Main.StartupError.Title" xml:space="preserve">
+    <value>起動時エラー</value>
+  </data>
+  <data name="Main.StartupError.Message" xml:space="preserve">
+    <value>起動時に何かの問題が発生したため、セットアップが完了していない可能性があります（フィードの読み込み、インストール状況の確認、またはアップデート確認などが実行されなかった可能性）。詳細についてはログファイルを確認してください。ランチャーの再起動をおすすめします。</value>
+  </data>
+  <data name="Main.PartialUpdate.Title" xml:space="preserve">
+    <value>部分的なアップデートが完了</value>
+  </data>
+  <data name="Main.PartialUpdate.Message" xml:space="preserve">
+    <value>これを閉じた後、{0} を削除してください。
+また、Updater がローカル環境にまだ残っていることを確認してください。</value>
+  </data>
+  <data name="Main.InstallFound.Title" xml:space="preserve">
+    <value>KSP2のインストールが見つかりました</value>
+  </data>
+  <data name="Main.InstallFound.Message" xml:space="preserve">
+    <value>KSP2のインストールが{0}で見つかりました。
+Reduxに追加しますか？
+（設定で変更できます。）</value>
+  </data>
+  <data name="Main.InstallNotFound.Title" xml:space="preserve">
+    <value>KSP2のインストールが見つかりません</value>
+  </data>
+  <data name="Main.InstallNotFound.Message" xml:space="preserve">
+    <value>このコンピュータにはKSP2がインストールされていません。
+
+Steamアカウントを使用してダウンロードしますか？ 設定タブから、既存のインストールを追加することもできます。</value>
+  </data>
+  <data name="Main.InvalidExe.Title" xml:space="preserve">
+    <value>不正なEXE</value>
+  </data>
+  <data name="Main.InvalidExe.Message" xml:space="preserve">
+    <value>設定されたKSP2 EXEのパスが不正です：
+{0}</value>
+  </data>
+  <data name="Main.VersionDetection.Title" xml:space="preserve">
+    <value>ゲームのバージョンを検出できませんでした</value>
+  </data>
+  <data name="Main.VersionDetection.Message" xml:space="preserve">
+    <value>KSP2 Reduxが、インストールされているゲームのバージョンを特定できませんでした。これは、ゲームファイルが欠落している、破損している、あるいはサポート対象外のソースから入手された場合に発生することがあります。
+
+起動やインストールをすることは可能ですが、アップデートの確認が正しく機能しない可能性があります。問題の報告をご希望の場合は、ログファイルに詳細が記録されていますのでご確認ください（「設定」&gt;「ログフォルダーを開く」からアクセスできます）。</value>
+  </data>
+  <data name="Mirror.Manifest.Title" xml:space="preserve">
+    <value>{0} マニフェストの処理に失敗しました</value>
+  </data>
+  <data name="Mirror.Manifest.Message" xml:space="preserve">
+    <value>{0} からリリースリストをダウンロードできませんでした。{1} を使用して再試行しますか？この選択は「高度なダウンロード」設定に保存されます。</value>
+  </data>
+  <data name="Mirror.Download.Title" xml:space="preserve">
+    <value>{0} ダウンロードに失敗しました</value>
+  </data>
+  <data name="Mirror.Download.Message" xml:space="preserve">
+    <value>{0} からマニフェストもしくはパッチをダウンロードできませんでした。{1} を使用して、アップデート全体を再試行しますか？ディスク上に既に存在する検証済みのファイルは再利用されます。</value>
+  </data>
+  <data name="Home.Tooltip.Loading" xml:space="preserve">
+    <value>ランチャーをロードしています...</value>
+  </data>
+  <data name="Home.Tooltip.Stopping" xml:space="preserve">
+    <value>KSP2を停止しています...</value>
+  </data>
+  <data name="Home.Tooltip.Stop" xml:space="preserve">
+    <value>KSP2を終了します。保存されていないデータはすべて失われます。</value>
+  </data>
+  <data name="Home.Tooltip.NotDetected" xml:space="preserve">
+    <value>KSP2のインストールが検出されませんでした。 設定タブで、KSP2が含まれるディレクトリーを選択してください。</value>
+  </data>
+  <data name="Home.Tooltip.VersionUnknown" xml:space="preserve">
+    <value>インストールされているゲームのバージョンを検出できませんでした。SteamもしくはEpicを通じてゲームファイルの整合性を確認するか、ゲームを再インストールすることで解決できる可能性があります。</value>
+  </data>
+  <data name="Home.Tooltip.SelectVersion" xml:space="preserve">
+    <value>インストールまたは起動するバージョンを選択してください。</value>
+  </data>
+  <data name="Home.Tooltip.NoRuntime" xml:space="preserve">
+    <value>Windows互換ランタイムソフトウェアが見つかりません。macOS用のランチャーをダウンロードするか、CrossOverをインストールしてください。</value>
+  </data>
+  <data name="Home.Tooltip.LinuxSteam" xml:space="preserve">
+    <value>Linuxで起動するには、設定で「Steamから起動する」を有効にしてください。</value>
+  </data>
+  <data name="Home.Tooltip.LauncherUpdate" xml:space="preserve">
+    <value>Reduxをインストールまたはアップデートするには、ランチャー自体をアップデートする必要があります。</value>
+  </data>
+  <data name="Home.LaunchFailed.Title" xml:space="preserve">
+    <value>ゲームを起動できませんでした</value>
+  </data>
+  <data name="Home.LaunchFailed.NotDetected" xml:space="preserve">
+    <value>KSP2のインストールが検出されませんでした。設定タブで、KSP2が含まれるディレクトリーを選択してください。</value>
+  </data>
+  <data name="Home.LaunchFailed.Steam" xml:space="preserve">
+    <value>Steamを開くことができませんでした: {0}
+Steamがインストールされていることを確認し、再度試してください。</value>
+  </data>
+  <data name="Home.LaunchFailed.Direct" xml:space="preserve">
+    <value>ゲームを起動することができませんでした: {0} 
+ファイルが移動または削除されたか、ウイルス対策ソフトウェアによってブロックされている可能性があります。</value>
+  </data>
+  <data name="Home.LaunchFailed.NoRuntime" xml:space="preserve">
+    <value>MacでKSP2を起動するにはWindows互換ランタイムソフトウェアが必要ですが、見つかりませんでした。
+macOS用のランチャーをダウンロードするか、CrossOverをインストールしてください。</value>
+  </data>
+  <data name="Home.LaunchFailed.Wine" xml:space="preserve">
+    <value>{0}からゲームを起動できませんでした: {1}</value>
+  </data>
+  <data name="Home.StopGame.Title" xml:space="preserve">
+    <value>KSP2を終了</value>
+  </data>
+  <data name="Home.StopGame.Message" xml:space="preserve">
+    <value>ゲームを終了しますか？保存されていないデータはすべて失われます。</value>
+  </data>
+  <data name="Home.StopFailed.Title" xml:space="preserve">
+    <value>KSP2を終了することができませんでした</value>
+  </data>
+  <data name="Home.StopFailed.Message" xml:space="preserve">
+    <value>{0}
+ゲーム内からゲームを終了してください。</value>
+  </data>
+  <data name="Home.Rosetta.Title" xml:space="preserve">
+    <value>Rosettaが必要</value>
+  </data>
+  <data name="Home.Rosetta.Message" xml:space="preserve">
+    <value>KSP2はIntel版のWineを通して実行されますが、これにはRosetta 2が必要です。現在、このMacにはRosettaがインストールされていません。ターミナルで以下のコマンドを実行してインストールを行い、再度試してみてください。
+
+softwareupdate --install-rosetta --agree-to-license</value>
+  </data>
+  <data name="Home.Log.VersionUnknown" xml:space="preserve">
+    <value>インストールされているゲームのバージョンを検出できなかったため、どのパッチを適用すべきかが不明です。ゲームファイルの整合性確認、またはゲームの再インストールを行うことで、この問題が解決できる可能性があります。</value>
+  </data>
+  <data name="Home.Log.CreatingPlan" xml:space="preserve">
+    <value>インストールプランを作成しています</value>
+  </data>
+  <data name="Home.Log.Retrying" xml:space="preserve">
+    <value>{0} を使用してアップデートを再試行しています。</value>
+  </data>
+  <data name="Home.Log.Installed" xml:space="preserve">
+    <value>KSP2 Reduxのインストールが完了しました</value>
+  </data>
+  <data name="Home.Log.Cancelled" xml:space="preserve">
+    <value>インストールがキャンセルされました</value>
+  </data>
+  <data name="Home.Log.UpdateError" xml:space="preserve">
+    <value>Reduxのアップデート中にエラーが発生しました: {0}</value>
+  </data>
+  <data name="Home.Log.InvalidState" xml:space="preserve">
+    <value>Reduxが不正な状態になっている可能性があります。アンインストールしてから再インストールしてみてください</value>
+  </data>
+  <data name="Home.Log.NothingChanged" xml:space="preserve">
+    <value>何も変更されていません。</value>
+  </data>
+  <data name="Home.CantInstallHere.Title" xml:space="preserve">
+    <value>ここにはインストールできません</value>
+  </data>
+  <data name="Home.CantInstallHere.Message" xml:space="preserve">
+    <value>ランチャーがKSP2のインストールフォルダー内で実行されているため、その状態でReduxのインストールやアップデートを行うと、実行中のランチャーが上書きされてしまい、処理が失敗します。
+
+ランチャーをゲームのインストールディレクトリー外のフォルダーに移してから、再度起動してやり直してください。</value>
+  </data>
+  <data name="Home.DiskSpace.Title" xml:space="preserve">
+    <value>ディスクの空き容量が不足しています</value>
+  </data>
+  <data name="Home.DiskSpace.Message" xml:space="preserve">
+    <value>{0}
+
+以下のドライブに空き容量が必要です：
+{1}
+
+何も変更されていません。</value>
+  </data>
+  <data name="Home.FilesInUse.Title" xml:space="preserve">
+    <value>ゲームファイルが使用されています</value>
+  </data>
+  <data name="Home.UpdateFailed.Title" xml:space="preserve">
+    <value>アップデートに失敗しました！</value>
+  </data>
+  <data name="Home.UpdateFailed.Message" xml:space="preserve">
+    <value>ランチャーのアップデートを確認する際に問題が発生しました: {0}
+後でもう一度お試しください。</value>
+  </data>
+  <data name="Update.Found.Title" xml:space="preserve">
+    <value>アップデートが見つかりました</value>
+  </data>
+  <data name="Update.ActionMessage" xml:space="preserve">
+    <value>ランチャーがダウンロードとアップデートを行います。その過程で、何度か再起動する可能性があります。
+アップデートを行わないと、新しいバージョンのReduxをインストールすることはできません。</value>
+  </data>
+  <data name="Update.WhatsNew.NoNotes" xml:space="preserve">
+    <value>v{0}の新機能や変更点：
+（リリースノートはありません。）
+
+{1}</value>
+  </data>
+  <data name="Update.WhatsNew.WithNotes" xml:space="preserve">
+    <value>v{0}の新機能や変更点：
+{1}
+
+{2}</value>
+  </data>
+  <data name="Update.NotSingleFile.Message" xml:space="preserve">
+    <value>現在、単一ファイル形式のビルド環境では実行されていません。Reduxをインストールするには、最新の「main」ブランチからリビルドを行ってください。</value>
+  </data>
+  <data name="Update.Failed.Title" xml:space="preserve">
+    <value>アップデートが失敗しました！</value>
+  </data>
+  <data name="Update.Failed.Message" xml:space="preserve">
+    <value>ランチャーの最新バージョンをこちらからダウンロードしてください。
+{0}</value>
+  </data>
+  <data name="Link.Failed.Title" xml:space="preserve">
+    <value>リンクを開けませんでした</value>
+  </data>
+  <data name="Link.Invalid.Message" xml:space="preserve">
+    <value>そのリンクは有効ではないようです。</value>
+  </data>
+  <data name="Link.Failed.Message" xml:space="preserve">
+    <value>リンクを開けませんでした: {0}</value>
+  </data>
+  <data name="Config.SaveFailed.Title" xml:space="preserve">
+    <value>設定を保存できませんでした</value>
+  </data>
+  <data name="Config.SaveFailed.Message" xml:space="preserve">
+    <value>変更を保存できませんでした: {0} 
+ランチャーを閉じると、変更内容が失われる可能性があります。{1} に書き込み権限があることを確認してから、再度お試しください。</value>
+  </data>
+  <data name="Cache.StockDeleted" xml:space="preserve">
+    <value>元のバニラゲームのファイルが削除されています。"{1}" の下に "{0}" があるはずですが、そのファイルが存在しないため、アンインストールは不可能です。</value>
+  </data>
+  <data name="Wine.CreatingBottle" xml:space="preserve">
+    <value>CrossOverボトル「{0}」を作成しています...</value>
+  </data>
+  <data name="Wine.SettingUp" xml:space="preserve">
+    <value>KSP2用にWindows環境をセットアップします。この作業は一度だけ行われます……</value>
+  </data>
+  <data name="Wine.SetupFailed" xml:space="preserve">
+    <value>{0} のセットアップが終了コード {1} で失敗しました。</value>
+  </data>
+  <data name="Game.DidNotStart" xml:space="preserve">
+    <value>{0} は起動しませんでした。</value>
+  </data>
+  <data name="Game.StopFailure" xml:space="preserve">
+    <value>pid {0}: {1}</value>
+  </data>
+  <data name="Game.CouldNotStop" xml:space="preserve">
+    <value>KSP2を終了できませんでした ({0}) 。</value>
+  </data>
+  <data name="Locks.OneFile.OtherProgram" xml:space="preserve">
+    <value>ゲームファイルが別のプログラムによって使用されています。</value>
+  </data>
+  <data name="Locks.OneFile.Programs" xml:space="preserve">
+    <value>ゲームファイルが {0} によって使用されています。</value>
+  </data>
+  <data name="Locks.ManyFiles.OtherProgram" xml:space="preserve">
+    <value>{0} 個のゲームファイルが、別のプログラムによって使用されています。</value>
+  </data>
+  <data name="Locks.ManyFiles.Programs" xml:space="preserve">
+    <value>{0} 個のゲームファイルを {1} が使用しています。</value>
+  </data>
+  <data name="Locks.Advice" xml:space="preserve">
+    <value>そのプログラムと、このKSP2フォルダーを使用しているUnityプロジェクトをすべて閉じてから、再度試してください。何も変更されてはいません。</value>
+  </data>
+  <data name="Locks.InUse" xml:space="preserve">
+    <value>使用中: {0}</value>
+  </data>
+  <data name="Locks.InUseMore" xml:space="preserve">
+    <value>使用中: {0}、その他{1}件</value>
+  </data>
+  <data name="Locks.Process" xml:space="preserve">
+    <value>{0} (プロセス {1})</value>
+  </data>
+  <data name="Install.PlanMade" xml:space="preserve">
+    <value>インストール／アップデートのプランが作成されました。全{0}ステップで構成されています。</value>
+  </data>
+  <data name="Install.Step.Uninstall" xml:space="preserve">
+    <value>ステップ {0}: KSP2 Redux をアンインストールしています</value>
+  </data>
+  <data name="Install.Step.RevertToStock" xml:space="preserve">
+    <value>ステップ {0}: バニラインストール状態に戻しています</value>
+  </data>
+  <data name="Install.Step.Prepatch" xml:space="preserve">
+    <value>ステップ {0}: バニラ状態からプリパッチを適用します</value>
+  </data>
+  <data name="Install.Step.ApplyPatchFile" xml:space="preserve">
+    <value>ステップ {0}: {1}</value>
+  </data>
+  <data name="Plan.ApplyingPatchFile" xml:space="preserve">
+    <value>{0} にパッチファイルを適用しています</value>
+  </data>
+  <data name="Plan.ApplyPatchFromVersion" xml:space="preserve">
+    <value>バージョン {1} からバージョン {0} へのパッチを適用しています</value>
+  </data>
+  <data name="Plan.ApplyPatchFromPrepatch" xml:space="preserve">
+    <value>バージョン {0} 用のパッチをプリパッチから適用しています</value>
+  </data>
+  <data name="Install.CheckingFiles" xml:space="preserve">
+    <value>他のプログラムがゲームファイルを使用していないか確認しています...</value>
+  </data>
+  <data name="Install.Uninstalling" xml:space="preserve">
+    <value>KSP2 Redux をアンインストールしています</value>
+  </data>
+  <data name="Install.RevertingForRepatch" xml:space="preserve">
+    <value>KSP2 Reduxをバニラ状態に戻し、再パッチを適用しています</value>
+  </data>
+  <data name="Install.NoRevertNeeded" xml:space="preserve">
+    <value>バニラ状態に戻す必要はありません</value>
+  </data>
+  <data name="Install.ApplyingPrepatch" xml:space="preserve">
+    <value>適切なプリパッチを適用しています</value>
+  </data>
+  <data name="Install.DeletingModloader" xml:space="preserve">
+    <value>古いMODローダーを削除しています！</value>
+  </data>
+  <data name="Install.Prepatch.Portable" xml:space="preserve">
+    <value>ポータブル版プリパッチを適用しています</value>
+  </data>
+  <data name="Install.Prepatch.Steam" xml:space="preserve">
+    <value>Steam版プリパッチを適用しています</value>
+  </data>
+  <data name="Install.Prepatch.Epic" xml:space="preserve">
+    <value>Epic版プリパッチを適用しています</value>
+  </data>
+  <data name="Install.Error.PrepatchOnRedux" xml:space="preserve">
+    <value>Reduxインストールにプリパッチを適用できません</value>
+  </data>
+  <data name="Install.CleaningPatch" xml:space="preserve">
+    <value>ダウンロードしたパッチ {0} をクリーンアップしています</value>
+  </data>
+  <data name="Install.PatchDeleteFailed" xml:space="preserve">
+    <value>パッチ {0} を削除できませんでした: {1}</value>
+  </data>
+  <data name="Install.BundleRevertFailed" xml:space="preserve">
+    <value>バンドル変換を元に戻せませんでした: {0}</value>
+  </data>
+  <data name="Install.StepFailed" xml:space="preserve">
+    <value>インストールステップが失敗しました ({0})。最後に正常だった状態へロールバックしています...</value>
+  </data>
+  <data name="Install.RolledBack" xml:space="preserve">
+    <value>正常にロールバックしました。</value>
+  </data>
+  <data name="Install.Error.RolledBack" xml:space="preserve">
+    <value>インストールに失敗したため、自動的に以前の状態へロールバックしました。元のエラー: {0}</value>
+  </data>
+  <data name="Install.RollbackFailed" xml:space="preserve">
+    <value>ロールバックも失敗しました: {0}</value>
+  </data>
+  <data name="Install.Error.RollbackFailed" xml:space="preserve">
+    <value>インストールに失敗しました ({0})。自動ロールバックも失敗しました ({1})。インストールが不完全な状態になっている可能性があります。設定から「アンインストール」または「バニラ状態に戻す」を試してください。</value>
+  </data>
+  <data name="Install.Disk.Download.Unknown" xml:space="preserve">
+    <value>ダウンロードおよび再構築に必要なストレージの空き容量を特定できなかったため、その事前チェックをスキップしました。</value>
+  </data>
+  <data name="Install.Disk.Download.NotEnough" xml:space="preserve">
+    <value>ダウンロードおよび再構築用データの保存に必要なディスクの空き容量が不足しています。約 {0} 必要ですが、現在 {1} しか利用できません。ディスクの空き容量を確保してから、再度試してください。</value>
+  </data>
+  <data name="Install.Disk.Temporary.Unknown" xml:space="preserve">
+    <value>利用可能なシステム一時ストレージ容量を特定できなかったため、その事前チェックをスキップしました。</value>
+  </data>
+  <data name="Install.Disk.Temporary.NotEnough" xml:space="preserve">
+    <value>システム一時ストレージとして使用するディスクの空き容量が不足しています。約 {0} 必要ですが、現在 {1} しか利用できません。ディスクの空き容量を確保してから、再度試してください。</value>
+  </data>
+  <data name="Install.Disk.Install.Unknown" xml:space="preserve">
+    <value>利用可能なインストールストレージ容量を特定できなかったため、その事前チェックをスキップしました。</value>
+  </data>
+  <data name="Install.Disk.Install.NotEnough" xml:space="preserve">
+    <value>インストールに必要なディスクの空き容量が不足しています。約 {0} 必要ですが、現在 {1} しか利用できません。ディスクの空き容量を確保してから、再度試してください。</value>
+  </data>
+  <data name="Download.UsingCached" xml:space="preserve">
+    <value>{0} 用の、検証されたキャッシュ済みパッチを使用しています。</value>
+  </data>
+  <data name="Download.LegacyGitHubOnly" xml:space="preserve">
+    <value>このレガシーパッチはGitHubからのみ入手可能です。続けるには、設定からGitHubバックアップを選択してください。</value>
+  </data>
+  <data name="Download.Legacy" xml:space="preserve">
+    <value>{0} 用のレガシーパッチをダウンロードしています。</value>
+  </data>
+  <data name="Download.Parts" xml:space="preserve">
+    <value>{2} からパッチ {1} 用の {0} 個のパーツをダウンロードしています。</value>
+  </data>
+  <data name="Download.Reconstructed" xml:space="preserve">
+    <value>パッチ {0} が再構築および検証されました。</value>
+  </data>
+  <data name="Download.CouldNotDownload" xml:space="preserve">
+    <value>{0} から検証済みのパッチパーツをダウンロードできませんでした。</value>
+  </data>
+  <data name="Download.Complete" xml:space="preserve">
+    <value>ダウンロード完了。</value>
+  </data>
+  <data name="Bundles.NoShaderBundles" xml:space="preserve">
+    <value>このReduxビルドにはURPシェーダーバンドルが含まれていないため、バニラゲームのバンドルは変換されないままとなります。</value>
+  </data>
+  <data name="Bundles.ManifestWarning" xml:space="preserve">
+    <value>シェーダーマニフェスト: {0}</value>
+  </data>
+  <data name="Bundles.Converting" xml:space="preserve">
+    <value>バニラバンドルをURPシェーダーに変換しています...</value>
+  </data>
+  <data name="Bundles.Warning" xml:space="preserve">
+    <value>警告: {0}</value>
+  </data>
+  <data name="Bundles.ConvertingRestored" xml:space="preserve">
+    <value>Steamから復元されたバンドルを変換しています...</value>
+  </data>
+  <data name="Bundles.StillUnrecorded" xml:space="preserve">
+    <value>Steamのコピーを元に戻した後も、{0}のバニラバンドルには変換済みのシェーダーが未記録のまま残っています。そのうちの最初は{1}です。</value>
+  </data>
+  <data name="Bundles.StillUnreverted" xml:space="preserve">
+    <value>Steam上のコピーを元に戻した後であっても、変換されたシェーダー{0}件を元に戻すことはできませんでした。そのうちの最初は{1}です。</value>
+  </data>
+  <data name="Bundles.ApplySummary" xml:space="preserve">
+    <value>バンドル変換: {0} 件の編集を書き込み、{1} 件は適用済み、{2} 件のバンドルコピーを書き込み、{3} 件のバンドルは最新状態、{4} 件のバンドルを削除、{5} 件のテクスチャーオーバーレイを書き込み、{6} 件のオーバーレイは最新状態、{7} 件のオーバーレイを削除。</value>
+  </data>
+  <data name="Bundles.LeftAlone" xml:space="preserve">
+    <value>そのままの状態では、{0} のオフセット {1} の位置に予期しないバイトが含まれています。</value>
+  </data>
+  <data name="Bundles.KeptCloudTextures" xml:space="preserve">
+    <value>{0}のバニラゲームの雲テクスチャーをそのまま残しました: {1}</value>
+  </data>
+  <data name="Bundles.ConvertFailed" xml:space="preserve">
+    <value>{0} を変換できませんでした: {1}</value>
+  </data>
+  <data name="Bundles.ConvertFailedOne" xml:space="preserve">
+    <value>バニラゲームのバンドルを変換できませんでした ({0}: {1})。</value>
+  </data>
+  <data name="Bundles.ConvertFailedMany" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルを変換できませんでした。そのうちの最初は{1}です ({2})。</value>
+  </data>
+  <data name="Bundles.RevertSummary" xml:space="preserve">
+    <value>バンドル変換を元に戻しました：{0}件の編集を取り消し、{1}件のバンドルコピーと{2}件のテクスチャーオーバーレイを削除しました。</value>
+  </data>
+  <data name="Bundles.CouldNotUndo" xml:space="preserve">
+    <value>{0} のオフセット {1} の位置に予期しないバイトが含まれているため、もとに戻せませんでした。</value>
+  </data>
+  <data name="Bundles.RevertFailed" xml:space="preserve">
+    <value>{0} を元に戻せませんでした: {1}</value>
+  </data>
+  <data name="Bundles.RevertFailedOne" xml:space="preserve">
+    <value>バニラゲームのバンドルをバニラ版に戻すことができませんでした ({0}: {1})。</value>
+  </data>
+  <data name="Bundles.RevertFailedMany" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルをバニラ版に戻すことができませんでした。そのうちの最初は{1}です ({2})。</value>
+  </data>
+  <data name="Bundles.Unrecorded" xml:space="preserve">
+    <value>{0} 件のバニラゲームのバンドルには、変換記録に含まれていない変換済みシェーダーが保存されています: {1}。</value>
+  </data>
+  <data name="Bundles.SteamHelp" xml:space="preserve">
+    <value>ランチャーの設定からSteamでサインインする（または「redux-launcher-cli steam login」を実行する）か、Steam内でゲームファイルの整合性を確認してからReduxを再インストールしてください。</value>
+  </data>
+  <data name="Bundles.NeedSteamCopies" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルには変換済みのシェーダーが含まれており、これらを元に戻せるのはSteam版のコピーのみです。{1}</value>
+  </data>
+  <data name="Bundles.SteamLoginRejected" xml:space="preserve">
+    <value>{0}件のバニラゲームのバンドルを元に戻すために必要なSteamが、保存済みのログイン情報を受け入れてくれませんでした。{1}</value>
+  </data>
+  <data name="Bundles.DownloadingFromSteam" xml:space="preserve">
+    <value>それらのバンドルのSteam版のコピーをダウンロードしています…</value>
+  </data>
+  <data name="Bundles.SteamDownloadFailed" xml:space="preserve">
+    <value>Steam上の{0}件のバニラゲームのバンドルをダウンロードできませんでした: {1} {2}</value>
+  </data>
+  <data name="Bundles.PutBack" xml:space="preserve">
+    <value>Steam版の {0} 件のバニラゲームのバンドルを元に戻しています。</value>
+  </data>
+</root>

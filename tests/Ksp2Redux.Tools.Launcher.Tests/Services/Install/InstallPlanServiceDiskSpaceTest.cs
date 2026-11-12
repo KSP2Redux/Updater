@@ -1,0 +1,124 @@
+using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
+using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Moq;
+using Testably.Abstractions.Testing;
+
+namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
+
+public class InstallPlanServiceDiskSpaceTest
+{
+    private const string InstallDir = @"C:\Games\Ksp2";
+
+    private static (InstallPlanService Service, Mock<IDiskSpaceService> DiskSpace, MockFileSystem Fs) MakeService(
+        List<string>? ignoredDirectories = null)
+    {
+        var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
+        fs.Directory.CreateDirectory(InstallDir);
+
+        var cacheService = new Mock<ICacheService>();
+        cacheService.SetupGet(c => c.IgnoredDirectories).Returns(ignoredDirectories ?? []);
+        var environmentProvider = new MockEnvironmentProvider();
+        var assemblyService = new Mock<IAssemblyService>();
+        var moduleDefinitionService = new Mock<IModuleDefinitionService>();
+        var zipFileService = new Mock<IZipFileService>();
+        var diskSpace = new Mock<IDiskSpaceService>();
+        var patchDownloadService = new Mock<IPatchDownloadService>();
+        patchDownloadService.Setup(service => service.EnqueueAll(
+                It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
+                It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
+            .Returns([]);
+        var configService = new Mock<ILauncherConfigService>();
+        configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
+
+        var service = new InstallPlanService(fs, cacheService.Object, environmentProvider, assemblyService.Object,
+            moduleDefinitionService.Object, zipFileService.Object, diskSpace.Object,
+            patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>());
+        return (service, diskSpace, fs);
+    }
+
+    [Test]
+    public void ApplyToFolder_NotEnoughFreeSpace_ThrowsBeforeTouchingAnyStep()
+    {
+        var (service, diskSpace, _) = MakeService();
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(1024); // basically nothing
+
+        var plan = new InstallPlan();
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult("unused"), LogMessage.Literal("big patch"), downloadSize: 10L * 1024 * 1024 * 1024); // 10 GB
+
+        Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
+            Throws.TypeOf<InsufficientDiskSpaceException>());
+    }
+
+    [Test]
+    public async Task ApplyToFolder_EnoughFreeSpace_DoesNotThrowFromSpaceCheck()
+    {
+        var (service, diskSpace, _) = MakeService();
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(100L * 1024 * 1024 * 1024); // 100 GB
+
+        var plan = new InstallPlan();
+        plan.ApplyPatchFile((_, _, ct) => Task.FromResult(InstallDir), LogMessage.Literal("small patch"), downloadSize: 1024);
+
+        // A missing/invalid patch file will fail later in Ksp2Patch.FromFile - that's fine, it means the
+        // space check itself let it through.
+        Exception? thrown = null;
+        try { await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None); }
+        catch (Exception ex) { thrown = ex; }
+
+        Assert.That(thrown?.Message ?? "", Does.Not.Contain("disk space"));
+    }
+
+    [Test]
+    public async Task ApplyToFolder_DiskSpaceUnknown_SkipsCheckAndProceeds()
+    {
+        var (service, diskSpace, _) = MakeService();
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns((long?)null);
+
+        var plan = new InstallPlan();
+        plan.ApplyPatchFile((_, _, _) => Task.FromResult("unused"), LogMessage.Literal("big patch"), downloadSize: 10L * 1024 * 1024 * 1024);
+
+        // Should not throw due to disk space (unknown => skip check); it'll fail later for other reasons instead.
+        Exception? thrown = null;
+        try { await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None); }
+        catch (Exception ex) { thrown = ex; }
+
+        Assert.That(thrown?.Message ?? "", Does.Not.Contain("disk space"));
+    }
+
+    [Test]
+    public async Task ApplyToFolder_FirstPrepatch_DoesNotCountFoldersTheSnapshotSkips()
+    {
+        var streamingAssets = @"KSP2_x64_Data\StreamingAssets";
+        var (service, diskSpace, fs) = MakeService([streamingAssets]);
+        fs.Directory.CreateDirectory(fs.Path.Combine(InstallDir, streamingAssets));
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, streamingAssets, "data.bundle"), new byte[10 * 1024 * 1024]);
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "KSP2_x64.exe"), new byte[1024]);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(1024L * 1024);
+
+        var plan = new InstallPlan();
+        plan.Prepatch();
+
+        Exception? thrown = null;
+        try { await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None); }
+        catch (Exception ex) { thrown = ex; }
+
+        Assert.That(thrown?.Message ?? "", Does.Not.Contain("disk space"));
+    }
+
+    [Test]
+    public void ApplyToFolder_FirstPrepatch_CountsFilesTheSnapshotIncludes()
+    {
+        var (service, diskSpace, fs) = MakeService();
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "UnityPlayer.dll"), new byte[10 * 1024 * 1024]);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(1024L * 1024);
+
+        var plan = new InstallPlan();
+        plan.Prepatch();
+
+        Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
+            Throws.TypeOf<InsufficientDiskSpaceException>().With.Message.Contains("disk space"));
+    }
+}

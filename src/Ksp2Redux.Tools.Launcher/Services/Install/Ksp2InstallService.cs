@@ -1,0 +1,330 @@
+using System.IO.Abstractions;
+using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+
+namespace Ksp2Redux.Tools.Launcher.Services.Install;
+
+public interface IKsp2InstallService
+{
+    Ksp2Install? Ksp2 { get; }
+    Ksp2InstallEntry? ActiveEntry { get; }
+
+    /// <summary>
+    /// The install <see cref="Ksp2"/> is loaded from: the one chosen with <see cref="SetTargetInstall"/>, otherwise the
+    /// active one.
+    /// </summary>
+    Ksp2InstallEntry? TargetEntry { get; }
+
+    IReadOnlyList<Ksp2InstallEntry> Entries { get; }
+    event EventHandler? ActiveInstallChanged;
+    event EventHandler? InstallsChanged;
+
+    void TryLoadKsp2Install();
+
+    /// <summary>
+    /// Loads <see cref="Ksp2"/> from another install for the rest of this session, without changing the active
+    /// install in the config. Null goes back to the active install.
+    /// </summary>
+    /// <param name="id">The selected installation identity, or null for the active installation.</param>
+    void SetTargetInstall(Guid? id);
+
+    /// <summary>
+    /// Returns the active install the first time it's requested per session, null otherwise.
+    /// </summary>
+    Ksp2Install? ClaimActiveInstallForFirstCheckThisSession();
+
+    Ksp2InstallEntry AddInstall(string exePath, string? name = null);
+    void RemoveInstall(Guid id);
+    void RenameInstall(Guid id, string newName);
+    void SetActiveInstall(Guid id);
+    void UpdateActiveReleaseChannel(string channel);
+    void AutoSwitchToStableIfPending(bool stableHasReleases);
+    void UpdateActiveLastInstalledVersion(GameVersion? version);
+    void UpdateInstallReleaseChannel(Guid id, string channel);
+    void UpdateInstallExePath(Guid id, string newExePath);
+    void UpdateInstallDisableGraphicsJobs(Guid id, bool value);
+    void NotifyInstallChanged(Guid id);
+
+    void ApplyActiveInstallBootConfig();
+}
+
+public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem,
+    IModuleDefinitionService moduleDefinitionService, ILogService logService,
+    IInstallationStateService installationStateService, IFullSourceInstallationService? fullSource = null) : IKsp2InstallService
+{
+    private readonly HashSet<Guid> _checkedThisSession = [];
+    private Guid? _targetId;
+
+    public Ksp2Install? Ksp2 { get; private set; }
+
+    public Ksp2InstallEntry? ActiveEntry =>
+        launcherConfigService.Config.ActiveKsp2InstallId is { } id
+            ? launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id)
+            : null;
+
+    /// <inheritdoc />
+    public Ksp2InstallEntry? TargetEntry =>
+        (_targetId is { } id ? launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id) : null)
+        ?? ActiveEntry;
+
+    public IReadOnlyList<Ksp2InstallEntry> Entries => launcherConfigService.Config.Ksp2Installs;
+
+    public event EventHandler? ActiveInstallChanged;
+    public event EventHandler? InstallsChanged;
+
+    /// <inheritdoc />
+    public void SetTargetInstall(Guid? id)
+    {
+        if (_targetId == id) return;
+        _targetId = id;
+        TryLoadKsp2Install();
+    }
+
+    public void TryLoadKsp2Install()
+    {
+        foreach (Ksp2InstallEntry entry in Entries)
+        {
+            try
+            {
+                installationStateService.EnsureLaunchAllowed(fileSystem.Path.GetDirectoryName(entry.ExePath)!);
+            }
+            catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or FilesInUseException)
+            {
+                logService.Warn($"Installation recovery needs attention: {failure.Message}");
+            }
+        }
+        var path = TargetEntry?.ExePath;
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            FullSourceReleaseIdentity? release = null;
+            try
+            {
+                if (TargetEntry is { } entry && fullSource?.HasCatalog(fileSystem.Path.GetDirectoryName(path)!) == true)
+                    release = fullSource.GetPublishedIdentity(entry.Id);
+            }
+            catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException)
+            {
+                logService.Warn($"Installation identity needs recovery: {failure.Message}");
+            }
+            Ksp2 = new(fileSystem, moduleDefinitionService, path, release);
+        }
+        else
+        {
+            Ksp2 = null;
+        }
+    }
+
+    public Ksp2Install? ClaimActiveInstallForFirstCheckThisSession()
+    {
+        if (ActiveEntry is not { } entry) return null;
+        if (!_checkedThisSession.Add(entry.Id)) return null;
+        TryLoadKsp2Install();
+        return Ksp2;
+    }
+
+    public Ksp2InstallEntry AddInstall(string exePath, string? name = null)
+    {
+        var entry = new Ksp2InstallEntry
+        {
+            ExePath = exePath,
+            Name = string.IsNullOrWhiteSpace(name) ? LauncherConfigService.DeriveDefaultInstallName(exePath) : name!,
+            ReleaseChannel = launcherConfigService.Config.Ksp2Installs.Count > 0
+                ? (ActiveEntry?.ReleaseChannel ?? "beta")
+                : (string.IsNullOrEmpty(launcherConfigService.Config.ReleaseChannel) ? "beta" : launcherConfigService.Config.ReleaseChannel)
+        };
+        launcherConfigService.Config.Ksp2Installs.Add(entry);
+
+        var becomesActive = launcherConfigService.Config.Ksp2Installs.Count == 1;
+        if (becomesActive)
+        {
+            launcherConfigService.Config.ActiveKsp2InstallId = entry.Id;
+        }
+        launcherConfigService.Save();
+
+        InstallsChanged?.Invoke(this, EventArgs.Empty);
+        if (becomesActive)
+        {
+            TryLoadKsp2Install();
+            ApplyActiveInstallBootConfig();
+            ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+        }
+        return entry;
+    }
+
+    public void RemoveInstall(Guid id)
+    {
+        var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
+        if (entry is null) return;
+
+        var wasActive = launcherConfigService.Config.ActiveKsp2InstallId == id;
+        launcherConfigService.Config.Ksp2Installs.Remove(entry);
+
+        if (wasActive)
+        {
+            launcherConfigService.Config.ActiveKsp2InstallId =
+                launcherConfigService.Config.Ksp2Installs.Count > 0
+                    ? launcherConfigService.Config.Ksp2Installs[0].Id
+                    : null;
+        }
+        launcherConfigService.Save();
+
+        InstallsChanged?.Invoke(this, EventArgs.Empty);
+        if (wasActive)
+        {
+            TryLoadKsp2Install();
+            ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void RenameInstall(Guid id, string newName)
+    {
+        var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
+        if (entry is null) return;
+        if (entry.Name == newName) return;
+        entry.Name = newName;
+        launcherConfigService.Save();
+        InstallsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void SetActiveInstall(Guid id)
+    {
+        if (launcherConfigService.Config.ActiveKsp2InstallId == id) return;
+        if (launcherConfigService.Config.Ksp2Installs.All(e => e.Id != id)) return;
+        launcherConfigService.Config.ActiveKsp2InstallId = id;
+        launcherConfigService.Save();
+        TryLoadKsp2Install();
+        ApplyActiveInstallBootConfig();
+        ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void UpdateActiveReleaseChannel(string channel)
+    {
+        if (ActiveEntry is not { } entry) return;
+        if (entry.ReleaseChannel == channel) return;
+        entry.ReleaseChannel = channel;
+        launcherConfigService.Save();
+        ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void AutoSwitchToStableIfPending(bool stableHasReleases)
+    {
+        if (launcherConfigService.Config.AutoSwitchedToStable) return;
+        if (!stableHasReleases) return;
+        if (ActiveEntry is not { } entry) return;
+
+        var switched = entry.ReleaseChannel == "beta";
+        if (switched) entry.ReleaseChannel = "stable";
+        launcherConfigService.Config.AutoSwitchedToStable = true;
+        launcherConfigService.Save();
+        if (switched) ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void UpdateActiveLastInstalledVersion(GameVersion? version)
+    {
+        if (ActiveEntry is not { } entry) return;
+        entry.LastInstalledVersion = version;
+        launcherConfigService.Save();
+    }
+
+    public void UpdateInstallReleaseChannel(Guid id, string channel)
+    {
+        var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
+        if (entry is null) return;
+        if (entry.ReleaseChannel == channel) return;
+        entry.ReleaseChannel = channel;
+        launcherConfigService.Save();
+        if (id == launcherConfigService.Config.ActiveKsp2InstallId)
+            ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+        else
+            InstallsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void NotifyInstallChanged(Guid id)
+    {
+        if (launcherConfigService.Config.Ksp2Installs.All(e => e.Id != id)) return;
+        launcherConfigService.Save();
+        if (id == launcherConfigService.Config.ActiveKsp2InstallId)
+            ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+        else
+            InstallsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void UpdateInstallExePath(Guid id, string newExePath)
+    {
+        var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
+        if (entry is null) return;
+        if (entry.ExePath == newExePath) return;
+        entry.ExePath = newExePath;
+        launcherConfigService.Save();
+        if (id == launcherConfigService.Config.ActiveKsp2InstallId)
+        {
+            TryLoadKsp2Install();
+            ApplyActiveInstallBootConfig();
+            ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            InstallsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void UpdateInstallDisableGraphicsJobs(Guid id, bool value)
+    {
+        var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
+        if (entry is null) return;
+        if (entry.DisableGraphicsJobs == value) return;
+        entry.DisableGraphicsJobs = value;
+        launcherConfigService.Save();
+        if (id == launcherConfigService.Config.ActiveKsp2InstallId)
+        {
+            ApplyActiveInstallBootConfig();
+            ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            InstallsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void ApplyActiveInstallBootConfig()
+    {
+        // Ksp2 holds the target install, so its own settings decide the boot config.
+        if (TargetEntry is not { } entry) return;
+        if (Ksp2 is not { IsValid: true } ksp2) return;
+        if (installationStateService.Inspect(ksp2.InstallDir!).LegacyMutationBlockReason is { } reason)
+        {
+            logService.Warn($"Skipped boot.config settings: {reason}");
+            return;
+        }
+        var bootConfigPath = fileSystem.Path.Combine(ksp2.InstallDir, "KSP2_x64_Data", "boot.config");
+
+        const string KEY = "gfx-enable-gfx-jobs";
+        string desiredLine = $"{KEY}={(entry.DisableGraphicsJobs ? "0" : "1")}";
+
+        try
+        {
+            if (!fileSystem.File.Exists(bootConfigPath)) return;
+            var lines = fileSystem.File.ReadAllLines(bootConfigPath).ToList();
+            int index = lines.FindIndex(line => line.StartsWith(KEY + "=", StringComparison.Ordinal));
+            if (index >= 0)
+            {
+                if (lines[index] == desiredLine)
+                    return;
+                lines[index] = desiredLine;
+            }
+            else
+            {
+                lines.Add(desiredLine);
+            }
+            fileSystem.File.WriteAllLines(bootConfigPath, lines);
+        }
+        catch (IOException ex)
+        {
+            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
+        }
+    }
+}

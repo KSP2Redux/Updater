@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <AssemblyName>ksp2redux-cli</AssemblyName>
+        <RootNamespace>Ksp2Redux.Tools.GameCli</RootNamespace>
+        <AssemblyTitle>KSP2 Redux Game CLI</AssemblyTitle>
+        <Description>Drives the KSP2 Redux Unity editor and the running game over the CLI integration's local JSON-RPC sockets, and serves the same commands as an MCP server.</Description>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+</Project>

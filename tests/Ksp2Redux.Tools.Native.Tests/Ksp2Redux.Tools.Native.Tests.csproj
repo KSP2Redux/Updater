@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Testably.Abstractions" Version="10.4.0" />
+    <PackageReference Include="EnvironmentAbstractions" Version="5.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0" />
+    <PackageReference Include="NUnit" Version="3.13.3" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.4.2" />
+    <PackageReference Include="Moq" Version="4.21.0" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Common/Transactions/*.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Common/Restoration/*.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Common/Services/ZipFileService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Common/Wrappers/ZipArchiveWrapper.cs" />
+    <Compile Include="../Ksp2Redux.Tools.Launcher.Tests/Transactions/InstallTransactionEngineTest.Linux.cs" />
+    <Compile Include="../Ksp2Redux.Tools.Launcher.Tests/Services/Install/FullSourceInstallationServiceTest.Linux.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Common/Models/*.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Install/FullSourceContracts.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Install/FullSourceInstallationService*.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Install/FilesInUseException.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Install/InstallFileLockService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Install/DiskSpaceService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Install/ModuleDefinitionService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Infrastructure/ILauncherConfigService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Infrastructure/OperatingSystemService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Infrastructure/LogService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Infrastructure/LocalStoragePaths.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Game/IGameProcessService.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/Ksp2Install.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/Ksp2InstallEntry.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/LauncherConfig.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/WindowPlacement.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/GameVersion.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/ReleaseChannels.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/Distribution.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/InstallPlan.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/InstallPlanAction.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/FeedInfo.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/PatchDownloadRequest.cs" />
+    <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Models/PatchDownloadSource.cs" />
+  </ItemGroup>
+</Project>

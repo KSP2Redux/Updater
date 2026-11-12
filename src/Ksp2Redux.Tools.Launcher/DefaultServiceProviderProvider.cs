@@ -1,0 +1,80 @@
+﻿using System.IO.Abstractions;
+using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Game;
+using Ksp2Redux.Tools.Launcher.Services.News;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
+using Ksp2Redux.Tools.Launcher.ViewModels;
+using Ksp2Redux.Tools.Launcher.ViewModels.Community;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using Ksp2Redux.Tools.Launcher.ViewModels.Mods;
+using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
+using Microsoft.Extensions.DependencyInjection;
+using Testably.Abstractions;
+
+namespace Ksp2Redux.Tools.Launcher;
+
+public static class DefaultServiceProviderProvider
+{
+    public static IServiceProvider GetDefaultServiceProvider()
+    {
+        ServiceCollection serviceCollection = new();
+        serviceCollection.AddSingleton<MainWindowViewModel>();
+        serviceCollection.AddSingleton<HomeTabViewModel>();
+        serviceCollection.AddSingleton<CommunityTabViewModel>();
+        serviceCollection.AddSingleton<ModsTabViewModel>();
+        serviceCollection.AddSingleton<SettingsTabViewModel>();
+        serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
+        serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
+        serviceCollection.AddSingleton<ILogService, LogService>();
+        serviceCollection.AddSingleton<ILocalizationService>(provider =>
+        {
+            var localization = LocalizationService.Default;
+            localization.Log = provider.GetRequiredService<ILogService>();
+            return localization;
+        });
+        serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
+        serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
+        serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
+        serviceCollection.AddSingleton<IFileSystem, RealFileSystem>();
+        serviceCollection.AddSingleton<IInstallationStateService, InstallationStateService>();
+        serviceCollection.AddSingleton<IFullSourcePreparationService>(provider => new FullSourcePreparationService(
+            provider.GetRequiredService<IFileSystem>(), provider.GetRequiredService<ILauncherConfigService>(),
+            provider.GetRequiredService<IManifestReleasesFeedProviderService>(), provider.GetRequiredService<IPatchDownloadService>(),
+            () => provider.GetRequiredService<ISteamDepotDownloader>(), provider.GetRequiredService<IZipFileService>(),
+            provider.GetRequiredService<IDiskSpaceService>(), provider.GetRequiredService<IOperatingSystemService>()));
+        serviceCollection.AddSingleton<IFullSourceInstallationService, FullSourceInstallationService>();
+        serviceCollection.AddSingleton<ICacheService, CacheService>();
+        serviceCollection.AddSingleton<INewsService, NewsService>();
+        serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
+        serviceCollection.AddSingleton<IAssemblyService, ExecutingAssemblyService>();
+        serviceCollection.AddSingleton<IBundleConversionService, BundleConversionService>();
+        serviceCollection.AddSingleton<IInstallFileLockService, InstallFileLockService>();
+        serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
+        serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
+        serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();
+        serviceCollection.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
+        serviceCollection.AddSingleton<IPatchDownloadService, PatchDownloadService>();
+        serviceCollection.AddSingleton<IZipFileService, ZipFileService>();
+        serviceCollection.AddSingleton<IUpdateService, UpdateService>();
+        serviceCollection.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
+        serviceCollection.AddSingleton<IMessageBoxService, MessageBoxService>();
+        serviceCollection.AddSingleton<IOperatingSystemService, OperatingSystemService>();
+        serviceCollection.AddSingleton<IDiskSpaceService, DiskSpaceService>();
+        serviceCollection.AddSingleton<IGameDataFolderService, GameDataFolderService>();
+        serviceCollection.AddSingleton<IKsp2GameUninstallService, Ksp2GameUninstallService>();
+        serviceCollection.AddSingleton<IWindowPlacementService, WindowPlacementService>();
+        serviceCollection.AddSingleton<IProcessRunner, ProcessRunner>();
+        serviceCollection.AddSingleton<IWineRuntimeService, WineRuntimeService>();
+        serviceCollection.AddSingleton<IGameProcessService, GameProcessService>();
+        serviceCollection.AddSingleton<ISteamLoginStore, SteamLoginStore>();
+        serviceCollection.AddSingleton<ISteamSessionService, SteamSessionService>();
+        serviceCollection.AddSingleton<ISteamDepotDownloader, SteamDepotDownloader>();
+        serviceCollection.AddSingleton<ISteamDialogService, SteamDialogService>();
+        return serviceCollection.BuildServiceProvider();
+    }
+}

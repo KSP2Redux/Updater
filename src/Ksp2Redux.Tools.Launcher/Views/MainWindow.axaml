@@ -1,0 +1,359 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ksp2Redux.Tools.Launcher.ViewModels"
+        xmlns:views="using:Ksp2Redux.Tools.Launcher.Views"
+        xmlns:home="using:Ksp2Redux.Tools.Launcher.Views.Home"
+        xmlns:community="using:Ksp2Redux.Tools.Launcher.Views.Community"
+        xmlns:mods="using:Ksp2Redux.Tools.Launcher.Views.Mods"
+        xmlns:settings="using:Ksp2Redux.Tools.Launcher.Views.Settings"
+        xmlns:controls="using:Ksp2Redux.Tools.Launcher.Controls"
+        xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+        Width="1280" Height="800" MinWidth="1040" MinHeight="700" CanResize="True"
+        x:Class="Ksp2Redux.Tools.Launcher.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="Transparent"
+        TransparencyBackgroundFallback="Black"
+        WindowDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/favicon.ico"
+        Title="KSP2 Redux">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Escape" Command="{Binding HandleEscapeCommand}" />
+        <KeyBinding Gesture="Ctrl+D1" Command="{Binding GoToTabCommand}" CommandParameter="0" />
+        <KeyBinding Gesture="Ctrl+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="Ctrl+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="Ctrl+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
+        <!-- macOS: Cmd+1..4 -->
+        <KeyBinding Gesture="Meta+D1" Command="{Binding GoToTabCommand}" CommandParameter="0" />
+        <KeyBinding Gesture="Meta+D2" Command="{Binding GoToTabCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="Meta+D3" Command="{Binding GoToTabCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="Meta+D4" Command="{Binding GoToTabCommand}" CommandParameter="3" />
+    </Window.KeyBindings>
+
+    <!-- ReSharper disable Xaml.RedundantResource -->
+    <Window.Resources>
+        <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{StaticResource BrandRedColor}" />
+    </Window.Resources>
+    <!-- ReSharper restore Xaml.RedundantResource -->
+
+    <Window.Styles>
+        <!-- When maximized the OS squares the window anyway, so rounded corners would
+             leave black notches at the screen edges - square everything. The red 2px
+             frame itself deliberately stays visible in every state (brand signature). -->
+        <Style Selector="Border#OuterFrame.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Border#InnerChrome.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Border#TitleBar.maximized">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+
+        <Style Selector="Border#TitleBar">
+            <!-- Matches the inner chrome Border's CornerRadius below (RadiusLarge minus
+                 the outer frame's 2px BorderThickness) so it nests flush at the top
+                 corners instead of leaving a seam. -->
+            <Setter Property="CornerRadius" Value="10,10,0,0" />
+            <Setter Property="ClipToBounds" Value="True" />
+
+            <Style Selector="^ Button.titlebar-button">
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="BorderThickness" Value="0" />
+
+                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="HorizontalAlignment" Value="Center" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+                <Style Selector="^ Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^:pointerover Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="{StaticResource OverlayHighlightBrush}" />
+                </Style>
+                <Style Selector="^#CloseButton Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="^#CloseButton:pointerover Border.titlebar-button-surface">
+                    <Setter Property="Background" Value="{StaticResource BrandRedBrush}" />
+                </Style>
+            </Style>
+        </Style>
+
+        <Style Selector="Button#SteamIndicator">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button#SteamIndicator:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource OverlayHighlightBrush}" />
+        </Style>
+        <Style Selector="Button#SteamIndicator PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        </Style>
+        <Style Selector="Button#SteamIndicator:pointerover PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+        <!-- Steady rather than pulsing: the icon sits over the backdrop blurs, and any animation there re-renders them every frame. -->
+        <Style Selector="Button#SteamIndicator.connecting PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+        </Style>
+        <Style Selector="Button#SteamIndicator.connected PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource SuccessHoverBrush}" />
+        </Style>
+
+        <Style Selector="TabItem">
+            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="FontSize" Value="32" />
+            <Setter Property="Margin" Value="20,0" />
+
+            <Style Selector="^ Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselected}" />
+            </Style>
+            <Style Selector="^:pointerover Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselectedPointerOver}" />
+            </Style>
+            <Style Selector="^:pressed Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselectedPressed}" />
+            </Style>
+            <Style Selector="^:selected Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelected}" />
+            </Style>
+            <Style Selector="^:selected:pointerover Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelectedPointerOver}" />
+            </Style>
+            <Style Selector="^:selected:pressed Rectangle.tint">
+                <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundSelectedPressed}" />
+            </Style>
+        </Style>
+    </Window.Styles>
+
+    <Panel>
+    <Border Name="OuterFrame" BorderBrush="{StaticResource BrandRedBrush}" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}" VerticalAlignment="Stretch">
+        <!-- 10 = RadiusLarge (12) minus the outer Border's 2px BorderThickness, so the
+             two borders form a properly nested concentric ring instead of a mismatched gap. -->
+        <Border Name="InnerChrome" Background="Black" CornerRadius="10" ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*">
+                <controls:ParallaxBackground Grid.RowSpan="2" Name="BackgroundLayers" />
+
+                <!--
+                    Avalonia has no real backdrop-filter, so the "frosted glass" look behind
+                    the Home/Community/Settings/Mods cards is faked with a second full-window
+                    copy of the same background art, blurred, then clipped down to exactly
+                    where the panel sits. Because both copies share the same bounds and
+                    stretch, they line up pixel-for-pixel; only the clip rect (kept in sync
+                    with the panel's fixed 24,8,24,8 margin in MainWindow.axaml.cs) needs to
+                    know where to cut. The panels themselves are then translucent instead of
+                    solid so this shows through.
+                -->
+                <Border Grid.RowSpan="2" Name="ContentBackdropBlur" IsHitTestVisible="False"
+                        IsVisible="{Binding IsContentPanelVisible}">
+                    <Border.Effect>
+                        <BlurEffect Radius="36" />
+                    </Border.Effect>
+                    <controls:ParallaxBackground Name="ContentBackdropLayers" ShowStars="False" Background="Black" />
+                </Border>
+
+                <!-- Same trick as ContentBackdropBlur above, but clipped to the sidebar's
+                     news panel instead, which is always shown (no IsContentPanelVisible
+                     binding needed here). -->
+                <Border Grid.RowSpan="2" Name="SidebarBackdropBlur" IsHitTestVisible="False">
+                    <Border.Effect>
+                        <BlurEffect Radius="36" />
+                    </Border.Effect>
+                    <controls:ParallaxBackground Name="SidebarBackdropLayers" ShowStars="False" Background="Black" />
+                </Border>
+
+                <Border Grid.RowSpan="2">
+                    <Border.Background>
+                        <LinearGradientBrush Opacity="{Binding CurrentTab, Converter={StaticResource IsSettingsTabConverter}}"
+                                             StartPoint="0%,50%" EndPoint="100%,50%">
+                            <GradientStop Color="#66000000" Offset="0.6"/>
+                            <GradientStop Color="#00000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border Name="TitleBar">
+                    <Grid Height="32" Background="Black" PointerPressed="TitleBar_PointerPressed"
+                          ColumnDefinitions="*,32,32,32">
+                        <Button Name="MinimizeButton" Classes="titlebar-button"
+                                Grid.Column="1"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Minimize_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Text="−"
+                                           FontSize="14"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                        <Button Name="MaximizeButton" Classes="titlebar-button"
+                                Grid.Column="2"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Maximize_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Name="MaximizeGlyph"
+                                           Text="◻"
+                                           FontSize="13"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                        <Button Name="CloseButton" Classes="titlebar-button" Grid.Column="3"
+                                Width="32"
+                                Height="32"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Click="Close_Click">
+                            <Border Classes="titlebar-button-surface"
+                                    Width="32"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <TextBlock Text="✕"
+                                           FontSize="13"
+                                           FontFamily="Segoe UI Symbol"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center" />
+                            </Border>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0" Padding="24,16,24,12">
+                        <views:SidebarView Name="Sidebar" />
+                    </Border>
+
+                    <Border Grid.Column="1" Padding="0,0,24,24">
+                        <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
+                            <TabItem Name="HomeTab" Header="{loc:T Tab.Home}">
+                                <home:HomeTabView Name="HomeView" DataContext="{Binding HomeTab}"/>
+                            </TabItem>
+                            <TabItem Name="CommunityTab" Header="{loc:T Tab.Community}">
+                                <community:CommunityTabView Name="CommunityView" DataContext="{Binding CommunityTab}"/>
+                            </TabItem>
+                            <TabItem Name="ModsTab" Header="{loc:T Tab.Mods}">
+                                <mods:ModsTabView Name="ModsView" DataContext="{Binding ModsTab}"/>
+                            </TabItem>
+                            <TabItem Name="SettingsTab">
+                                <TabItem.Header>
+                                    <Grid Margin="2,6,2,8">
+                                        <Canvas Width="16" Height="16">
+                                            <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+                                                <Rectangle.OpacityMask>
+                                                    <ImageBrush Source="avares://Ksp2Redux.Tools.Launcher/Assets/settings-icon.webp"></ImageBrush>
+                                                </Rectangle.OpacityMask>
+                                            </Rectangle>
+                                        </Canvas>
+                                    </Grid>
+                                </TabItem.Header>
+                                <settings:SettingsTabView Name="SettingsView" DataContext="{Binding SettingsTab}" />
+                            </TabItem>
+                        </TabControl>
+                    </Border>
+                </Grid>
+
+                <Button Name="SteamIndicator" Grid.Row="1"
+                        Classes.connected="{Binding SettingsTab.IsSteamConnected}"
+                        Classes.connecting="{Binding SettingsTab.IsSteamConnecting}"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Margin="0,0,2,2"
+                        Click="SteamIndicator_Click"
+                        ToolTip.Tip="{Binding SettingsTab.SteamIndicatorTooltip}">
+                    <!-- Opened from SteamIndicator_Click, only while connected. -->
+                    <FlyoutBase.AttachedFlyout>
+                        <!-- Menu icons are Material Design Icons (Apache-2.0): account-check-outline, download, logout. -->
+                        <MenuFlyout Placement="TopEdgeAlignedRight">
+                            <MenuItem Header="{Binding SettingsTab.SteamStatus}" IsEnabled="False">
+                                <MenuItem.Icon>
+                                    <PathIcon Width="14" Height="14"
+                                              Data="M21.1,12.5L22.5,13.91L15.97,20.5L12.5,17L13.9,15.59L15.97,17.67L21.1,12.5M11,4A4,4 0 0,1 15,8A4,4 0 0,1 11,12A4,4 0 0,1 7,8A4,4 0 0,1 11,4M11,6A2,2 0 0,0 9,8A2,2 0 0,0 11,10A2,2 0 0,0 13,8A2,2 0 0,0 11,6M11,13C11.68,13 12.5,13.09 13.41,13.26L11.74,14.93L11,14.9C8.03,14.9 4.9,16.36 4.9,17V18.1H11.1L13,20H3V17C3,14.34 8.33,13 11,13Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="{loc:T Steam.Menu.DownloadKsp2}" Command="{Binding SettingsTab.DownloadFromSteamCommand}">
+                                <MenuItem.Icon>
+                                    <PathIcon Width="14" Height="14" Data="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="{loc:T Steam.Menu.SignOut}" Command="{Binding SettingsTab.SignOutOfSteamCommand}">
+                                <MenuItem.Icon>
+                                    <PathIcon Width="14" Height="14"
+                                              Data="M17 7L15.59 8.41L18.17 11H8V13H18.17L15.59 15.58L17 17L22 12M4 5H12V3H4C2.9 3 2 3.9 2 5V19C2 20.1 2.9 21 4 21H12V19H4V5Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </FlyoutBase.AttachedFlyout>
+                    <!-- Steam logo path from Simple Icons (CC0). -->
+                    <PathIcon Width="14" Height="14" Data="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z" />
+                </Button>
+
+                <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="{StaticResource ScrimMediumBrush}">
+                    <TextBlock Text="{loc:T Window.UpdateDownloading}"
+                               Foreground="{StaticResource TextPrimaryBrush}" FontSize="32"
+                               FontFamily="{StaticResource JetBrainsMonoLight}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+
+    <!-- Invisible resize grips along the window edges. With WindowDecorations="None"
+         there is no native frame to grab, and on Linux no WM-provided resize border
+         exists at all, so these are the guaranteed cross-platform resize surface.
+         Hidden while maximized (code-behind toggles IsVisible). Edges are inset by
+         12px at the ends so the corner grips win their overlap. -->
+    <Grid Name="ResizeGrips">
+        <Border Background="Transparent" Height="6" VerticalAlignment="Top" Margin="12,0" Cursor="TopSide" Tag="North" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Height="6" VerticalAlignment="Bottom" Margin="12,0" Cursor="BottomSide" Tag="South" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="6" HorizontalAlignment="Left" Margin="0,12" Cursor="LeftSide" Tag="West" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="6" HorizontalAlignment="Right" Margin="0,12" Cursor="RightSide" Tag="East" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="TopLeftCorner" Tag="NorthWest" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="TopRightCorner" Tag="NorthEast" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="BottomLeftCorner" Tag="SouthWest" PointerPressed="ResizeGrip_PointerPressed" />
+        <Border Background="Transparent" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="BottomRightCorner" Tag="SouthEast" PointerPressed="ResizeGrip_PointerPressed" />
+    </Grid>
+    </Panel>
+</Window>

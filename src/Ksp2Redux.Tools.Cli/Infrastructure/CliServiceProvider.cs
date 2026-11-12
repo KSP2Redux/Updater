@@ -1,0 +1,83 @@
+using System.IO.Abstractions;
+using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Launcher.Localization;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Game;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.News;
+using Ksp2Redux.Tools.Launcher.Services.Steam;
+using Microsoft.Extensions.DependencyInjection;
+using Testably.Abstractions;
+
+namespace Ksp2Redux.Tools.Cli.Infrastructure;
+
+/// <summary>
+/// Factory for the service container the CLI commands run against.
+/// </summary>
+// This is the launcher's DefaultServiceProviderProvider minus everything that needs a window: the
+// view models, tab navigation, window placement, and the launcher's own self update. What
+// remains is exactly the set the launcher drives its install path with, so a CLI install exercises
+// the same code as the button in the UI. The dialog service is the one substitution, because
+// several of the remaining services raise dialogs on failure paths.
+public static class CliServiceProvider
+{
+    /// <summary>
+    /// Builds the container holding the launcher services the commands need.
+    /// </summary>
+    /// <param name="output">The writer the commands and the dialog stand in report through.</param>
+    /// <returns>The service provider for a CLI session.</returns>
+    public static IServiceProvider Build(CliOutput output)
+    {
+        ServiceCollection services = new();
+
+        services.AddSingleton(output);
+        services.AddSingleton<IMessageBoxService, CliMessageBoxService>();
+
+        services.AddSingleton<IFileSystem, RealFileSystem>();
+        services.AddSingleton(SystemEnvironmentProvider.Instance);
+
+        // Registered by interface as well, because self-update needs the running executable's path
+        // and self-uninstall needs to edit the user's PATH.
+        services.AddSingleton<IEnvironmentProvider>(SystemEnvironmentProvider.Instance);
+        services.AddSingleton<IEnvironmentVariableProvider>(SystemEnvironmentProvider.Instance);
+        services.AddSingleton<ILogService, LogService>();
+
+        // Nothing sets a language here, so the services the launcher shares with the CLI keep writing English.
+        services.AddSingleton<ILocalizationService>(LocalizationService.Default);
+        services.AddSingleton<ILauncherConfigService, LauncherConfigService>();
+        services.AddSingleton<IAssemblyService, ExecutingAssemblyService>();
+        services.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
+        services.AddSingleton<IOperatingSystemService, OperatingSystemService>();
+        services.AddSingleton<IZipFileService, ZipFileService>();
+        services.AddSingleton<IInstallationStateService, InstallationStateService>();
+        services.AddSingleton<IFullSourcePreparationService>(provider => new FullSourcePreparationService(
+            provider.GetRequiredService<IFileSystem>(), provider.GetRequiredService<ILauncherConfigService>(),
+            provider.GetRequiredService<IManifestReleasesFeedProviderService>(), provider.GetRequiredService<IPatchDownloadService>(),
+            () => provider.GetRequiredService<ISteamDepotDownloader>(), provider.GetRequiredService<IZipFileService>(),
+            provider.GetRequiredService<IDiskSpaceService>(), provider.GetRequiredService<IOperatingSystemService>()));
+        services.AddSingleton<IFullSourceInstallationService, FullSourceInstallationService>();
+        services.AddSingleton<ICacheService, CacheService>();
+        services.AddSingleton<IDiskSpaceService, DiskSpaceService>();
+        services.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
+        services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
+        services.AddSingleton<IGameDataFolderService, GameDataFolderService>();
+        services.AddSingleton<IKsp2GameUninstallService, Ksp2GameUninstallService>();
+        services.AddSingleton<IManifestReleasesFeedProviderService, ManifestReleasesFeedProviderService>();
+        services.AddSingleton<IPatchDownloadService, PatchDownloadService>();
+        services.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
+        services.AddSingleton<IBundleConversionService, BundleConversionService>();
+        services.AddSingleton<IInstallFileLockService, InstallFileLockService>();
+        services.AddSingleton<IInstallPlanService, InstallPlanService>();
+        services.AddSingleton<IProcessRunner, ProcessRunner>();
+        services.AddSingleton<IWineRuntimeService, WineRuntimeService>();
+        services.AddSingleton<IGameProcessService, GameProcessService>();
+        services.AddSingleton<ISteamLoginStore, SteamLoginStore>();
+        services.AddSingleton<ISteamSessionService, SteamSessionService>();
+        services.AddSingleton<ISteamDepotDownloader, SteamDepotDownloader>();
+        services.AddSingleton<INewsProviderService, NewsProviderService>();
+
+        return services.BuildServiceProvider();
+    }
+}

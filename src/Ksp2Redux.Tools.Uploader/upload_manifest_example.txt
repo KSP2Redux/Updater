@@ -1,0 +1,14 @@
+﻿Example format of a patch upload manifest
+
+Repository = [github repository]
+Branch = [branch in repository the feed is in]
+File = [filename of the feed in the repository]
+SwinfoFile = [optional, filename of a swinfo document in the repository whose "version" field is rewritten to Version once the release has published; omit to leave every swinfo file untouched]
+Token = [the personal access token for the repository]
+Version = [the version ID of the upload]
+Prerelease = [optional, true for a snapshot so GitHub keeps it out of the "Latest release" slot, false for a tagged release; defaults to false]
+Changelog = [optional, path to a markdown file split into `---` sections; the first section is used as the GitHub release body]
+[[Patches]]
+File = [the file path of the .patch file]
+PreviousVersion = [optional, the version requirement of this patch if it's a delta patch rather than prepatch]
+(repeated for every separate patch used in this release)

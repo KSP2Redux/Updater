@@ -1,0 +1,1054 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="App.Menu.About" xml:space="preserve">
+    <value>关于KSP2 Redux</value>
+  </data>
+  <data name="App.Menu.CheckForUpdates" xml:space="preserve">
+    <value>检查更新…</value>
+  </data>
+  <data name="App.About.Title" xml:space="preserve">
+    <value>关于KSP2 Redux</value>
+  </data>
+  <data name="App.About.Message" xml:space="preserve">
+    <value>KSP2 Redux启动器
+版本 {0}
+
+KSP2 Redux的安装程序、更新程序和启动器。
+https://ksp2redux.org</value>
+  </data>
+  <data name="App.About.UnknownVersion" xml:space="preserve">
+    <value>未知</value>
+  </data>
+  <data name="Tab.Home" xml:space="preserve">
+    <value>首页</value>
+  </data>
+  <data name="Tab.Community" xml:space="preserve">
+    <value>社区</value>
+  </data>
+  <data name="Tab.Mods" xml:space="preserve">
+    <value>模组</value>
+  </data>
+  <data name="Window.Maximize.Tooltip" xml:space="preserve">
+    <value>最大化</value>
+  </data>
+  <data name="Window.Restore.Tooltip" xml:space="preserve">
+    <value>还原</value>
+  </data>
+  <data name="Window.UpdateDownloading" xml:space="preserve">
+    <value>下载更新中……</value>
+  </data>
+  <data name="Steam.Menu.DownloadKsp2" xml:space="preserve">
+    <value>下载KSP2</value>
+  </data>
+  <data name="Steam.Menu.SignOut" xml:space="preserve">
+    <value>退出Steam</value>
+  </data>
+  <data name="Sidebar.LatestNews" xml:space="preserve">
+    <value>最新资讯</value>
+  </data>
+  <data name="Sidebar.RefreshVersions.Tooltip" xml:space="preserve">
+    <value>刷新版本(F5)</value>
+  </data>
+  <data name="Sidebar.FeedRefreshWarning" xml:space="preserve">
+    <value>无法刷新版本 - 正在显示最后获取的列表。</value>
+  </data>
+  <data name="Sidebar.InstallButton" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="Sidebar.UpdateButton" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="Sidebar.CancelButton" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Sidebar.LaunchButton" xml:space="preserve">
+    <value>发射</value>
+  </data>
+  <data name="Sidebar.Link.Website.Tooltip" xml:space="preserve">
+    <value>KSP2 Redux官网</value>
+  </data>
+  <data name="Sidebar.Link.Discord.Tooltip" xml:space="preserve">
+    <value>KSP2 模组 Discord</value>
+  </data>
+  <data name="Sidebar.Link.Forums.Tooltip" xml:space="preserve">
+    <value>KSP论坛</value>
+  </data>
+  <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
+    <value>在博客上查看</value>
+  </data>
+  <data name="Mods.ComingSoon" xml:space="preserve">
+    <value>COMING SOON</value>
+  </data>
+  <data name="Mods.Roadmap" xml:space="preserve">
+    <value>模组支持已在路线图中 :3</value>
+  </data>
+  <data name="Home.Progress.Downloaded" xml:space="preserve">
+    <value>已下载：</value>
+  </data>
+  <data name="Home.Progress.Installed" xml:space="preserve">
+    <value>已安装：</value>
+  </data>
+  <data name="Home.Progress.DownloadFormat" xml:space="preserve">
+    <value>{0:F1}/{3:F1} MB ({1:0}%)</value>
+  </data>
+  <data name="Home.Progress.InstallFormat" xml:space="preserve">
+    <value>{0}/{3}步骤({1:0}%)</value>
+  </data>
+  <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
+    <value>需要新版本的更新程序才能安装或更新Redux</value>
+  </data>
+  <data name="Home.InstallUpdateButton" xml:space="preserve">
+    <value>安装更新</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="Settings.Profile.Section" xml:space="preserve">
+    <value>安装配置</value>
+  </data>
+  <data name="Settings.Profile.Label" xml:space="preserve">
+    <value>安装配置</value>
+  </data>
+  <data name="Settings.Profile.NamePlaceholder" xml:space="preserve">
+    <value>配置名称</value>
+  </data>
+  <data name="Settings.Profile.Rename.Tooltip" xml:space="preserve">
+    <value>重命名此配置</value>
+  </data>
+  <data name="Settings.Profile.RenameSave.Tooltip" xml:space="preserve">
+    <value>保存名称(Enter)。Esc取消。</value>
+  </data>
+  <data name="Settings.Profile.Add" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="Settings.Profile.Add.Tooltip" xml:space="preserve">
+    <value>为这台电脑上的另一个KSP2安装添加配置</value>
+  </data>
+  <data name="Settings.Profile.Remove" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="Settings.Profile.Remove.Tooltip" xml:space="preserve">
+    <value>从启动器中移除此配置。游戏文件将保留在原处。</value>
+  </data>
+  <data name="Settings.Profile.OpenFolder" xml:space="preserve">
+    <value>打开文件夹</value>
+  </data>
+  <data name="Settings.Profile.OpenFolder.Tooltip" xml:space="preserve">
+    <value>在资源管理器中打开此安装的文件夹。</value>
+  </data>
+  <data name="Settings.Profile.DownloadKsp2" xml:space="preserve">
+    <value>下载KSP2</value>
+  </data>
+  <data name="Settings.Exe.Label" xml:space="preserve">
+    <value>游戏文件位置</value>
+  </data>
+  <data name="Settings.Exe.Browse" xml:space="preserve">
+    <value>浏览</value>
+  </data>
+  <data name="Settings.Exe.Browse.Tooltip" xml:space="preserve">
+    <value>使用文件浏览器查找KSP2_x64.exe</value>
+  </data>
+  <data name="Settings.Channel.Label" xml:space="preserve">
+    <value>发布渠道</value>
+  </data>
+  <data name="Settings.LaunchViaSteam.Label" xml:space="preserve">
+    <value>通过Steam启动</value>
+  </data>
+  <data name="Settings.LaunchViaSteam.Tooltip" xml:space="preserve">
+    <value>通过Steam客户端启动KSP2，而不是直接运行KSP2_x64.exe。</value>
+  </data>
+  <data name="Settings.SteamAppId.Label" xml:space="preserve">
+    <value>Steam app id</value>
+  </data>
+  <data name="Settings.SteamAppId.Tooltip" xml:space="preserve">
+    <value>覆盖此项以启动KSP2的Steam“添加非Steam游戏”快捷方式。正常Steam发行版请保留为954850。</value>
+  </data>
+  <data name="Settings.LaunchArguments.Label" xml:space="preserve">
+    <value>启动参数</value>
+  </data>
+  <data name="Settings.LaunchArguments.Tooltip" xml:space="preserve">
+    <value>启动时传递给KSP2_x64.exe的参数。启用“通过Steam启动”时忽略此项。</value>
+  </data>
+  <data name="Settings.DisableGfxJobs.Label" xml:space="preserve">
+    <value>禁用图形作业</value>
+  </data>
+  <data name="Settings.DisableGfxJobs.Tooltip" xml:space="preserve">
+    <value>通过在boot.config中设置gfx-enable-gfx-jobs=0来禁用Unity图形作业。这是针对某些硬件上崩溃问题的临时解决方案。</value>
+  </data>
+  <data name="Settings.InstallPatch.Button" xml:space="preserve">
+    <value>安装补丁文件</value>
+  </data>
+  <data name="Settings.InstallPatch.Tooltip" xml:space="preserve">
+    <value>从已有的.patch文件安装Redux</value>
+  </data>
+  <data name="Settings.UninstallRedux.Button" xml:space="preserve">
+    <value>卸载Redux</value>
+  </data>
+  <data name="Settings.UninstallRedux.Tooltip" xml:space="preserve">
+    <value>将游戏恢复为原版KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Button" xml:space="preserve">
+    <value>卸载KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.ButtonBusy" xml:space="preserve">
+    <value>正在卸载...</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Tooltip" xml:space="preserve">
+    <value>从电脑上删除此KSP2副本并移除其配置。存档将保留。</value>
+  </data>
+  <data name="Settings.Advanced.Section" xml:space="preserve">
+    <value>高级下载</value>
+  </data>
+  <data name="Settings.PatchSource.Label" xml:space="preserve">
+    <value>Patch来源</value>
+  </data>
+  <data name="Settings.PatchSource.Tooltip" xml:space="preserve">
+    <value>R2是主要的下载服务。选择GitHub以使用永久备份副本。</value>
+  </data>
+  <data name="Settings.ConcurrentChunks.Label" xml:space="preserve">
+    <value>并发分块数</value>
+  </data>
+  <data name="Settings.ConcurrentChunks.Tooltip" xml:space="preserve">
+    <value>最大并发Patch分块下载数(1-8)。</value>
+  </data>
+  <data name="Settings.Language.Label" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Settings.Language.Automatic" xml:space="preserve">
+    <value>自动</value>
+  </data>
+  <data name="Settings.OpenLogsFolder" xml:space="preserve">
+    <value>打开Logs文件夹</value>
+  </data>
+  <data name="Settings.OpenGameDataFolder" xml:space="preserve">
+    <value>打开Game Data文件夹</value>
+  </data>
+  <data name="Settings.OpenGameDataFolder.Tooltip" xml:space="preserve">
+    <value>打开KSP2存放存档、设置以及Player.log文件的文件夹。</value>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo" xml:space="preserve">
+    <value>复制诊断信息</value>
+  </data>
+  <data name="Settings.VerboseLogging" xml:space="preserve">
+    <value>记录详细日志</value>
+  </data>
+  <data name="Settings.VerboseLogging.Tooltip" xml:space="preserve">
+    <value>将更详细的信息写入日志文件。有助于排查问题。</value>
+  </data>
+  <data name="Settings.BackgroundMotion" xml:space="preserve">
+    <value>动态背景</value>
+  </data>
+  <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
+    <value>背景将会跟随鼠标移动。如果该动态效果引起分心或不适，请关闭此项。</value>
+  </data>
+  <data name="Settings.LauncherVersion" xml:space="preserve">
+    <value>启动器 v{0}</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Common.Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Steam.SignIn.Title" xml:space="preserve">
+    <value>使用Steam登录</value>
+  </data>
+  <data name="Steam.SignIn.Heading" xml:space="preserve">
+    <value>使用STEAM登陆</value>
+  </data>
+  <data name="Steam.SignIn.Intro" xml:space="preserve">
+    <value>Redux直接从Steam下载属于你自己的《坎巴拉太空计划2》副本。请使用拥有该游戏的账号登录。</value>
+  </data>
+  <data name="Steam.SignIn.GettingCode" xml:space="preserve">
+    <value>正在获取代码……</value>
+  </data>
+  <data name="Steam.SignIn.ScanTitle" xml:space="preserve">
+    <value>使用Steam app扫码</value>
+  </data>
+  <data name="Steam.SignIn.ScanHint" xml:space="preserve">
+    <value>在Steam手机应用中，打开Steam令牌并点击扫码。</value>
+  </data>
+  <data name="Steam.SignIn.Or" xml:space="preserve">
+    <value>或</value>
+  </data>
+  <data name="Steam.SignIn.AccountName" xml:space="preserve">
+    <value>STEAM账号名称</value>
+  </data>
+  <data name="Steam.SignIn.Password" xml:space="preserve">
+    <value>密码</value>
+  </data>
+  <data name="Steam.SignIn.SignInButton" xml:space="preserve">
+    <value>登录</value>
+  </data>
+  <data name="Steam.SignIn.SigningIn" xml:space="preserve">
+    <value>正在登录...</value>
+  </data>
+  <data name="Steam.SignIn.SteamGuard" xml:space="preserve">
+    <value>STEAM令牌</value>
+  </data>
+  <data name="Steam.SignIn.Continue" xml:space="preserve">
+    <value>继续</value>
+  </data>
+  <data name="Steam.SignIn.EnterCredentials" xml:space="preserve">
+    <value>输入你的Steam账号名称和密码。</value>
+  </data>
+  <data name="Steam.SignIn.Failed" xml:space="preserve">
+    <value>无法登录：{0}</value>
+  </data>
+  <data name="Steam.SignIn.EmailCode" xml:space="preserve">
+    <value>Steam已向{0}发送验证码。请在下方输入。</value>
+  </data>
+  <data name="Steam.SignIn.EmailCodeWrong" xml:space="preserve">
+    <value>该验证码无效。请输入Steam发送至{0}的新验证码。</value>
+  </data>
+  <data name="Steam.SignIn.DeviceCode" xml:space="preserve">
+    <value>输入Steam手机应用中显示的验证码。</value>
+  </data>
+  <data name="Steam.SignIn.DeviceCodeWrong" xml:space="preserve">
+    <value>该验证码无效。请输入你Steam手机应用中当前的验证码。</value>
+  </data>
+  <data name="Steam.SignIn.Approve" xml:space="preserve">
+    <value>打开Steam手机应用并批准登录。</value>
+  </data>
+  <data name="Steam.Download.Title" xml:space="preserve">
+    <value>正在下载KSP2</value>
+  </data>
+  <data name="Steam.Download.Target" xml:space="preserve">
+    <value>至 {0}</value>
+  </data>
+  <data name="Steam.Download.Hint" xml:space="preserve">
+    <value>你可以随时停止，稍后再继续。已完成的文件会被保留，下载会从中断处继续。</value>
+  </data>
+  <data name="Steam.Download.Stage.Connecting" xml:space="preserve">
+    <value>正在连接到Steam</value>
+  </data>
+  <data name="Steam.Download.Stage.Downloading" xml:space="preserve">
+    <value>正在下载坎巴拉太空计划2</value>
+  </data>
+  <data name="Steam.Download.Stage.Finished" xml:space="preserve">
+    <value>下载完成</value>
+  </data>
+  <data name="Steam.Download.Stage.Stopped" xml:space="preserve">
+    <value>下载已停止</value>
+  </data>
+  <data name="Steam.Download.Detail" xml:space="preserve">
+    <value>{0} / {1}  ·  {2}  ·  {3}/{4}个文件</value>
+  </data>
+  <data name="Steam.Download.Speed" xml:space="preserve">
+    <value>{0}/s</value>
+  </data>
+  <data name="Steam.Download.Measuring" xml:space="preserve">
+    <value>测速中……</value>
+  </data>
+  <data name="Steam.Download.MissingExe" xml:space="preserve">
+    <value>下载已结束，但其中缺少了{0}。</value>
+  </data>
+  <data name="Steam.Download.Stage.Checking" xml:space="preserve">
+    <value>正在检查你的Steam库</value>
+  </data>
+  <data name="Steam.Download.Stage.Reading" xml:space="preserve">
+    <value>正在读取文件列表</value>
+  </data>
+  <data name="Steam.FolderPicker.Title" xml:space="preserve">
+    <value>选择坎巴拉太空计划2的下载位置</value>
+  </data>
+  <data name="Dialog.Error.Title" xml:space="preserve">
+    <value>错误！</value>
+  </data>
+  <data name="Dialog.Confirm.Title" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="Dialog.Done.Title" xml:space="preserve">
+    <value>完成！</value>
+  </data>
+  <data name="Settings.FilePicker.Failed" xml:space="preserve">
+    <value>无法打开文件选择器：{0}</value>
+  </data>
+  <data name="Settings.FilePicker.NoWindow" xml:space="preserve">
+    <value>无法访问文件选择器(无活动窗口)。</value>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.FileType" xml:space="preserve">
+    <value>KSP2主程序</value>
+  </data>
+  <data name="Settings.FilePicker.Ksp2Exe.Title" xml:space="preserve">
+    <value>打开KSP2_x64.exe</value>
+  </data>
+  <data name="Settings.FilePicker.Patch.FileType" xml:space="preserve">
+    <value>KSP2补丁文件</value>
+  </data>
+  <data name="Settings.FilePicker.Patch.Title" xml:space="preserve">
+    <value>打开补丁文件</value>
+  </data>
+  <data name="Settings.RemoveProfile.Message" xml:space="preserve">
+    <value>你确定要移除“{0}”吗？其名称、启动参数和Steam设置将会丢失。</value>
+  </data>
+  <data name="Settings.OpenInstallFolder.NotFound" xml:space="preserve">
+    <value>无法找到安装文件夹。</value>
+  </data>
+  <data name="Settings.OpenInstallFolder.Failed" xml:space="preserve">
+    <value>无法打开安装文件夹。
+{0}</value>
+  </data>
+  <data name="Settings.GameData.Unknown" xml:space="preserve">
+    <value>无法确定此安装的游戏数据文件夹。</value>
+  </data>
+  <data name="Settings.GameData.NotYet.Title" xml:space="preserve">
+    <value>空空如也</value>
+  </data>
+  <data name="Settings.GameData.NotYet.Message" xml:space="preserve">
+    <value>KSP2尚未创建其数据文件夹。运行一次游戏后，它就会出现在：
+{0}</value>
+  </data>
+  <data name="Settings.GameData.OpenFailed" xml:space="preserve">
+    <value>无法打开游戏数据文件夹。
+{0}</value>
+  </data>
+  <data name="Settings.LogsFolder.Failed" xml:space="preserve">
+    <value>无法打开日志文件夹：{0}</value>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Title" xml:space="preserve">
+    <value>无法卸载KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.NotAGameFolder.Message" xml:space="preserve">
+    <value>{0}
+
+看起来不像是KSP2的安装文件夹（{1}旁边没有KSP2_x64_Data），因此没有删除任何内容。如果它指向了错误的位置，请改为移除该配置。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Title" xml:space="preserve">
+    <value>KSP2已移除</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Missing.Message" xml:space="preserve">
+    <value>“{0}”的游戏文件夹已不存在。要从启动器中移除该配置吗？</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Title" xml:space="preserve">
+    <value>卸载KSP2</value>
+  </data>
+  <data name="Settings.UninstallKsp2.ThroughSteam.Message" xml:space="preserve">
+    <value>此KSP2副本由Steam管理，因此Steam将执行卸载，并在Steam中要求你进行确认。启动器中的“{0}”配置将被移除。
+
+你的存档和设置将被保留。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.SteamFailed" xml:space="preserve">
+    <value>卸载KSP2失败，无法打开Steam：{0}</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Confirm.Message" xml:space="preserve">
+    <value>从这台计算机上删除《坎巴拉太空计划2》？
+
+{0}
+
+整个文件夹将被删除（包括Redux），并且“{1}”配置将被移除。此操作无法撤销。
+
+你的存档和设置存储在别处，将被保留。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Failed" xml:space="preserve">
+    <value>无法卸载KSP2：{0}
+
+请确保游戏不在运行，然后重试。</value>
+  </data>
+  <data name="Settings.UninstallKsp2.Done" xml:space="preserve">
+    <value>坎巴拉太空计划2已卸载。</value>
+  </data>
+  <data name="Settings.UninstallRedux.NoInstall" xml:space="preserve">
+    <value>当前未选中有效的KSP2主程序。</value>
+  </data>
+  <data name="Settings.UninstallRedux.NotInstalled" xml:space="preserve">
+    <value>Redux尚未安装……</value>
+  </data>
+  <data name="Settings.UninstallRedux.Confirm" xml:space="preserve">
+    <value>你确定要卸载Redux吗？</value>
+  </data>
+  <data name="Settings.UninstallRedux.Failed" xml:space="preserve">
+    <value>无法卸载Redux：{0}</value>
+  </data>
+  <data name="Settings.UninstallRedux.Done" xml:space="preserve">
+    <value>KSP2 Redux已成功卸载</value>
+  </data>
+  <data name="Settings.SnapshotWarning.Title" xml:space="preserve">
+    <value>正在切换到快照</value>
+  </data>
+  <data name="Settings.SnapshotWarning.Message" xml:space="preserve">
+    <value>快照渠道用于QA测试。构建版本不稳定，随时可能崩溃。
+
+我们建议不要将其用于现有战役。</value>
+  </data>
+  <data name="Settings.Exe.Error.Required" xml:space="preserve">
+    <value>需要安装路径。</value>
+  </data>
+  <data name="Settings.Exe.Error.WrongFile" xml:space="preserve">
+    <value>路径必须指向{0}。</value>
+  </data>
+  <data name="Settings.Exe.Error.Missing" xml:space="preserve">
+    <value>该文件不存在。</value>
+  </data>
+  <data name="Settings.SteamAppId.Error.NotNumeric" xml:space="preserve">
+    <value>Steam App ID必须是数字。</value>
+  </data>
+  <data name="Settings.DownloadFromSteam.Tooltip" xml:space="preserve">
+    <value>从Steam下载属于你自己的坎巴拉太空计划2副本，并将其添加为安装项。这是一个纯净副本，Steam自身的更新永远不会干涉它，因此它能随时为Redux保持就绪状态。</value>
+  </data>
+  <data name="Settings.DownloadFromSteam.SignInTooltip" xml:space="preserve">
+    <value>使用Steam登录以下载KSP2。点击右下角的Steam图标，并使用拥有该游戏的账号登录。</value>
+  </data>
+  <data name="Steam.Status.NotSignedIn" xml:space="preserve">
+    <value>未登录</value>
+  </data>
+  <data name="Steam.Status.SignedIn" xml:space="preserve">
+    <value>已登录为{0}</value>
+  </data>
+  <data name="Steam.Status.SignedInConnecting" xml:space="preserve">
+    <value>已登录为{0}（正在连接...）</value>
+  </data>
+  <data name="Steam.Status.SignedInOffline" xml:space="preserve">
+    <value>已登录为{0}（离线）</value>
+  </data>
+  <data name="Steam.Indicator.Connected" xml:space="preserve">
+    <value>Steam: {0}</value>
+  </data>
+  <data name="Steam.Indicator.Connecting" xml:space="preserve">
+    <value>正在连接到Steam...</value>
+  </data>
+  <data name="Steam.Indicator.Reconnect" xml:space="preserve">
+    <value>Steam: {0}. 点击重新连接。</value>
+  </data>
+  <data name="Steam.Indicator.NotSignedIn" xml:space="preserve">
+    <value>未登录Steam。点击登录。</value>
+  </data>
+  <data name="Steam.SignedOut.Title" xml:space="preserve">
+    <value>已退出登录</value>
+  </data>
+  <data name="Steam.RevokeFailed" xml:space="preserve">
+    <value>你已在此处登出，但无法连接Steam以取消已保存的登录。要自行取消，请从你Steam账号安全设置中的设备列表里移除“{0}”。</value>
+  </data>
+  <data name="Steam.DownloadComplete.Title" xml:space="preserve">
+    <value>下载完成</value>
+  </data>
+  <data name="Steam.DownloadComplete.Message" xml:space="preserve">
+    <value>坎巴拉太空计划2已下载并添加为安装项。请前往首页安装Redux。</value>
+  </data>
+  <data name="Steam.DownloadFailed.Title" xml:space="preserve">
+    <value>下载失败</value>
+  </data>
+  <data name="Steam.Error.Unreachable" xml:space="preserve">
+    <value>无法连接Steam。请检查你的网络连接并重试。</value>
+  </data>
+  <data name="Steam.Error.ConnectionClosed" xml:space="preserve">
+    <value>Steam在登录时关闭了连接。请重试。</value>
+  </data>
+  <data name="Steam.Error.InvalidPassword" xml:space="preserve">
+    <value>账号或密码错误。</value>
+  </data>
+  <data name="Steam.Error.RateLimited" xml:space="preserve">
+    <value>Steam因尝试次数过多已暂时阻止登录。请稍等片刻后再试。</value>
+  </data>
+  <data name="Steam.Error.Expired" xml:space="preserve">
+    <value>你的Steam登录状态已过期。请重新登录。</value>
+  </data>
+  <data name="Steam.Error.QrExpired" xml:space="preserve">
+    <value>二维码已过期。已生成新的二维码，请扫描新的。</value>
+  </data>
+  <data name="Steam.Error.GuardCodeWrong" xml:space="preserve">
+    <value>Steam令牌错误。</value>
+  </data>
+  <data name="Steam.Error.Unavailable" xml:space="preserve">
+    <value>Steam当前不可用。请稍后再试。</value>
+  </data>
+  <data name="Steam.Error.Refused" xml:space="preserve">
+    <value>Steam拒绝登录({0})。</value>
+  </data>
+  <data name="Steam.Depot.NoInfo" xml:space="preserve">
+    <value>Steam未返回关于坎巴拉太空计划2的任何信息。</value>
+  </data>
+  <data name="Steam.Depot.NoContent" xml:space="preserve">
+    <value>Steam未列出任何坎巴拉太空计划2的Windows可下载内容。</value>
+  </data>
+  <data name="Steam.Depot.NotOwned" xml:space="preserve">
+    <value>这个Steam账号没有坎巴拉太空计划2。请使用购买了该游戏的账号登录。</value>
+  </data>
+  <data name="Steam.Depot.MissingFiles" xml:space="preserve">
+    <value>Steam中该游戏的文件列表不包含{0}。</value>
+  </data>
+  <data name="Steam.Depot.ChecksumMismatch" xml:space="preserve">
+    <value>从Steam下载的{0}副本与Steam的校验码不匹配。</value>
+  </data>
+  <data name="Steam.Depot.SignInFirst" xml:space="preserve">
+    <value>请先使用Steam登录。</value>
+  </data>
+  <data name="Steam.Depot.NoServers" xml:space="preserve">
+    <value>Steam未返回任何内容服务器。请稍后再试。</value>
+  </data>
+  <data name="Steam.Depot.ServersFailed" xml:space="preserve">
+    <value>Steam内容服务器持续出错。请检查网络连接并重试。</value>
+  </data>
+  <data name="Main.StartupError.Title" xml:space="preserve">
+    <value>启动错误</value>
+  </data>
+  <data name="Main.StartupError.Message" xml:space="preserve">
+    <value>启动过程中出现问题，因此初始化可能未完成（信息源、安装检测或更新检查可能未运行）。请查看日志文件了解详情，并考虑重启启动器。</value>
+  </data>
+  <data name="Main.PartialUpdate.Title" xml:space="preserve">
+    <value>部分更新已完成</value>
+  </data>
+  <data name="Main.PartialUpdate.Message" xml:space="preserve">
+    <value>关闭后，请删除{0}
+并确认本地仍保留有更新程序。</value>
+  </data>
+  <data name="Main.InstallFound.Title" xml:space="preserve">
+    <value>检测到KSP2主程序</value>
+  </data>
+  <data name="Main.InstallFound.Message" xml:space="preserve">
+    <value>在此位置检测到KSP2主程序：{0}
+要将其添加到Redux吗？
+（之后可在设置中更改。）</value>
+  </data>
+  <data name="Main.InstallNotFound.Title" xml:space="preserve">
+    <value>未检测到KSP2主程序</value>
+  </data>
+  <data name="Main.InstallNotFound.Message" xml:space="preserve">
+    <value>未在此电脑上找到KSP2主程序。
+
+要使用你的Steam账号立即下载吗？你也可以在“设置”标签页中添加现有的主程序。</value>
+  </data>
+  <data name="Main.InvalidExe.Title" xml:space="preserve">
+    <value>无效的EXE</value>
+  </data>
+  <data name="Main.InvalidExe.Message" xml:space="preserve">
+    <value>已配置的KSP2 EXE路径无效：
+{0}</value>
+  </data>
+  <data name="Main.VersionDetection.Title" xml:space="preserve">
+    <value>无法检测游戏版本</value>
+  </data>
+  <data name="Main.VersionDetection.Message" xml:space="preserve">
+    <value>KSP2 Redux无法确定安装的是哪个游戏版本。如果游戏文件缺失、损坏或来自不支持的来源，就可能发生这种情况。
+
+你仍然可以尝试启动或安装，但更新检查可能不可靠。，如果你愿意报告此问题的话，详情已写入日志文件（可在“设置 &gt; 打开日志文件夹”中找到）。</value>
+  </data>
+  <data name="Mirror.Manifest.Title" xml:space="preserve">
+    <value>{0}清单获取失败</value>
+  </data>
+  <data name="Mirror.Manifest.Message" xml:space="preserve">
+    <value>无法从{0}下载发布列表。要使用{1}重试吗？此选择将保存在高级下载中。</value>
+  </data>
+  <data name="Mirror.Download.Title" xml:space="preserve">
+    <value>{0}下载失败</value>
+  </data>
+  <data name="Mirror.Download.Message" xml:space="preserve">
+    <value>无法从{0}下载清单或补丁。要使用{1}重试完整更新吗？磁盘上已校验的文件将被复用。</value>
+  </data>
+  <data name="Home.Tooltip.Loading" xml:space="preserve">
+    <value>加载中……</value>
+  </data>
+  <data name="Home.Tooltip.Stopping" xml:space="preserve">
+    <value>正在停止KSP2……</value>
+  </data>
+  <data name="Home.Tooltip.Stop" xml:space="preserve">
+    <value>停止KSP2。未保存的内容将丢失。</value>
+  </data>
+  <data name="Home.Tooltip.NotDetected" xml:space="preserve">
+    <value>未检测到KSP2主程序。  请在“设置”标签页中选择包含KSP2的目录。</value>
+  </data>
+  <data name="Home.Tooltip.VersionUnknown" xml:space="preserve">
+    <value>无法检测已安装的游戏版本。通过Steam/Epic验证游戏文件，或重新安装游戏，可能会解决此问题。</value>
+  </data>
+  <data name="Home.Tooltip.SelectVersion" xml:space="preserve">
+    <value>请选择要安装或启动的版本。</value>
+  </data>
+  <data name="Home.Tooltip.NoRuntime" xml:space="preserve">
+    <value>未找到Windows兼容运行时。请使用macOS版本的启动器，或安装CrossOver。</value>
+  </data>
+  <data name="Home.Tooltip.LinuxSteam" xml:space="preserve">
+    <value>请在设置中启用“通过Steam启动”，以便在Linux上启动。</value>
+  </data>
+  <data name="Home.Tooltip.LauncherUpdate" xml:space="preserve">
+    <value>启动器需要先进行自我更新，才能安装或更新Redux。</value>
+  </data>
+  <data name="Home.LaunchFailed.Title" xml:space="preserve">
+    <value>无法启动</value>
+  </data>
+  <data name="Home.LaunchFailed.NotDetected" xml:space="preserve">
+    <value>未检测到KSP2主程序。请在“设置”标签页中选择包含KSP2的目录。</value>
+  </data>
+  <data name="Home.LaunchFailed.Steam" xml:space="preserve">
+    <value>无法打开Steam：{0}
+请确保已安装Steam，然后重试。</value>
+  </data>
+  <data name="Home.LaunchFailed.Direct" xml:space="preserve">
+    <value>无法启动游戏：{0}
+它可能已被移动、删除，或被杀毒软件拦截。</value>
+  </data>
+  <data name="Home.LaunchFailed.NoRuntime" xml:space="preserve">
+    <value>KSP2在Mac上运行需要Windows兼容层，但未找到。
+请使用包含该兼容层的macOS版启动器，或安装CrossOver。</value>
+  </data>
+  <data name="Home.LaunchFailed.Wine" xml:space="preserve">
+    <value>无法通过{0}启动游戏：{1}</value>
+  </data>
+  <data name="Home.StopGame.Title" xml:space="preserve">
+    <value>停止KSP2</value>
+  </data>
+  <data name="Home.StopGame.Message" xml:space="preserve">
+    <value>停止游戏？未保存的内容将丢失。</value>
+  </data>
+  <data name="Home.StopFailed.Title" xml:space="preserve">
+    <value>无法停止KSP2</value>
+  </data>
+  <data name="Home.StopFailed.Message" xml:space="preserve">
+    <value>{0}
+请在游戏内关闭。</value>
+  </data>
+  <data name="Home.Rosetta.Title" xml:space="preserve">
+    <value>需要Rosetta</value>
+  </data>
+  <data name="Home.Rosetta.Message" xml:space="preserve">
+    <value>KSP2通过Intel版本的Wine运行，这需要Rosetta 2，而此Mac上未安装Rosetta。请在终端中运行以下命令进行安装，然后重试：
+
+softwareupdate --install-rosetta --agree-to-license</value>
+  </data>
+  <data name="Home.Log.VersionUnknown" xml:space="preserve">
+    <value>无法检测已安装的游戏版本，因此不清楚需要应用哪些补丁。验证游戏文件，或重新安装游戏，可能会解决此问题。</value>
+  </data>
+  <data name="Home.Log.CreatingPlan" xml:space="preserve">
+    <value>正在创建安装计划</value>
+  </data>
+  <data name="Home.Log.Retrying" xml:space="preserve">
+    <value>正在使用{0}重试更新。</value>
+  </data>
+  <data name="Home.Log.Installed" xml:space="preserve">
+    <value>KSP2 Redux已成功安装</value>
+  </data>
+  <data name="Home.Log.Cancelled" xml:space="preserve">
+    <value>安装已取消</value>
+  </data>
+  <data name="Home.Log.UpdateError" xml:space="preserve">
+    <value>更新Redux时出错：{0}</value>
+  </data>
+  <data name="Home.Log.InvalidState" xml:space="preserve">
+    <value>Redux可能处于无效状态，请尝试卸载并重新安装</value>
+  </data>
+  <data name="Home.Log.NothingChanged" xml:space="preserve">
+    <value>未做出任何更改。</value>
+  </data>
+  <data name="Home.CantInstallHere.Title" xml:space="preserve">
+    <value>不能在这里安装</value>
+  </data>
+  <data name="Home.CantInstallHere.Message" xml:space="preserve">
+    <value>启动器正从KSP2的游戏根目录内运行，因此安装或更新Redux会覆盖正在运行的启动器并导致失败。
+
+请将启动器移动到游戏目录之外的文件夹，然后重新运行并重试。</value>
+  </data>
+  <data name="Home.DiskSpace.Title" xml:space="preserve">
+    <value>磁盘空间不足</value>
+  </data>
+  <data name="Home.DiskSpace.Message" xml:space="preserve">
+    <value>{0}
+
+需要在以下路径所在的驱动器上腾出空间：
+{1}
+
+未做出任何更改。</value>
+  </data>
+  <data name="Home.FilesInUse.Title" xml:space="preserve">
+    <value>游戏文件被占用</value>
+  </data>
+  <data name="Home.UpdateFailed.Title" xml:space="preserve">
+    <value>更新失败！</value>
+  </data>
+  <data name="Home.UpdateFailed.Message" xml:space="preserve">
+    <value>检查启动器更新时出了点问题：{0}
+请稍后再试。</value>
+  </data>
+  <data name="Update.Found.Title" xml:space="preserve">
+    <value>发现新版本</value>
+  </data>
+  <data name="Update.ActionMessage" xml:space="preserve">
+    <value>启动器将下载并更新，在此过程中可能会重启几次。
+如果不进行更新，你将无法安装新的Redux版本。</value>
+  </data>
+  <data name="Update.WhatsNew.NoNotes" xml:space="preserve">
+    <value>v{0}更新内容：
+(未提供更新日志。)
+
+{1}</value>
+  </data>
+  <data name="Update.WhatsNew.WithNotes" xml:space="preserve">
+    <value>v{0}更新内容：
+{1}
+
+{2}</value>
+  </data>
+  <data name="Update.NotSingleFile.Message" xml:space="preserve">
+    <value>你当前并未运行在单文件构建版本中，请基于最新的main分支重新构建，这样才能安装Redux。</value>
+  </data>
+  <data name="Update.Failed.Title" xml:space="preserve">
+    <value>更新失败！</value>
+  </data>
+  <data name="Update.Failed.Message" xml:space="preserve">
+    <value>请从以下地址下载最新版本的启动器：
+{0}</value>
+  </data>
+  <data name="Link.Failed.Title" xml:space="preserve">
+    <value>无法打开链接</value>
+  </data>
+  <data name="Link.Invalid.Message" xml:space="preserve">
+    <value>该链接似乎无效。</value>
+  </data>
+  <data name="Link.Failed.Message" xml:space="preserve">
+    <value>无法打开链接：{0}</value>
+  </data>
+  <data name="Config.SaveFailed.Title" xml:space="preserve">
+    <value>无法保存设置</value>
+  </data>
+  <data name="Config.SaveFailed.Message" xml:space="preserve">
+    <value>你的更改无法保存：{0}
+如果关闭启动器，这些更改可能会丢失。请检查{1}是否可写，然后重试。</value>
+  </data>
+  <data name="Cache.StockDeleted" xml:space="preserve">
+    <value>原版文件已被删除——预期在“{1}”下找到“{0}”，无法卸载。</value>
+  </data>
+  <data name="Wine.CreatingBottle" xml:space="preserve">
+    <value>正在创建CrossOver瓶“{0}”...</value>
+  </data>
+  <data name="Wine.SettingUp" xml:space="preserve">
+    <value>正在为KSP2配置Windows环境。此过程仅会进行一次……</value>
+  </data>
+  <data name="Wine.SetupFailed" xml:space="preserve">
+    <value>配置{0}失败，退出代码为{1}。</value>
+  </data>
+  <data name="Game.DidNotStart" xml:space="preserve">
+    <value>{0}未能启动。</value>
+  </data>
+  <data name="Game.StopFailure" xml:space="preserve">
+    <value>pid {0}: {1}</value>
+  </data>
+  <data name="Game.CouldNotStop" xml:space="preserve">
+    <value>无法停止KSP2（{0}）。</value>
+  </data>
+  <data name="Locks.OneFile.OtherProgram" xml:space="preserve">
+    <value>一个游戏文件正被另一个程序使用。</value>
+  </data>
+  <data name="Locks.OneFile.Programs" xml:space="preserve">
+    <value>一个游戏文件正被{0}使用。</value>
+  </data>
+  <data name="Locks.ManyFiles.OtherProgram" xml:space="preserve">
+    <value>{0}个游戏文件正被另一个程序占用。</value>
+  </data>
+  <data name="Locks.ManyFiles.Programs" xml:space="preserve">
+    <value>{0}个游戏文件正被{1}占用。</value>
+  </data>
+  <data name="Locks.Advice" xml:space="preserve">
+    <value>关闭它以及任何使用此KSP2文件夹的Unity项目，然后重试。未做出任何更改。</value>
+  </data>
+  <data name="Locks.InUse" xml:space="preserve">
+    <value>正在使用：{0}</value>
+  </data>
+  <data name="Locks.InUseMore" xml:space="preserve">
+    <value>正在使用：{0} 以及另外{1}个</value>
+  </data>
+  <data name="Locks.Process" xml:space="preserve">
+    <value>{0} （进程 {1}）</value>
+  </data>
+  <data name="Install.PlanMade" xml:space="preserve">
+    <value>安装/更新计划已生成，共包含{0}个步骤。</value>
+  </data>
+  <data name="Install.Step.Uninstall" xml:space="preserve">
+    <value>步骤{0}：正在卸载KSP2 Redux</value>
+  </data>
+  <data name="Install.Step.RevertToStock" xml:space="preserve">
+    <value>步骤{0}：恢复为原版安装</value>
+  </data>
+  <data name="Install.Step.Prepatch" xml:space="preserve">
+    <value>步骤{0}：从原版准备打补丁</value>
+  </data>
+  <data name="Install.Step.ApplyPatchFile" xml:space="preserve">
+    <value>步骤{0}：{1}</value>
+  </data>
+  <data name="Plan.ApplyingPatchFile" xml:space="preserve">
+    <value>正在应用补丁，位于：{0}</value>
+  </data>
+  <data name="Plan.ApplyPatchFromVersion" xml:space="preserve">
+    <value>正在应用从版本{1}到版本{0}的补丁</value>
+  </data>
+  <data name="Plan.ApplyPatchFromPrepatch" xml:space="preserve">
+    <value>正在应用从预补丁到版本：{0}的补丁</value>
+  </data>
+  <data name="Install.CheckingFiles" xml:space="preserve">
+    <value>正在检查是否有其他程序占用游戏文件……</value>
+  </data>
+  <data name="Install.Uninstalling" xml:space="preserve">
+    <value>正在卸载KSP2 Redux</value>
+  </data>
+  <data name="Install.RevertingForRepatch" xml:space="preserve">
+    <value>正在将KSP2 Redux还原为原版以便重新打补丁</value>
+  </data>
+  <data name="Install.NoRevertNeeded" xml:space="preserve">
+    <value>无需还原为原版</value>
+  </data>
+  <data name="Install.ApplyingPrepatch" xml:space="preserve">
+    <value>正在应用正确的预补丁</value>
+  </data>
+  <data name="Install.DeletingModloader" xml:space="preserve">
+    <value>正在删除旧的模组加载器！</value>
+  </data>
+  <data name="Install.Prepatch.Portable" xml:space="preserve">
+    <value>正在应用便携式预补丁</value>
+  </data>
+  <data name="Install.Prepatch.Steam" xml:space="preserve">
+    <value>正在应用Steam预补丁</value>
+  </data>
+  <data name="Install.Prepatch.Epic" xml:space="preserve">
+    <value>正在应用Epic预补丁</value>
+  </data>
+  <data name="Install.Error.PrepatchOnRedux" xml:space="preserve">
+    <value>无法向Redux安装应用预补丁</value>
+  </data>
+  <data name="Install.CleaningPatch" xml:space="preserve">
+    <value>正在清理已下载的补丁{0}</value>
+  </data>
+  <data name="Install.PatchDeleteFailed" xml:space="preserve">
+    <value>无法删除补丁{0}：{1}</value>
+  </data>
+  <data name="Install.BundleRevertFailed" xml:space="preserve">
+    <value>无法还原包体转换：{0}</value>
+  </data>
+  <data name="Install.StepFailed" xml:space="preserve">
+    <value>安装步骤失败({0})。正在回滚到最近一次正常状态……</value>
+  </data>
+  <data name="Install.RolledBack" xml:space="preserve">
+    <value>回滚成功。</value>
+  </data>
+  <data name="Install.Error.RolledBack" xml:space="preserve">
+    <value>安装失败，并已自动回滚到先前的状态。原始错误：{0}</value>
+  </data>
+  <data name="Install.RollbackFailed" xml:space="preserve">
+    <value>回滚也失败了：{0}</value>
+  </data>
+  <data name="Install.Error.RollbackFailed" xml:space="preserve">
+    <value>安装失败（{0}），且自动回滚也失败（{1}）。安装可能已处于损坏状态——请尝试从设置中执行“卸载”或“恢复为原版”。</value>
+  </data>
+  <data name="Install.Disk.Download.Unknown" xml:space="preserve">
+    <value>无法确定可用的下载和重建存储空间，已跳过该预检。</value>
+  </data>
+  <data name="Install.Disk.Download.NotEnough" xml:space="preserve">
+    <value>下载和重建存储所需的可用磁盘空间不足：需要大约{0}，但仅有{1}可用。请腾出一些空间然后重试。</value>
+  </data>
+  <data name="Install.Disk.Temporary.Unknown" xml:space="preserve">
+    <value>无法确定可用的系统临时存储空间，已跳过该预检。</value>
+  </data>
+  <data name="Install.Disk.Temporary.NotEnough" xml:space="preserve">
+    <value>系统临时存储的可用磁盘空间不足：需要大约{0}，但仅有{1}可用。请腾出一些空间然后重试。</value>
+  </data>
+  <data name="Install.Disk.Install.Unknown" xml:space="preserve">
+    <value>无法确定可用的安装存储空间，已跳过该预检。</value>
+  </data>
+  <data name="Install.Disk.Install.NotEnough" xml:space="preserve">
+    <value>安装存储的可用磁盘空间不足：需要大约{0}，但仅有{1}可用。请腾出一些空间然后重试。</value>
+  </data>
+  <data name="Download.UsingCached" xml:space="preserve">
+    <value>正在使用{0}的已验证缓存补丁。</value>
+  </data>
+  <data name="Download.LegacyGitHubOnly" xml:space="preserve">
+    <value>此旧版补丁仅能从GitHub获取。请选择GitHub备份以继续。</value>
+  </data>
+  <data name="Download.Legacy" xml:space="preserve">
+    <value>正在下载{0}的旧版补丁。</value>
+  </data>
+  <data name="Download.Parts" xml:space="preserve">
+    <value>正在从{2}下载补丁{1}的{0}个部分。</value>
+  </data>
+  <data name="Download.Reconstructed" xml:space="preserve">
+    <value>补丁{0}已重建并校验完毕。</value>
+  </data>
+  <data name="Download.CouldNotDownload" xml:space="preserve">
+    <value>无法从{0}下载已验证的补丁部分。</value>
+  </data>
+  <data name="Download.Complete" xml:space="preserve">
+    <value>下载完成。</value>
+  </data>
+  <data name="Bundles.NoShaderBundles" xml:space="preserve">
+    <value>此Redux构建不包含URP着色器包，因此原版包将保持未转换状态。</value>
+  </data>
+  <data name="Bundles.ManifestWarning" xml:space="preserve">
+    <value>着色器清单: {0}</value>
+  </data>
+  <data name="Bundles.Converting" xml:space="preserve">
+    <value>正在将原版包转换为URP着色器...</value>
+  </data>
+  <data name="Bundles.Warning" xml:space="preserve">
+    <value>警告：{0}</value>
+  </data>
+  <data name="Bundles.ConvertingRestored" xml:space="preserve">
+    <value>正在转换从Steam恢复的包……</value>
+  </data>
+  <data name="Bundles.StillUnrecorded" xml:space="preserve">
+    <value>在恢复Steam的副本后，仍有{0}个原版包保留着未记录的已转换着色器，第一个是{1}。</value>
+  </data>
+  <data name="Bundles.StillUnreverted" xml:space="preserve">
+    <value>即使在恢复Steam的副本后，仍有{0}个已转换的着色器引用无法还原，第一个位于{1}。</value>
+  </data>
+  <data name="Bundles.ApplySummary" xml:space="preserve">
+    <value>包体转换：写入{0}项修改，{1}项已应用，写入{2}个包体副本，{3}个已是最新，{4}个已移除，写入{5}个纹理覆盖，{6}个已是最新，{7}个已移除。</value>
+  </data>
+  <data name="Bundles.LeftAlone" xml:space="preserve">
+    <value>若不作处理，{0}在偏移量{1}处包含意外的字节。</value>
+  </data>
+  <data name="Bundles.KeptCloudTextures" xml:space="preserve">
+    <value>保留了{0}的原版云层纹理：{1}</value>
+  </data>
+  <data name="Bundles.ConvertFailed" xml:space="preserve">
+    <value>无法转换{0}：{1}</value>
+  </data>
+  <data name="Bundles.ConvertFailedOne" xml:space="preserve">
+    <value>一个原版资产包无法转换（{0}：{1}）。</value>
+  </data>
+  <data name="Bundles.ConvertFailedMany" xml:space="preserve">
+    <value>{0}个原版资产包无法转换，第一个是{1} （{2}）。</value>
+  </data>
+  <data name="Bundles.RevertSummary" xml:space="preserve">
+    <value>资产包转换已回滚：撤销了{0}项修改，移除了{1}个资产包副本和{2}个纹理覆盖。</value>
+  </data>
+  <data name="Bundles.CouldNotUndo" xml:space="preserve">
+    <value>无法撤销，{0}在偏移量{1}处存在意外的字节。</value>
+  </data>
+  <data name="Bundles.RevertFailed" xml:space="preserve">
+    <value>无法撤销{0}：{1}</value>
+  </data>
+  <data name="Bundles.RevertFailedOne" xml:space="preserve">
+    <value>一个原版资产包无法恢复为原版状态（{0}：{1}）。</value>
+  </data>
+  <data name="Bundles.RevertFailedMany" xml:space="preserve">
+    <value>{0}个原版资产包无法恢复为原版状态，第一个是{1} （{2}）。</value>
+  </data>
+  <data name="Bundles.Unrecorded" xml:space="preserve">
+    <value>{0}个原版资产包中包含没有转换记录覆盖的已转换着色器：{1}。</value>
+  </data>
+  <data name="Bundles.SteamHelp" xml:space="preserve">
+    <value>在启动器设置中使用Steam登录（或运行'redux-launcher-cli steam login'），然后重新安装，或者让Steam验证游戏文件后再重新安装Redux。</value>
+  </data>
+  <data name="Bundles.NeedSteamCopies" xml:space="preserve">
+    <value>{0}个原版资产包包含已转换的着色器，只有Steam的副本才能将其还原。{1}</value>
+  </data>
+  <data name="Bundles.SteamLoginRejected" xml:space="preserve">
+    <value>Steam未接受保存的登录信息，而这是将{0}个原版资产包恢复原状所必需的。{1}</value>
+  </data>
+  <data name="Bundles.DownloadingFromSteam" xml:space="preserve">
+    <value>正在下载那些资产包的Steam副本...</value>
+  </data>
+  <data name="Bundles.SteamDownloadFailed" xml:space="preserve">
+    <value>Steam上{0}个原版资产包的副本无法下载：{1} {2}</value>
+  </data>
+  <data name="Bundles.PutBack" xml:space="preserve">
+    <value>已放回{0}个原版资产包的Steam副本。</value>
+  </data>
+</root>

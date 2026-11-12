@@ -1,0 +1,20 @@
+body, * {
+    color: #FFFFFF;
+}
+
+img, iframe, video, table {
+    max-width: 100%;
+    height: auto;
+}
+
+pre, code {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+a {
+    word-break: break-word;
+    /* Matches Colors.axaml's BrandRedColor. Plain CSS can't reference Avalonia
+       resources, so keep this in sync by hand if that token ever changes. */
+    color: #DC1501;
+}

@@ -1,0 +1,70 @@
+/*
+ * KSP2 Redux design tokens, translated 1:1 from the launcher's Avalonia resources
+ * (Ksp2Redux.Tools.Launcher/Colors.axaml and Radii.axaml). Retune the look there
+ * first, then mirror the change here.
+ */
+:root {
+    /* Brand */
+    --krx-brand-red: #DC1501;
+    --krx-brand-orange: #FC7600;
+    --krx-brand-red-hover: rgba(220, 21, 1, 0.63);
+    --krx-brand-red-pressed: rgba(220, 21, 1, 0.75);
+
+    /* Semantic: success / positive actions */
+    --krx-success: #2EA043;
+    --krx-success-hover: #3FB950;
+    --krx-success-pressed: #268A3B;
+
+    /* Semantic: danger / destructive actions */
+    --krx-danger: #B33A3A;
+    --krx-danger-hover: #D44A4A;
+
+    /* Semantic: non-urgent warnings */
+    --krx-warning: #D9A441;
+
+    /* Neutral buttons */
+    --krx-neutral-button: rgba(102, 102, 102, 0.4);
+    --krx-neutral-button-hover: #333333;
+
+    /* Disabled surface */
+    --krx-disabled-surface: #3A3A3A;
+
+    /* Dark text drawn on the bright LED-style main button art */
+    --krx-main-button-text: #3B3B3B;
+
+    /* Subtle translucent fill for inputs on dark/busy backgrounds */
+    --krx-input-surface: rgba(255, 255, 255, 0.07);
+
+    /* Surfaces: panels/cards on top of background art */
+    --krx-surface-panel: #2D2D2D;
+    --krx-surface-panel-translucent: rgba(45, 45, 45, 0.5);
+    --krx-surface-panel-strong: rgba(45, 45, 45, 0.63);
+    --krx-surface-panel-border: rgba(62, 62, 62, 0.5);
+
+    /* Glass: translucent panels over a blurred backdrop */
+    --krx-glass-surface: rgba(27, 27, 27, 0.55);
+    --krx-glass-border: rgba(255, 255, 255, 0.1);
+    --krx-glass-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.4);
+
+    /* Text */
+    --krx-text-primary: #FFFFFF;
+    --krx-text-secondary: #888888;
+    --krx-text-muted: #CCCCCC;
+    --krx-text-faint: rgba(255, 255, 255, 0.5);
+
+    /* Overlays / scrims */
+    --krx-overlay-hover: rgba(0, 0, 0, 0.13);
+    --krx-overlay-pressed: rgba(0, 0, 0, 0.25);
+    --krx-overlay-highlight: rgba(255, 255, 255, 0.31);
+    --krx-scrim-soft: rgba(0, 0, 0, 0.5);
+    --krx-scrim-medium: rgba(0, 0, 0, 0.8);
+    --krx-scrim-strong: rgba(0, 0, 0, 0.9);
+
+    /* Radii */
+    --krx-radius-md: 8px;
+    --krx-radius-lg: 12px;
+
+    /* Typography */
+    --krx-font-mono: "JetBrains Mono", ui-monospace, monospace;
+    --krx-font-led: "Led Counter 7", var(--krx-font-mono);
+}

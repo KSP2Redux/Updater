@@ -1,0 +1,10 @@
+{
+  "name": "com.ksp2redux.bundleconversion",
+  "displayName": "KSP2 Redux Bundle Conversion",
+  "version": "1.0.0",
+  "unity": "6000.6",
+  "description": "The launcher's stock bundle converter, compiled into the KSP2 Redux editor so it can convert into a project cache instead of the game install.",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
+}
