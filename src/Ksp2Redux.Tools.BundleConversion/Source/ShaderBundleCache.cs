@@ -3,6 +3,7 @@ using System.IO.Abstractions;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using Microsoft.Win32.SafeHandles;
 
 namespace Ksp2Redux.Tools.BundleConversion;
 
@@ -16,6 +17,7 @@ namespace Ksp2Redux.Tools.BundleConversion;
 public sealed class ShaderBundleCache
 {
     private const string LAST_USED = ".last-used";
+    private const int LOCK_EXCLUSIVE_NONBLOCKING = 2 | 4;
     private readonly TimeSpan _idleLifetime;
     private readonly IFileSystem _fileSystem;
 
@@ -237,15 +239,56 @@ public sealed class ShaderBundleCache
         _fileSystem.Directory.CreateDirectory(locks);
         string path = _fileSystem.Path.Combine(locks, key + ".lock");
         EnsureNoLinks(path);
+        Stream lease;
         try
         {
-            return _fileSystem.FileStream.New(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            lease = _fileSystem.FileStream.New(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
         catch (IOException)
         {
             return null;
         }
+        try
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return lease;
+
+            // Mono's Unix FileShare.None does not coordinate with CoreCLR. Both runtimes use this flock protocol.
+            SafeFileHandle handle = BorrowNativeHandle(lease);
+            if (Flock(handle, LOCK_EXCLUSIVE_NONBLOCKING) == 0)
+            {
+                GC.KeepAlive(lease);
+                return lease;
+            }
+            int error = Marshal.GetLastWin32Error();
+            if (error is 11 or 35)
+            {
+                lease.Dispose();
+                return null;
+            }
+            throw new IOException($"Cannot acquire shader cache lease (flock errno {error}).");
+        }
+        catch
+        {
+            lease.Dispose();
+            throw;
+        }
     }
+
+    [DllImport("libc", EntryPoint = "flock", SetLastError = true)]
+    private static extern int Flock(SafeFileHandle file, int operation);
+
+    // All file creation stays behind IFileSystem. Native locking needs the borrowed handle of that factory's stream.
+#pragma warning disable RS0030
+    private static SafeFileHandle BorrowNativeHandle(Stream stream)
+    {
+#if UNITY_EDITOR
+        return ((System.IO.FileStream)stream).SafeFileHandle;
+#else
+        return ((System.IO.FileStream)(FileSystemStream)stream).SafeFileHandle;
+#endif
+    }
+#pragma warning restore RS0030
 
     private bool TryRead(string directory, string key, out ShaderManifest manifest)
     {
