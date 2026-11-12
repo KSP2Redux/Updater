@@ -23,8 +23,9 @@ internal sealed class CliCommandHarness
 
     private CliContext? _context;
 
-    public CliCommandHarness()
+    public CliCommandHarness(MockFileSystem? fileSystem = null)
     {
+        FileSystem = fileSystem ?? new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         Environment.SetFolderPath(System.Environment.SpecialFolder.LocalApplicationData, STORAGE);
         Environment.SetFolderPath(System.Environment.SpecialFolder.ApplicationData, STORAGE);
         Environment.SetFolderPath(System.Environment.SpecialFolder.UserProfile, HOME);
@@ -33,7 +34,7 @@ internal sealed class CliCommandHarness
         DiskSpace.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
     }
 
-    public MockFileSystem FileSystem { get; } = new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
+    public MockFileSystem FileSystem { get; }
 
     public MockEnvironmentProvider Environment { get; } = new();
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Formats.Tar;
 using System.Net;
@@ -43,6 +44,46 @@ public class ProtonRuntimeServiceTest
         fileSystem.File.WriteAllText(fileSystem.Path.Combine(directory, "toolmanifest.vdf"),
             "\"manifest\" { \"commandline\" \"/proton %verb%\" \"require_tool_appid\" \"" + runtime +
             "\" \"compatmanager_layer_name\" \"proton\" }");
+        fileSystem.Directory.CreateDirectory(directory + "/files/lib/wine/x86_64-windows");
+        fileSystem.File.WriteAllBytes(directory + "/files/lib/wine/x86_64-windows/uiautomationcore.dll", ShutdownApiImage());
+    }
+
+    private static byte[] ShutdownApiImage(bool exportsShutdown = true, bool forwarded = false, ushort machine = 0x8664)
+    {
+        byte[] image = new byte[1024];
+        void Word(int offset, ushort value) => BinaryPrimitives.WriteUInt16LittleEndian(image.AsSpan(offset), value);
+        void Dword(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(image.AsSpan(offset), value);
+        Word(0, 0x5a4d);
+        Dword(0x3c, 0x80);
+        Dword(0x80, 0x4550);
+        Word(0x84, machine);
+        Word(0x86, 1);
+        Word(0x94, 0xf0);
+        Word(0x96, 0x2022);
+        Word(0x98, 0x20b);
+        Dword(0xb8, 0x1000);
+        Dword(0xbc, 0x200);
+        Dword(0xd0, 0x2000);
+        Dword(0xd4, 0x200);
+        Dword(0x104, 16);
+        Dword(0x108, 0x1000);
+        Dword(0x10c, 0x80);
+        Encoding.ASCII.GetBytes(".exports").CopyTo(image, 0x188);
+        Dword(0x190, 0x200);
+        Dword(0x194, 0x1000);
+        Dword(0x198, 0x200);
+        Dword(0x19c, 0x200);
+        Dword(0x1ac, 0x60000020);
+        Dword(0x214, 1);
+        Dword(0x218, exportsShutdown ? 1u : 0u);
+        Dword(0x21c, 0x1040);
+        Dword(0x220, 0x1044);
+        Dword(0x224, 0x1048);
+        Dword(0x240, forwarded ? 0x1070u : 0x1100u);
+        Dword(0x244, 0x1060);
+        Encoding.ASCII.GetBytes("UiaDisconnectAllProviders\0").CopyTo(image, 0x260);
+        image[0x300] = 0xc3;
+        return image;
     }
 
     private static byte[] Archive(string name, byte[] contents, TarEntryType type = TarEntryType.RegularFile)
@@ -156,6 +197,46 @@ public class ProtonRuntimeServiceTest
         using var service = Build(fileSystem);
 
         Assert.That(service.FindInstalledProton(), Is.EqualTo(STEAM + "/compatibilitytools.d/GE-Proton10-27"));
+    }
+
+    [Test]
+    public void CurrentArchitectureSuffixedGeReleaseCanBeReused()
+    {
+        var fileSystem = NewFileSystem();
+        string proton = STEAM + "/compatibilitytools.d/GE-Proton11-12-x86_64";
+        AddTool(fileSystem, proton, "4183110");
+        using var service = Build(fileSystem);
+
+        Assert.That(service.FindInstalledProton(), Is.EqualTo(proton));
+    }
+
+    [TestCase(false, false, (ushort)0x8664)]
+    [TestCase(true, true, (ushort)0x8664)]
+    [TestCase(true, false, (ushort)0xaa64)]
+    public void AToolWithoutTheRequiredNativeX64ShutdownApiIsNotReused(bool exported, bool forwarded, ushort machine)
+    {
+        var fileSystem = NewFileSystem();
+        string proton = STEAM + "/compatibilitytools.d/GE-Proton10-27";
+        AddTool(fileSystem, proton);
+        fileSystem.File.WriteAllBytes(proton + "/files/lib/wine/x86_64-windows/uiautomationcore.dll",
+            ShutdownApiImage(exported, forwarded, machine));
+        using var service = Build(fileSystem);
+
+        Assert.That(service.FindInstalledProton(), Is.Null);
+    }
+
+    [Test]
+    public void IncompleteDllIsSkippedWithoutHidingAnotherUsableInstalledTool()
+    {
+        var fileSystem = NewFileSystem();
+        string unsupported = STEAM + "/compatibilitytools.d/GE-Proton11-15";
+        string supported = STEAM + "/compatibilitytools.d/GE-Proton11-12-x86_64";
+        AddTool(fileSystem, unsupported);
+        AddTool(fileSystem, supported);
+        fileSystem.File.WriteAllText(unsupported + "/files/lib/wine/x86_64-windows/uiautomationcore.dll", "an incomplete DLL");
+        using var service = Build(fileSystem);
+
+        Assert.That(service.FindInstalledProton(), Is.EqualTo(supported));
     }
 
     [TestCase("4185400")]

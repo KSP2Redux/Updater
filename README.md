@@ -17,6 +17,12 @@ or newer, Vulkan drivers, and a system that permits the Steam Linux Runtime's us
 required. Initial setup can download several gigabytes. Progress and failures appear in the Home
 tab log. Cancel stops preparation, and launching again retries it.
 
+Runtime discovery checks the x64 `uiautomationcore.dll` export table for
+`UiaDisconnectAllProviders`, which Unity uses during shutdown. A runtime that lacks this API
+can render the game but crash when quitting. Such installations are skipped in favor of a
+compatible installed runtime or managed GE-Proton. The launcher does not modify their DLLs
+or the user's Steam compatibility settings.
+
 The launcher verifies its pinned umu bootstrap before running it. umu verifies Proton and the
 Steam Linux Runtime downloads and maintains its own container data. Existing Steam container
 files and Steam compatibility prefixes are left alone. The launcher stores the managed runtime

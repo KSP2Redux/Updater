@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Formats.Tar;
 using System.IO.Abstractions;
+using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -196,7 +197,7 @@ public sealed class ProtonRuntimeService : IProtonRuntimeService, IDisposable
     private Version? ReadSupportedProtonVersion(string directory)
     {
         string name = _fileSystem.Path.GetFileName(directory);
-        Match version = Regex.Match(name, @"^(?:GE-Proton|UMU-Proton|Proton )(?<major>\d+)[.-](?<minor>\d+)(?:[.-](?<patch>\d+))?$", RegexOptions.CultureInvariant);
+        Match version = Regex.Match(name, @"^(?:GE-Proton|UMU-Proton|Proton )(?<major>\d+)[.-](?<minor>\d+)(?:[.-](?<patch>\d+))?(?:-x86_64)?$", RegexOptions.CultureInvariant);
         if (!version.Success || !int.TryParse(version.Groups["major"].Value, out int major) || major < 8 ||
             !int.TryParse(version.Groups["minor"].Value, out int minor))
             return null;
@@ -225,7 +226,71 @@ public sealed class ProtonRuntimeService : IProtonRuntimeService, IDisposable
             _log.Warn($"Could not read the installed Proton manifest at {manifestPath}: {exception.Message}");
             return null;
         }
-        return new Version(major, minor, patch);
+        // Unity calls this Windows API while shutting down. Older Proton builds can start the game but crash on exit.
+        foreach (string location in new[] { "files/lib/wine/x86_64-windows/uiautomationcore.dll", "files/lib64/wine/x86_64-windows/uiautomationcore.dll" })
+        {
+            string path = _fileSystem.Path.Combine(directory, location);
+            if (_fileSystem.File.Exists(path) && HasUnityShutdownExport(path))
+                return new Version(major, minor, patch);
+        }
+        _log.Info($"Skipping installed Proton at {directory}: its x64 uiautomationcore.dll does not export UiaDisconnectAllProviders required by Unity.");
+        return null;
+    }
+
+    private bool HasUnityShutdownExport(string path)
+    {
+        try
+        {
+            using Stream stream = _fileSystem.File.OpenRead(path);
+            using var image = new PEReader(stream);
+            var headers = image.PEHeaders;
+            if (headers.CoffHeader.Machine != Machine.Amd64 || headers.PEHeader is not { Magic: PEMagic.PE32Plus } optional)
+                return false;
+            DirectoryEntry exports = optional.ExportTableDirectory;
+            if (exports.RelativeVirtualAddress <= 0 || exports.Size < 40)
+                return false;
+
+            var directory = image.GetSectionData(exports.RelativeVirtualAddress).GetReader();
+            if (directory.RemainingBytes < 40)
+                return false;
+            directory.Offset = 20;
+            uint functionCount = directory.ReadUInt32();
+            uint nameCount = directory.ReadUInt32();
+            int functionsRva = directory.ReadInt32();
+            int namesRva = directory.ReadInt32();
+            int ordinalsRva = directory.ReadInt32();
+            if (functionsRva <= 0 || namesRva <= 0 || ordinalsRva <= 0)
+                return false;
+            var functions = image.GetSectionData(functionsRva).GetReader();
+            var names = image.GetSectionData(namesRva).GetReader();
+            var ordinals = image.GetSectionData(ordinalsRva).GetReader();
+            if (functionCount > functions.RemainingBytes / 4 || nameCount > names.RemainingBytes / 4 || nameCount > ordinals.RemainingBytes / 2)
+                return false;
+
+            ReadOnlySpan<byte> required = "UiaDisconnectAllProviders\0"u8;
+            for (uint index = 0; index < nameCount; index++)
+            {
+                int nameRva = names.ReadInt32();
+                ushort ordinal = ordinals.ReadUInt16();
+                if (nameRva <= 0 || ordinal >= functionCount)
+                    continue;
+                var name = image.GetSectionData(nameRva).GetReader();
+                if (name.RemainingBytes < required.Length || !name.ReadBytes(required.Length).AsSpan().SequenceEqual(required))
+                    continue;
+                functions.Offset = ordinal * 4;
+                int functionRva = functions.ReadInt32();
+                // A forwarded export does not establish that this runtime supplies the implementation.
+                if (functionRva <= 0 || (functionRva >= exports.RelativeVirtualAddress &&
+                    (long)functionRva < (long)exports.RelativeVirtualAddress + exports.Size))
+                    return false;
+                return image.GetSectionData(functionRva).Length > 0;
+            }
+            return false;
+        }
+        catch (BadImageFormatException)
+        {
+            return false;
+        }
     }
 
     private async Task CheckPythonAsync(Action<LogMessage> log, CancellationToken cancellationToken)
