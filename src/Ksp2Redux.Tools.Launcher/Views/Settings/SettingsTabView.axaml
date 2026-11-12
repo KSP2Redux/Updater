@@ -182,6 +182,19 @@
 						</ComboBox>
 					</Grid>
 
+					<Grid Classes="field" IsVisible="{Binding ShowProtonLaunchOptions}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Classes="label"
+						           Text="{loc:T Settings.LaunchViaProton.Label}"
+						           ToolTip.Tip="{loc:T Settings.LaunchViaProton.Tooltip}" />
+						<CheckBox Grid.Column="1" HorizontalAlignment="Left"
+						          Name="LaunchThroughProtonToggle"
+						          IsChecked="{Binding SelectedInstall.LaunchThroughProton, Mode=TwoWay}" />
+					</Grid>
+
 					<Grid Classes="field" IsVisible="{Binding ShowSteamLaunchOptions}">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="Auto" SharedSizeGroup="Label" />

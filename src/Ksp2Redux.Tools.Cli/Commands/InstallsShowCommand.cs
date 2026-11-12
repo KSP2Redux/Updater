@@ -25,6 +25,7 @@ public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
         var active = context.InstallService.ActiveEntry?.Id == entry.Id;
         var version = install?.GameVersion is null ? null : CliContext.FormatVersion(install.GameVersion);
         var steamLaunchApplies = !context.OperatingSystemService.IsMacOS();
+        var protonLaunchApplies = context.OperatingSystemService.IsLinux();
 
         context.Output.Payload(
             new
@@ -41,6 +42,7 @@ public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
                 launchArguments = entry.LaunchArguments,
                 graphicsJobs = !entry.DisableGraphicsJobs,
                 steamLaunch = entry.LaunchThroughSteam,
+                protonLaunch = entry.LaunchThroughProton,
                 steamAppId = entry.SteamAppId,
             },
             () =>
@@ -53,10 +55,13 @@ public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
                 Row(context, "version", version ?? "(unknown)");
                 Row(context, "channel", ReleaseChannels.DisplayName(entry.ReleaseChannel));
                 var arguments = string.IsNullOrWhiteSpace(entry.LaunchArguments) ? "(none)" : entry.LaunchArguments;
-                Row(context, "launch args", steamLaunchApplies && entry.LaunchThroughSteam ? $"{arguments} (not used while launching via Steam)" : arguments);
+                bool launchViaSteam = steamLaunchApplies && entry.LaunchThroughSteam && !(protonLaunchApplies && entry.LaunchThroughProton);
+                Row(context, "launch args", launchViaSteam ? $"{arguments} (not used while launching via Steam)" : arguments);
                 Row(context, "graphics jobs", entry.DisableGraphicsJobs ? "off" : "on");
                 Row(context, "steam launch", !steamLaunchApplies ? "not used on macOS"
                     : entry.LaunchThroughSteam ? $"on (app {entry.SteamAppId})" : "off");
+                Row(context, "proton launch", !protonLaunchApplies ? "not used on this platform"
+                    : entry.LaunchThroughProton ? "on" : "off");
             });
 
         return Task.FromResult(ExitCode.SUCCESS);

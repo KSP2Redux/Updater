@@ -49,9 +49,20 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
             return await LaunchThroughWineAsync(context, entry, install, settings, cancellationToken);
         }
 
+        if (context.OperatingSystemService.IsLinux() && entry.LaunchThroughProton)
+        {
+            return await LaunchThroughProtonAsync(context, entry, install, settings, cancellationToken);
+        }
+
         if (entry.LaunchThroughSteam)
         {
             return LaunchThroughSteam(context, entry);
+        }
+
+        if (context.OperatingSystemService.IsLinux())
+        {
+            return context.Output.Fail(ExitCode.LAUNCH_FAILED,
+                "Enable Proton with 'installs set --proton-launch on', or enable --steam-launch, before launching on Linux.");
         }
 
         ProcessStartInfo startInfo = new(install.ExePath) { WorkingDirectory = install.InstallDir };
@@ -61,6 +72,47 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
         }
 
         return await StartAndReportAsync(context, startInfo, install.ExePath, settings, null, cancellationToken, null);
+    }
+
+    private static async Task<int> LaunchThroughProtonAsync(
+        CliContext context,
+        Ksp2InstallEntry entry,
+        Ksp2Install install,
+        LaunchSettings settings,
+        CancellationToken cancellationToken)
+    {
+        ProcessStartInfo startInfo;
+        string gameOutput;
+        try
+        {
+            await context.ProtonRuntimeService.PrepareAsync(line => context.Output.Progress(line.English), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Initial runtime setup can take long enough for a removable game drive to disappear.
+            if (context.ReadInstall(install.ExePath) is not { IsValid: true })
+            {
+                return context.Output.Fail(ExitCode.INSTALL_NOT_FOUND,
+                    $"The KSP2 installation disappeared while Proton was being prepared: {install.ExePath}");
+            }
+
+            var logDirectory = context.FileSystem.Path.Combine(context.ConfigService.GetLocalStorageDirectory(), "logs");
+            context.FileSystem.Directory.CreateDirectory(logDirectory);
+            gameOutput = context.FileSystem.Path.Combine(logDirectory, GAME_OUTPUT_LOG);
+            startInfo = CliWineProcesses.WithOutputTo(
+                context.ProtonRuntimeService.CreateLaunchInfo(install.ExePath, install.InstallDir!, entry.LaunchArguments),
+                gameOutput);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return context.Output.Fail(ExitCode.LAUNCH_FAILED, $"Could not prepare or start Proton: {exception.Message}");
+        }
+
+        return await StartAndReportAsync(context, startInfo, $"{install.ExePath} through Proton", settings, "Proton", cancellationToken,
+            $"  Proton and game output goes to {gameOutput}");
     }
 
     private static async Task<int> LaunchThroughWineAsync(

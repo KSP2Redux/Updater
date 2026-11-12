@@ -5,6 +5,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,6 +65,7 @@ public static class CliServiceProvider
         services.AddSingleton<IInstallPlanService, InstallPlanService>();
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IWineRuntimeService, WineRuntimeService>();
+        services.AddSingleton<IProtonRuntimeService, ProtonRuntimeService>();
         services.AddSingleton<ISteamLoginStore, SteamLoginStore>();
         services.AddSingleton<ISteamSessionService, SteamSessionService>();
         services.AddSingleton<ISteamDepotDownloader, SteamDepotDownloader>();

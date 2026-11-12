@@ -264,6 +264,14 @@ https://ksp2redux.org</value>
     <value>Release channel</value>
     <comment>Label of the drop-down that selects where Redux versions are taken from, for example stable or snapshot.</comment>
   </data>
+  <data name="Settings.LaunchViaProton.Label" xml:space="preserve">
+    <value>Launch via Proton</value>
+    <comment>Linux-only setting for the launcher's managed Proton compatibility runtime.</comment>
+  </data>
+  <data name="Settings.LaunchViaProton.Tooltip" xml:space="preserve">
+    <value>Use a suitable installed Steam Proton runtime, or download one on first launch, then start KSP2 without the Steam client. Requires Python 3.10 or newer and working Vulkan drivers.</value>
+    <comment>Tooltip of the Launch via Proton label. Proton, Steam, Python and Vulkan are product names.</comment>
+  </data>
   <data name="Settings.LaunchViaSteam.Label" xml:space="preserve">
     <value>Launch via Steam</value>
     <comment>Label of a check box. When ticked, the game is started through the Steam client.</comment>
@@ -938,9 +946,22 @@ You can still try launching or installing, but update checks may be unreliable. 
     <value>No Windows compatibility runtime found. Use the macOS download of the launcher, or install CrossOver.</value>
     <comment>Tooltip of the disabled LAUNCH button on a Mac. CrossOver is a product name.</comment>
   </data>
-  <data name="Home.Tooltip.LinuxSteam" xml:space="preserve">
-    <value>Enable "Launch via Steam" in settings to launch on Linux.</value>
-    <comment>Tooltip of the disabled LAUNCH button on Linux. "Launch via Steam" is the label of a setting, use the same wording.</comment>
+  <data name="Home.Tooltip.LinuxRuntime" xml:space="preserve">
+    <value>Enable "Launch via Proton" or "Launch via Steam" in settings to launch on Linux.</value>
+    <comment>Tooltip of the disabled LAUNCH button on Linux. The quoted text names settings on the Settings tab.</comment>
+  </data>
+  <data name="Home.Proton.InstallChanged" xml:space="preserve">
+    <value>The selected game installation changed while Proton was being prepared. Select the installation and launch again.</value>
+    <comment>Log line when launch is cancelled because the selected game changed or was removed during runtime setup.</comment>
+  </data>
+  <data name="Home.Proton.Cancelled" xml:space="preserve">
+    <value>Proton setup cancelled. Launch again to retry.</value>
+    <comment>Log line after the user cancels preparation of the Linux runtime.</comment>
+  </data>
+  <data name="Home.LaunchFailed.Proton" xml:space="preserve">
+    <value>Couldn't prepare or start Proton: {0}
+Launch again to retry. Details are in the log on the Home tab.</value>
+    <comment>Message box after Linux runtime preparation or launching fails. {0} = the reason.</comment>
   </data>
   <data name="Home.Tooltip.LauncherUpdate" xml:space="preserve">
     <value>The launcher needs to update itself before you can install or update Redux.</value>
@@ -1448,5 +1469,53 @@ They may be lost if you close the launcher. Check that {1} is writable and try a
   <data name="Bundles.PutBack" xml:space="preserve">
     <value>Put back Steam's copies of {0} stock bundles.</value>
     <comment>Line in the install log. {0} = the number of bundles.</comment>
+  </data>
+  <data name="Proton.Preparing" xml:space="preserve">
+    <value>Preparing Proton and its Steam Linux Runtime. The first launch can download several gigabytes.</value>
+    <comment>Status shown while umu downloads and prepares the Windows compatibility environment. Proton and Steam Linux Runtime are product names.</comment>
+  </data>
+  <data name="Proton.DownloadingRuntime" xml:space="preserve">
+    <value>No suitable installed Proton was found. Downloading managed GE-Proton.</value>
+    <comment>Status when no suitable installed Proton was found and the managed fallback is downloaded. GE-Proton is a product name.</comment>
+  </data>
+  <data name="Proton.ReusingRuntime" xml:space="preserve">
+    <value>Reusing installed Proton at {0}. The launcher keeps its own game prefix and container runtime.</value>
+    <comment>Status when reusing installed Proton. {0} is its filesystem path. Do not translate product names.</comment>
+  </data>
+  <data name="Proton.InstalledFailed" xml:space="preserve">
+    <value>Installed Proton at {0} could not prepare the game. Trying managed GE-Proton instead.</value>
+    <comment>Status when installed Proton failed preparation and the launcher retries with managed GE-Proton. {0} is the installed runtime path.</comment>
+  </data>
+  <data name="Proton.PrepareFailed" xml:space="preserve">
+    <value>Proton preparation failed with exit code {0}. See the Home log for details, then retry Launch.</value>
+    <comment>Preparation error. {0} is the umu process exit code. Home is the launcher tab and Launch is its action button.</comment>
+  </data>
+  <data name="Proton.PrefixMissing" xml:space="preserve">
+    <value>Proton returned without creating its game prefix. See the Home log for details, then retry Launch.</value>
+    <comment>Preparation error when umu did not create the expected Windows environment. Home and Launch are launcher controls.</comment>
+  </data>
+  <data name="Proton.Ready" xml:space="preserve">
+    <value>Proton is ready. Starting KSP2.</value>
+    <comment>Status after the managed Windows environment is prepared and before KSP2 starts.</comment>
+  </data>
+  <data name="Proton.PythonRequired" xml:space="preserve">
+    <value>Managed Proton requires Linux x86-64 and Python 3.10 or newer. Install Python 3 with your distribution's package manager, then retry Launch.</value>
+    <comment>Prerequisite error. Linux x86-64 and Python 3.10 are platform and product names. Launch is the launcher action button.</comment>
+  </data>
+  <data name="Proton.Downloading" xml:space="preserve">
+    <value>Downloading and verifying umu {0}.</value>
+    <comment>Status during the small verified umu bootstrap download. {0} is its pinned version number.</comment>
+  </data>
+  <data name="Proton.BootstrapTooLarge" xml:space="preserve">
+    <value>The umu download was larger than expected. Nothing was installed. Retry Launch to download it again.</value>
+    <comment>Download error before installing umu. Launch is the launcher action button used to retry.</comment>
+  </data>
+  <data name="Proton.ChecksumFailed" xml:space="preserve">
+    <value>The umu download failed its integrity check. Nothing was installed or executed. Retry Launch to download it again.</value>
+    <comment>Download integrity error. The untrusted download is not installed or run. Launch is the launcher action button.</comment>
+  </data>
+  <data name="Proton.BootstrapInvalid" xml:space="preserve">
+    <value>The umu download did not contain the expected runtime bootstrap. Nothing was installed or executed.</value>
+    <comment>Download error when the verified archive does not contain the required umu program.</comment>
   </data>
 </root>

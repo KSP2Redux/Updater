@@ -14,11 +14,11 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
         InstallsSetSettings settings,
         CancellationToken cancellationToken)
     {
-        if (settings is { Path: null, Arguments: null, ClearArguments: false, GraphicsJobs: null, SteamLaunch: null, SteamAppId: null })
+        if (settings is { Path: null, Arguments: null, ClearArguments: false, GraphicsJobs: null, SteamLaunch: null, ProtonLaunch: null, SteamAppId: null })
         {
             return Task.FromResult(context.Output.Fail(
                 ExitCode.USAGE_ERROR,
-                "Nothing to change. Pass at least one of --path, --args, --clear-args, --graphics-jobs, --steam-launch or --steam-app-id."));
+                "Nothing to change. Pass at least one of --path, --args, --clear-args, --graphics-jobs, --steam-launch, --proton-launch or --steam-app-id."));
         }
 
         if (settings is { ClearArguments: true, Arguments: not null })
@@ -29,10 +29,19 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
         var arguments = settings.ClearArguments ? "" : settings.Arguments?.Trim();
 
         if (!CliSwitch.TryParse(settings.GraphicsJobs, out var graphicsJobs)
-            || !CliSwitch.TryParse(settings.SteamLaunch, out var steamLaunch))
+            || !CliSwitch.TryParse(settings.SteamLaunch, out var steamLaunch)
+            || !CliSwitch.TryParse(settings.ProtonLaunch, out var protonLaunch))
         {
-            return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "--graphics-jobs and --steam-launch take on or off."));
+            return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "--graphics-jobs, --steam-launch and --proton-launch take on or off."));
         }
+
+        if (steamLaunch == true && protonLaunch == true)
+        {
+            return Task.FromResult(context.Output.Fail(ExitCode.USAGE_ERROR, "Enable --steam-launch or --proton-launch, not both."));
+        }
+
+        bool? expectedSteamLaunch = protonLaunch == true ? false : steamLaunch;
+        bool? expectedProtonLaunch = steamLaunch == true ? false : protonLaunch;
 
         var steamAppId = settings.SteamAppId?.Trim();
         if (steamAppId is not null && (steamAppId.Length == 0 || !steamAppId.All(char.IsAsciiDigit)))
@@ -72,9 +81,14 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
             entry.LaunchArguments = arguments;
         }
 
-        if (steamLaunch is { } steamOn)
+        if (expectedSteamLaunch is { } steamOn)
         {
             entry.LaunchThroughSteam = steamOn;
+        }
+
+        if (expectedProtonLaunch is { } protonOn)
+        {
+            entry.LaunchThroughProton = protonOn;
         }
 
         if (steamAppId is not null)
@@ -89,7 +103,8 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
                 && (exePath is null || e.ExePath == exePath)
                 && (graphicsJobs is null || e.DisableGraphicsJobs == !graphicsJobs)
                 && (arguments is null || e.LaunchArguments == arguments)
-                && (steamLaunch is null || e.LaunchThroughSteam == steamLaunch)
+                && (expectedSteamLaunch is null || e.LaunchThroughSteam == expectedSteamLaunch)
+                && (expectedProtonLaunch is null || e.LaunchThroughProton == expectedProtonLaunch)
                 && (steamAppId is null || e.SteamAppId == steamAppId))))
         {
             return Task.FromResult(context.Output.Fail(
@@ -102,6 +117,11 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
             context.Output.Warn("Steam cannot run KSP2 on macOS, so launching through Steam is ignored here.");
         }
 
+        if (protonLaunch == true && !context.OperatingSystemService.IsLinux())
+        {
+            context.Output.Warn("Launching through Proton only applies on Linux. Other launch settings still apply on this platform.");
+        }
+
         context.Output.Payload(
             new
             {
@@ -112,6 +132,7 @@ public sealed class InstallsSetCommand : ReduxCommand<InstallsSetSettings>
                 launchArguments = entry.LaunchArguments,
                 graphicsJobs = !entry.DisableGraphicsJobs,
                 steamLaunch = entry.LaunchThroughSteam,
+                protonLaunch = entry.LaunchThroughProton,
                 steamAppId = entry.SteamAppId,
             },
             () => context.Output.Result(entry.Name));

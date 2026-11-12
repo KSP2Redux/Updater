@@ -14,6 +14,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -27,6 +28,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IUpdateService _updateService;
     private readonly IOperatingSystemService _operatingSystemService;
     private readonly IWineRuntimeService _wineRuntimeService;
+    private readonly IProtonRuntimeService _protonRuntimeService;
     private readonly IGameProcessService _gameProcessService;
     private readonly IMessageBoxService _messageBoxService;
     private readonly IEnvironmentProvider _environmentProvider;
@@ -97,6 +99,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
+    private (CancellationTokenSource Cancellation, TaskCompletionSource Finished)? _protonPreparation;
     private CancellationTokenSource? _gameSession;
     private bool _stoppingGame;
 
@@ -106,11 +109,25 @@ public partial class HomeTabViewModel : ViewModelBase
     public event EventHandler? GameLaunched;
     public event EventHandler? GameExited;
 
+    /// <summary>Gets whether managed Proton preparation is still running.</summary>
+    public bool IsPreparingProton => _protonPreparation is not null;
+
+    /// <summary>
+    /// Cancels managed Proton preparation and waits until its child processes have stopped.
+    /// </summary>
+    /// <returns>A task that completes after preparation has unwound, or immediately when no preparation is running.</returns>
+    public async Task CancelProtonPreparationAsync()
+    {
+        if (_protonPreparation is not { } preparation) return;
+        preparation.Cancellation.Cancel();
+        await preparation.Finished.Task;
+    }
+
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
 
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService, IGameProcessService gameProcessService, ILocalizationService localization)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService, IProtonRuntimeService protonRuntimeService, IGameProcessService gameProcessService, ILocalizationService localization)
     {
         _localization = localization;
         MainButtonTooltip = _localization["Home.Tooltip.Loading"];
@@ -122,6 +139,7 @@ public partial class HomeTabViewModel : ViewModelBase
         _updateService = updateService;
         _operatingSystemService = operatingSystemService;
         _wineRuntimeService = wineRuntimeService;
+        _protonRuntimeService = protonRuntimeService;
         _messageBoxService = messageBoxService;
         _environmentProvider = environmentProvider;
         _fileSystem = fileSystem;
@@ -263,6 +281,8 @@ public partial class HomeTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task LaunchGame()
     {
+        if (_cancelCurrentOperation is not null || _gameSession is not null) return;
+
         // Re-validate right before using it rather than trusting whatever was cached at the last
         // refresh - the install could have been moved, had its drive ejected, or been deleted in
         // the meantime if the app was left idle.
@@ -283,6 +303,12 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
+        if (_operatingSystemService.IsLinux() && activeEntry.LaunchThroughProton)
+        {
+            await LaunchThroughProton(_ksp2InstallService.Ksp2, activeEntry.Id, activeEntry.LaunchArguments);
+            return;
+        }
+
         if (activeEntry.LaunchThroughSteam)
         {
             var appId = activeEntry.SteamAppId;
@@ -295,6 +321,13 @@ public partial class HomeTabViewModel : ViewModelBase
             if (!await TryStartGame(steamLaunch, "Failed to launch through Steam.",
                     ex => _localization.Format("Home.LaunchFailed.Steam", ex.UserMessage()))) return;
             await TrackRunningGame(SlowStartTimeout);
+            return;
+        }
+
+        if (_operatingSystemService.IsLinux())
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.LaunchFailed.Title"],
+                _localization["Home.Tooltip.LinuxRuntime"], windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
@@ -426,6 +459,66 @@ public partial class HomeTabViewModel : ViewModelBase
         await TrackRunningGame(SlowStartTimeout);
     }
 
+    private async Task LaunchThroughProton(Ksp2Install ksp2, Guid installId, string? launchArguments)
+    {
+        using var operation = new CancellationTokenSource();
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _protonPreparation = (operation, finished);
+        _cancelCurrentOperation = operation;
+        ResetInstallLog();
+        IsInstallLogVisible = true;
+        IsProgressVisible = false;
+        UpdateMainButtonState();
+        bool started = false;
+        try
+        {
+            await _protonRuntimeService.PrepareAsync(Log, operation.Token);
+            operation.Token.ThrowIfCancellationRequested();
+
+            // Setup can download several large files. The selected install may have changed or disappeared meanwhile.
+            _ksp2InstallService.TryLoadKsp2Install();
+            if (_ksp2InstallService.ActiveEntry is not { LaunchThroughProton: true } activeEntry ||
+                activeEntry.Id != installId || _ksp2InstallService.Ksp2 is not { IsValid: true } current ||
+                current.ExePath != ksp2.ExePath)
+            {
+                Log(_localization.Message("Home.Proton.InstallChanged"));
+                return;
+            }
+
+            var startInfo = _protonRuntimeService.CreateLaunchInfo(ksp2.ExePath, ksp2.InstallDir!, launchArguments);
+            _log.Info($"Launching KSP2 through managed Proton ({startInfo.FileName}).");
+            _gameProcessService.Start(startInfo);
+            started = true;
+        }
+        catch (OperationCanceledException) when (operation.IsCancellationRequested)
+        {
+            Log(_localization.Message("Home.Proton.Cancelled"));
+        }
+        catch (Exception exception)
+        {
+            LogError(_localization.Message("Home.LaunchFailed.Proton", exception.ToLogMessage()), exception);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.LaunchFailed.Title"],
+                _localization.Format("Home.LaunchFailed.Proton", exception.UserMessage()),
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        finally
+        {
+            _protonPreparation = null;
+            _cancelCurrentOperation = null;
+            try
+            {
+                await FlushPendingLogWrites();
+                UpdateMainButtonState();
+            }
+            finally
+            {
+                finished.SetResult();
+            }
+        }
+
+        if (started) await TrackRunningGame(SlowStartTimeout);
+    }
+
     [RelayCommand]
     public void CancelCurrentMainButtonAction()
     {
@@ -435,6 +528,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
         _cancelCurrentOperation?.Cancel();
+        UpdateMainButtonState();
     }
 
     private void ReactToPropertyChanges(object? sender, PropertyChangedEventArgs? e)
@@ -458,6 +552,15 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void UpdateMainButtonState()
     {
+        IsInstallSwitcherEnabled = Installs.Count > 1 && _cancelCurrentOperation is null;
+        if (_cancelCurrentOperation is not null)
+        {
+            MainButtonShown = MainButtonState.Cancel;
+            MainButtonEnabled = !_cancelCurrentOperation.IsCancellationRequested;
+            MainButtonTooltip = null;
+            return;
+        }
+
         if (_gameSession is not null)
         {
             MainButtonShown = MainButtonState.Cancel;
@@ -496,11 +599,12 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        var linuxLaunchBlocked = (_operatingSystemService.IsLinux() && !(_ksp2InstallService.ActiveEntry?.LaunchThroughSteam ?? false))
+        var linuxLaunchBlocked = (_operatingSystemService.IsLinux() &&
+                                  _ksp2InstallService.ActiveEntry is not { LaunchThroughSteam: true } and not { LaunchThroughProton: true })
                                  || (_operatingSystemService.IsMacOS() && _wineRuntimeService.Detect() is null);
         var linuxLaunchBlockedTooltip = _operatingSystemService.IsMacOS()
             ? _localization["Home.Tooltip.NoRuntime"]
-            : _localization["Home.Tooltip.LinuxSteam"];
+            : _localization["Home.Tooltip.LinuxRuntime"];
 
         var installationDisabledTooltip = _localization["Home.Tooltip.LauncherUpdate"];
 

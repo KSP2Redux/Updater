@@ -45,7 +45,7 @@ public partial class MainWindow : Window
         {
             if (WindowState == WindowState.Normal) _lastNormalPosition = e.Point;
         };
-        Closing += (_, _) => SaveWindowPlacement();
+        Closing += OnWindowClosing;
         TExtension.Service.LanguageChanged += (_, _) => Dispatcher.UIThread.Post(UpdateMaximizedState);
 
         // Which panel is "active" changes on every tab switch and every time Home's log
@@ -57,6 +57,32 @@ public partial class MainWindow : Window
         AddHandler(PointerMovedEvent, OnParallaxPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
         PointerExited += (_, _) => SetParallaxTarget(default);
         Deactivated += (_, _) => SetParallaxTarget(default);
+    }
+
+    private bool _waitingForProtonPreparation;
+
+    private async void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        SaveWindowPlacement();
+        if (_waitingForProtonPreparation)
+        {
+            e.Cancel = true;
+            return;
+        }
+        if ((DataContext as MainWindowViewModel)?.HomeTab is not { IsPreparingProton: true } home) return;
+
+        // Keep the dispatcher alive until cancellation has stopped the external setup process.
+        e.Cancel = true;
+        _waitingForProtonPreparation = true;
+        try
+        {
+            await home.CancelProtonPreparationAsync();
+        }
+        finally
+        {
+            _waitingForProtonPreparation = false;
+            Close();
+        }
     }
 
     private const double PARALLAX_EASING_PER_SECOND = 5;

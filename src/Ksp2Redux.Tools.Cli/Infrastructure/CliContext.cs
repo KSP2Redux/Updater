@@ -6,6 +6,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,7 @@ public sealed class CliContext
         GameDataFolderService = services.GetRequiredService<IGameDataFolderService>();
         GameUninstallService = services.GetRequiredService<IKsp2GameUninstallService>();
         WineRuntimeService = services.GetRequiredService<IWineRuntimeService>();
+        ProtonRuntimeService = services.GetRequiredService<IProtonRuntimeService>();
         SteamSession = services.GetRequiredService<ISteamSessionService>();
         SteamDownloader = services.GetRequiredService<ISteamDepotDownloader>();
         NewsProvider = services.GetRequiredService<INewsProviderService>();
@@ -122,6 +124,11 @@ public sealed class CliContext
     /// Gets the service that runs KSP2 through Wine on macOS.
     /// </summary>
     public IWineRuntimeService WineRuntimeService { get; }
+
+    /// <summary>
+    /// Gets the service that prepares Proton and runs KSP2 on Linux.
+    /// </summary>
+    public IProtonRuntimeService ProtonRuntimeService { get; }
 
     /// <summary>
     /// Gets the Steam sign-in, shared with the launcher through its saved login.

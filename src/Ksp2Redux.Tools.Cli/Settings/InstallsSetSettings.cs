@@ -44,6 +44,13 @@ public sealed class InstallsSetSettings : InstallsTargetSettings
     public string? SteamLaunch { get; init; }
 
     /// <summary>
+    /// Gets whether the game starts through the launcher's Proton runtime, or null to leave the setting.
+    /// </summary>
+    [CommandOption("--proton-launch <ON_OR_OFF>")]
+    [Description("Reuse a suitable Steam Proton or download one, then launch without the Steam client. Applies on Linux.")]
+    public string? ProtonLaunch { get; init; }
+
+    /// <summary>
     /// Gets the Steam app id to launch, or null to leave it.
     /// </summary>
     [CommandOption("--steam-app-id <ID>")]
