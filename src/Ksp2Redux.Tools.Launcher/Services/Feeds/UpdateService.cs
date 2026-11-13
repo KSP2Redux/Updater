@@ -62,9 +62,9 @@ public class UpdateService : IUpdateService
     // Release notes are commonly edited on GitHub after the build was already tagged and uploaded,
     // so this is built fresh from whatever the release currently says rather than anything baked in
     // at build time. Pure and dependency-free so it's unit-testable without standing up the whole service.
-    public static string BuildUpdateFoundMessage(Version newVersion, string? releaseNotes)
+    public static string BuildUpdateFoundMessage(Version newVersion, string? releaseNotes, string actionMessageKey = "Update.ActionMessage")
     {
-        var actionMessage = Loc["Update.ActionMessage"];
+        var actionMessage = Loc[actionMessageKey];
 
         // The body is markdown meant for the releases page. This dialog is a plain text control, so
         // it gets the words without the markup, and without the part of the page aimed at someone
@@ -131,13 +131,7 @@ public class UpdateService : IUpdateService
 
     private async Task<bool> CheckAndPerformUpdateCoreAsync()
     {
-        // The platform-keyword match below would otherwise hand a macOS build the Linux binary.
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            _log.Info("Self-update is not available on macOS (no macOS release assets are published). Skipping check.");
-            return true;
-        }
-
+        var isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
         var releasesUrl = $"https://api.github.com/repos/{_owner}/{_repo}/releases";
         _log.Info($"Checking for launcher updates from {releasesUrl} (current version {_version}).");
 
@@ -182,7 +176,8 @@ public class UpdateService : IUpdateService
             // clicking OK on the dialog silently did nothing (reported as "won't update on first
             // click of ok"). An incomplete release is treated as not-yet-published: skip quietly
             // and let the next periodic check pick it up once its files are all there.
-            var platformKeyword = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
+            // macOS matches on the extension because the CLI's asset also contains "macos".
+            var platformKeyword = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : isMacOS ? ".dmg" : "linux";
             var asset = latestRelease.Release.Assets
                 .FirstOrDefault(a => a.Name.Contains(platformKeyword, StringComparison.OrdinalIgnoreCase));
             const string sha256Prefix = "sha256:";
@@ -190,6 +185,27 @@ public class UpdateService : IUpdateService
             {
                 _log.Warn($"Release v{latestRelease.Version} has no usable '{platformKeyword}' asset yet (missing asset or sha256 digest - still uploading?). Skipping until a later check. Available assets: {string.Join(", ", latestRelease.Release.Assets.Select(a => a.Name))}");
                 return true;
+            }
+
+            // The app bundle cannot replace itself, and the unsigned dmg needs the user to approve it anyway.
+            if (isMacOS)
+            {
+                var macResult = await _messageBoxService.ShowScrollableMessageBoxAsOwnedAsync(Loc["Update.Found.Title"],
+                    BuildUpdateFoundMessage(latestRelease.Version, latestRelease.Release.Body, "Update.ActionMessage.MacOS"),
+                    UPDATE_DIALOG_MSBOX_MAX_HEIGHT, ButtonEnum.OkCancel, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                if (macResult != ButtonResult.Ok) return false;
+
+                _log.Info($"Opening {asset.BrowserDownloadUrl} for a manual macOS update.");
+                try
+                {
+                    Process.Start(new ProcessStartInfo(asset.BrowserDownloadUrl) { UseShellExecute = true });
+                }
+                catch (Exception e)
+                {
+                    _log.Error($"Failed to open {asset.BrowserDownloadUrl}.", e);
+                    await ShowUpdateFailedAsync();
+                }
+                return false;
             }
 
             if (!_isSingleFile)
