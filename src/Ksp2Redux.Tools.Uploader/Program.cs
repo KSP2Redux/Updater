@@ -21,6 +21,7 @@ var uploadManifest = TomlSerializer.Deserialize<UploadManifest>(
     File.ReadAllText(manifestPath), new TomlSerializerOptions { SourceName = manifestPath });
 if (uploadManifest is null)
     throw new InvalidDataException("Failed to parse upload manifest.");
+uploadManifest.ValidatePatchRequirements();
 
 string[] repositoryParts = uploadManifest.Repository.Split('/');
 if (repositoryParts.Length != 2)
@@ -142,7 +143,7 @@ try
         });
     }
 
-    var removed = ApplyRetention(feedJson, additions, uploadManifest, isPublicChannel);
+    var removed = uploadManifest.ApplyRetention(feedJson, additions);
     feedJson.GeneratedAt = DateTime.UtcNow;
     if (isPublicChannel)
         feedJson.SchemaVersion = 2;
@@ -437,41 +438,6 @@ static async Task<ReleaseAsset> UploadExactAssetAsync(
     existingAssets.Add(asset);
     Console.WriteLine($"Uploaded GitHub asset: {asset.BrowserDownloadUrl}");
     return asset;
-}
-
-static List<ReleasePatch> ApplyRetention(
-    ReleaseManifest feed, List<ReleasePatch> additions, UploadManifest upload, bool publicChannel)
-{
-    var removed = new List<ReleasePatch>();
-    if (publicChannel)
-    {
-        removed.AddRange(feed.Patches.Where(patch => patch.Version == upload.Version));
-        feed.Patches = additions.Concat(feed.Patches.Except(removed)).ToList();
-        if (upload.Channel == "beta")
-        {
-            var retainedVersions = feed.Patches
-                .GroupBy(patch => patch.Version, StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(group => group.Max(patch => patch.ReleasedAt))
-                .Take(Math.Max(1, upload.RetainBetaReleases))
-                .Select(group => group.Key)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var rotated = feed.Patches.Where(patch => !retainedVersions.Contains(patch.Version)).ToList();
-            removed.AddRange(rotated);
-            feed.Patches = feed.Patches.Where(patch => retainedVersions.Contains(patch.Version)).ToList();
-        }
-        return removed;
-    }
-    if (!string.IsNullOrWhiteSpace(upload.Label))
-    {
-        var stale = feed.Patches.Where(patch => patch.Label == upload.Label).ToList();
-        removed.AddRange(stale);
-        feed.Patches = additions.Concat(feed.Patches.Except(stale)).ToList();
-    }
-    else
-    {
-        feed.Patches = additions.Concat(feed.Patches).ToList();
-    }
-    return removed;
 }
 
 static async Task VerifyReconstructionAsync(PackagedPatch packaged)
