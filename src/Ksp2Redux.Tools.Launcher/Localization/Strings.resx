@@ -1080,6 +1080,11 @@ Please try again later.</value>
 Without updating you cannot install new Redux versions.</value>
     <comment>Last paragraph of the new-version box, two lines.</comment>
   </data>
+  <data name="Update.ActionMessage.MacOS" xml:space="preserve">
+    <value>Click OK to download the new version, then drag KSP2 Redux from the disk image into Applications and replace the old one.
+Without updating you cannot install new Redux versions.</value>
+    <comment>Last paragraph of the new-version box on macOS, two lines. "KSP2 Redux" is the app name and "Applications" is the macOS folder, keep them as they are.</comment>
+  </data>
   <data name="Update.WhatsNew.NoNotes" xml:space="preserve">
     <value>What's new in v{0}:
 (No release notes provided.)

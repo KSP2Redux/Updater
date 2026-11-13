@@ -18,6 +18,18 @@ public class UpdateServiceBuildUpdateFoundMessageTest
     }
 
     [Test]
+    public void MacOSActionMessage_TellsTheUserToReplaceTheApp()
+    {
+        var message = UpdateService.BuildUpdateFoundMessage(new Version(0, 2, 0), "- Fixed", "Update.ActionMessage.MacOS");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(message, Does.Contain("drag KSP2 Redux"));
+            Assert.That(message, Does.Not.Contain("download and update"));
+        });
+    }
+
+    [Test]
     public void NoReleaseNotes_FallsBackToAPlaceholderInsteadOfBlankSpace()
     {
         var message = UpdateService.BuildUpdateFoundMessage(new Version(0, 2, 0), null);
