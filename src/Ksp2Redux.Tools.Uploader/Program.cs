@@ -32,6 +32,7 @@ var uploadManifest = TomlSerializer.Deserialize<UploadManifest>(
     File.ReadAllText(manifestPath), new TomlSerializerOptions { SourceName = manifestPath });
 if (uploadManifest is null)
     throw new InvalidDataException("Failed to parse upload manifest.");
+uploadManifest.ValidatePatchRequirements();
 
 string[] repositoryParts = uploadManifest.Repository.Split('/');
 if (repositoryParts.Length != 2 || repositoryParts.Any(string.IsNullOrWhiteSpace))
@@ -567,16 +568,11 @@ static List<ReleasePatch> ApplyRetention(
             removed.AddRange(FullSourceUpload.RetainBetaVersions(feed, upload.RetainBetaReleases));
         return removed;
     }
-    if (!string.IsNullOrWhiteSpace(upload.Label))
-    {
-        var stale = feed.Patches.Where(patch => patch.Label == upload.Label && patch.FullSource is null).ToList();
-        removed.AddRange(stale);
-        feed.Patches = additions.Concat(feed.Patches.Except(stale)).ToList();
-    }
-    else
-    {
-        feed.Patches = additions.Concat(feed.Patches).ToList();
-    }
+    var stale = feed.Patches.Where(patch => patch.FullSource is null &&
+        ((additions.Count > 0 && string.Equals(patch.Version, upload.Version, StringComparison.OrdinalIgnoreCase)) ||
+        (!string.IsNullOrWhiteSpace(upload.Label) && patch.Label == upload.Label))).ToList();
+    removed.AddRange(stale);
+    feed.Patches = additions.Concat(feed.Patches.Except(stale)).ToList();
     return removed;
 }
 

@@ -41,6 +41,7 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\Ksp2Redux.Tools.Cli\Ksp2Redux.Tools.Cli.csproj" />
       <ProjectReference Include="..\..\src\Ksp2Redux.Tools.Launcher\Ksp2Redux.Tools.Launcher.csproj" />
+      <ProjectReference Include="..\..\src\Ksp2Redux.Tools.Uploader\Ksp2Redux.Tools.Uploader.csproj" />
       <!-- Build MockGame but don't reference its assembly; its output is embedded below
            as the fake game executable the detector tests copy into the mock filesystem. -->
       <ProjectReference Include="..\Ksp2Redux.Tools.Launcher.Tests.MockGame\Ksp2Redux.Tools.Launcher.Tests.MockGame.csproj">
