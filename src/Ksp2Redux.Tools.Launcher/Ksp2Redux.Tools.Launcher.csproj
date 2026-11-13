@@ -10,7 +10,6 @@
         <SelfContained>true</SelfContained>
         <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-        <LangVersion>preview</LangVersion>
         <AssemblyTitle>KSP2 Redux</AssemblyTitle>
         <Description>Launcher and updater for KSP2 Redux</Description>
         <IsPackable>false</IsPackable>

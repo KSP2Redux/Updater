@@ -3,7 +3,6 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net11.0</TargetFramework>
-        <LangVersion>preview</LangVersion>
         <AssemblyName>redux-launcher-cli</AssemblyName>
         <RootNamespace>Ksp2Redux.Tools.Cli</RootNamespace>
         <RuntimeIdentifiers>win-x64;linux-x64;osx-arm64</RuntimeIdentifiers>

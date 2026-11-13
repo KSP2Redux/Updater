@@ -19,7 +19,9 @@
     <!-- BundleConversion targets netstandard2.1 and is also compiled by Unity, which has neither. -->
     <PropertyGroup Condition="'$(MSBuildProjectName)' != 'Ksp2Redux.Tools.BundleConversion'">
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
-        <Features>$(Features);runtime-async=on</Features>
+        <!-- Preview is needed for the updated memory safety rules. -->
+        <LangVersion>preview</LangVersion>
+        <Features>$(Features);runtime-async=on;updated-memory-safety-rules</Features>
     </PropertyGroup>
 
     <!-- ImageSharp only decodes the CLI's embedded logo. Exclude its existing advisories while

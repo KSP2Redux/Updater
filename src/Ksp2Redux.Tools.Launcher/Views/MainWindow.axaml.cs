@@ -389,7 +389,7 @@ public partial class MainWindow : Window
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
 
     [DllImport("dwmapi.dll", PreserveSig = true)]
-    private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int pvAttribute, int cbAttribute);
+    private static safe extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int pvAttribute, int cbAttribute);
 
     private enum DwmWindowCornerPreference
     {
