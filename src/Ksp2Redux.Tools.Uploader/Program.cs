@@ -130,9 +130,9 @@ try
                 Index = chunk.Index,
                 Size = chunk.Size,
                 ChecksumSha256 = chunk.ChecksumSha256,
-                // Internal feeds have no R2 copy. Every launcher version requires both URLs and reads the
-                // R2 one by default, so the GitHub URL fills both. Launchers resolve it through their
-                // authenticated GitHub path, the same way they download legacy internal patches.
+                // Internal feeds have no R2 copy. Launchers up to updater-v0.6.3.7 reject a part without
+                // an R2 URL, so the GitHub URL fills both until a launcher that accepts null is released.
+                // They resolve it through their authenticated GitHub path, as with legacy internal patches.
                 R2Url = r2Url ?? asset.BrowserDownloadUrl,
                 GitHubUrl = asset.BrowserDownloadUrl
             });
@@ -544,10 +544,10 @@ static async Task UpdateSwinfoVersionAsync(
         $"with commit {result.Commit.Sha}.");
 }
 
-static string? TryGetR2ObjectKey(string publicBaseUrl, string url)
+static string? TryGetR2ObjectKey(string publicBaseUrl, string? url)
 {
     string prefix = publicBaseUrl.TrimEnd('/') + "/";
-    return url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+    return url is not null && url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
         ? Uri.UnescapeDataString(url[prefix.Length..])
         : null;
 }
