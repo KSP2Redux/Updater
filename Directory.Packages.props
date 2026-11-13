@@ -46,8 +46,8 @@
     <PackageVersion Include="Spectre.Console.ImageSharp" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2" />
     <PackageVersion Include="SteamKit2" Version="3.4.0" />
-    <PackageVersion Include="Testably.Abstractions" Version="10.4.0" />
-    <PackageVersion Include="Testably.Abstractions.Testing" Version="7.1.1" />
+    <PackageVersion Include="Testably.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Testably.Abstractions.Testing" Version="8.0.0" />
     <PackageVersion Include="Tomlyn" Version="2.11.1" />
   </ItemGroup>
 </Project>
