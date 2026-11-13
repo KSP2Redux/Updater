@@ -92,7 +92,7 @@ public class Ksp2Patch : IDisposable
         var normalizedRoots = new HashSet<string>(
             (removalRoots ?? []).Select(NormalizeEntryPath),
             StringComparer.OrdinalIgnoreCase);
-        var emittedRemovals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> emittedRemovals = [with(StringComparer.OrdinalIgnoreCase)];
 
         foreach (string removalRoot in normalizedRoots)
         {

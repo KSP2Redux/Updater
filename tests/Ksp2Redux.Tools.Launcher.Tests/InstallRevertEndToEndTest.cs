@@ -177,7 +177,7 @@ public class InstallRevertEndToEndTest
                 // there diffs the folder its Prepatch step has just prepatched. One plan then prepatches once,
                 // applies the generated patch on top and converts bundles once, like a real install. The step is
                 // built directly because the helper for resolved paths deletes the patch after applying it.
-                plan.Steps.Insert(0, new InstallPlan.Step(InstallPlanAction.ApplyPatchFile,
+                plan.Steps.Insert(0, new InstallPlan.ApplyPatchStep(
                     (_, _, ct) => GeneratePatchAsync(fileSystem, install, build, patch, Log, ct),
                     LogMessage.Literal($"Generating {patch} from the prepatched install and {build}, then applying it")));
             }
