@@ -264,8 +264,7 @@ public class UpdateService : IUpdateService
 
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    using var chmod = Process.Start("chmod", $"+x \"{updatePath}\"")!;
-                    await chmod.WaitForExitAsync();
+                    var chmod = await Process.RunAsync("chmod", ["+x", updatePath]);
                     if (chmod.ExitCode != 0)
                     {
                         throw new InvalidOperationException($"chmod +x on {updatePath} exited with code {chmod.ExitCode}.");
@@ -315,22 +314,13 @@ public class UpdateService : IUpdateService
     {
         var whereAmI = _environmentProvider.ProcessPath!;
         var args = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\" {Program.RenderingFlags}".TrimEnd();
-        var startInfo = new ProcessStartInfo
+        var startInfo = new ProcessStartInfo(newFilesPath, args)
         {
             UseShellExecute = false,
-            WorkingDirectory = _fileSystem.Path.GetDirectoryName(newFilesPath)
+            WorkingDirectory = _fileSystem.Path.GetDirectoryName(newFilesPath),
+            // Its own session, so the new build outlives this process and its terminal on Linux.
+            StartDetached = !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
         };
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            startInfo.FileName = newFilesPath;
-            startInfo.Arguments = args;
-        }
-        else
-        {
-            startInfo.FileName = "setsid";
-            startInfo.Arguments = $"-f \"{newFilesPath}\" {args}";
-        }
 
         Process.Start(startInfo);
         _environmentProvider.Exit(0);

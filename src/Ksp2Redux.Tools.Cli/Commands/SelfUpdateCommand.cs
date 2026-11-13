@@ -172,10 +172,7 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
     // launcher's own updater does the same thing for the same reason.
     private static async Task MarkExecutableAsync(string path)
     {
-        using var chmod = Process.Start("chmod", $"+x \"{path}\"")
-                          ?? throw new InvalidOperationException($"Could not start chmod for {path}.");
-
-        await chmod.WaitForExitAsync();
+        var chmod = await Process.RunAsync("chmod", ["+x", path]);
 
         if (chmod.ExitCode != 0)
         {
