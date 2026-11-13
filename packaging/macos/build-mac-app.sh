@@ -44,6 +44,10 @@ APP="$OUTPUT/KSP2 Redux.app"
 rm -rf "$APP"
 cp -R "$SOURCE_APP" "$APP"
 
+# Dotnet.Bundle cannot write LSMinimumSystemVersion. The .NET 11 runtime needs macOS 14, and with this Finder says so on
+# older Macs instead of the app failing to start.
+plutil -replace LSMinimumSystemVersion -string 14.0 "$APP/Contents/Info.plist"
+
 if [ -n "$RUNTIME" ]; then
     echo "==> Adding the Wine + DXMT runtime from $RUNTIME"
     RESOURCES="$APP/Contents/Resources"
