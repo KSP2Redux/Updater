@@ -190,6 +190,15 @@ public class UpdateService : IUpdateService
             // The app bundle cannot replace itself, and the unsigned dmg needs the user to approve it anyway.
             if (isMacOS)
             {
+                // Launchers from 0.6.4.0 on run on .NET 11, which does not start on macOS older than 14.
+#pragma warning disable RS0030
+                if (latestRelease.Version >= new Version(0, 6, 4) && !OperatingSystem.IsMacOSVersionAtLeast(14))
+#pragma warning restore RS0030
+                {
+                    _log.Info($"Launcher v{latestRelease.Version} needs macOS 14 or later, so this Mac stays on v{_version}.");
+                    return true;
+                }
+
                 var macResult = await _messageBoxService.ShowScrollableMessageBoxAsOwnedAsync(Loc["Update.Found.Title"],
                     BuildUpdateFoundMessage(latestRelease.Version, latestRelease.Release.Body, "Update.ActionMessage.MacOS"),
                     UPDATE_DIALOG_MSBOX_MAX_HEIGHT, ButtonEnum.OkCancel, windowStartupLocation: WindowStartupLocation.CenterOwner);
