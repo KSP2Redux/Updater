@@ -21,6 +21,7 @@ var uploadManifest = TomlSerializer.Deserialize<UploadManifest>(
     File.ReadAllText(manifestPath), new TomlSerializerOptions { SourceName = manifestPath });
 if (uploadManifest is null)
     throw new InvalidDataException("Failed to parse upload manifest.");
+uploadManifest.ValidatePatchRequirements();
 
 string[] repositoryParts = uploadManifest.Repository.Split('/');
 if (repositoryParts.Length != 2)
@@ -69,6 +70,18 @@ try
     List<ReleaseAsset> existingAssets = [];
     using var r2 = isPublicChannel ? new R2Publisher(uploadManifest) : null;
 
+    // Every channel uploads its patches in parts. GitHub rejects release assets of 2 GiB or more,
+    // and full patches have grown past that.
+    var packagedPatches = new List<(PatchUploadEntry Entry, PackagedPatch Packaged)>();
+    foreach (var patchEntry in uploadManifest.Patches ?? [])
+    {
+        string packageDirectory = Path.Combine(workingDirectory, Guid.NewGuid().ToString("N"));
+        var packaged = await PatchChunker.SplitAsync(
+            new RealFileSystem(), patchEntry.File, packageDirectory, PatchChunker.DEFAULT_CHUNK_SIZE);
+        await VerifyReconstructionAsync(packaged);
+        packagedPatches.Add((patchEntry, packaged));
+    }
+
     if (!isDeleteOnly)
     {
         release = await GetOrCreateReleaseAsync(
@@ -78,8 +91,10 @@ try
 
         if (!isPublicChannel)
         {
-            await DeleteLegacyAssetsBeingReplacedAsync(
-                github, repoOwner, repoName, existingAssets, uploadManifest.Patches ?? []);
+            var plannedAssetNames = packagedPatches
+                .SelectMany(item => item.Packaged.Chunks.Select(chunk => GetChunkAssetName(item.Packaged, chunk)))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            await DeleteStalePatchAssetsAsync(github, repoOwner, repoName, existingAssets, plannedAssetNames);
         }
     }
 
@@ -90,21 +105,8 @@ try
             feedJson.Patches, uploadManifest, github, repoOwner, repoName,
             r2!, workingDirectory);
     }
-    foreach (var patchEntry in uploadManifest.Patches ?? [])
+    foreach (var (patchEntry, packaged) in packagedPatches)
     {
-        if (!isPublicChannel)
-        {
-            string assetName = Path.GetFileName(patchEntry.File);
-            var asset = await UploadExactAssetAsync(
-                github, release!, existingAssets, patchEntry.File, assetName, new FileInfo(patchEntry.File).Length);
-            additions.Add(CreateLegacyPatch(uploadManifest, patchEntry, asset.BrowserDownloadUrl, releasedAt));
-            continue;
-        }
-
-        string packageDirectory = Path.Combine(workingDirectory, Guid.NewGuid().ToString("N"));
-        var packaged = await PatchChunker.SplitAsync(
-            new RealFileSystem(), patchEntry.File, packageDirectory, PatchChunker.DEFAULT_CHUNK_SIZE);
-        await VerifyReconstructionAsync(packaged);
         string requiredVersion = string.IsNullOrWhiteSpace(patchEntry.PreviousVersion)
             ? "base"
             : Uri.EscapeDataString(patchEntry.PreviousVersion);
@@ -114,18 +116,24 @@ try
 
         foreach (var chunk in packaged.Chunks)
         {
-            string partName = $"part-{chunk.Index + 1:D4}-of-{packaged.Chunks.Count:D4}.bin";
-            string objectKey = $"{prefix}/{partName}";
-            string githubAssetName = $"patch-{packaged.ChecksumSha256.ToLowerInvariant()}-{partName}";
-            await r2!.UploadImmutableAsync(objectKey, chunk.Path, chunk.ChecksumSha256, CancellationToken.None);
+            string? r2Url = null;
+            if (isPublicChannel)
+            {
+                string objectKey = $"{prefix}/{GetChunkPartName(packaged, chunk)}";
+                await r2!.UploadImmutableAsync(objectKey, chunk.Path, chunk.ChecksumSha256, CancellationToken.None);
+                r2Url = r2.GetPublicUrl(objectKey);
+            }
             var asset = await UploadExactAssetAsync(
-                github, release!, existingAssets, chunk.Path, githubAssetName, chunk.Size);
+                github, release!, existingAssets, chunk.Path, GetChunkAssetName(packaged, chunk), chunk.Size);
             chunks.Add(new ReleasePatchChunk
             {
                 Index = chunk.Index,
                 Size = chunk.Size,
                 ChecksumSha256 = chunk.ChecksumSha256,
-                R2Url = r2!.GetPublicUrl(objectKey),
+                // Internal feeds have no R2 copy. Launchers up to updater-v0.6.3.7 reject a part without
+                // an R2 URL, so the GitHub URL fills both until a launcher that accepts null is released.
+                // They resolve it through their authenticated GitHub path, as with legacy internal patches.
+                R2Url = r2Url ?? asset.BrowserDownloadUrl,
                 GitHubUrl = asset.BrowserDownloadUrl
             });
         }
@@ -142,9 +150,9 @@ try
         });
     }
 
-    var removed = ApplyRetention(feedJson, additions, uploadManifest, isPublicChannel);
+    var removed = uploadManifest.ApplyRetention(feedJson, additions);
     feedJson.GeneratedAt = DateTime.UtcNow;
-    if (isPublicChannel)
+    if (isPublicChannel || feedJson.Patches.Any(patch => patch.Chunks is not null))
         feedJson.SchemaVersion = 2;
     ReleaseManifestValidator.Validate(feedJson);
     string feedContent = JsonSerializer.Serialize(feedJson, new JsonSerializerOptions { WriteIndented = true });
@@ -253,21 +261,11 @@ static bool HasR2Configuration(UploadManifest manifest) =>
     !string.IsNullOrWhiteSpace(manifest.CloudflareZoneId) &&
     !string.IsNullOrWhiteSpace(manifest.CloudflareApiToken);
 
-static ReleasePatch CreateLegacyPatch(
-    UploadManifest upload, PatchUploadEntry entry, string url, DateTime releasedAt)
-{
-    var info = new FileInfo(entry.File);
-    return new ReleasePatch
-    {
-        Version = upload.Version,
-        Label = upload.Label,
-        ReleasedAt = releasedAt,
-        ChecksumSha256 = GetChecksum(entry.File),
-        Size = info.Length,
-        Requires = new PatchRequirement { Version = entry.PreviousVersion },
-        Url = url
-    };
-}
+static string GetChunkPartName(PackagedPatch packaged, PackagedPatchChunk chunk) =>
+    $"part-{chunk.Index + 1:D4}-of-{packaged.Chunks.Count:D4}.bin";
+
+static string GetChunkAssetName(PackagedPatch packaged, PackagedPatchChunk chunk) =>
+    $"patch-{packaged.ChecksumSha256.ToLowerInvariant()}-{GetChunkPartName(packaged, chunk)}";
 
 static async Task<List<ReleasePatch>> MigrateLegacyPatchesAsync(
     IReadOnlyList<ReleasePatch> patches,
@@ -321,12 +319,10 @@ static async Task<List<ReleasePatch>> MigrateLegacyPatchesAsync(
         var chunks = new List<ReleasePatchChunk>();
         foreach (var chunk in packaged.Chunks)
         {
-            string partName = $"part-{chunk.Index + 1:D4}-of-{packaged.Chunks.Count:D4}.bin";
-            string objectKey = $"{prefix}/{partName}";
-            string assetName = $"patch-{packaged.ChecksumSha256.ToLowerInvariant()}-{partName}";
+            string objectKey = $"{prefix}/{GetChunkPartName(packaged, chunk)}";
             await r2.UploadImmutableAsync(objectKey, chunk.Path, chunk.ChecksumSha256, CancellationToken.None);
             var asset = await UploadExactAssetAsync(
-                github, release, releaseAssets, chunk.Path, assetName, chunk.Size);
+                github, release, releaseAssets, chunk.Path, GetChunkAssetName(packaged, chunk), chunk.Size);
             chunks.Add(new ReleasePatchChunk
             {
                 Index = chunk.Index,
@@ -394,14 +390,18 @@ static async Task<Release> GetOrCreateReleaseAsync(
     }
 }
 
-static async Task DeleteLegacyAssetsBeingReplacedAsync(
+// An internal release holds the patches of one version only, so a rerun replaces every patch
+// asset this run does not reuse: whole patches from older uploader runs and parts whose
+// checksum changed. Parts with the same name are kept and verified by size on upload.
+static async Task DeleteStalePatchAssetsAsync(
     GitHubClient github, string owner, string repo,
-    List<ReleaseAsset> existingAssets, IReadOnlyList<PatchUploadEntry> patches)
+    List<ReleaseAsset> existingAssets, IReadOnlySet<string> plannedAssetNames)
 {
-    var namesToReplace = patches
-        .Select(patch => Path.GetFileName(patch.File))
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    foreach (var stale in existingAssets.Where(asset => namesToReplace.Contains(asset.Name)).ToList())
+    var staleAssets = existingAssets.Where(asset =>
+        !plannedAssetNames.Contains(asset.Name) &&
+        (asset.Name.EndsWith(".patch", StringComparison.OrdinalIgnoreCase) ||
+         asset.Name.StartsWith("patch-", StringComparison.OrdinalIgnoreCase)));
+    foreach (var stale in staleAssets.ToList())
     {
         await github.Repository.Release.DeleteAsset(owner, repo, stale.Id);
         existingAssets.Remove(stale);
@@ -437,41 +437,6 @@ static async Task<ReleaseAsset> UploadExactAssetAsync(
     existingAssets.Add(asset);
     Console.WriteLine($"Uploaded GitHub asset: {asset.BrowserDownloadUrl}");
     return asset;
-}
-
-static List<ReleasePatch> ApplyRetention(
-    ReleaseManifest feed, List<ReleasePatch> additions, UploadManifest upload, bool publicChannel)
-{
-    var removed = new List<ReleasePatch>();
-    if (publicChannel)
-    {
-        removed.AddRange(feed.Patches.Where(patch => patch.Version == upload.Version));
-        feed.Patches = additions.Concat(feed.Patches.Except(removed)).ToList();
-        if (upload.Channel == "beta")
-        {
-            var retainedVersions = feed.Patches
-                .GroupBy(patch => patch.Version, StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(group => group.Max(patch => patch.ReleasedAt))
-                .Take(Math.Max(1, upload.RetainBetaReleases))
-                .Select(group => group.Key)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var rotated = feed.Patches.Where(patch => !retainedVersions.Contains(patch.Version)).ToList();
-            removed.AddRange(rotated);
-            feed.Patches = feed.Patches.Where(patch => retainedVersions.Contains(patch.Version)).ToList();
-        }
-        return removed;
-    }
-    if (!string.IsNullOrWhiteSpace(upload.Label))
-    {
-        var stale = feed.Patches.Where(patch => patch.Label == upload.Label).ToList();
-        removed.AddRange(stale);
-        feed.Patches = additions.Concat(feed.Patches.Except(stale)).ToList();
-    }
-    else
-    {
-        feed.Patches = additions.Concat(feed.Patches).ToList();
-    }
-    return removed;
 }
 
 static async Task VerifyReconstructionAsync(PackagedPatch packaged)
@@ -579,10 +544,10 @@ static async Task UpdateSwinfoVersionAsync(
         $"with commit {result.Commit.Sha}.");
 }
 
-static string? TryGetR2ObjectKey(string publicBaseUrl, string url)
+static string? TryGetR2ObjectKey(string publicBaseUrl, string? url)
 {
     string prefix = publicBaseUrl.TrimEnd('/') + "/";
-    return url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+    return url is not null && url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
         ? Uri.UnescapeDataString(url[prefix.Length..])
         : null;
 }

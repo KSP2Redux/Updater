@@ -65,8 +65,10 @@ public static class ReleaseManifestValidator
                 throw new InvalidDataException($"Patch {patch.Version} chunk {index} has an invalid size.");
             if (!IsSha256(chunk.ChecksumSha256))
                 throw new InvalidDataException($"Patch {patch.Version} chunk {index} has an invalid SHA-256 checksum.");
-            if (!IsHttpUrl(chunk.R2Url) || !IsHttpUrl(chunk.GitHubUrl))
-                throw new InvalidDataException($"Patch {patch.Version} chunk {index} does not have both download URLs.");
+            if (!IsHttpUrl(chunk.GitHubUrl))
+                throw new InvalidDataException($"Patch {patch.Version} chunk {index} does not have a GitHub download URL.");
+            if (chunk.R2Url is not null && !IsHttpUrl(chunk.R2Url))
+                throw new InvalidDataException($"Patch {patch.Version} chunk {index} has an invalid R2 download URL.");
 
             checked
             {

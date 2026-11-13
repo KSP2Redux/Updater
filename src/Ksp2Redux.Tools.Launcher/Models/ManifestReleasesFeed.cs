@@ -165,6 +165,7 @@ public class ManifestReleasesFeed(
         if (!patchesByOutput.ContainsKey(targetVersion))
             return new InstallPlan();
 
+        var visiting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (GetPlan(startVersion, targetVersion, new InstallPlan()) is {} result)
         {
             return result;
@@ -173,6 +174,22 @@ public class ManifestReleasesFeed(
         return new InstallPlan();
 
         InstallPlan? GetPlan(string from, string to, InstallPlan initialPlan)
+        {
+            // A malformed delta must not prevent trying the other routes, including a full patch.
+            if (!visiting.Add(to))
+                return null;
+
+            try
+            {
+                return FindPlan(from, to, initialPlan);
+            }
+            finally
+            {
+                visiting.Remove(to);
+            }
+        }
+
+        InstallPlan? FindPlan(string from, string to, InstallPlan initialPlan)
         {
             InstallPlan? bestPlan = null;
 

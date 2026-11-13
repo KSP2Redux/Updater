@@ -26,10 +26,11 @@ public sealed record ReleasePatchChunk
     public required string ChecksumSha256 { get; init; }
 
     /// <summary>
-    /// Gets the Cloudflare R2 download URL.
+    /// Gets the Cloudflare R2 download URL, or null when the feed has no R2 copy, as on the internal channel.
     /// </summary>
     [JsonPropertyName("r2")]
-    public required string R2Url { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? R2Url { get; init; }
 
     /// <summary>
     /// Gets the GitHub backup download URL.

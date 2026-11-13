@@ -127,11 +127,15 @@ public sealed class PatchDownloadService(
         string chunkDirectory = fileSystem.Path.Combine(request.StorageDirectory, "chunks", patchHash);
         fileSystem.Directory.CreateDirectory(chunkDirectory);
         var chunks = request.Patch.Chunks.OrderBy(chunk => chunk.Index).ToList();
+        // A patch without an R2 copy downloads from GitHub whatever the selected source,
+        // and a failure there has no other mirror to offer.
+        bool hasR2Copy = chunks.All(chunk => chunk.R2Url is not null);
+        var chunkSource = hasR2Copy ? selectedSource : PatchDownloadSource.GitHub;
         var chunkTasks = chunks.Select(chunk =>
         {
             string chunkHash = chunk.ChecksumSha256.ToUpperInvariant();
             string chunkPath = fileSystem.Path.Combine(chunkDirectory, $"{chunk.Index:D4}-{chunkHash}.bin");
-            string url = selectedSource == PatchDownloadSource.R2 ? chunk.R2Url : chunk.GitHubUrl;
+            string url = chunkSource == PatchDownloadSource.R2 ? chunk.R2Url! : chunk.GitHubUrl;
             return DownloadVerifiedFileAsync(
                 request.Feed,
                 url,
@@ -139,15 +143,15 @@ public sealed class PatchDownloadService(
                 chunk.Size,
                 chunkHash,
                 $"{patchHash}:{chunk.Index}",
-                selectedSource,
-                true,
+                chunkSource,
+                hasR2Copy,
                 transferLimit,
                 stagingSpace,
                 aggregate,
                 ct);
         }).ToList();
 
-        log(Loc.Message("Download.Parts", chunks.Count, request.Patch.Version, selectedSource));
+        log(Loc.Message("Download.Parts", chunks.Count, request.Patch.Version, chunkSource));
         await Task.WhenAll(chunkTasks);
 
         string temporaryPatchPath = completedPatchPath + ".tmp";
