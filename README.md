@@ -78,7 +78,7 @@ stable, and `completion pwsh|bash` prints a shell completion script.
 
 ## Development
 
-Requires the .NET 10 SDK (pinned in `global.json`).
+Requires the .NET 11 SDK (pinned in `global.json`).
 
 ```sh
 dotnet build          # build everything
