@@ -320,6 +320,7 @@ public class DownloadTest
         Console.WriteLine();
         
         installButton.Focus();
+        window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
         window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
         
