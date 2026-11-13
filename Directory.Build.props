@@ -16,6 +16,12 @@
         <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
+    <!-- BundleConversion targets netstandard2.1 and is also compiled by Unity, which has neither. -->
+    <PropertyGroup Condition="'$(MSBuildProjectName)' != 'Ksp2Redux.Tools.BundleConversion'">
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <Features>$(Features);runtime-async=on</Features>
+    </PropertyGroup>
+
     <!-- ImageSharp only decodes the CLI's embedded logo. Exclude its existing advisories while
          keeping audits enabled for other packages and newly reported vulnerabilities.
          GHSA-v76p-62qx-wwq2 (tiled fax TIFF) is fixed in 3.2.0, but 3.2.0 fails every Release build

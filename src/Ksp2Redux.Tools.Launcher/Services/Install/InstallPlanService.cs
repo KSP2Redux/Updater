@@ -238,7 +238,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 {
                     throw;
                 }
-                RollbackOrRethrow(install, log, ex);
+                await RollbackOrRethrowAsync(install, log, ex);
             }
             stepsProgress(++i, installPlan.Steps.Count);
             if (i < installPlan.Steps.Count)
@@ -249,7 +249,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 }
                 catch (OperationCanceledException ex) when (mutationStarted)
                 {
-                    RollbackOrRethrow(install, log, ex);
+                    await RollbackOrRethrowAsync(install, log, ex);
                 }
             }
         }
@@ -262,11 +262,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             // that from players. So a failed or cancelled conversion rolls the install back like a failed patch.
             try
             {
-                await Task.Run(() => bundleConversionService.Convert(install, log, ct), ct);
+                await Task.Run(() => bundleConversionService.ConvertAsync(install, log, ct), ct);
             }
             catch (Exception ex)
             {
-                RollbackOrRethrow(install, log, ex);
+                await RollbackOrRethrowAsync(install, log, ex);
             }
         }
     }
@@ -278,11 +278,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             return;
         }
 
-        await Task.Run(() => bundleConversionService.Revert(install, log, ct), ct);
+        await Task.Run(() => bundleConversionService.RevertAsync(install, log, ct), ct);
     }
 
     // Runs during a rollback, which may follow a cancellation, so it does not take the plan's token.
-    private void TryRevertBundleConversion(string install, Action<LogMessage> log)
+    private async Task TryRevertBundleConversionAsync(string install, Action<LogMessage> log)
     {
         if (bundleConversionService is null)
         {
@@ -291,7 +291,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
         try
         {
-            bundleConversionService.Revert(install, log, CancellationToken.None);
+            await bundleConversionService.RevertAsync(install, log, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -308,7 +308,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     /// If there is no snapshot to restore (nothing has been written to the install dir yet), rethrows the
     /// original exception unchanged.
     /// </summary>
-    private void RollbackOrRethrow(string install, Action<LogMessage> log, Exception original)
+    private async Task RollbackOrRethrowAsync(string install, Action<LogMessage> log, Exception original)
     {
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
         {
@@ -321,7 +321,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         // The snapshot is a stock install, and the restore leaves the bundles in StreamingAssets as they are.
         // Converted bundles draw magenta in stock and in Redux builds from before the URP port, so the
         // conversion is undone too. The next install converts again if its build needs it.
-        TryRevertBundleConversion(install, log);
+        await TryRevertBundleConversionAsync(install, log);
 
         Exception? rollbackFailure = null;
         try

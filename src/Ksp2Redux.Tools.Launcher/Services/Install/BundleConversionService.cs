@@ -18,7 +18,7 @@ public interface IBundleConversionService
     /// <param name="log">Receives progress and summary lines.</param>
     /// <param name="ct">Cancels the conversion between bundles.</param>
     /// <exception cref="IOException">A bundle could not be converted, after the others were.</exception>
-    void Convert(string install, Action<LogMessage> log, CancellationToken ct);
+    Task ConvertAsync(string install, Action<LogMessage> log, CancellationToken ct);
 
     /// <summary>
     /// Puts every converted bundle back to stock from the conversion journal, if the install has one.
@@ -27,7 +27,7 @@ public interface IBundleConversionService
     /// <param name="log">Receives progress and summary lines.</param>
     /// <param name="ct">Cancels the revert between bundles.</param>
     /// <exception cref="IOException">A bundle could not be put back, after the others were. The journal keeps it.</exception>
-    void Revert(string install, Action<LogMessage> log, CancellationToken ct);
+    Task RevertAsync(string install, Action<LogMessage> log, CancellationToken ct);
 }
 
 /// <inheritdoc />
@@ -45,13 +45,13 @@ public class BundleConversionService(
     public const string SHADER_MANIFEST = "Redux/ShaderBundles/StandaloneWindows64/manifest.json";
 
     /// <inheritdoc />
-    public void Convert(string install, Action<LogMessage> log, CancellationToken ct)
+    public async Task ConvertAsync(string install, Action<LogMessage> log, CancellationToken ct)
     {
         var manifestPath = fileSystem.Path.Combine(install, SHADER_MANIFEST);
         if (!fileSystem.File.Exists(manifestPath))
         {
             log(Loc.Message("Bundles.NoShaderBundles"));
-            Revert(install, log, ct);
+            await RevertAsync(install, log, ct);
             return;
         }
 
@@ -74,7 +74,7 @@ public class BundleConversionService(
         // revert, where the edits start to matter, tries again and stops if it cannot.
         try
         {
-            RestoreFromSteam(install, unrecorded, log, ct);
+            await RestoreFromSteamAsync(install, unrecorded, log, ct);
         }
         catch (IOException e)
         {
@@ -92,7 +92,7 @@ public class BundleConversionService(
     }
 
     /// <inheritdoc />
-    public void Revert(string install, Action<LogMessage> log, CancellationToken ct)
+    public async Task RevertAsync(string install, Action<LogMessage> log, CancellationToken ct)
     {
         var converter = new BundleConverter(fileSystem, install, new BundleConversionOptions { Progress = ConverterProgress(log) });
         var result = RevertJournal(converter, log, ct);
@@ -108,7 +108,7 @@ public class BundleConversionService(
             return;
         }
 
-        RestoreFromSteam(install, broken, log, ct);
+        await RestoreFromSteamAsync(install, broken, log, ct);
         if (result.Unreverted.Count == 0)
         {
             return;
@@ -179,7 +179,7 @@ public class BundleConversionService(
     }
 
     // Steam's copies are the only stock bytes there are for an edit nobody recorded.
-    private void RestoreFromSteam(string install, IReadOnlyList<string> bundles, Action<LogMessage> log, CancellationToken ct)
+    private async Task RestoreFromSteamAsync(string install, IReadOnlyList<string> bundles, Action<LogMessage> log, CancellationToken ct)
     {
         log(Loc.Message("Bundles.Unrecorded", bundles.Count, string.Join(", ", bundles)));
         var help = Loc.Message("Bundles.SteamHelp");
@@ -188,7 +188,7 @@ public class BundleConversionService(
             throw Loc.Message("Bundles.NeedSteamCopies", bundles.Count, help).ToException(message => new IOException(message));
         }
 
-        if (!steamSession.IsSignedIn && !steamSession.TryResumeAsync(ct).GetAwaiter().GetResult())
+        if (!steamSession.IsSignedIn && !await steamSession.TryResumeAsync(ct))
         {
             throw Loc.Message("Bundles.SteamLoginRejected", bundles.Count, help).ToException(message => new IOException(message));
         }
@@ -196,12 +196,12 @@ public class BundleConversionService(
         log(Loc.Message("Bundles.DownloadingFromSteam"));
         try
         {
-            steamDownloader.RestoreFilesAsync(
+            await steamDownloader.RestoreFilesAsync(
                 SteamDepotDownloader.KSP2_APP_ID,
                 install,
                 [.. bundles.Select(file => BundleConversionLayout.BUNDLE_ROOT + "/" + file)],
                 new Progress<SteamDownloadProgress>(),
-                ct).GetAwaiter().GetResult();
+                ct);
         }
         catch (Exception e) when (e is SteamSignInException or InvalidDataException)
         {
