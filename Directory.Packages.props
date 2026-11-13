@@ -36,7 +36,7 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="6.3.0" />
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <PackageVersion Include="QRCoder" Version="1.8.0" />
-    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
     <!-- Only the netstandard2.1 BundleConversion library needs this package; net10.0 projects get it from the framework. -->
     <PackageVersion Include="System.Text.Json" Version="10.0.7" />
     <!-- Spectre.Console.Cli has no 0.57 release, so it resolves against the newer renderer. The CLI
