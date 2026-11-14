@@ -2,6 +2,7 @@
 using System.Text;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -10,7 +11,7 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class LogsCommand : ReduxCommand<LogsSettings>
 {
-    private const string LOG_PATTERN = "launcher-*.log";
+    private const string LOG_PATTERN = $"{LogService.LAUNCHER_LOG_PREFIX}*.log";
     private const int POLL_MILLISECONDS = 500;
 
     /// <inheritdoc />
