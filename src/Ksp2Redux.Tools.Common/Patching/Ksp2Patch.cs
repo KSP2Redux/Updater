@@ -229,6 +229,7 @@ public class Ksp2Patch : IDisposable
 
             foreach (var dir in originalDir.GetDirectories())
             {
+                if (FileInformation.IgnoreDirectories(_fileSystem).Contains(_fileSystem.Path.Combine(prefix, dir.Name))) continue;
                 if (!_fileSystem.Directory.Exists(_fileSystem.Path.Combine(patchDirectory, dir.Name)))
                 {
                     _manifest.Operations.Add(new PatchOperation
