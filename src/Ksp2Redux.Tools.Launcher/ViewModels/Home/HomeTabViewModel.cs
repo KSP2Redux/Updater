@@ -653,6 +653,13 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
                     .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
+                if (plan.Steps.Count == 0)
+                {
+                    LogError(_localization.Message("Home.Log.NoRoute", SelectedVersion.Version));
+                    Log(_localization.Message("Home.Log.NothingChanged"));
+                    return;
+                }
+
                 try
                 {
                     await RunPlanOnInstall(plan, ksp2);
