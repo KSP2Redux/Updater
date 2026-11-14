@@ -766,11 +766,12 @@ public partial class HomeTabViewModel : ViewModelBase
         
         _ksp2InstallService.TryLoadKsp2Install();
         var ksp2 = _ksp2InstallService.Ksp2;
-        if (ksp2 is null || SelectedVersion is null)
+        if (ksp2 is null)
         {
+            IsProgressVisible = false;
             return;
         }
-        
+
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
         MainButtonTooltip = null;
