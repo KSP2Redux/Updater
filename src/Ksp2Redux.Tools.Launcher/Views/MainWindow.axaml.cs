@@ -71,10 +71,22 @@ public partial class MainWindow : Window
 
     private bool ParallaxEnabled => _motionSource?.ParallaxMotion ?? true;
 
+    /// <summary>
+    /// Whether interface animations may run at all. Headless tests turn this off: their clock does
+    /// not advance animations, so a transition there would never finish.
+    /// </summary>
+    internal static bool AnimationsSupported { get; set; } = true;
+
     private void OnMotionSettingChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsTabViewModel.ParallaxMotion) && !ParallaxEnabled) SetParallaxTarget(default);
+        if (e.PropertyName != nameof(SettingsTabViewModel.ParallaxMotion)) return;
+        if (!ParallaxEnabled) SetParallaxTarget(default);
+        UpdateMotion();
     }
+
+    // Avalonia does not expose the system's reduce-motion preference, so the Motion setting is the one
+    // switch. Every interface animation is styled under Window.motion and goes when it is off.
+    private void UpdateMotion() => Classes.Set("motion", AnimationsSupported && ParallaxEnabled);
 
     private void OnParallaxPointerMoved(object? sender, PointerEventArgs e)
     {
@@ -147,6 +159,7 @@ public partial class MainWindow : Window
         if (_motionSource is not null) _motionSource.PropertyChanged -= OnMotionSettingChanged;
         _motionSource = (DataContext as MainWindowViewModel)?.SettingsTab;
         if (_motionSource is not null) _motionSource.PropertyChanged += OnMotionSettingChanged;
+        UpdateMotion();
     }
 
     private void OnGameLaunched(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>

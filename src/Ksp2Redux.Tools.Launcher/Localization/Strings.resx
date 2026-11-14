@@ -405,11 +405,11 @@ https://ksp2redux.org</value>
     <comment>Tooltip of the Verbose logging check box.</comment>
   </data>
   <data name="Settings.BackgroundMotion" xml:space="preserve">
-    <value>Background motion</value>
+    <value>Motion</value>
     <comment>Label of a check box.</comment>
   </data>
   <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
-    <value>Shift the background slightly as the mouse moves. Turn this off if the motion is distracting or uncomfortable.</value>
+    <value>Shift the background slightly as the mouse moves, and animate the interface. Turn this off if the motion is distracting or uncomfortable.</value>
     <comment>Tooltip of the Background motion check box.</comment>
   </data>
   <data name="Settings.LauncherVersion" xml:space="preserve">

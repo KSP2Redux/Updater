@@ -32,15 +32,16 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
     <!-- Material 3 motion: state changes ease in over a short duration instead of
-         switching instantly. 0.2,0,0,1 is the standard easing curve. -->
-    <Style Selector="Button.tonal /template/ ContentPresenter#PART_ContentPresenter, Button.danger /template/ ContentPresenter#PART_ContentPresenter">
+         switching instantly. 0.2,0,0,1 is the standard easing curve. Every animation sits
+         under :is(Window).motion, which the Motion setting turns off. -->
+    <Style Selector=":is(Window).motion Button.tonal /template/ ContentPresenter#PART_ContentPresenter, :is(Window).motion Button.danger /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="ContentPresenter.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
             </Transitions>
         </Setter>
     </Style>
-    <Style Selector="TabItem /template/ Border#PART_LayoutRoot">
+    <Style Selector=":is(Window).motion TabItem /template/ Border#PART_LayoutRoot">
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Border.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
