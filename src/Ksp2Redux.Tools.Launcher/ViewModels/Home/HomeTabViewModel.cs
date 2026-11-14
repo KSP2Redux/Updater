@@ -1043,6 +1043,7 @@ public partial class HomeTabViewModel : ViewModelBase
     public void DisableInstallation()
     {
         InstallationDisabled = true;
+        UpdateMainButtonState();
     }
 
     public async Task UpdateLauncher()
