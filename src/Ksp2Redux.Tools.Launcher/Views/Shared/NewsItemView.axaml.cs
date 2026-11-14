@@ -1,4 +1,5 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Ksp2Redux.Tools.Launcher.ViewModels;
@@ -17,7 +18,7 @@ public partial class NewsItemView : UserControl
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
-    private void NewsPanel_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void NewsRow_OnClick(object? sender, RoutedEventArgs e)
     {
         if (TopLevel.GetTopLevel(this) is not MainWindow { DataContext: MainWindowViewModel mainWindowViewModel } mainWindow)
             return;
