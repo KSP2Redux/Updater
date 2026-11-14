@@ -8,7 +8,9 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Common.Models;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +34,8 @@ public class ScreenshotTest
     [TestCase("home-installing")]
     [TestCase("home-installing-measuring")]
     [TestCase("home-installing@min")]
+    [TestCase("home-installed")]
+    [TestCase("home-failed")]
     [TestCase("community")]
     [TestCase("settings")]
     [TestCase("settings@min")]
@@ -56,12 +60,33 @@ public class ScreenshotTest
                 var home = viewModel.HomeTab;
                 home.IsInstallLogVisible = true;
                 home.IsProgressVisible = true;
-                home.InstallLogText = "Creating an install plan\nDownloading 3 patches (2.1 GB)\nVerifying patch 1 of 3";
+                home.Log(LogMessage.Literal("Creating an install plan"));
+                home.Log(LogMessage.Literal("Downloading 3 patches (2.1 GB)"));
+                home.Log(LogMessage.Literal("Verifying patch 1 of 3"));
                 home.DownloadProgressTotalMb = 2150;
                 home.DownloadProgressMb = 830;
                 home.InstallProgressTotalSteps = 4;
                 home.InstallProgressSteps = 1;
                 home.DownloadRateText = scenario == "home-installing" ? "12.3 MB/s · about 2 min left" : null;
+                break;
+            case "home-installed":
+            case "home-failed":
+                var done = viewModel.HomeTab;
+                done.IsInstallLogVisible = true;
+                done.Log(LogMessage.Literal("Creating an install plan"));
+                done.Log(LogMessage.Literal("Downloading 3 patches (2.1 GB)"));
+                done.Log(LogMessage.Literal("Applying patch 1 of 3"));
+                if (scenario == "home-installed")
+                {
+                    done.Log(LogMessage.Literal("Applying patch 2 of 3"));
+                    done.Log(LogMessage.Literal("Applying patch 3 of 3"));
+                    done.LogOutcome(LogMessage.Literal("KSP2 Redux Successfully Installed"), InstallLogKind.Success);
+                }
+                else
+                {
+                    done.LogError(LogMessage.Literal("Patch 1 failed: the archive is damaged. Your install was rolled back."));
+                    done.LogOutcome(LogMessage.Literal("Nothing was changed."), InstallLogKind.Notice);
+                }
                 break;
             case "community":
                 viewModel.CommunityTab.SetSelectedNewsId("https://ksp2redux.org/news/0-6-4");

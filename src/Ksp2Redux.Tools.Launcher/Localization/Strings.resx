@@ -171,6 +171,14 @@ https://ksp2redux.org</value>
     <comment>Line under the heading on the Mods tab. The ":3" is a smiley.</comment>
   </data>
   <!-- Home tab -->
+  <data name="Home.InstallLog.Copy" xml:space="preserve">
+    <value>Copy</value>
+    <comment>Small button beside the install log heading that copies the whole log.</comment>
+  </data>
+  <data name="Home.InstallLog.Copy.Tooltip" xml:space="preserve">
+    <value>Copy the whole log. To copy some lines, select them and press Ctrl+C.</value>
+    <comment>Tooltip on the install log's Copy button. On macOS the shortcut is Cmd+C.</comment>
+  </data>
   <data name="Home.InstallLog.Title" xml:space="preserve">
     <value>INSTALL LOG</value>
     <comment>Small heading over the install log on the Home tab, written in capitals like the Settings section headings.</comment>
