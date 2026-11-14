@@ -64,6 +64,7 @@ public class ScreenshotTest
                 home.DownloadRateText = scenario == "home-installing" ? "12.3 MB/s · about 2 min left" : null;
                 break;
             case "community":
+                viewModel.CommunityTab.SetSelectedNewsId("https://ksp2redux.org/news/0-6-4");
                 viewModel.CurrentTab = COMMUNITY;
                 break;
             case "settings":
@@ -114,8 +115,8 @@ public class ScreenshotTest
         {
             Items =
             [
-                new FeedItem { Title = "Redux 0.6.4 is out", Description = "<p>Faster loading, the new launcher and a pile of fixes.</p>", PublishingDate = new DateTime(2026, 11, 14) },
-                new FeedItem { Title = "Community spotlight: Duna landings", Description = "<p>Our favourite landings from the last month.</p>", PublishingDate = new DateTime(2026, 11, 2) },
+                new FeedItem { Link = "https://ksp2redux.org/news/0-6-4", Title = "Redux 0.6.4 is out", Content = "<h2>What is new</h2><p>Faster loading, the new launcher and a pile of fixes. This release brings the .NET 11 launcher, save backups before every install, and a download speed readout while patches download.</p><p>Read the full notes on the <a href=\"https://ksp2redux.org\">website</a>.</p>", PublishingDate = new DateTime(2026, 11, 14) },
+                new FeedItem { Link = "https://ksp2redux.org/news/duna", Title = "Community spotlight: Duna landings", Content = "<p>Our favourite landings from the last month.</p>", PublishingDate = new DateTime(2026, 11, 2) },
             ]
         });
         TestHelpers.MockMessageBoxAcceptAll();
