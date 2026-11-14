@@ -1018,6 +1018,10 @@ softwareupdate --install-rosetta --agree-to-license</value>
     <value>KSP2 Redux Successfully Installed</value>
     <comment>Last line in the install log after a successful install or update.</comment>
   </data>
+  <data name="Home.Log.NoRoute" xml:space="preserve">
+    <value>No route from the installed version to {0}.</value>
+    <comment>Line in the install log when no chain of patches leads to the chosen version. {0} = the chosen version.</comment>
+  </data>
   <data name="Home.Log.Cancelled" xml:space="preserve">
     <value>Installation cancelled</value>
     <comment>Line in the install log after the player cancelled.</comment>

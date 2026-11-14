@@ -97,6 +97,8 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
+
+    public bool IsOperationRunning => _cancelCurrentOperation is not null;
     private CancellationTokenSource? _gameSession;
     private bool _stoppingGame;
 
@@ -458,6 +460,11 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void UpdateMainButtonState()
     {
+        if (_cancelCurrentOperation is not null)
+        {
+            return;
+        }
+
         if (_gameSession is not null)
         {
             MainButtonShown = MainButtonState.Cancel;
@@ -653,6 +660,13 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
                     .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
+                if (plan.Steps.Count == 0)
+                {
+                    LogError(_localization.Message("Home.Log.NoRoute", SelectedVersion.Version));
+                    Log(_localization.Message("Home.Log.NothingChanged"));
+                    return;
+                }
+
                 try
                 {
                     await RunPlanOnInstall(plan, ksp2);

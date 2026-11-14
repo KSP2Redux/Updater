@@ -6,16 +6,16 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="AssetsTools.NET" Version="3.0.5" />
-    <PackageVersion Include="Avalonia" Version="12.1.3" />
-    <PackageVersion Include="Avalonia.Desktop" Version="12.1.3" />
-    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.3" />
-    <PackageVersion Include="Avalonia.Headless.NUnit" Version="12.1.3" />
+    <PackageVersion Include="Avalonia" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Headless.NUnit" Version="12.1.6" />
     <PackageVersion Include="Avalonia.HtmlRenderer" Version="12.0.0" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.3" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.1" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.1.0" />
     <PackageVersion Include="BsDiff" Version="1.1.0" />
-    <PackageVersion Include="CodeHollow.FeedReader" Version="1.2.6" />
+    <PackageVersion Include="CodeHollow.FeedReader" Version="2.1.1" />
     <PackageVersion Include="CommandLineParser" Version="2.9.1" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
@@ -23,22 +23,22 @@
     <PackageVersion Include="EnvironmentAbstractions" Version="5.0.0" />
     <PackageVersion Include="EnvironmentAbstractions.BannedApiAnalyzer" Version="5.0.0" />
     <PackageVersion Include="EnvironmentAbstractions.TestHelpers" Version="5.0.0" />
-    <PackageVersion Include="MessageBox.Avalonia" Version="12.0.0" />
+    <PackageVersion Include="MessageBox.Avalonia" Version="12.1.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
     <!-- Keep in sync with the RuntimeHostConfigurationOption value in Ksp2Redux.Tools.Launcher.csproj -->
     <PackageVersion Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageVersion Include="Mono.Cecil" Version="0.11.6" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="NUnit" Version="5.0.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.15.0" />
-    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
     <PackageVersion Include="Octokit" Version="14.0.0" />
-    <PackageVersion Include="QRCoder" Version="1.8.0" />
-    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
-    <!-- Only the netstandard2.1 BundleConversion library needs this package; net10.0 projects get it from the framework. -->
-    <PackageVersion Include="System.Text.Json" Version="10.0.7" />
+    <PackageVersion Include="QRCoder" Version="1.8.1" />
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
+    <!-- Only the netstandard2.1 BundleConversion library needs this package; net11.0 projects get it from the framework. -->
+    <PackageVersion Include="System.Text.Json" Version="11.0.0" />
     <!-- Spectre.Console.Cli has no 0.57 release, so it resolves against the newer renderer. The CLI
              smoke suite covers this pairing; re-run it when either line moves. -->
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
@@ -46,8 +46,8 @@
     <PackageVersion Include="Spectre.Console.ImageSharp" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2" />
     <PackageVersion Include="SteamKit2" Version="3.4.0" />
-    <PackageVersion Include="Testably.Abstractions" Version="10.4.0" />
-    <PackageVersion Include="Testably.Abstractions.Testing" Version="7.1.1" />
-    <PackageVersion Include="Tomlyn" Version="2.10.1" />
+    <PackageVersion Include="Testably.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Testably.Abstractions.Testing" Version="8.0.0" />
+    <PackageVersion Include="Tomlyn" Version="2.11.1" />
   </ItemGroup>
 </Project>

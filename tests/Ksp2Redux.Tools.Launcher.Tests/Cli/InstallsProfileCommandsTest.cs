@@ -166,7 +166,7 @@ public class InstallsProfileCommandsTest
 
         // Assert
         Assert.That(exit, Is.EqualTo(ExitCode.USAGE_ERROR));
-        Assert.That(harness.FileSystem.File.Exists(GAME + @"\KSP2_x64.exe"), Is.True);
+        Assert.That(harness.FileSystem.File.Exists($@"{GAME}\KSP2_x64.exe"), Is.True);
         Assert.That(harness.Installs.Entries.Any(e => e.Id == id), Is.True);
     }
 
@@ -175,14 +175,14 @@ public class InstallsProfileCommandsTest
     {
         // Arrange
         var (harness, id) = WithProfile();
-        harness.FileSystem.Directory.Delete(GAME + @"\KSP2_x64_Data", recursive: true);
+        harness.FileSystem.Directory.Delete($@"{GAME}\KSP2_x64_Data", recursive: true);
 
         // Act
         var exit = await new InstallsDeleteCommand().RunWithContextAsync(harness.Context, new InstallsDeleteSettings { Install = "Testing", AssumeYes = true });
 
         // Assert
         Assert.That(exit, Is.EqualTo(ExitCode.INSTALL_NOT_FOUND));
-        Assert.That(harness.FileSystem.File.Exists(GAME + @"\KSP2_x64.exe"), Is.True);
+        Assert.That(harness.FileSystem.File.Exists($@"{GAME}\KSP2_x64.exe"), Is.True);
         Assert.That(harness.Installs.Entries.Any(e => e.Id == id), Is.True);
     }
 

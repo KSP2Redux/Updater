@@ -25,7 +25,7 @@ public class NewsProviderService(ILocalizationService localization, ILogService 
 
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
     private const string SITE = "https://ksp2redux.org";
-    internal const string ENGLISH_FEED = SITE + "/blog/rss.xml";
+    internal const string ENGLISH_FEED = $"{SITE}/blog/rss.xml";
 
     private readonly Func<string, CancellationToken, Task<Feed>> _readFeed =
         readFeed ?? ((url, token) => FeedReader.ReadAsync(url, token));

@@ -165,7 +165,7 @@ public class ManifestReleasesFeed(
         if (!patchesByOutput.ContainsKey(targetVersion))
             return new InstallPlan();
 
-        var visiting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> visiting = [with(StringComparer.OrdinalIgnoreCase)];
         if (GetPlan(startVersion, targetVersion, new InstallPlan()) is {} result)
         {
             return result;

@@ -6,6 +6,7 @@ using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using static Ksp2Redux.Tools.Launcher.Models.InstallPlan;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
@@ -40,26 +41,13 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         log(Loc.Message("Install.PlanMade", installPlan.Steps.Count));
         for (var i = 0; i < installPlan.Steps.Count; i++)
         {
-            switch (installPlan.Steps[i].Action)
+            log(installPlan.Steps[i] switch
             {
-                case InstallPlanAction.Uninstall:
-                    log(Loc.Message("Install.Step.Uninstall", i + 1));
-                    break;
-                case InstallPlanAction.RevertToStock:
-                    log(Loc.Message("Install.Step.RevertToStock", i + 1));
-                    break;
-                case InstallPlanAction.Prepatch:
-                    log(Loc.Message("Install.Step.Prepatch", i + 1));
-                    break;
-                case InstallPlanAction.ApplyPatchFile:
-                    log(Loc.Message("Install.Step.ApplyPatchFile", i + 1, installPlan.Steps[i].ArgumentDescription));
-                    break;
-                case InstallPlanAction.CopyFrom:
-                    log(LogMessage.Literal($"Step {i + 1}: (This should be impossible rn)"));
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+                UninstallStep => Loc.Message("Install.Step.Uninstall", i + 1),
+                RevertToStockStep => Loc.Message("Install.Step.RevertToStock", i + 1),
+                PrepatchStep => Loc.Message("Install.Step.Prepatch", i + 1),
+                ApplyPatchStep apply => Loc.Message("Install.Step.ApplyPatchFile", i + 1, apply.Description),
+            });
         }
     }
 
@@ -82,11 +70,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
         var requestSteps = installPlan.Steps
-            .Select((step, index) => (step, index))
-            .Where(item => item.step.DownloadRequest is not null)
+            .Select((step, index) => (request: step is ApplyPatchStep { DownloadRequest: { } request } ? request : null, index))
+            .Where(item => item.request is not null)
             .ToList();
         var downloadTasks = patchDownloadService.EnqueueAll(
-            requestSteps.Select(item => item.step.DownloadRequest!).ToList(),
+            requestSteps.Select(item => item.request!).ToList(),
             launcherConfigService.Config.PatchDownloadSource,
             launcherConfigService.Config.MaxConcurrentChunkDownloads,
             log,
@@ -96,15 +84,28 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             .Select((item, index) => (item.index, task: downloadTasks[index]))
             .ToDictionary(item => item.index, item => item.task);
 
+        try
+        {
+            await foreach (var download in Task.WhenEach(downloadTasks))
+            {
+                await download;
+            }
+        }
+        catch
+        {
+            downloadCts.Cancel();
+            throw;
+        }
+
         var i = 0;
         bool mutationStarted = false;
         foreach (var step in installPlan.Steps)
         {
             try
             {
-                switch (step.Action)
+                runStep: switch (step)
                 {
-                case InstallPlanAction.Uninstall:
+                case UninstallStep:
                     log(Loc.Message("Install.Uninstalling"));
                     // The bundle folder is not in the snapshot, and the restore deletes the journal, so undo
                     // the bundle conversion first. A bundle it could not put back would stay converted for good
@@ -113,11 +114,10 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     mutationStarted = true;
                     cacheService.RecursivelyRestoreCache(install);
                     break;
-                case InstallPlanAction.RevertToStock:
+                case RevertToStockStep:
                     // When patching follows, the conversion after it brings the bundles up to the new shader
                     // manifest, and the journal survives the repatch, so only a plain revert undoes it here.
-                    if (!installPlan.Steps.Any(planned =>
-                            planned.Action is InstallPlanAction.Prepatch or InstallPlanAction.ApplyPatchFile))
+                    if (!installPlan.Patches)
                     {
                         await RevertBundleConversion(install, log, ct);
                     }
@@ -133,24 +133,29 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         log(Loc.Message("Install.NoRevertNeeded"));
                     }
                     break;
-                case InstallPlanAction.Prepatch:
+                case PrepatchStep:
                 {
                     log(Loc.Message("Install.ApplyingPrepatch"));
-                    mutationStarted = true;
-                    if (fileSystem.File.Exists(fileSystem.Path.Combine(install, "winhttp.dll")))
+                    var exe = fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
+                    var ksp2Install = new Ksp2Install(fileSystem, moduleDefinitionService, exe);
+                    if (ksp2Install.Distribution == Distribution.Redux)
                     {
-                        log(Loc.Message("Install.DeletingModloader"));
-                        fileSystem.File.Delete(fileSystem.Path.Combine(install, "winhttp.dll"));
+                        throw Loc.Message("Install.Error.PrepatchOnRedux").ToException(message => new Exception(message));
                     }
-                    
+
+                    mutationStarted = true;
                     if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
                         cacheService.RecursivelyCreateCache(install);
                     }
 
+                    if (fileSystem.File.Exists(fileSystem.Path.Combine(install, "winhttp.dll")))
+                    {
+                        log(Loc.Message("Install.DeletingModloader"));
+                        fileSystem.File.Delete(fileSystem.Path.Combine(install, "winhttp.dll"));
+                    }
+
                     var patchFile = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), fileSystem.Path.GetRandomFileName());
-                    var exe = fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
-                    var ksp2Install = new Ksp2Install(fileSystem, moduleDefinitionService, exe);
                     switch (ksp2Install.Distribution)
                     {
                         case Distribution.Portable:
@@ -183,11 +188,9 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             await fstream.FlushAsync();
                             break;
                         }
-                        case Distribution.Redux:
-                            throw Loc.Message("Install.Error.PrepatchOnRedux").ToException(message => new Exception(message));
                         case Distribution.Prepatched:
-                            // Shouldn't happen, but *could*
-                            goto delete_patch;
+                            // Shouldn't happen, but *could*. No patch file was written, so there is nothing to apply.
+                            break runStep;
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
@@ -196,13 +199,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     {
                         await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
                     }
-
-                    delete_patch:
                     fileSystem.File.Delete(patchFile);
                     break;
                 }
 
-                case InstallPlanAction.ApplyPatchFile:
+                case ApplyPatchStep apply:
                 {
                     string patchPath;
                     if (downloadByStep.TryGetValue(i, out var downloadTask))
@@ -211,7 +212,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     }
                     else
                     {
-                        patchPath = await step.Argument!(log, downloadProgress, ct);
+                        patchPath = await apply.ResolvePath!(log, downloadProgress, ct);
                     }
 
                     mutationStarted = true;
@@ -219,7 +220,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     {
                         await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
                     }
-                    if (step.DeleteAfter && fileSystem.File.Exists(patchPath))
+                    if (apply.DeleteAfter && fileSystem.File.Exists(patchPath))
                     {
                         log(Loc.Message("Install.CleaningPatch", patchPath));
                         try { fileSystem.File.Delete(patchPath); }
@@ -227,8 +228,6 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     }
                     break;
                 }
-                default:
-                    throw new ArgumentOutOfRangeException();
                 }
             }
             catch (Exception ex)
@@ -238,7 +237,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 {
                     throw;
                 }
-                RollbackOrRethrow(install, log, ex);
+                await RollbackOrRethrowAsync(install, log, ex);
             }
             stepsProgress(++i, installPlan.Steps.Count);
             if (i < installPlan.Steps.Count)
@@ -249,24 +248,23 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 }
                 catch (OperationCanceledException ex) when (mutationStarted)
                 {
-                    RollbackOrRethrow(install, log, ex);
+                    await RollbackOrRethrowAsync(install, log, ex);
                 }
             }
         }
 
-        bool patched = installPlan.Steps.Any(step =>
-            step.Action is InstallPlanAction.Prepatch or InstallPlanAction.ApplyPatchFile);
+        bool patched = installPlan.Patches;
         if (patched && bundleConversionService is not null)
         {
             // Some bundles converted and others not is a half-finished install, and reporting it as installed hid
             // that from players. So a failed or cancelled conversion rolls the install back like a failed patch.
             try
             {
-                await Task.Run(() => bundleConversionService.Convert(install, log, ct), ct);
+                await Task.Run(() => bundleConversionService.ConvertAsync(install, log, ct), ct);
             }
             catch (Exception ex)
             {
-                RollbackOrRethrow(install, log, ex);
+                await RollbackOrRethrowAsync(install, log, ex);
             }
         }
     }
@@ -278,11 +276,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             return;
         }
 
-        await Task.Run(() => bundleConversionService.Revert(install, log, ct), ct);
+        await Task.Run(() => bundleConversionService.RevertAsync(install, log, ct), ct);
     }
 
     // Runs during a rollback, which may follow a cancellation, so it does not take the plan's token.
-    private void TryRevertBundleConversion(string install, Action<LogMessage> log)
+    private async Task TryRevertBundleConversionAsync(string install, Action<LogMessage> log)
     {
         if (bundleConversionService is null)
         {
@@ -291,7 +289,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
         try
         {
-            bundleConversionService.Revert(install, log, CancellationToken.None);
+            await bundleConversionService.RevertAsync(install, log, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -308,7 +306,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     /// If there is no snapshot to restore (nothing has been written to the install dir yet), rethrows the
     /// original exception unchanged.
     /// </summary>
-    private void RollbackOrRethrow(string install, Action<LogMessage> log, Exception original)
+    private async Task RollbackOrRethrowAsync(string install, Action<LogMessage> log, Exception original)
     {
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
         {
@@ -321,7 +319,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         // The snapshot is a stock install, and the restore leaves the bundles in StreamingAssets as they are.
         // Converted bundles draw magenta in stock and in Redux builds from before the URP port, so the
         // conversion is undone too. The next install converts again if its build needs it.
-        TryRevertBundleConversion(install, log);
+        await TryRevertBundleConversionAsync(install, log);
 
         Exception? rollbackFailure = null;
         try
@@ -351,10 +349,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
     private void EnsureEnoughDiskSpace(InstallPlan installPlan, string install, Action<LogMessage> log)
     {
-        var remotePatches = installPlan.Steps
-            .Where(step => step.DownloadRequest is not null)
-            .Select(step => step.DownloadRequest!)
-            .ToList();
+        var remotePatches = installPlan.DownloadRequests.ToList();
         if (remotePatches.Count > 0)
         {
             long largestPatch = remotePatches.Max(request => request.Patch.Size);
@@ -371,7 +366,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
         // The first prepatch on an install snapshots the whole directory into uninstall.zip alongside it,
         // so that needs to fit on the same drive too.
-        bool needsCacheSnapshot = installPlan.Steps.Any(s => s.Action == InstallPlanAction.Prepatch) &&
+        bool needsCacheSnapshot = installPlan.Steps.Any(step => step is PrepatchStep) &&
                                    !fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip"));
         if (needsCacheSnapshot)
         {
@@ -391,13 +386,13 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         var availableBytes = diskSpaceService.GetAvailableFreeSpace(path);
         if (availableBytes is null)
         {
-            log(Loc.Message(purposeKey + ".Unknown"));
+            log(Loc.Message($"{purposeKey}.Unknown"));
             return;
         }
 
         if (availableBytes < requiredBytes)
         {
-            throw Loc.Message(purposeKey + ".NotEnough", FormatBytes(requiredBytes), FormatBytes(availableBytes.Value))
+            throw Loc.Message($"{purposeKey}.NotEnough", FormatBytes(requiredBytes), FormatBytes(availableBytes.Value))
                 .ToException(message => new InsufficientDiskSpaceException(
                     message, path, requiredBytes, availableBytes.Value));
         }

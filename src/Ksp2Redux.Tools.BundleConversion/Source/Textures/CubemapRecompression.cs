@@ -158,13 +158,13 @@ internal static class CubemapRecompression
         var converted = new byte[stock.Length / 2];
         for (var index = 0; index < converted.Length; index++)
         {
-            var value = HALF_TO_FLOAT[stock[index * 2] | (stock[(index * 2) + 1] << 8)];
+            var value = HALF_TO_FLOAT[stock[index * 2] | (stock[index * 2 + 1] << 8)];
             if (!(value >= -RANGE_TOLERANCE && value <= 1f + RANGE_TOLERANCE))
             {
                 throw new InvalidDataException($"A normal map value of {value} lies outside 0 to 1, which 8 bits cannot hold.");
             }
 
-            converted[index] = (byte)((Math.Max(0f, Math.Min(1f, value)) * 255f) + 0.5f);
+            converted[index] = (byte)(Math.Max(0f, Math.Min(1f, value)) * 255f + 0.5f);
         }
 
         return converted;
@@ -202,7 +202,7 @@ internal static class CubemapRecompression
         return buffer;
     }
 
-    // Every 16-bit float as a 32-bit one. netstandard2.1 has no Half type.
+    // Every 16-bit float as a 32-bit one. netstandard2.1 has no Half type
     private static float[] BuildHalfTable()
     {
         var table = new float[1 << 16];

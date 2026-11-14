@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>Assets\favicon.ico</ApplicationIcon>
@@ -10,7 +10,6 @@
         <SelfContained>true</SelfContained>
         <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-        <LangVersion>preview</LangVersion>
         <AssemblyTitle>KSP2 Redux</AssemblyTitle>
         <Description>Launcher and updater for KSP2 Redux</Description>
         <IsPackable>false</IsPackable>

@@ -96,7 +96,7 @@ public sealed class LogService : ILogService, IDisposable
         try
         {
             var existing = _fileSystem.Directory
-                .EnumerateFiles(logsDir, LogFilePrefix + "*" + LogFileExtension)
+                .EnumerateFiles(logsDir, $"{LogFilePrefix}*{LogFileExtension}")
                 .Select(p => new { Path = p, Info = _fileSystem.FileInfo.New(p) })
                 .OrderByDescending(f => f.Info.LastWriteTimeUtc)
                 .Skip(MaxLogFilesToKeep - 1)

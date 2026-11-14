@@ -21,12 +21,12 @@ public sealed class BundleConversionLayout
     /// <summary>
     /// The converted copy folder relative to the game folder, as the journal records it.
     /// </summary>
-    public const string OUTPUT_ROOT = CONVERSION_ROOT + "/StandaloneWindows64";
+    public const string OUTPUT_ROOT = $"{CONVERSION_ROOT}/StandaloneWindows64";
 
     /// <summary>
     /// The folder of overlay data files relative to the game folder, as the journal records it.
     /// </summary>
-    public const string OVERLAY_ROOT = CONVERSION_ROOT + "/Overlays";
+    public const string OVERLAY_ROOT = $"{CONVERSION_ROOT}/Overlays";
 
     /// <summary>
     /// The journal file name inside the conversion folder.
@@ -113,14 +113,14 @@ public sealed class BundleConversionLayout
     /// </summary>
     /// <param name="file">The bundle file name.</param>
     /// <returns>The relative path with forward slashes.</returns>
-    public static string RelativeOutput(string file) => OUTPUT_ROOT + "/" + file;
+    public static string RelativeOutput(string file) => $"{OUTPUT_ROOT}/{file}";
 
     /// <summary>
     /// Gets the path of a bundle's overlay data file relative to the game folder, as the journal records it.
     /// </summary>
     /// <param name="file">The bundle file name.</param>
     /// <returns>The relative path with forward slashes.</returns>
-    public static string RelativeOverlay(string file) => OVERLAY_ROOT + "/" + file + OVERLAY_EXTENSION;
+    public static string RelativeOverlay(string file) => $"{OVERLAY_ROOT}/{file}{OVERLAY_EXTENSION}";
 
     /// <summary>
     /// Turns a path the journal recorded relative to the game folder, or to the cache folder, into an absolute one.
@@ -137,7 +137,7 @@ public sealed class BundleConversionLayout
         var path = root;
         foreach (var segment in relative.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries))
         {
-            if (segment == "." || segment == "..")
+            if (segment is "." or "..")
             {
                 throw new InvalidDataException($"'{relative}' is not a plain path inside {root}.");
             }

@@ -19,11 +19,11 @@ public class ManifestReleasesFeedPatchPlanTest
 
         Assert.Multiple(() =>
         {
-            Assert.That(plan.Steps.Select(step => step.Action), Is.EqualTo(new[]
+            Assert.That(plan.Steps.Select(step => step.Value?.GetType()), Is.EqualTo(new[]
             {
-                InstallPlanAction.RevertToStock, InstallPlanAction.Prepatch, InstallPlanAction.ApplyPatchFile
+                typeof(InstallPlan.RevertToStockStep), typeof(InstallPlan.PrepatchStep), typeof(InstallPlan.ApplyPatchStep)
             }));
-            Assert.That(plan.Steps.Last().DownloadRequest!.Patch, Is.EqualTo(full));
+            Assert.That(plan.DownloadRequests.Single().Patch, Is.EqualTo(full));
         });
     }
 
@@ -79,9 +79,7 @@ public class ManifestReleasesFeedPatchPlanTest
         });
     }
 
-    private static IEnumerable<ReleasePatch> Downloads(InstallPlan plan) => plan.Steps
-        .Where(step => step.DownloadRequest is not null)
-        .Select(step => step.DownloadRequest!.Patch);
+    private static IEnumerable<ReleasePatch> Downloads(InstallPlan plan) => plan.DownloadRequests.Select(request => request.Patch);
 
     private static GameVersion Version(int build) => new()
     {

@@ -178,17 +178,17 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
         }
 
         [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
-        private static extern int RmStartSession(out uint sessionHandle, int sessionFlags, StringBuilder sessionKey);
+        private static safe extern int RmStartSession(out uint sessionHandle, int sessionFlags, StringBuilder sessionKey);
 
         [DllImport("rstrtmgr.dll")]
-        private static extern int RmEndSession(uint sessionHandle);
+        private static safe extern int RmEndSession(uint sessionHandle);
 
         [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
-        private static extern int RmRegisterResources(uint sessionHandle, uint fileCount, string[] fileNames,
+        private static safe extern int RmRegisterResources(uint sessionHandle, uint fileCount, string[] fileNames,
             uint applicationCount, RmUniqueProcess[]? applications, uint serviceCount, string[]? serviceNames);
 
         [DllImport("rstrtmgr.dll")]
-        private static extern int RmGetList(uint sessionHandle, out uint processInfoNeeded, ref uint processInfoCount,
+        private static safe extern int RmGetList(uint sessionHandle, out uint processInfoNeeded, ref uint processInfoCount,
             [In, Out] RmProcessInfo[]? affectedApps, ref uint rebootReasons);
 
         public static IReadOnlyList<LogMessage> FindProgramsHolding(List<string> files)

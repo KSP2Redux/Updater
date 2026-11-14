@@ -56,11 +56,17 @@ public class LauncherConfigService : ILauncherConfigService
             if (config is null)
             {
                 _log.Warn($"Config file deserialized to null at {configFilePath}. A fresh config will be created.");
+                BackUpUnreadableConfig(fileSystem, configFilePath);
             }
+        }
+        catch (FileNotFoundException)
+        {
+            _log.Info($"No launcher config at {configFilePath} yet. A fresh config will be created.");
         }
         catch (Exception ex)
         {
             _log.Warn($"Could not read or deserialize launcher config at {configFilePath} ({ex.GetType().Name}: {ex.Message}). A fresh config will be created.");
+            BackUpUnreadableConfig(fileSystem, configFilePath);
         }
 
         if (config is null)
@@ -82,6 +88,20 @@ public class LauncherConfigService : ILauncherConfigService
                 _log.Info("Launcher config migrated to the current schema.");
                 Save();
             }
+        }
+    }
+
+    private void BackUpUnreadableConfig(IFileSystem fileSystem, string configFilePath)
+    {
+        var backup = $"{configFilePath}.bak";
+        try
+        {
+            fileSystem.File.Copy(configFilePath, backup, overwrite: true);
+            _log.Warn($"Kept a copy of the unreadable launcher config at {backup}");
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"Could not keep a copy of the unreadable launcher config at {backup} ({ex.GetType().Name}: {ex.Message})");
         }
     }
 
@@ -187,7 +207,9 @@ public class LauncherConfigService : ILauncherConfigService
                 throw new InvalidOperationException($"Could not determine config directory from storage path '{Config.StoragePath}'.");
 
             _fileSystem.Directory.CreateDirectory(directory);
-            _fileSystem.File.WriteAllText(Config.StoragePath, JsonSerializer.Serialize(Config, StorageOptions));
+            var temporary = $"{Config.StoragePath}.tmp";
+            _fileSystem.File.WriteAllText(temporary, JsonSerializer.Serialize(Config, StorageOptions));
+            _fileSystem.File.Move(temporary, Config.StoragePath, overwrite: true);
             _log.Info($"Launcher config saved to {Config.StoragePath}");
             ConfigSaved?.Invoke();
         }
