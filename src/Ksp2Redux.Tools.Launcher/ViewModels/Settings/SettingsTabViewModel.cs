@@ -862,9 +862,16 @@ public partial class SettingsTabViewModel : ViewModelBase
         AppendLogTail(sb, "KSP2 Player.log", gameDataFolder is null ? null : _fileSystem.Path.Combine(gameDataFolder, "Player.log"), 50);
 
         // The report gets pasted into public support threads, and the home folder name is often the player's real name.
+        // Unity and Wine write paths with either separator, so both spellings of the home folder are replaced.
         var home = _environmentProvider.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var report = sb.ToString();
-        return string.IsNullOrEmpty(home) ? report : report.Replace(home, "~", StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(home)) return report;
+        foreach (var spelling in new[] { home, home.Replace('\\', '/'), home.Replace('/', '\\') }.Distinct())
+        {
+            report = report.Replace(spelling, "~", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return report;
     }
 
     private void AppendLogTail(StringBuilder sb, string title, string? path, int lineCount)

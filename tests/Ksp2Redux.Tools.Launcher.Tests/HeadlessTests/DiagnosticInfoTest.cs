@@ -54,7 +54,11 @@ public class DiagnosticInfoTest
         var gameData = @"C:\Users\Jebediah Kerman\AppData\LocalLow\Intercept Games\Kerbal Space Program 2";
         fileSystem.Directory.CreateDirectory(gameData);
         using var game = fileSystem.FileStream.New(fileSystem.Path.Combine(gameData, "Player.log"), FileMode.Create, FileAccess.Write, FileShare.Read);
-        using (var writer = new StreamWriter(game, leaveOpen: true)) writer.WriteLine("NullReferenceException in the flight scene");
+        using (var writer = new StreamWriter(game, leaveOpen: true))
+        {
+            writer.WriteLine("NullReferenceException in the flight scene");
+            writer.WriteLine("Loading C:/Users/Jebediah Kerman/AppData/LocalLow/Intercept Games/Kerbal Space Program 2/Saves/quicksave.json");
+        }
 
         var settingsTabViewModel = TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>();
 
