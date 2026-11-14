@@ -72,13 +72,15 @@
 	                     Text="{Binding InstallLogText}" />
 
 				<Grid Grid.Row="1" Margin="16,0,16,16"
-	                  ColumnDefinitions="Auto,*" RowDefinitions="*,*"
+	                  ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,*"
 					  IsVisible="{Binding IsProgressVisible}">
 					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0"
 					           Text="{loc:T Home.Progress.Downloaded}" />
 					<ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0"
 								 Value="{Binding DownloadProgressMb}" Maximum="{Binding DownloadProgressTotalMb}"
 	                             ProgressTextFormat="{loc:T Home.Progress.DownloadFormat}" />
+					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="2" Margin="8,0,0,0"
+					           Text="{Binding DownloadRateText}" IsVisible="{Binding DownloadRateText, Converter={x:Static ObjectConverters.IsNotNull}}" />
 					<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0"
 					           Text="{loc:T Home.Progress.Installed}" />
 					<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0"
