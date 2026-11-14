@@ -37,7 +37,7 @@ public interface IKsp2InstallService
     void RenameInstall(Guid id, string newName);
     void SetActiveInstall(Guid id);
     void AutoSwitchToStableIfPending(bool stableHasReleases);
-    void UpdateActiveLastInstalledVersion(GameVersion? version);
+    void UpdateLastInstalledVersion(GameVersion? version);
     void UpdateInstallReleaseChannel(Guid id, string channel);
     void UpdateInstallExePath(Guid id, string newExePath);
     void UpdateInstallDisableGraphicsJobs(Guid id, bool value);
@@ -183,9 +183,9 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (switched) ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateActiveLastInstalledVersion(GameVersion? version)
+    public void UpdateLastInstalledVersion(GameVersion? version)
     {
-        if (ActiveEntry is not { } entry) return;
+        if (TargetEntry is not { } entry) return;
         entry.LastInstalledVersion = version;
         launcherConfigService.Save();
     }

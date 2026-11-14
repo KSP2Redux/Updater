@@ -701,6 +701,7 @@ public partial class HomeTabViewModel : ViewModelBase
                     Log(_localization.Message("Home.Log.Retrying", alternateSource));
                 }
             }
+            RecordInstalledVersion();
             Log(_localization.Message("Home.Log.Installed"));
         }
         catch (OperationCanceledException)
@@ -732,6 +733,12 @@ public partial class HomeTabViewModel : ViewModelBase
             _ksp2InstallService.TryLoadKsp2Install();
             await UpdateVersionsList();
         }
+    }
+
+    private void RecordInstalledVersion()
+    {
+        _ksp2InstallService.TryLoadKsp2Install();
+        _ksp2InstallService.UpdateLastInstalledVersion(_ksp2InstallService.Ksp2?.GameVersion);
     }
 
     private static PatchDownloadException? FindPatchDownloadException(Exception? exception)
@@ -787,6 +794,7 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
+            RecordInstalledVersion();
             Log(_localization.Message("Home.Log.Installed"));
         }
         catch (OperationCanceledException)

@@ -119,6 +119,7 @@ public static class InstallWorkflow
 
         context.InstallService.TryLoadKsp2Install();
         var installed = context.InstallService.Ksp2?.GameVersion;
+        context.InstallService.UpdateLastInstalledVersion(installed);
 
         context.Output.Payload(
             new
