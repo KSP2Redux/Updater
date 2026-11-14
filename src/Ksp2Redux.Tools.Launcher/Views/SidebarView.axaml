@@ -101,6 +101,45 @@
             </Style>
         </Style>
 
+        <!-- Main button motion, all under the Motion setting. The tint eases instead of snapping, a press
+             sinks the LED art slightly, and the Update art glows three times when an update appears and
+             then stops, so nothing keeps the window redrawing while it waits. -->
+        <Style Selector=":is(Window).motion Button.main-button">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="0.2,0,0,1" />
+                </Transitions>
+            </Setter>
+            <Style Selector="^:pressed">
+                <Setter Property="RenderTransform" Value="scale(0.98)" />
+            </Style>
+            <Style Selector="^ Border.main-button-tint">
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
+                    </Transitions>
+                </Setter>
+            </Style>
+        </Style>
+        <Style Selector="Border.main-button-glow">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector=":is(Window).motion Border.main-button-glow[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:1.6" IterationCount="3" Easing="0.4,0,0.6,1">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
         <Style Selector="Button.refresh-button">
             <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
@@ -199,6 +238,11 @@
 
         <Panel Grid.Row="3" DataContext="{Binding HomeTab}">
           <Panel x:DataType="home:HomeTabViewModel">
+            <!-- Behind the Update button rather than inside it: the button clips its content, which cut
+                 the halo off. Glows in the art's own yellow; see the motion styles above. -->
+            <Border Classes="main-button-glow" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}"
+                    Background="#FFD000" BoxShadow="0 0 16 0 #FFD000"
+                    IsVisible="{Binding #UpdateButton.IsVisible}" IsHitTestVisible="False" />
             <Button Classes="main-button" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
                     IsEnabled="{Binding MainButtonEnabled}"
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
