@@ -31,6 +31,22 @@
         <Setter Property="Padding" Value="10,6" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
+    <!-- Material 3 motion: state changes ease in over a short duration instead of
+         switching instantly. 0.2,0,0,1 is the standard easing curve. -->
+    <Style Selector="Button.tonal /template/ ContentPresenter#PART_ContentPresenter, Button.danger /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="ContentPresenter.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="TabItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Border.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
+            </Transitions>
+        </Setter>
+    </Style>
     <Style Selector="Button.tonal">
         <Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
