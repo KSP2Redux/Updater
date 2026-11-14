@@ -84,6 +84,19 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             .Select((item, index) => (item.index, task: downloadTasks[index]))
             .ToDictionary(item => item.index, item => item.task);
 
+        try
+        {
+            await foreach (var download in Task.WhenEach(downloadTasks))
+            {
+                await download;
+            }
+        }
+        catch
+        {
+            downloadCts.Cancel();
+            throw;
+        }
+
         var i = 0;
         bool mutationStarted = false;
         foreach (var step in installPlan.Steps)
