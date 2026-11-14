@@ -230,7 +230,9 @@ public class UpdateService : IUpdateService
             try
             {
                 _log.Info($"Downloading {asset.Name} from {asset.BrowserDownloadUrl}.");
-                var bytes = await _http.GetByteArrayAsync(asset.BrowserDownloadUrl);
+                using var response = await _http.GetAsync(asset.BrowserDownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+                var bytes = await response.Content.ReadAsByteArrayAsync();
                 var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
                 if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))

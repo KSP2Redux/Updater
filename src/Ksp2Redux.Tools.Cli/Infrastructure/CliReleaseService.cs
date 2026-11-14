@@ -114,7 +114,9 @@ public sealed class CliReleaseService
     /// <exception cref="InvalidOperationException">The download did not match its digest.</exception>
     public async Task<byte[]> DownloadAsync(CliRelease release, CancellationToken cancellationToken)
     {
-        var bytes = await _http.GetByteArrayAsync(release.DownloadUrl, cancellationToken);
+        using var response = await _http.GetAsync(release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var actual = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
         if (!string.Equals(actual, release.Sha256, StringComparison.OrdinalIgnoreCase))
