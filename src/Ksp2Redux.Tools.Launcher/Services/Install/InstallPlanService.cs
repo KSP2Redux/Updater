@@ -131,15 +131,15 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     }
 
                     mutationStarted = true;
+                    if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
+                    {
+                        cacheService.RecursivelyCreateCache(install);
+                    }
+
                     if (fileSystem.File.Exists(fileSystem.Path.Combine(install, "winhttp.dll")))
                     {
                         log(Loc.Message("Install.DeletingModloader"));
                         fileSystem.File.Delete(fileSystem.Path.Combine(install, "winhttp.dll"));
-                    }
-
-                    if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
-                    {
-                        cacheService.RecursivelyCreateCache(install);
                     }
 
                     var patchFile = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), fileSystem.Path.GetRandomFileName());
