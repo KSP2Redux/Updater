@@ -107,6 +107,7 @@ public partial class HomeTabViewModel : ViewModelBase
 
     public event EventHandler? GameLaunched;
     public event EventHandler? GameExited;
+    public event EventHandler? FeedsRefreshed;
 
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
@@ -200,6 +201,7 @@ public partial class HomeTabViewModel : ViewModelBase
             if (!succeeded) allSucceeded = false;
         }
         FeedRefreshFailed = !allSucceeded;
+        FeedsRefreshed?.Invoke(this, EventArgs.Empty);
     }
 
     internal async Task<bool> OfferManifestMirrorSwitchAsync(ManifestReleasesFeed feed)

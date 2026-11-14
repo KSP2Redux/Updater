@@ -114,11 +114,8 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 UpdateContentPanelVisible();
             }
-            else if (e.PropertyName == nameof(HomeTabViewModel.FeedRefreshFailed) && !HomeTab.FeedRefreshFailed)
-            {
-                SyncValidChannels();
-            }
         };
+        HomeTab.FeedsRefreshed += (_, _) => SyncValidChannels();
         CommunityTab.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CommunityTabViewModel.NewsVisible))
