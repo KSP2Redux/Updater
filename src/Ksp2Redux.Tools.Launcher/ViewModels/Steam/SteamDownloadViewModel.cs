@@ -96,7 +96,7 @@ public partial class SteamDownloadViewModel : ViewModelBase
             var existing = _installService.Entries.FirstOrDefault(e => string.Equals(e.ExePath, exePath, StringComparison.Ordinal));
             if (existing is null)
             {
-                _installService.AddInstall(exePath, "KSP2 (Steam download)");
+                _installService.SetActiveInstall(_installService.AddInstall(exePath, "KSP2 (Steam download)").Id);
             }
             else
             {

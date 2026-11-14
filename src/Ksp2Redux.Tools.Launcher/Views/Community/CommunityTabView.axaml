@@ -29,7 +29,7 @@
                     </Button>
                 </Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <controls:NewsHtmlPanel Name="Html"
+                    <controls:NewsHtmlPanel Name="Html" LinkClicked="Html_OnLinkClicked"
                                             BaseStylesheet="{x:Static launcher:App.NewsStylesheet}"
                                             Text="{Binding Content}"/>
                 </ScrollViewer>

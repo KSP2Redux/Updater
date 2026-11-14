@@ -1353,10 +1353,6 @@ They may be lost if you close the launcher. Check that {1} is writable and try a
     <value>Could not download a verified patch part from {0}.</value>
     <comment>Error shown when downloading a patch part failed every time. {0} = the download service name.</comment>
   </data>
-  <data name="Download.Complete" xml:space="preserve">
-    <value>Download complete.</value>
-    <comment>Line in the install log after a patch finished downloading.</comment>
-  </data>
   <!-- Bundle conversion -->
   <data name="Bundles.NoShaderBundles" xml:space="preserve">
     <value>This Redux build has no URP shader bundles, so the stock bundles stay unconverted.</value>

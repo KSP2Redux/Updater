@@ -9,6 +9,8 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class LauncherSettingsSetCommand : ReduxCommand<LauncherSettingsSetSettings>
 {
+    protected override bool ChangesConfig => true;
+
     private const int MINIMUM_CHUNKS = 1;
     private const int MAXIMUM_CHUNKS = 8;
 

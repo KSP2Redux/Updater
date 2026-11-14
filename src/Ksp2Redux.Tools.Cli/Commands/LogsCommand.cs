@@ -2,6 +2,7 @@
 using System.Text;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -10,7 +11,7 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class LogsCommand : ReduxCommand<LogsSettings>
 {
-    private const string LOG_PATTERN = "launcher-*.log";
+    private const string LOG_PATTERN = $"{LogService.LAUNCHER_LOG_PREFIX}*.log";
     private const int POLL_MILLISECONDS = 500;
 
     /// <inheritdoc />
@@ -61,16 +62,10 @@ public sealed class LogsCommand : ReduxCommand<LogsSettings>
         return ExitCode.SUCCESS;
     }
 
-    // The command's own run created the newest log file from the LogService constructor, so the
-    // interesting one is the newest file that is not this session's.
     private static IFileInfo? MostRecentLog(CliContext context)
     {
-        var current = context.LogService.CurrentLogFilePath;
-        var directory = current is null
-            ? context.ConfigService.GetLocalStorageDirectory()
-            : context.FileSystem.Path.GetDirectoryName(current);
-
-        if (string.IsNullOrWhiteSpace(directory) || !context.FileSystem.Directory.Exists(directory))
+        var directory = LocalStoragePaths.GetLogsDirectory(context.FileSystem, context.EnvironmentProvider);
+        if (!context.FileSystem.Directory.Exists(directory))
         {
             return null;
         }
@@ -79,7 +74,6 @@ public sealed class LogsCommand : ReduxCommand<LogsSettings>
         {
             return context.FileSystem.Directory
                 .EnumerateFiles(directory, LOG_PATTERN)
-                .Where(path => !string.Equals(path, current, StringComparison.OrdinalIgnoreCase))
                 .Select(context.FileSystem.FileInfo.New)
                 .MaxBy(file => file.LastWriteTimeUtc);
         }

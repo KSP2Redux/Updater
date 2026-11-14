@@ -973,9 +973,6 @@ softwareupdate --install-rosetta --agree-to-license</value>
   <data name="Download.CouldNotDownload" xml:space="preserve">
     <value>无法从{0}下载已验证的补丁部分。</value>
   </data>
-  <data name="Download.Complete" xml:space="preserve">
-    <value>下载完成。</value>
-  </data>
   <data name="Bundles.NoShaderBundles" xml:space="preserve">
     <value>此Redux构建不包含URP着色器包，因此原版包将保持未转换状态。</value>
   </data>
