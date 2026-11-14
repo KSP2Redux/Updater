@@ -668,9 +668,6 @@ Steamアカウントを使用してダウンロードしますか？ 設定タ�
   <data name="Home.Tooltip.NoRuntime" xml:space="preserve">
     <value>Windows互換ランタイムソフトウェアが見つかりません。macOS用のランチャーをダウンロードするか、CrossOverをインストールしてください。</value>
   </data>
-  <data name="Home.Tooltip.LinuxSteam" xml:space="preserve">
-    <value>Linuxで起動するには、設定で「Steamから起動する」を有効にしてください。</value>
-  </data>
   <data name="Home.Tooltip.LauncherUpdate" xml:space="preserve">
     <value>Reduxをインストールまたはアップデートするには、ランチャー自体をアップデートする必要があります。</value>
   </data>

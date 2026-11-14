@@ -7,6 +7,7 @@ using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -63,6 +64,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IWindowPlacementService, WindowPlacementService>();
         serviceCollection.AddSingleton<IProcessRunner, ProcessRunner>();
         serviceCollection.AddSingleton<IWineRuntimeService, WineRuntimeService>();
+        serviceCollection.AddSingleton<IProtonRuntimeService, ProtonRuntimeService>();
         serviceCollection.AddSingleton<IGameProcessService, GameProcessService>();
         serviceCollection.AddSingleton<ISteamLoginStore, SteamLoginStore>();
         serviceCollection.AddSingleton<ISteamSessionService, SteamSessionService>();

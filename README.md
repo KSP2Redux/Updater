@@ -1,6 +1,36 @@
 # KSP2 Redux Updater
 This is the installer, updater and uninstaller application for KSP2 Redux.
 
+## Linux
+
+Use the native Linux launcher (`Ksp2Redux-linux-x64`) to add a game installation, or download your
+own copy with **Download KSP2** and your Steam account. Install Redux, then enable **Launch via
+Proton** for that profile in Settings. **Launch via Steam** remains available for Steam-managed
+installations. Selecting one launch method clears the other.
+
+The Proton option first looks for a suitable installed Steam Proton runtime, including numbered
+stable releases and GE-Proton compatibility tools in other Steam libraries. Steam remains
+responsible for updating those installations. If none is suitable, or preparation fails with the installed
+runtime, it downloads GE-Proton. The launcher uses [umu](https://github.com/Open-Wine-Components/umu-launcher)
+to prepare the required container runtime and start the game without a Steam client. Python 3.10
+or newer, Vulkan drivers, and a system that permits the Steam Linux Runtime's user namespaces are
+required. Initial setup can download several gigabytes. Progress and failures appear in the Home
+tab log. Cancel stops preparation, and launching again retries it.
+
+Runtime discovery checks the x64 `uiautomationcore.dll` export table for
+`UiaDisconnectAllProviders`, which Unity uses during shutdown. A runtime that lacks this API
+can render the game but crash when quitting. Such installations are skipped in favor of a
+compatible installed runtime or managed GE-Proton. The launcher does not modify their DLLs
+or the user's Steam compatibility settings.
+
+The launcher verifies its pinned umu bootstrap before running it. umu verifies Proton and the
+Steam Linux Runtime downloads and maintains its own container data. Existing Steam container
+files and Steam compatibility prefixes are left alone. The launcher stores the managed runtime
+under `~/.local/share/Ksp2Redux/proton-runtime` and the game's Windows environment under
+`~/.local/share/Ksp2Redux/proton-prefix` (or the corresponding XDG data directory). **Open Game
+Data Folder** opens saves, settings and Player.log inside that dedicated prefix when Proton is
+selected. The prefix is shared by launcher profiles, as on macOS.
+
 ## macOS
 
 KSP2 never shipped for the Mac, so the macOS launcher (`Ksp2Redux-macos-arm64.dmg`, Apple Silicon)
@@ -61,6 +91,10 @@ redux-launcher-cli update              # then install Redux into it
 The sign-in is shared with the launcher window. On macOS, `launch` runs the game through the Wine
 runtime inside the launcher app (or CrossOver when that is all there is), in the same prefix the
 launcher uses, so saves are shared too. `kill` stops it.
+
+On Linux, `redux-launcher-cli installs set --proton-launch on` selects the same Proton preparation
+and dedicated prefix as the GUI. `launch` prepares it before starting the game and writes Proton
+and game output to the launcher logs, keeping `--json` output separate.
 
 Everything in the launcher's Settings tab is here too. Each install profile carries its own launch
 settings: `installs show` lists them, `installs set` changes them (including launching through Steam
@@ -137,7 +171,7 @@ command line tool when they wanted the launcher.
 
 Publishing to winget is a separate manual step, see `packaging/winget`.
 
-It is a cross-platform application with releases currently being made for Windows and Linux (untested). Please report any problems with running the application in
+It is a cross-platform application with releases currently being made for Windows and Linux. Please report any problems with running the application in
 [Issues](https://github.com/KSP2Redux/Updater/issues) or in the [KSP2 Redux Discord server](https://discord.gg/ksp2redux).
 
 ## KSP2 Redux

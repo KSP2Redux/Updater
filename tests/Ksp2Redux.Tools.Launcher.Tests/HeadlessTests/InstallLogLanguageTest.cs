@@ -8,6 +8,7 @@ using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using Ksp2Redux.Tools.Launcher.Tests.Localization;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Moq;
@@ -48,7 +49,7 @@ public class InstallLogLanguageTest
         installs.SetupGet(service => service.Entries).Returns([]);
         var viewModel = new HomeTabViewModel(installs.Object, Mock.Of<ILauncherConfigService>(), Mock.Of<IReleasesFeedService>(),
             Mock.Of<IInstallPlanService>(), Mock.Of<IUpdateService>(), Mock.Of<IOperatingSystemService>(), Mock.Of<IMessageBoxService>(),
-            Mock.Of<IEnvironmentProvider>(), new MockFileSystem(), log.Object, Mock.Of<IWineRuntimeService>(),
+            Mock.Of<IEnvironmentProvider>(), new MockFileSystem(), log.Object, Mock.Of<IWineRuntimeService>(), Mock.Of<IProtonRuntimeService>(),
             Mock.Of<IGameProcessService>(), localization);
         var failure = new LogMessage("disk full", "Platte voll").ToException(text => new IOException(text));
 

@@ -3,6 +3,7 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using Moq;
 using Testably.Abstractions.Testing;
 
@@ -11,7 +12,7 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 public class GameDataFolderServiceTest
 {
     private static GameDataFolderService Build(bool isLinux, string userProfile = @"C:\Users\Eivind",
-        bool isMacOS = false, string? macGameDataFolder = null)
+        bool isMacOS = false, string? macGameDataFolder = null, string protonGameDataFolder = "/managed/proton/game-data")
     {
         var fileSystem = new MockFileSystem(o => o.SimulatingOperatingSystem(
             isLinux ? SimulationMode.Linux : SimulationMode.Windows));
@@ -25,8 +26,10 @@ public class GameDataFolderServiceTest
 
         var wineRuntime = new Mock<IWineRuntimeService>();
         wineRuntime.Setup(w => w.GetGameDataFolder()).Returns(macGameDataFolder);
+        var protonRuntime = new Mock<IProtonRuntimeService>();
+        protonRuntime.Setup(p => p.GetGameDataFolder()).Returns(protonGameDataFolder);
 
-        return new GameDataFolderService(fileSystem, environment.Object, operatingSystem.Object, wineRuntime.Object);
+        return new GameDataFolderService(fileSystem, environment.Object, operatingSystem.Object, wineRuntime.Object, protonRuntime.Object);
     }
 
     private static Ksp2InstallEntry Entry(string exePath, string steamAppId = "954850") =>
@@ -131,5 +134,42 @@ public class GameDataFolderServiceTest
 
         // Assert
         Assert.That(folder, Is.EqualTo(prefixFolder));
+    }
+
+    [Test]
+    public void Resolve_ManagedProtonOutsideSteam_UsesItsDedicatedPrefix()
+    {
+        const string managedFolder = "/home/player/.local/share/Ksp2Redux/proton-prefix/drive_c/users/steamuser/AppData/LocalLow/Intercept Games/Kerbal Space Program 2";
+        var service = Build(isLinux: true, protonGameDataFolder: managedFolder);
+        var entry = Entry("/games/KSP2/KSP2_x64.exe");
+        entry.LaunchThroughProton = true;
+
+        string? folder = service.Resolve(entry);
+
+        Assert.That(folder, Is.EqualTo(managedFolder));
+    }
+
+    [Test]
+    public void Resolve_WindowsWithAProtonFlag_KeepsWindowsLocalLow()
+    {
+        var service = Build(isLinux: false);
+        var entry = Entry(@"C:\Games\KSP2\KSP2_x64.exe");
+        entry.LaunchThroughProton = true;
+
+        string? folder = service.Resolve(entry);
+
+        Assert.That(folder, Is.EqualTo(@"C:\Users\Eivind\AppData\LocalLow\Intercept Games\Kerbal Space Program 2"));
+    }
+
+    [Test]
+    public void Resolve_MacWithAProtonFlag_KeepsTheWinePrefix()
+    {
+        var service = Build(isLinux: false, isMacOS: true, macGameDataFolder: "/mac/wine/game-data");
+        var entry = Entry("/games/KSP2/KSP2_x64.exe");
+        entry.LaunchThroughProton = true;
+
+        string? folder = service.Resolve(entry);
+
+        Assert.That(folder, Is.EqualTo("/mac/wine/game-data"));
     }
 }

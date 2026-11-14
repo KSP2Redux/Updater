@@ -16,7 +16,6 @@
         <IsPackable>false</IsPackable>
         <!-- The launcher is a WinExe and brings Avalonia in transitively. This project stays a console
              Exe so stdout, stderr and exit codes behave normally when driven from a script. -->
-        <InvariantGlobalization>true</InvariantGlobalization>
     </PropertyGroup>
 
     <ItemGroup>

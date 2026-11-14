@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
@@ -19,14 +20,15 @@ public interface IGameDataFolderService
 /// Finds the folder Unity gives KSP2 for persistent data: saves, settings, screenshots and Player.log.
 /// </summary>
 // On Windows this is LocalLow, which has no SpecialFolder of its own, so it is built off the user
-// profile. On Linux the game runs under Proton, so the same folder lives inside the Steam prefix
-// beside the install rather than anywhere in the real home directory. On macOS it lives inside the
+// profile. On Linux the game runs under Proton, using either the launcher's dedicated prefix or
+// the Steam prefix beside the install. On macOS it lives inside the
 // Wine prefix or CrossOver bottle the game runs in.
 public class GameDataFolderService(
     IFileSystem fileSystem,
     IEnvironmentProvider environmentProvider,
     IOperatingSystemService operatingSystemService,
-    IWineRuntimeService wineRuntimeService) : IGameDataFolderService
+    IWineRuntimeService wineRuntimeService,
+    IProtonRuntimeService protonRuntimeService) : IGameDataFolderService
 {
     private const string PUBLISHER_FOLDER = "Intercept Games";
     private const string GAME_FOLDER = "Kerbal Space Program 2";
@@ -35,6 +37,8 @@ public class GameDataFolderService(
     public string? Resolve(Ksp2InstallEntry? entry)
     {
         if (operatingSystemService.IsMacOS()) return wineRuntimeService.GetGameDataFolder();
+        if (operatingSystemService.IsLinux() && entry?.LaunchThroughProton == true)
+            return protonRuntimeService.GetGameDataFolder();
         return operatingSystemService.IsLinux() ? ResolveUnderProton(entry) : ResolveOnWindows();
     }
 

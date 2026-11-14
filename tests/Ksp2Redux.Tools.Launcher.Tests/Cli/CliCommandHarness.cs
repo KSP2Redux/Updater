@@ -6,6 +6,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +23,9 @@ internal sealed class CliCommandHarness
 
     private CliContext? _context;
 
-    public CliCommandHarness()
+    public CliCommandHarness(MockFileSystem? fileSystem = null)
     {
+        FileSystem = fileSystem ?? new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         Environment.SetFolderPath(System.Environment.SpecialFolder.LocalApplicationData, STORAGE);
         Environment.SetFolderPath(System.Environment.SpecialFolder.ApplicationData, STORAGE);
         Environment.SetFolderPath(System.Environment.SpecialFolder.UserProfile, HOME);
@@ -32,7 +34,7 @@ internal sealed class CliCommandHarness
         DiskSpace.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
     }
 
-    public MockFileSystem FileSystem { get; } = new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
+    public MockFileSystem FileSystem { get; }
 
     public MockEnvironmentProvider Environment { get; } = new();
 
@@ -43,6 +45,8 @@ internal sealed class CliCommandHarness
     public Mock<ISteamDepotDownloader> Downloader { get; } = new();
 
     public Mock<IWineRuntimeService> Wine { get; } = new();
+
+    public Mock<IProtonRuntimeService> Proton { get; } = new();
 
     public Mock<IDiskSpaceService> DiskSpace { get; } = new();
 
@@ -90,6 +94,7 @@ internal sealed class CliCommandHarness
         services.AddSingleton(OperatingSystem.Object);
         services.AddSingleton(DiskSpace.Object);
         services.AddSingleton(Wine.Object);
+        services.AddSingleton(Proton.Object);
         services.AddSingleton(Steam.Object);
         services.AddSingleton(Downloader.Object);
 

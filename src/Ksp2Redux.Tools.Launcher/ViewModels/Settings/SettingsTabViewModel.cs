@@ -48,12 +48,19 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowSteamLaunchOptions))]
+    [NotifyPropertyChangedFor(nameof(ShowProtonLaunchOptions))]
     public partial bool HasSelectedInstall { get; set; }
 
     /// <summary>False on macOS, where the game always starts through the launcher's Wine runtime.</summary>
     public bool IsSteamLaunchSupported { get; }
 
     public bool ShowSteamLaunchOptions => HasSelectedInstall && IsSteamLaunchSupported;
+
+    /// <summary>Gets whether the platform supports the launcher's managed Proton runtime.</summary>
+    public bool IsProtonLaunchSupported { get; }
+
+    /// <summary>Gets whether the selected install can show the managed Proton option.</summary>
+    public bool ShowProtonLaunchOptions => HasSelectedInstall && IsProtonLaunchSupported;
 
     [ObservableProperty]
     public partial bool CanRemoveSelectedInstall { get; set; }
@@ -201,6 +208,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         _localization = localization;
         _gameUninstallService = gameUninstallService;
         IsSteamLaunchSupported = !operatingSystemService.IsMacOS();
+        IsProtonLaunchSupported = operatingSystemService.IsLinux();
         _steamSession = steamSession;
         _steamDialogs = steamDialogs;
         _steamSession.SignInChanged += (_, _) => Dispatcher.UIThread.Post(SyncSteamStatus);
