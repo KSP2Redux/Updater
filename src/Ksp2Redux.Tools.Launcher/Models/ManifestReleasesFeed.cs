@@ -19,7 +19,9 @@ public class ManifestReleasesFeed(
 
     public Exception? LastUpdateException { get; private set; }
 
-    public string CurrentChannel { get; private set; } = "invalid";
+    public const string INVALID_CHANNEL = "invalid";
+
+    public string CurrentChannel { get; private set; } = INVALID_CHANNEL;
 
     /// <returns>false if the fetch failed, true otherwise. On failure, a previously-loaded manifest
     /// (and CurrentChannel) is left untouched rather than replaced, so callers showing a "using the
@@ -114,10 +116,10 @@ public class ManifestReleasesFeed(
         {
             SchemaVersion = 0,
             Patches = [],
-            Channel = "invalid",
+            Channel = INVALID_CHANNEL,
             GeneratedAt = DateTime.MinValue
         };
-        CurrentChannel = "invalid";
+        CurrentChannel = INVALID_CHANNEL;
     }
 
     public IEnumerable<GameVersion> GetAllVersions()

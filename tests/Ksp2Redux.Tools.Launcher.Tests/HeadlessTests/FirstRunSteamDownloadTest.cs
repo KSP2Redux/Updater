@@ -3,6 +3,8 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
+using Ksp2Redux.Tools.Common.Models;
+using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -23,6 +25,15 @@ public class FirstRunSteamDownloadTest
     {
         TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
         TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .ReturnsAsync((FeedInfo f) => new ReleaseManifest
+            {
+                Channel = f.Filename.Split('-', '.')[1],
+                GeneratedAt = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc),
+                Patches = [],
+                SchemaVersion = 1
+            });
         TestHelpers.MockKsp2StockSteamInstall();
         TestHelpers.MockMessageBoxAcceptAll();
         // Keep the game files but hide them from Steam detection, as on a Mac.

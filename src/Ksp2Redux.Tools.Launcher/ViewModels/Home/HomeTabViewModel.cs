@@ -194,11 +194,11 @@ public partial class HomeTabViewModel : ViewModelBase
     private async Task UpdateAsync()
     {
         var allSucceeded = true;
-        foreach (var feed in _releasesFeedService.ReleasesFeed)
+        foreach (var feed in _releasesFeedService.Feeds)
         {
-            bool succeeded = await feed.Value.UpdateManifest();
+            bool succeeded = await feed.UpdateManifest();
             if (!succeeded &&
-                FindPatchDownloadException(feed.Value.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
+                FindPatchDownloadException(feed.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
                 _launcherConfigService.Config.PatchDownloadSource == downloadFailure.DownloadSource)
             {
                 var alternateSource = downloadFailure.DownloadSource.GetAlternate();
@@ -211,7 +211,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 {
                     _launcherConfigService.Config.PatchDownloadSource = alternateSource;
                     _launcherConfigService.Save();
-                    succeeded = await feed.Value.UpdateManifest();
+                    succeeded = await feed.UpdateManifest();
                 }
             }
             if (!succeeded) allSucceeded = false;

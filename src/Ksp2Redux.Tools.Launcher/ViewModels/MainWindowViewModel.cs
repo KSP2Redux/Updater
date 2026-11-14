@@ -123,6 +123,10 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 UpdateContentPanelVisible();
             }
+            else if (e.PropertyName == nameof(HomeTabViewModel.FeedRefreshFailed) && !HomeTab.FeedRefreshFailed)
+            {
+                SyncValidChannels();
+            }
         };
         CommunityTab.PropertyChanged += (_, e) =>
         {
@@ -277,15 +281,24 @@ public partial class MainWindowViewModel : ViewModelBase
                     }
                 }
                 _log.Info($"Done adding feed: {feed.Repository} / {feed.Filename}, channel={newFeed.CurrentChannel}");
-                _releasesFeedService.AddOrSet(newFeed.CurrentChannel, newFeed);
-                SettingsTab.ValidChannels.Add(newFeed.CurrentChannel);
+                _releasesFeedService.Add(newFeed);
+                HomeTab.FeedRefreshFailed |= !updated;
             }
             catch (Exception e)
             {
                 _log.Error($"Failed to add feed {feed.Repository} / {feed.Filename}.", e);
             }
         }
+        SyncValidChannels();
         SettingsTab.SetLoaded();
+    }
+
+    private void SyncValidChannels()
+    {
+        foreach (var channel in _releasesFeedService.ReleasesFeed.Keys.Where(channel => !SettingsTab.ValidChannels.Contains(channel)))
+        {
+            SettingsTab.ValidChannels.Add(channel);
+        }
     }
 
     private async Task OfferFirstInstallAsync()

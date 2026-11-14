@@ -218,7 +218,7 @@ public sealed class CliContext
                         continue;
                     }
 
-                    FeedService.AddOrSet(manifestFeed.CurrentChannel, manifestFeed);
+                    FeedService.Add(manifestFeed);
                     results.Add(new FeedLoadResult(feed, manifestFeed.CurrentChannel, null));
                 }
                 catch (Exception e)
