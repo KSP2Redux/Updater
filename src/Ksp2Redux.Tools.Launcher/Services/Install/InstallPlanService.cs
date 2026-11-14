@@ -39,6 +39,19 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     // The plan's lines reach the install log from instance and static members alike, so they read the shared service.
     private static ILocalizationService Loc => LocalizationService.Default;
 
+    internal static Stream OpenEmbeddedPrepatch(string distribution)
+    {
+        string resource = distribution switch
+        {
+            "Steam" => STEAM_PREPATCH_NAME,
+            "Epic" => EPIC_PREPATCH_NAME,
+            "Portable" => PORTABLE_PREPATCH_NAME,
+            _ => throw new InvalidDataException("Unsupported original game distribution.")
+        };
+        return typeof(InstallPlanService).Assembly.GetManifestResourceStream(resource)
+            ?? throw new InvalidDataException("The embedded prepatch package is missing.");
+    }
+
     public void Describe(InstallPlan installPlan, Action<LogMessage> log)
     {
         if (installPlan.FullSourceReleaseId is { } selector)

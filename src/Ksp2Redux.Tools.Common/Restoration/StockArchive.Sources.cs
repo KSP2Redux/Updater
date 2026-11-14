@@ -96,6 +96,55 @@ public partial class StockArchive
             open => CreateFromSourcesAsync(candidatePath, expected, open, ct), ct, sources);
     }
 
+    /// <summary>
+    /// Read bounded candidate lengths from an existing backup without granting its entries stock authority.
+    /// </summary>
+    /// <param name="archivePath">The read-only existing backup path.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Untrusted lengths that still require independently expected hashes and complete archive verification.</returns>
+    /// <exception cref="InvalidDataException">Thrown when the ZIP metadata is unsafe or exceeds its bounds.</exception>
+    public IReadOnlyDictionary<string, long> GetCandidateFileLengths(string archivePath, CancellationToken ct = default)
+    {
+        string path = DiskPath(archivePath);
+        ValidateRecoveryPath(path);
+        EnsureSafePath(path, false);
+        using FileSystemStream input = _fileSystem.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (input.Length > _limits.MaxArchiveBytes)
+            throw new InvalidDataException("Existing ZIP exceeds the archive budget.");
+        CheckZipDirectoryBudget(input, null, ct);
+        input.Position = 0;
+        using IZipArchive archive = _zipFileService.NewArchive(input, ZipArchiveMode.Read, true);
+        return ReadRecoveryEntries(archive, ct).Where(pair => !pair.Value.FullName.Replace('\\', '/').EndsWith('/'))
+            .ToDictionary(pair => pair.Key, pair => pair.Value.Length, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private Dictionary<string, IZipArchiveEntry> ReadRecoveryEntries(IZipArchive archive, CancellationToken ct)
+    {
+        var entries = new Dictionary<string, IZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
+        long declaredBytes = 0;
+        foreach (IZipArchiveEntry entry in archive.Entries)
+        {
+            ct.ThrowIfCancellationRequested();
+            string normalized = entry.FullName.Replace('\\', '/');
+            bool directory = normalized.EndsWith('/');
+            string name = directory ? normalized[..^1] : normalized;
+            if (name != StockBaselineManifest.MANIFEST_PATH && StockBaselineManifest.NormalizePath(name) != name)
+                throw new InvalidDataException("Existing ZIP contains a noncanonical path.");
+            int type = (entry.ExternalAttributes >> 16) & 0xF000;
+            if ((entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0 ||
+                (type != 0 && type != (directory ? 0x4000 : 0x8000)) ||
+                (!directory && (entry.ExternalAttributes & (int)FileAttributes.Directory) != 0) ||
+                entry.Length < 0 || entry.Length > _limits.MaxFileBytes || (directory && entry.Length != 0) ||
+                !entries.TryAdd(name, entry))
+                throw new InvalidDataException("Existing ZIP contains a link, alias, duplicate or out-of-budget entry.");
+            if (name != StockBaselineManifest.MANIFEST_PATH)
+                declaredBytes = checked(declaredBytes + entry.Length);
+            if (declaredBytes > _limits.MaxTotalBytes)
+                throw new InvalidDataException("Existing ZIP declared bytes exceed the recovery budget.");
+        }
+        return entries;
+    }
+
     private async Task<StockArchiveSources> WithAvailableSourcesAsync(string archivePath, string currentRoot,
         StockBaselineManifest expected, Func<Func<StockBaselineFile, Stream>, Task>? consume, CancellationToken ct,
         StockArchiveSources? expectedSources)
@@ -121,28 +170,7 @@ public partial class StockArchive
         }
         input.Position = 0;
         using IZipArchive archive = _zipFileService.NewArchive(input, ZipArchiveMode.Read, true);
-        var entries = new Dictionary<string, IZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
-        long declaredBytes = 0;
-        foreach (IZipArchiveEntry entry in archive.Entries)
-        {
-            ct.ThrowIfCancellationRequested();
-            string normalized = entry.FullName.Replace('\\', '/');
-            bool directory = normalized.EndsWith('/');
-            string name = directory ? normalized[..^1] : normalized;
-            if (name != StockBaselineManifest.MANIFEST_PATH && StockBaselineManifest.NormalizePath(name) != name)
-                throw new InvalidDataException("Existing ZIP contains a noncanonical path.");
-            int type = (entry.ExternalAttributes >> 16) & 0xF000;
-            if ((entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0 ||
-                (type != 0 && type != (directory ? 0x4000 : 0x8000)) ||
-                (!directory && (entry.ExternalAttributes & (int)FileAttributes.Directory) != 0) ||
-                entry.Length < 0 || entry.Length > _limits.MaxFileBytes || (directory && entry.Length != 0) ||
-                !entries.TryAdd(name, entry))
-                throw new InvalidDataException("Existing ZIP contains a link, alias, duplicate or out-of-budget entry.");
-            if (name != StockBaselineManifest.MANIFEST_PATH)
-                declaredBytes = checked(declaredBytes + entry.Length);
-            if (declaredBytes > _limits.MaxTotalBytes)
-                throw new InvalidDataException("Existing ZIP declared bytes exceed the recovery budget.");
-        }
+        var entries = ReadRecoveryEntries(archive, ct);
         bool canonical = entries.ContainsKey(StockBaselineManifest.MANIFEST_PATH);
         if (canonical)
             await VerifyAsync(input, expected, ct);

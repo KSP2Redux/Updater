@@ -235,7 +235,13 @@ public class StockBaselineManifest
         return manifest;
     }
 
-    internal static string NormalizePath(string path)
+    /// <summary>
+    /// Normalize and validate a relative path used by stock and derived recipe contracts.
+    /// </summary>
+    /// <param name="path">The relative contract path.</param>
+    /// <returns>The canonical forward-slash path.</returns>
+    /// <exception cref="InvalidDataException">Thrown when the path is unsafe or exceeds the contract limits.</exception>
+    public static string NormalizePath(string path)
     {
         if (string.IsNullOrEmpty(path))
             throw new InvalidDataException("An empty stock path is invalid.");

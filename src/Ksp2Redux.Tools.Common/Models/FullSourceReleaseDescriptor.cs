@@ -21,6 +21,24 @@ public record FullSourceReleaseDescriptor(string ReleaseId, string Channel, stri
     List<FullSourceBaselineDefinition> Baselines, bool AllowsDerivedBootConfig, long DownloadBytes)
 {
     /// <summary>
+    /// Gets the common prepatched tree used by initial recipes, independently of original stock backup contracts.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public byte[]? PrepatchManifest { get; init; }
+
+    /// <summary>
+    /// Gets the independently pinned digest of the common prepatch contract.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PrepatchManifestSha256 { get; init; }
+
+    /// <summary>
+    /// Gets the exact embedded normalization package digest for each supported storefront.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? PrepatchResources { get; init; }
+
+    /// <summary>
     /// Gets the complete target contract digests of prior Redux releases supported as update sources.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

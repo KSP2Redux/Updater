@@ -8,6 +8,26 @@ public sealed record UploadManifest
     public required string Branch { get; init; }
     public required string File { get; init; }
     public required string Token { get; init; }
+
+    /// <summary>
+    /// Gets the existing process secret name to resolve without copying its value into a manifest file.
+    /// </summary>
+    public string? TokenEnvironmentVariable { get; init; }
+
+    /// <summary>
+    /// Resolve credentials only when an actual upload needs them.
+    /// </summary>
+    /// <param name="environment">The current process environment.</param>
+    /// <returns>The current configured credential.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the configured credential is unavailable.</exception>
+    public string ResolveToken(IEnvironmentProvider environment)
+    {
+        string? value = string.IsNullOrWhiteSpace(TokenEnvironmentVariable) ? Token
+            : environment.GetEnvironmentVariable(TokenEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException("The configured upload credential is unavailable.");
+        return value;
+    }
     public required string Version { get; init; }
 
     public bool Prerelease { get; init; }
@@ -43,8 +63,24 @@ public sealed record UploadManifest
     /// <exception cref="InvalidDataException">Thrown when a delta requires its own output version.</exception>
     public void ValidatePatchRequirements()
     {
+        if (!string.IsNullOrWhiteSpace(FullSourcePublication))
+            ReleaseManifestValidator.RequireRecipeFeedPath(File);
         if (Patches?.Any(patch => string.Equals(patch.PreviousVersion, Version, StringComparison.OrdinalIgnoreCase)) == true)
             throw new InvalidDataException($"Cannot publish a delta from {Version} to itself.");
+    }
+
+    /// <summary>
+    /// Reject incompatible destinations before release assets or feed files are changed.
+    /// </summary>
+    /// <param name="feed">The current destination document.</param>
+    /// <exception cref="InvalidDataException">Thrown when a legacy path would receive schema three or a recipe path contains legacy routes.</exception>
+    public void ValidateFeedDestination(ReleaseManifest feed)
+    {
+        bool recipePath = File.EndsWith(".v3.json", StringComparison.OrdinalIgnoreCase);
+        if (feed.SchemaVersion >= 3 || recipePath)
+            ReleaseManifestValidator.RequireRecipeFeedPath(File);
+        if (recipePath && (feed.SchemaVersion != 3 || feed.Patches.Any(patch => patch.FullSource is null)))
+            throw new InvalidDataException("A recipe feed must remain schema three and cannot contain legacy patches.");
     }
 
     /// <summary>

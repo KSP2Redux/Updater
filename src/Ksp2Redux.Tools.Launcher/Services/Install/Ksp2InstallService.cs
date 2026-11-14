@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
@@ -49,7 +50,8 @@ public interface IKsp2InstallService
 
 public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem,
     IModuleDefinitionService moduleDefinitionService, ILogService logService,
-    IInstallationStateService installationStateService, IFullSourceInstallationService? fullSource = null) : IKsp2InstallService
+    IInstallationStateService installationStateService, IFullSourceInstallationService? fullSource = null,
+    IReleasesFeedService? releases = null) : IKsp2InstallService
 {
     private readonly HashSet<Guid> _checkedThisSession = [];
     private Guid? _targetId;
@@ -284,6 +286,13 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (installationStateService.Inspect(ksp2.InstallDir!).LegacyMutationBlockReason is { } reason)
         {
             logService.Warn($"Skipped boot.config settings: {reason}");
+            return;
+        }
+        if (entry.ReleaseChannel is "internal" or "mr" or "next" or "next-mr" ||
+            (releases?.ReleasesFeed?.TryGetValue(entry.ReleaseChannel, out var feed) == true &&
+             feed.GetLatestVersion() is { } version && feed.GetFullSourcePlan(version) is not null))
+        {
+            logService.Info("Preserved boot.config before verified source installation. Stored settings do not mutate original stock bytes.");
             return;
         }
         var bootConfigPath = fileSystem.Path.Combine(ksp2.InstallDir, "KSP2_x64_Data", "boot.config");

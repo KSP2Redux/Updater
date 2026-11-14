@@ -23,7 +23,7 @@ namespace Ksp2Redux.Tools.Launcher.Services.Install;
 /// and digests never supply authority. Recovery uses the coordinator's persisted evidence independently.
 /// One cross-process cache lease excludes concurrent preparation writers. Native preparation requires Windows.
 /// </remarks>
-public class FullSourcePreparationService : IFullSourcePreparationService
+public partial class FullSourcePreparationService : IFullSourcePreparationService
 {
     private readonly IFileSystem _fs;
     private readonly ILauncherConfigService _configuration;
@@ -33,6 +33,7 @@ public class FullSourcePreparationService : IFullSourcePreparationService
     private readonly IDiskSpaceService _space;
     private readonly IOperatingSystemService _os;
     private readonly StockArchive _archive;
+    private readonly IZipFileService _zip;
     private readonly InstallTransactionEngine _paths;
     private readonly ReleaseRecipePipeline _pipeline;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -65,6 +66,7 @@ public class FullSourcePreparationService : IFullSourcePreparationService
         if (fileSystem is RealFileSystem && validateFileStreams is not null)
             throw new ArgumentException("Native preparation cannot bypass Windows file stream validation.", nameof(validateFileStreams));
         _fs = fileSystem;
+        _zip = zip;
         _configuration = configuration;
         _feeds = feeds;
         _downloads = downloads;
@@ -351,6 +353,8 @@ public class FullSourcePreparationService : IFullSourcePreparationService
             if (await VerifyInstalledRecipeSourceAsync(id, contract, descriptor, ct) is { } source)
                 return source;
         }
+        if (ReleaseManifestValidator.GetPrepatchBaseline(descriptor) is { } prepatch)
+            return await PreparePrepatchSourceAsync(descriptor, prepatch, ct);
         return await SelectBaselineAsync(descriptor.Baselines, ct, manifest, retainedTargetPaths);
     }
 
@@ -390,7 +394,7 @@ public class FullSourcePreparationService : IFullSourcePreparationService
         bool existingArchive = _fs.File.Exists(archivePath);
         if (existingArchive && !_os.IsWindows())
             throw new IOException("An existing uninstall.zip requires reviewed migration. It has been preserved.");
-        var candidates = releases.SelectMany(release => release.Descriptor.Baselines.Select(baseline => (Release: release, Baseline: baseline)))
+        var candidates = releases.SelectMany(release => BaselineDefinitions(release.Descriptor, entry).Select(baseline => (Release: release, Baseline: baseline)))
             .DistinctBy(candidate => Digest(candidate.Baseline.Manifest)).ToList();
         FullSourceBaselineDefinition? selected = null;
         AuthorityRelease? authority = null;
@@ -512,10 +516,11 @@ public class FullSourcePreparationService : IFullSourcePreparationService
             throw new InvalidDataException("Production stock preparation requires its independently selected configured authority.");
         AuthorityRelease release = await ResolveAsync(preparation.Release.ReleaseId, preparation.Release.Channel, ct, preparation.AuthorityFeed);
         byte[] expected = preparation.Stock.ToJson();
-        FullSourceBaselineDefinition? definition = release.Descriptor.Baselines.SingleOrDefault(baseline =>
+        var definitions = BaselineDefinitions(release.Descriptor, entry).ToArray();
+        FullSourceBaselineDefinition? definition = definitions.SingleOrDefault(baseline =>
             baseline.Manifest.AsSpan().SequenceEqual(expected));
         if (preparation.Release != Identity(release) ||
-            !release.Descriptor.Baselines.Any(baseline => baseline.Manifest.AsSpan().SequenceEqual(expected)) ||
+            !definitions.Any(baseline => baseline.Manifest.AsSpan().SequenceEqual(expected)) ||
             (entry.FullSourceBaselineIdentity is { } identity && identity != preparation.Stock.BaselineIdentity) ||
             !preparation.RetainedUnownedFiles.SequenceEqual(entry.FullSourceRetainedUnownedFiles, StringComparer.Ordinal) ||
             !preparation.UnownedDirectories.SequenceEqual(entry.FullSourceUnownedDirectories, StringComparer.Ordinal))

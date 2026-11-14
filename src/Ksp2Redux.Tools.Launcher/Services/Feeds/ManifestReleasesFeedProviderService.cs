@@ -30,17 +30,20 @@ public interface IManifestReleasesFeedProviderService
 /// <param name="launcherConfigService">The configured feed source selection.</param>
 /// <param name="log">The launcher log.</param>
 /// <param name="httpHandler">An explicitly injected HTTP handler, or null for the production HTTPS handler.</param>
+/// <param name="environmentProvider">The process environment, or null for the native environment.</param>
 public class ManifestReleasesFeedProviderService(
     IAssemblyService assemblyService,
     ILauncherConfigService launcherConfigService,
     ILogService log,
-    HttpMessageHandler? httpHandler = null) : IManifestReleasesFeedProviderService
+    HttpMessageHandler? httpHandler = null,
+    IEnvironmentProvider? environmentProvider = null) : IManifestReleasesFeedProviderService
 {
     // ResponseHeadersRead means this only bounds getting the response headers for a patch download,
     // not the body copy that follows - safe to keep short even for large patch files.
     private readonly HttpClient _downloadClient = httpHandler is null
         ? new HttpClient { Timeout = TimeSpan.FromSeconds(30) }
         : new HttpClient(httpHandler) { Timeout = TimeSpan.FromSeconds(30) };
+    private readonly IEnvironmentProvider _environmentProvider = environmentProvider ?? SystemEnvironmentProvider.Instance;
     private const int ASSET_PAGE_SIZE = 100;
     private const int MAX_RELEASE_ASSETS = 1000;
     // The directory only resolves download URLs. Release authority and byte checks remain separate.
@@ -53,6 +56,7 @@ public class ManifestReleasesFeedProviderService(
     /// <inheritdoc />
     public async Task<TrustedReleaseManifest> GetTrustedManifestAsync(FeedInfo feed, CancellationToken ct)
     {
+        feed = feed.ForRecipeFeed(_environmentProvider);
         string? url = feed.GetManifestUrl(launcherConfigService.Config.PatchDownloadSource);
         bool githubApi = false;
         if (string.IsNullOrWhiteSpace(url))
@@ -152,6 +156,7 @@ public class ManifestReleasesFeedProviderService(
 
     public async Task<ReleaseManifest?> GetManifest(FeedInfo feed)
     {
+        feed = feed.ForRecipeFeed(_environmentProvider);
         string? directUrl = feed.GetManifestUrl(launcherConfigService.Config.PatchDownloadSource);
         if (!string.IsNullOrWhiteSpace(directUrl))
             return await GetPublicManifest(directUrl, launcherConfigService.Config.PatchDownloadSource);
@@ -219,6 +224,7 @@ public class ManifestReleasesFeedProviderService(
 
     public async Task<HttpResponseMessage> DownloadFileAsync(FeedInfo feed, string url, long offset, CancellationToken ct)
     {
+        feed = feed.ForRecipeFeed(_environmentProvider);
         var hasToken = !string.IsNullOrWhiteSpace(feed.Token);
 
         if (hasToken && TryParseBrowserDownloadUrl(url, out var parsed) && IsConfiguredRepository(feed, parsed.Owner, parsed.Repo))

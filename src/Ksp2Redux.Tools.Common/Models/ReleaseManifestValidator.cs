@@ -9,6 +9,38 @@ namespace Ksp2Redux.Tools.Common.Models;
 public static class ReleaseManifestValidator
 {
     /// <summary>
+    /// Select the internal recipe feed without modifying a shared launcher configuration.
+    /// </summary>
+    /// <param name="path">The configured repository-relative feed path.</param>
+    /// <returns>The separate internal recipe path, or the unchanged public/custom path.</returns>
+    public static string InternalRecipeFeedPath(string path)
+    {
+        int separator = path.LastIndexOf('/');
+        string name = path[(separator + 1)..];
+        string recipe = name.ToLowerInvariant() switch
+        {
+            "manifest.develop.json" => "Manifest.Develop.v3.json",
+            "manifest.next.json" => "Manifest.Next.v3.json",
+            "manifest-mr.json" => "manifest-mr.v3.json",
+            _ => name
+        };
+        return path[..(separator + 1)] + recipe;
+    }
+
+    /// <summary>
+    /// Reject a recipe publication that could replace a legacy launcher feed.
+    /// </summary>
+    /// <param name="path">The intended repository-relative destination.</param>
+    /// <exception cref="InvalidDataException">Thrown when the destination is not a separate recipe feed.</exception>
+    public static void RequireRecipeFeedPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !path.EndsWith(".v3.json", StringComparison.OrdinalIgnoreCase) ||
+            path.Split('/') is { Length: > 32 } || path.Split('/').Any(segment =>
+                string.IsNullOrWhiteSpace(segment) || segment is "." or ".." || segment.Contains('\\')))
+            throw new InvalidDataException("Full-source publication requires a separate .v3.json recipe feed. Legacy feeds cannot be rewritten.");
+    }
+
+    /// <summary>
     /// The maximum serialized size of an authenticated online release feed.
     /// </summary>
     public const int MAX_ONLINE_FEED_BYTES = 64 * 1024 * 1024;
@@ -151,6 +183,8 @@ public static class ReleaseManifestValidator
             throw new InvalidDataException("The full-source target contract or digest is not canonical.");
         if (hosted)
             ValidateHostedGameContract(target, requireUnixMetadata);
+        if (GetPrepatchBaseline(descriptor) is not null && requireUnixMetadata)
+            throw new InvalidDataException("Embedded prepatch normalization is a Windows release input.");
         var identities = new HashSet<string>(StringComparer.Ordinal);
         var sourceDigests = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var baseline in descriptor.Baselines)
@@ -198,6 +232,30 @@ public static class ReleaseManifestValidator
                 ValidateArtifactUrl(artifact.GitHubArtifactUrl, marker);
             }
         }
+    }
+
+    /// <summary>
+    /// Validate and read the publisher-pinned common prepatch contract.
+    /// </summary>
+    /// <param name="descriptor">The authenticated release descriptor.</param>
+    /// <returns>The derived recipe baseline, or null for the original stock recipe format.</returns>
+    /// <exception cref="InvalidDataException">Thrown when the prepatch contract or package pins are incomplete or invalid.</exception>
+    public static StockBaselineManifest? GetPrepatchBaseline(FullSourceReleaseDescriptor descriptor)
+    {
+        if (descriptor.PrepatchManifest is null && descriptor.PrepatchManifestSha256 is null && descriptor.PrepatchResources is null)
+            return null;
+        if (descriptor.PrepatchManifest is not { Length: > 0 } bytes || !IsSha256(descriptor.PrepatchManifestSha256) ||
+            descriptor.PrepatchResources is not { Count: 3 } resources ||
+            !resources.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(new[] { "Steam", "Epic", "Portable" }) ||
+            resources.Values.Any(hash => !IsSha256(hash)) ||
+            !Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).Equals(
+                descriptor.PrepatchManifestSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The common prepatch contract and all three embedded package pins are required.");
+        var contract = StockBaselineManifest.FromJson(bytes);
+        if (contract.HasUnixMetadata || !contract.ToJson().AsSpan().SequenceEqual(bytes))
+            throw new InvalidDataException("The prepatch baseline must be a canonical Windows contract.");
+        ValidateHostedGameContract(contract);
+        return contract;
     }
 
     private static void ValidateArtifactUrl(string value, string filename = "release.json")

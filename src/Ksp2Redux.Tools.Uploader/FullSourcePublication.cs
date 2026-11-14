@@ -5,6 +5,8 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ksp2Redux.Tools.Common.Models;
+using Ksp2Redux.Tools.Common.Patching;
+using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Common.ReleasePreparation;
 using Ksp2Redux.Tools.Common.Restoration;
 using Ksp2Redux.Tools.Common.Transactions;
@@ -26,7 +28,8 @@ internal static class FullSourcePublication
         Converters = { new JsonStringEnumConverter<BundleConversion.Bundles.BundleRecipeSourceKind>(allowIntegerValues: false) },
     };
 
-    internal static int CaptureTarget(string playerRoot, string targetManifest, string releaseId)
+    internal static int CaptureTarget(string playerRoot, string targetManifest, string releaseId,
+        bool allowRelocatedReceipt = false)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("Full-source Windows publication requires Windows.");
@@ -44,7 +47,7 @@ internal static class FullSourcePublication
         paths.ValidateControlledPath(receiptPath);
         byte[] receiptBytes = ReadContract(receiptPath);
         using var receipt = JsonDocument.Parse(receiptBytes, new JsonDocumentOptions { AllowDuplicateProperties = false });
-        JsonElement ownership = ReadOutputOwnership(receipt.RootElement, player, allowDevelopment: true);
+        JsonElement ownership = ReadOutputOwnership(receipt.RootElement, player, allowDevelopment: true, allowRelocatedReceipt);
 
         var files = new List<StockBaselineFile>();
         var directories = new List<string>();
@@ -87,6 +90,141 @@ internal static class FullSourcePublication
         return 0;
     }
 
+    internal static async Task<int> CapturePrepatchAsync(string stockRoot, string stockManifest,
+        string stockSha256, string prepatchFile, string prepatchSha256, string prepatchRoot,
+        string prepatchManifest, string stockBackup, string? recoveryArchive = null)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("Prepatch capture requires Windows.");
+        stockRoot = Path.GetFullPath(stockRoot);
+        stockManifest = Path.GetFullPath(stockManifest);
+        prepatchFile = Path.GetFullPath(prepatchFile);
+        prepatchRoot = Path.GetFullPath(prepatchRoot);
+        prepatchManifest = Path.GetFullPath(prepatchManifest);
+        stockBackup = Path.GetFullPath(stockBackup);
+        var fs = new RealFileSystem();
+        var paths = new InstallTransactionEngine(fs);
+        foreach (string path in new[] { stockRoot, stockManifest, prepatchFile, prepatchRoot, prepatchManifest, stockBackup })
+            paths.ValidateControlledPath(path);
+        foreach (string output in new[] { prepatchRoot, prepatchManifest, stockBackup })
+        {
+            if (Path.Exists(output) || !Directory.Exists(Path.GetDirectoryName(output)))
+                throw new IOException("Prepatch capture requires absent outputs with existing parents.");
+            foreach (string input in new[] { stockRoot, stockManifest, prepatchFile })
+                if (paths.PathsOverlap(output, input))
+                    throw new InvalidDataException("Prepatch capture output overlaps a verified input.");
+        }
+        if (paths.PathsOverlap(prepatchRoot, stockBackup) || paths.PathsOverlap(prepatchRoot, prepatchManifest))
+            throw new InvalidDataException("Keep the backup and prepatch contract outside the derived tree.");
+        byte[] stockBytes = ReadContract(stockManifest);
+        using (Stream patch = File.OpenRead(prepatchFile))
+        {
+            if (!IsSha256(stockSha256) || !IsSha256(prepatchSha256) ||
+                !Convert.ToHexString(SHA256.HashData(stockBytes)).Equals(stockSha256, StringComparison.OrdinalIgnoreCase) ||
+                !Convert.ToHexString(SHA256.HashData(patch)).Equals(prepatchSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The pinned stock contract or embedded prepatch changed.");
+        }
+        var stock = StockBaselineManifest.FromJson(stockBytes);
+        ReleaseManifestValidator.ValidateHostedGameContract(stock);
+        var archive = new StockArchive(fs, new ZipFileService(fs));
+        Console.WriteLine($"Verifying and backing up {stock.Files.Count} stock files, {stock.TotalBytes} bytes.");
+        StockBaselineFile backup;
+        if (recoveryArchive is null)
+            backup = await archive.CreateWithPinAsync(stockRoot, stockBackup, stock);
+        else
+        {
+            recoveryArchive = Path.GetFullPath(recoveryArchive);
+            paths.ValidateControlledPath(recoveryArchive);
+            if (paths.PathsOverlap(recoveryArchive, stockBackup) || paths.PathsOverlap(recoveryArchive, prepatchRoot))
+                throw new InvalidDataException("A recovery source overlaps the generated backup or tree.");
+            await archive.CreateRecoveredAsync(recoveryArchive, stockRoot, stockBackup, stock);
+            backup = await archive.VerifyAndPinAsync(stockBackup, stock);
+        }
+        Console.WriteLine("The complete original backup is verified. Restoring a separate prepatch tree.");
+        await archive.RestoreToNewDirectoryAsync(stockBackup, stock, prepatchRoot);
+        using (var patch = Ksp2Patch.FromFile(fs, new ZipFileService(fs), prepatchFile))
+            await patch.AsyncApply(SystemEnvironmentProvider.Instance, prepatchRoot, log: Console.WriteLine,
+                error: message => throw new InvalidDataException(message));
+        var files = new List<StockBaselineFile>();
+        var directories = new List<string>();
+        foreach (var (path, relative, isDirectory) in TargetEntries(prepatchRoot))
+        {
+            if (isDirectory)
+                directories.Add(relative);
+            else
+            {
+                using Stream input = File.OpenRead(path);
+                files.Add(new StockBaselineFile(relative, input.Length, Convert.ToHexString(SHA256.HashData(input))));
+            }
+        }
+        var manifest = new StockBaselineManifest("redux-windows-prepatch-v1",
+            $"Redux embedded prepatch v1; stock {stockSha256.ToUpperInvariant()}; prepatch {prepatchSha256.ToUpperInvariant()}",
+            files, directories);
+        byte[] bytes = manifest.ToJson(MAX_CONTRACT_BYTES);
+        using (var output = new FileStream(prepatchManifest, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            output.Write(bytes);
+            output.Flush(flushToDisk: true);
+        }
+        File.WriteAllBytes(prepatchManifest + ".receipt.json", JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            Success = true, StockManifestSha256 = stockSha256, PrepatchSha256 = prepatchSha256,
+            PrepatchManifestSha256 = Convert.ToHexString(SHA256.HashData(bytes)), Files = files.Count,
+            Bytes = manifest.TotalBytes, OriginalBackup = backup
+        }, JSON_OPTIONS));
+        Console.WriteLine($"Captured common prepatch contract: {files.Count} files, {manifest.TotalBytes} bytes.");
+        return 0;
+    }
+
+    internal static async Task<int> RestoreStockAsync(string archivePath, string manifestPath, string expectedSha256, string destination)
+    {
+        byte[] bytes = ReadContract(Path.GetFullPath(manifestPath));
+        if (!IsSha256(expectedSha256) || !Convert.ToHexString(SHA256.HashData(bytes)).Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The independently pinned stock manifest changed.");
+        var contract = StockBaselineManifest.FromJson(bytes);
+        var fs = new RealFileSystem();
+        var archive = new StockArchive(fs, new ZipFileService(fs));
+        await archive.RestoreToNewDirectoryAsync(Path.GetFullPath(archivePath), contract, Path.GetFullPath(destination));
+        Console.WriteLine($"Restored and hash-verified {contract.Files.Count} original stock files, {contract.TotalBytes} bytes.");
+        return 0;
+    }
+    internal static int VerifyPrepared(string publicationRoot, string sourceRoot, string sourceManifest, string stageRoot)
+    {
+        publicationRoot = Path.GetFullPath(publicationRoot);
+        using var result = JsonDocument.Parse(ReadContract(Path.Combine(publicationRoot, "publication-result.json")));
+        JsonElement publication = result.RootElement.GetProperty("Publication");
+        string marker = publication.GetProperty("ArtifactSha256").GetString()!;
+        string target = publication.GetProperty("TargetManifestSha256").GetString()!;
+        var source = StockBaselineManifest.FromJson(ReadContract(Path.GetFullPath(sourceManifest)));
+        var pipeline = new ReleaseRecipePipeline(new RealFileSystem());
+        StockBaselineManifest restored = pipeline.Prepare(Path.Combine(publicationRoot, "artifact"), marker, target,
+            Path.GetFullPath(sourceRoot), source, Path.GetFullPath(stageRoot));
+        File.WriteAllBytes(stageRoot + ".verified.json", JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            Success = true, ArtifactSha256 = marker, TargetManifestSha256 = target,
+            Files = restored.Files.Count, Bytes = restored.TotalBytes
+        }));
+        Console.WriteLine($"Reconstructed and hash-verified {restored.Files.Count} files, {restored.TotalBytes} bytes.");
+        return 0;
+    }
+    internal static int InspectPlayer(string playerRoot)
+    {
+        string path = Path.GetFullPath(Path.Combine(playerRoot, GAME_ASSEMBLY));
+        new InstallTransactionEngine(new RealFileSystem()).ValidateControlledPath(path);
+        using Stream input = File.OpenRead(path);
+        using var pe = new PEReader(input);
+        MetadataReader metadata = pe.GetMetadataReader();
+        TypeDefinition version = metadata.GetTypeDefinition(metadata.TypeDefinitions.Single(handle =>
+            metadata.StringComparer.Equals(metadata.GetTypeDefinition(handle).Name, "VersionID") &&
+            metadata.GetTypeDefinition(handle).Namespace.IsNil));
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            Version = ReadVersionField(metadata, version, "VERSION_TEXT"),
+            Channel = ReadVersionField(metadata, version, "CHANNEL_NAME")
+        }, JSON_OPTIONS));
+        return 0;
+    }
+
     internal static int Prepare(string optionsPath)
     {
         if (!OperatingSystem.IsWindows())
@@ -101,18 +239,24 @@ internal static class FullSourcePublication
         if ((options.SourceManifestSha256 is not null || options.PlayerBuildReceiptSha256 is not null) &&
             (!IsSha256(options.SourceManifestSha256) || !IsSha256(options.PlayerBuildReceiptSha256)))
             throw new InvalidDataException("Publication admission requires both the source-manifest and player build-receipt SHA-256 digests.");
+        if ((options.AllowDevelopment || options.AllowRelocatedReceipt) && options.Channel is "stable" or "beta")
+            throw new InvalidDataException("Development or relocated receipts cannot publish to stable or beta.");
+        if (options.AllowRelocatedReceipt && !options.AllowDevelopment)
+            throw new InvalidDataException("Relocated receipts require explicit internal development admission.");
         string player = Resolve(options.PlayerRoot);
-        string stockRoot = Resolve(options.StockRoot);
+        string stockRoot = Resolve(options.RecipeRoot ?? options.StockRoot);
         string output = Resolve(options.OutputRoot);
         string targetPath = Resolve(options.TargetManifest);
         string stockPath = Resolve(options.StockManifest);
+        string? prepatchPath = options.PrepatchManifest is null ? null : Resolve(options.PrepatchManifest);
         string[] legacyPaths = (options.LegacyOwnershipManifests ?? []).Select(Resolve).ToArray();
         var updates = (options.UpdateSources ?? [])
             .Select(source => (Root: Resolve(source.Root), ManifestPath: Resolve(source.Manifest))).ToArray();
         if (updates.Length > 15)
             throw new InvalidDataException("A hosted release supports at most fifteen prior Redux source contracts.");
         var paths = new InstallTransactionEngine(new RealFileSystem());
-        foreach (string input in new[] { player, stockRoot, targetPath, stockPath, optionsPath }.Concat(legacyPaths)
+        foreach (string input in new[] { player, stockRoot, targetPath, stockPath, optionsPath }
+                     .Concat(prepatchPath is null ? [] : new[] { prepatchPath }).Concat(legacyPaths)
                      .Concat(updates.SelectMany(source => new[] { source.Root, source.ManifestPath })))
         {
             if (paths.PathsOverlap(output, input))
@@ -132,7 +276,7 @@ internal static class FullSourcePublication
         using (Stream receiptStream = OpenTargetFile(paths, player, target, RECEIPT, MAX_CONTRACT_BYTES))
         using (var receipt = JsonDocument.Parse(receiptStream, new JsonDocumentOptions { AllowDuplicateProperties = false }))
         {
-            JsonElement ownership = ReadOutputOwnership(receipt.RootElement, player, allowDevelopment: false);
+            JsonElement ownership = ReadOutputOwnership(receipt.RootElement, player, options.AllowDevelopment, options.AllowRelocatedReceipt);
             if (options.SourceManifestSha256 is { } expectedSource &&
                 (!ownership.TryGetProperty("sourceManifestSha256AtBuild", out var source) || source.ValueKind != JsonValueKind.String ||
                  !string.Equals(source.GetString(), expectedSource, StringComparison.OrdinalIgnoreCase)))
@@ -148,6 +292,11 @@ internal static class FullSourcePublication
 
         List<byte[]>? legacy = legacyPaths.Length == 0 ? null : legacyPaths.Select(ReadContract).ToList();
         var baseline = new FullSourceBaselineDefinition(stockBytes, options.SteamDepots ?? [], legacy);
+        byte[]? prepatchBytes = prepatchPath is null ? null : ReadContract(prepatchPath);
+        if (prepatchBytes is not null && (!IsSha256(options.ExpectedPrepatchManifestSha256) ||
+            !Convert.ToHexString(SHA256.HashData(prepatchBytes)).Equals(options.ExpectedPrepatchManifestSha256, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("The pinned prepatch manifest changed before publication.");
+        var recipeContract = prepatchBytes is null ? stock : StockBaselineManifest.FromJson(prepatchBytes);
         var updateRecipes = new List<(ReleaseRecipeSourceTree Source, FullSourceUpdateArtifact Artifact)>();
         foreach (var update in updates)
         {
@@ -176,6 +325,9 @@ internal static class FullSourcePublication
                 targetBytes, targetHash, options.R2ArtifactUrl, options.GitHubArtifactUrl, [baseline], false, 1)
             {
                 UpdateArtifacts = updateRecipes.Count == 0 ? null : updateRecipes.Select(recipe => recipe.Artifact).ToList(),
+                PrepatchManifest = prepatchBytes,
+                PrepatchManifestSha256 = prepatchBytes is null ? null : Convert.ToHexString(SHA256.HashData(prepatchBytes)),
+                PrepatchResources = options.PrepatchResources,
             },
         };
         ReleaseManifestValidator.ValidatePatch(preview);
@@ -188,7 +340,7 @@ internal static class FullSourcePublication
                 metadata.StringComparer.Equals(metadata.GetTypeDefinition(handle).Name, "VersionID") &&
                 metadata.GetTypeDefinition(handle).Namespace.IsNil));
             if (ReadVersionField(metadata, version, "VERSION_TEXT") != options.Version ||
-                ReadVersionField(metadata, version, "CHANNEL_NAME") != options.Channel)
+                ReadVersionField(metadata, version, "CHANNEL_NAME") != (options.AllowDevelopment ? options.SourceChannel ?? options.Channel : options.Channel))
                 throw new InvalidDataException("Publication version or channel differs from the compiled player.");
         }
 
@@ -202,7 +354,7 @@ internal static class FullSourcePublication
         var pipeline = new ReleaseRecipePipeline(new RealFileSystem());
         long stockStarted = Stopwatch.GetTimestamp();
         ReleaseRecipePublication publication = pipeline.PublishHosted(player, target,
-            [new ReleaseRecipeSourceTree(stockRoot, stock, options.Sources ?? [])], artifact);
+            [new ReleaseRecipeSourceTree(stockRoot, recipeContract, options.Sources ?? [])], artifact);
         long stockPreparationMilliseconds = (long)Stopwatch.GetElapsedTime(stockStarted).TotalMilliseconds;
         int assetCount = Directory.EnumerateFiles(artifact).Count();
         var updateArtifacts = new List<FullSourceUpdateArtifact>();
@@ -230,12 +382,14 @@ internal static class FullSourcePublication
 
         DateTime releasedAt = DateTime.UtcNow;
         ReleasePatch patch = pipeline.CreateFeedEntry(artifact, publication, options.ReleaseId, options.Channel,
-            options.Version, options.R2ArtifactUrl, options.GitHubArtifactUrl, [baseline], false, releasedAt);
+            options.Version, options.R2ArtifactUrl, options.GitHubArtifactUrl, [baseline], false, releasedAt,
+            prepatchManifest: prepatchBytes, prepatchResources: options.PrepatchResources);
         if (updateArtifacts.Count != 0)
             patch = patch with { FullSource = patch.FullSource! with { UpdateArtifacts = updateArtifacts } };
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = options.Channel, GeneratedAt = releasedAt, Patches = [patch] };
         ReleaseManifestValidator.Validate(feed);
-        routes.Insert(0, new PublicationRoute("stock", stock.BaselineIdentity, Convert.ToHexString(SHA256.HashData(stockBytes)),
+        routes.Insert(0, new PublicationRoute(prepatchBytes is null ? "stock" : "prepatch", recipeContract.BaselineIdentity,
+            Convert.ToHexString(SHA256.HashData(prepatchBytes ?? stockBytes)),
             patch.Size, publication.StoredPackBytes, patch.FullSource!.DownloadBytes, publication.SourceReusedBytes,
             stockPreparationMilliseconds));
         using (Stream manifest = File.Open(Path.Combine(output, "release-manifest.json"), FileMode.CreateNew))
@@ -294,7 +448,8 @@ internal static class FullSourcePublication
         }
     }
 
-    private static JsonElement ReadOutputOwnership(JsonElement build, string player, bool allowDevelopment)
+    private static JsonElement ReadOutputOwnership(JsonElement build, string player, bool allowDevelopment,
+        bool allowRelocatedReceipt = false)
     {
         string? schema = build.GetProperty("schema").GetString();
         bool recognized = schema == "omnipatching.source-player-build.v1" ||
@@ -310,7 +465,8 @@ internal static class FullSourcePublication
         var ownership = build.GetProperty("outputOwnership");
         if (ownership.GetProperty("schema").GetString() != "omnipatching.production-output-ownership.v1" ||
             !ownership.GetProperty("unityBuildSucceeded").GetBoolean() ||
-            !player.Equals(ownership.GetProperty("outputRoot").GetString(), StringComparison.OrdinalIgnoreCase) ||
+            (!allowRelocatedReceipt && !player.Equals(ownership.GetProperty("outputRoot").GetString(), StringComparison.OrdinalIgnoreCase)) ||
+            !Path.IsPathFullyQualified(ownership.GetProperty("outputRoot").GetString() ?? "") ||
             ownership.GetProperty("executableName").GetString() != EXECUTABLE)
             throw new InvalidDataException("The source-player receipt belongs to another player output.");
         return ownership;
@@ -386,7 +542,10 @@ internal static class FullSourcePublication
         string StockManifest, string OutputRoot, string ReleaseId, string Channel, string Version, string R2ArtifactUrl,
         string GitHubArtifactUrl, List<FullSourceSteamDepot>? SteamDepots, List<string>? LegacyOwnershipManifests,
         List<ReleaseRecipeSource>? Sources, List<UpdateSourceOptions>? UpdateSources,
-        string? SourceManifestSha256, string? PlayerBuildReceiptSha256);
+        string? SourceManifestSha256, string? PlayerBuildReceiptSha256,
+        bool AllowDevelopment = false, bool AllowRelocatedReceipt = false, string? SourceChannel = null,
+        string? RecipeRoot = null, string? PrepatchManifest = null, Dictionary<string, string>? PrepatchResources = null,
+        string? ExpectedPrepatchManifestSha256 = null);
 
     private sealed record UpdateSourceOptions(string Root, string Manifest);
 

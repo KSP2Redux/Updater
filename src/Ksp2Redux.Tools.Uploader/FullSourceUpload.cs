@@ -27,6 +27,7 @@ internal sealed class FullSourceUpload
 
     internal static FullSourceUpload Read(UploadManifest upload, string manifestPath, string owner, string repo, string tag)
     {
+        ReleaseManifestValidator.RequireRecipeFeedPath(upload.File);
         string directory = Path.GetDirectoryName(Path.GetFullPath(manifestPath))!;
         string root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(upload.FullSourcePublication!, directory));
         string artifact = Path.Combine(root, "artifact");
@@ -55,7 +56,8 @@ internal sealed class FullSourceUpload
             throw new InvalidDataException("Invalid release channel or version for hosted publication.");
         string r2Prefix = $"full-source/{feed.Channel}/{patch.Version}/{patch.ChecksumSha256.ToLowerInvariant()}/";
         string githubPrefix = $"https://github.com/{Uri.EscapeDataString(owner)}/{Uri.EscapeDataString(repo)}/releases/download/{Uri.EscapeDataString(tag)}/";
-        string r2Url = $"{upload.R2PublicBaseUrl.TrimEnd('/')}/{r2Prefix}";
+        string r2Url = upload.Channel is "stable" or "beta"
+            ? $"{upload.R2PublicBaseUrl.TrimEnd('/')}/{r2Prefix}" : githubPrefix;
         ReleasePatch hosted = patch with
         {
             Label = upload.Label ?? patch.Label,
@@ -116,8 +118,11 @@ internal sealed class FullSourceUpload
             throw new InvalidDataException("Publication directory does not contain exactly the declared release assets.");
     }
 
-    internal string PrepareFeed(ReleaseManifest feed, int retainBetaReleases)
+    internal string PrepareFeed(ReleaseManifest feed, int retainBetaReleases, string destinationPath)
     {
+        ReleaseManifestValidator.RequireRecipeFeedPath(destinationPath);
+        if (feed.SchemaVersion != 3 || feed.Patches.Any(patch => patch.FullSource is null))
+            throw new InvalidDataException("The destination must be a separate schema-three recipe feed.");
         ReleaseManifestValidator.Validate(feed);
         var descriptor = Patch.FullSource!;
         if (feed.Channel != descriptor.Channel)
@@ -129,7 +134,8 @@ internal sealed class FullSourceUpload
         else if (conflicts.Length != 1 || conflicts[0].ChecksumSha256 != Patch.ChecksumSha256 ||
             JsonSerializer.Serialize(conflicts[0].FullSource) != JsonSerializer.Serialize(descriptor))
             throw new InvalidDataException("The destination already uses this version or release ID for a different artifact.");
-        feed.SchemaVersion = 3;
+        if (feed.Channel is not ("stable" or "beta") && !string.IsNullOrWhiteSpace(Patch.Label))
+            feed.Patches.RemoveAll(existing => existing.Label == Patch.Label && existing.Version != Patch.Version);
         if (feed.Channel == "beta")
         {
             RetainBetaVersions(feed, retainBetaReleases);

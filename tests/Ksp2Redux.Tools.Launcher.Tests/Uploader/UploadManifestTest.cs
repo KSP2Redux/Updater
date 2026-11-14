@@ -110,6 +110,74 @@ public class UploadManifestTest
         });
     }
 
+    /// <summary>
+    /// Recipe publication cannot replace an older launcher's manifest, even before artifact inspection.
+    /// </summary>
+    /// <param name="filename">The protected legacy feed path.</param>
+    [TestCase("Manifest.Develop.json")]
+    [TestCase("Manifest.Next.json")]
+    [TestCase("manifest-mr.json")]
+    [TestCase("manifest-beta.json")]
+    [TestCase("manifest-stable.json")]
+    [TestCase("feeds/Manifest.Develop.json")]
+    public void RecipePublication_RejectsLegacyFeedBeforeIO(string filename)
+    {
+        var upload = Upload() with { File = filename, FullSourcePublication = "absent-publication", Channel = "internal" };
+        Assert.That(upload.ValidatePatchRequirements,
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("recipe feed"));
+    }
+
+    /// <summary>
+    /// Separate recipe files can be admitted without changing legacy patch validation.
+    /// </summary>
+    /// <param name="filename">The separate recipe feed path.</param>
+    [TestCase("Manifest.Develop.v3.json")]
+    [TestCase("Manifest.Next.v3.json")]
+    [TestCase("manifest-mr.v3.json")]
+    public void RecipePublication_AcceptsSeparateFeedFile(string filename)
+    {
+        var upload = Upload() with { File = filename, FullSourcePublication = "absent-publication", Channel = "internal" };
+        Assert.That(upload.ValidatePatchRequirements, Throws.Nothing);
+    }
+
+    [Test]
+    public void EnvironmentToken_IsResolvedWithoutPersistingItsValue()
+    {
+        var environment = new Moq.Mock<IEnvironmentProvider>();
+        environment.Setup(value => value.GetEnvironmentVariable("EXISTING_CI_SECRET")).Returns("fixture-transient-token");
+        var upload = Upload() with { Token = "", TokenEnvironmentVariable = "EXISTING_CI_SECRET" };
+        Assert.That(upload.ResolveToken(environment.Object), Is.EqualTo("fixture-transient-token"));
+        Assert.That(System.Text.Json.JsonSerializer.Serialize(upload), Does.Not.Contain("fixture-transient-token"));
+    }
+
+    [Test]
+    public void MissingEnvironmentToken_DoesNotFallBackToAnotherCredential()
+    {
+        var environment = new Moq.Mock<IEnvironmentProvider>();
+        var upload = Upload() with { TokenEnvironmentVariable = "UNAVAILABLE_CI_SECRET" };
+        Assert.That(() => upload.ResolveToken(environment.Object), Throws.TypeOf<InvalidOperationException>());
+    }
+
+    [TestCase("Manifest.Develop.json")]
+    [TestCase("Manifest.Next.json")]
+    [TestCase("manifest-mr.json")]
+    public void SchemaThreeDocument_CannotBeWrittenToAnyLegacyDestination(string filename)
+    {
+        var feed = Feed();
+        feed.SchemaVersion = 3;
+        var upload = Upload() with { File = filename };
+        Assert.That(() => upload.ValidateFeedDestination(feed), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => (upload with { File = "manifest-mr.v3.json" }).ValidateFeedDestination(feed), Throws.Nothing);
+    }
+
+    [Test]
+    public void LegacyPatchRoutes_CannotEnterARecipeFeed()
+    {
+        var feed = Feed(Patch(1));
+        feed.SchemaVersion = 3;
+        Assert.That(() => (Upload() with { File = "manifest-mr.v3.json" }).ValidateFeedDestination(feed),
+            Throws.TypeOf<InvalidDataException>());
+    }
     private static UploadManifest Upload() => new()
     {
         Repository = "example/test",

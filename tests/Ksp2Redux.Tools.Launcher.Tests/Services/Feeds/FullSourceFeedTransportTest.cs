@@ -35,6 +35,32 @@ public partial class FullSourceFeedTransportTest
         });
     }
 
+    /// <summary>
+    /// Branch launchers read the separate internal recipe file while retaining the configured legacy path.
+    /// </summary>
+    /// <param name="legacy">The configured legacy filename.</param>
+    /// <param name="recipe">The effective recipe filename.</param>
+    /// <returns>The transport verification task.</returns>
+    [TestCase("Manifest.Develop.json", "Manifest.Develop.v3.json")]
+    [TestCase("Manifest.Next.json", "Manifest.Next.v3.json")]
+    [TestCase("manifest-mr.json", "manifest-mr.v3.json")]
+    [TestCase("manifest-beta.json", "manifest-beta.json")]
+    public async Task InternalRecipeFeed_UsesSeparateFileWithoutChangingConfiguration(string legacy, string recipe)
+    {
+        var configured = new FeedInfo { Repository = "https://github.com/example/review", Filename = legacy, Token = "fixture-token" };
+        var handler = new Handler();
+        var respond = handler.Respond;
+        handler.Respond = request =>
+        {
+            Assert.That(request.RequestUri!.AbsolutePath, Is.EqualTo($"/repos/example/review/contents/{recipe}"));
+            return respond(request);
+        };
+        await Service(handler).GetTrustedManifestAsync(configured, CancellationToken.None);
+        Assert.That(configured.Filename, Is.EqualTo(legacy));
+        Assert.That(configured.SnapshotAuthority().Filename, Is.EqualTo(recipe));
+        Assert.That(configured.HasSameAuthority(configured.SnapshotAuthority()), Is.True);
+    }
+
     private class Handler : HttpMessageHandler
     {
         internal Func<HttpRequestMessage, HttpResponseMessage> Respond = _ => new HttpResponseMessage(HttpStatusCode.OK)

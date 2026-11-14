@@ -75,11 +75,14 @@ public partial class ReleaseRecipePipeline
     /// <param name="allowsDerivedBootConfig">True only when the publisher permits boot derivation.</param>
     /// <param name="releasedAt">The intended release timestamp.</param>
     /// <param name="updateSourceDigests">The complete prior Redux release contract digests, or null for stock-only recipes.</param>
+    /// <param name="prepatchManifest">The pinned common prepatch contract, or null for original stock recipes.</param>
+    /// <param name="prepatchResources">The embedded package digests for the common prepatch, or null.</param>
     /// <returns>The validated feed entry for local serialization and review.</returns>
     public ReleasePatch CreateFeedEntry(string artifactRoot, ReleaseRecipePublication publication,
         string releaseId, string channel, string version, string r2ArtifactUrl, string githubArtifactUrl,
         List<FullSourceBaselineDefinition> baselines, bool allowsDerivedBootConfig, DateTime releasedAt,
-        List<string>? updateSourceDigests = null)
+        List<string>? updateSourceDigests = null, byte[]? prepatchManifest = null,
+        Dictionary<string, string>? prepatchResources = null)
     {
         ReleaseRecipeManifest manifest = Inspect(artifactRoot, publication.ArtifactSha256, publication.TargetManifestSha256);
         long size = _fileSystem.FileInfo.New(Child(artifactRoot, "release.json")).Length;
@@ -88,6 +91,9 @@ public partial class ReleaseRecipePipeline
             allowsDerivedBootConfig, checked(size + manifest.Packs.Sum(pack => (long)pack.Length)))
         {
             UpdateSourceDigests = updateSourceDigests,
+            PrepatchManifest = prepatchManifest,
+            PrepatchManifestSha256 = prepatchManifest is null ? null : Digest(prepatchManifest),
+            PrepatchResources = prepatchResources,
         };
         var patch = new ReleasePatch
         {
@@ -108,7 +114,9 @@ public partial class ReleaseRecipePipeline
     /// <param name="markerLength">The independently expected marker length.</param>
     public static void ValidateFeedArtifact(ReleaseRecipeManifest manifest, FullSourceReleaseDescriptor descriptor, long markerLength)
     {
-        var expectedDigests = descriptor.Baselines.Select(baseline => Digest(baseline.Manifest))
+        var prepatch = ReleaseManifestValidator.GetPrepatchBaseline(descriptor);
+        var expectedDigests = (prepatch is null ? descriptor.Baselines.Select(baseline => Digest(baseline.Manifest))
+                : new[] { Digest(prepatch.ToJson()) })
             .Concat(descriptor.UpdateSourceDigests ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (!manifest.TargetManifest.AsSpan().SequenceEqual(descriptor.TargetManifest) ||
             expectedDigests.Count != manifest.Variants.Count ||
