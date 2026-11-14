@@ -99,14 +99,14 @@
 							         Text="{Binding RenameText, Mode=TwoWay}"
 							         PlaceholderText="{loc:T Settings.Profile.NamePlaceholder}"
 							         LostFocus="RenameBox_LostFocus" />
-							<Button Grid.Column="1" Classes="icon"
+							<Button Grid.Column="1" Classes="icon tonal"
 							        IsVisible="{Binding !IsRenamingInstall}"
 							        IsEnabled="{Binding HasSelectedInstall}"
 							        Command="{Binding BeginRenameInstallCommand}"
 							        ToolTip.Tip="{loc:T Settings.Profile.Rename.Tooltip}">
 								<PathIcon Data="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18.17,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z" />
 							</Button>
-							<Button Grid.Column="1" Classes="icon"
+							<Button Grid.Column="1" Classes="icon tonal"
 							        IsVisible="{Binding IsRenamingInstall}"
 							        Command="{Binding CommitRenameInstallCommand}"
 							        ToolTip.Tip="{loc:T Settings.Profile.RenameSave.Tooltip}">
@@ -116,7 +116,7 @@
 
 						<!-- The negative bottom margin cancels the last line's button margin. -->
 						<WrapPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,-6">
-							<Button Margin="0,0,6,6" Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
+							<Button Margin="0,0,6,6" Classes="tonal" Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
 							        Content="{loc:T Settings.Profile.Add}"
 							        ToolTip.Tip="{loc:T Settings.Profile.Add.Tooltip}" />
 							<Button Margin="0,0,6,6" Classes="danger"
@@ -124,12 +124,12 @@
 							        IsEnabled="{Binding CanRemoveSelectedInstall}"
 							        Content="{loc:T Settings.Profile.Remove}"
 							        ToolTip.Tip="{loc:T Settings.Profile.Remove.Tooltip}" />
-							<Button Margin="0,0,6,6" Command="{Binding OpenInstallFolderCommand}"
+							<Button Margin="0,0,6,6" Classes="tonal" Command="{Binding OpenInstallFolderCommand}"
 							        IsEnabled="{Binding HasSelectedInstall}"
 							        Content="{loc:T Settings.Profile.OpenFolder}"
 							        ToolTip.Tip="{loc:T Settings.Profile.OpenFolder.Tooltip}" />
 							<!-- The tooltip explains the disabled state, so it must show while disabled. -->
-							<Button Margin="0,0,6,6" Command="{Binding DownloadFromSteamCommand}"
+							<Button Margin="0,0,6,6" Classes="tonal" Command="{Binding DownloadFromSteamCommand}"
 							        IsEnabled="{Binding CanDownloadFromSteam}"
 							        ToolTip.ShowOnDisabled="True"
 							        Content="{loc:T Settings.Profile.DownloadKsp2}"
@@ -149,7 +149,7 @@
 							<TextBox HorizontalAlignment="Stretch"
 							         Text="{Binding SelectedInstall.ExePath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
 							         PlaceholderText="C:\Steam\SteamGames\KSP2\KSP2_x64.exe" />
-							<Button Grid.Column="1" Classes="icon-text"
+							<Button Grid.Column="1" Classes="icon-text tonal"
 							        Command="{Binding BrowseExePathCommand}"
 							        ToolTip.Tip="{loc:T Settings.Exe.Browse.Tooltip}">
 								<StackPanel Orientation="Horizontal" Spacing="6">
@@ -248,7 +248,7 @@
 					<Grid ColumnDefinitions="*,*,*" ColumnSpacing="10"
 					      IsVisible="{Binding HasSelectedInstall}">
 						<Button Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-						        Click="InstallFromPatchFile"
+						        Classes="tonal" Click="InstallFromPatchFile"
 						        Content="{loc:T Settings.InstallPatch.Button}"
 						        ToolTip.Tip="{loc:T Settings.InstallPatch.Tooltip}" />
 						<Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
@@ -306,13 +306,13 @@
 
 			<Grid Grid.Row="4" RowDefinitions="Auto,Auto,Auto" Margin="0,12,0,0">
 				<WrapPanel Grid.Row="0" Orientation="Horizontal">
-				<Button Margin="0,0,10,6" FontSize="11" Padding="8,4" Click="OpenLogsFolderClick"
+				<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4" Click="OpenLogsFolderClick"
 				        Content="{loc:T Settings.OpenLogsFolder}" />
-				<Button Margin="0,0,10,6" Name="OpenGameDataFolderButton" FontSize="11" Padding="8,4"
+				<Button Margin="0,0,10,6" Classes="tonal" Name="OpenGameDataFolderButton" FontSize="11" Padding="12,4"
 				        Command="{Binding OpenGameDataFolderCommand}"
 				        Content="{loc:T Settings.OpenGameDataFolder}"
 				        ToolTip.Tip="{loc:T Settings.OpenGameDataFolder.Tooltip}" />
-				<Button Margin="0,0,10,6" FontSize="11" Padding="8,4" Click="CopyDiagnosticInfoClick"
+				<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4" Click="CopyDiagnosticInfoClick"
 				        Content="{loc:T Settings.CopyDiagnosticInfo}"
 				        ToolTip.Tip="{loc:T Settings.CopyDiagnosticInfo.Tooltip}">
 					<FlyoutBase.AttachedFlyout>
@@ -344,10 +344,10 @@
 							</DataTemplate>
 						</ComboBox.ItemTemplate>
 					</ComboBox>
-					<Button Margin="0,0,10,6" FontSize="11" Padding="8,4"
+					<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4"
 					        Command="{Binding RestoreSaveBackupCommand}"
 					        Content="{loc:T Settings.SaveBackups.Restore}" />
-					<Button Margin="0,0,10,6" FontSize="11" Padding="8,4"
+					<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4"
 					        Command="{Binding OpenSaveBackupsFolderCommand}"
 					        Content="{loc:T Settings.SaveBackups.OpenFolder}" />
 				</WrapPanel>

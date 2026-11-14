@@ -15,11 +15,54 @@
         </Style>
     </Style>
 
-    <Style Selector="Button.danger">
-        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+    <!--
+        Material 3 buttons. Fluent paints hover, press and disabled on the template's
+        ContentPresenter, so the state brushes go there; a Background set on the Button
+        itself for :pointerover is overridden and left danger buttons grey on hover.
+        tonal: the everyday action. danger: the error-outlined button for actions that
+        remove something, kept calmer than a red fill since they all ask to confirm.
+    -->
+    <!-- Every variant has the same 1px border, transparent where there is no outline, so
+         tonal and outlined buttons in one row are the same height. The 10px sides are
+         tighter than Material 3's 24, so the four profile buttons still fit on one line
+         at the minimum window width. -->
+    <Style Selector="Button.tonal, Button.danger">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.tonal">
+        <Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Style Selector="^:pointerover">
-            <Setter Property="Background" Value="{StaticResource DangerHoverBrush}" />
+        <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource TonalContainerHoverBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource TonalContainerPressedBrush}" />
+        </Style>
+        <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DisabledContainerBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DisabledContentBrush}" />
+        </Style>
+    </Style>
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ErrorOutlineBrush}" />
+        <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ErrorHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource ErrorBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+        </Style>
+        <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ErrorPressedBrush}" />
+        </Style>
+        <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{StaticResource DisabledOutlineBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DisabledContentBrush}" />
         </Style>
     </Style>
 

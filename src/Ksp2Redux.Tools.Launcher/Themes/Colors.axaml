@@ -76,6 +76,26 @@
     <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
     <SolidColorBrush x:Key="TextFaintBrush" Color="White" Opacity="0.5" />
 
+    <!--
+        Material 3 button containers and state layers. A state layer is a translucent
+        tint of the content colour laid over the container: about 8% on hover and 10%
+        when pressed. Avalonia cannot stack two fills on one presenter, so the hover and
+        pressed brushes below are the container with its layer already added.
+    -->
+    <SolidColorBrush x:Key="TonalContainerBrush" Color="White" Opacity="0.10" />
+    <SolidColorBrush x:Key="TonalContainerHoverBrush" Color="White" Opacity="0.18" />
+    <SolidColorBrush x:Key="TonalContainerPressedBrush" Color="White" Opacity="0.20" />
+    <SolidColorBrush x:Key="DisabledContainerBrush" Color="White" Opacity="0.06" />
+    <SolidColorBrush x:Key="DisabledContentBrush" Color="White" Opacity="0.38" />
+    <!-- The error tone of the brand red that Material 3 uses on dark surfaces. Unlike
+         DangerColor it stays readable as text and outline on the dark glass. -->
+    <Color x:Key="ErrorColor">#FFB4AB</Color>
+    <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}" />
+    <SolidColorBrush x:Key="ErrorOutlineBrush" Color="{StaticResource ErrorColor}" Opacity="0.6" />
+    <SolidColorBrush x:Key="ErrorHoverBrush" Color="{StaticResource ErrorColor}" Opacity="0.08" />
+    <SolidColorBrush x:Key="ErrorPressedBrush" Color="{StaticResource ErrorColor}" Opacity="0.10" />
+    <SolidColorBrush x:Key="DisabledOutlineBrush" Color="White" Opacity="0.12" />
+
     <!-- Overlays / scrims: dimming layers over background art or content -->
     <SolidColorBrush x:Key="OverlayHoverBrush" Color="Black" Opacity="0.13" />
     <SolidColorBrush x:Key="OverlayPressedBrush" Color="Black" Opacity="0.25" />
