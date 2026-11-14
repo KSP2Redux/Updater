@@ -123,21 +123,26 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 case PrepatchStep:
                 {
                     log(Loc.Message("Install.ApplyingPrepatch"));
+                    var exe = fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
+                    var ksp2Install = new Ksp2Install(fileSystem, moduleDefinitionService, exe);
+                    if (ksp2Install.Distribution == Distribution.Redux)
+                    {
+                        throw Loc.Message("Install.Error.PrepatchOnRedux").ToException(message => new Exception(message));
+                    }
+
                     mutationStarted = true;
                     if (fileSystem.File.Exists(fileSystem.Path.Combine(install, "winhttp.dll")))
                     {
                         log(Loc.Message("Install.DeletingModloader"));
                         fileSystem.File.Delete(fileSystem.Path.Combine(install, "winhttp.dll"));
                     }
-                    
+
                     if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
                     {
                         cacheService.RecursivelyCreateCache(install);
                     }
 
                     var patchFile = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), fileSystem.Path.GetRandomFileName());
-                    var exe = fileSystem.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME);
-                    var ksp2Install = new Ksp2Install(fileSystem, moduleDefinitionService, exe);
                     switch (ksp2Install.Distribution)
                     {
                         case Distribution.Portable:
@@ -170,8 +175,6 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             await fstream.FlushAsync();
                             break;
                         }
-                        case Distribution.Redux:
-                            throw Loc.Message("Install.Error.PrepatchOnRedux").ToException(message => new Exception(message));
                         case Distribution.Prepatched:
                             // Shouldn't happen, but *could*. No patch file was written, so there is nothing to apply.
                             break runStep;
