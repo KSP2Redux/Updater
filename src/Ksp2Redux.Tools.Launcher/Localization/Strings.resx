@@ -158,6 +158,14 @@ https://ksp2redux.org</value>
     <comment>Tooltip of the link icon that opens the forum thread.</comment>
   </data>
   <!-- Community and Mods tabs -->
+  <data name="Community.Label" xml:space="preserve">
+    <value>NEWS</value>
+    <comment>Small heading over a news post on the Community tab, in capitals like the other section headings.</comment>
+  </data>
+  <data name="Community.ViewOnBlog" xml:space="preserve">
+    <value>Open on the blog</value>
+    <comment>Button beside a news post's date that opens the post on the website.</comment>
+  </data>
   <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
     <value>View On Blog</value>
     <comment>Tooltip of the button next to a news post title that opens the post in the browser.</comment>
