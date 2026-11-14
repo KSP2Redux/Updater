@@ -20,9 +20,16 @@
 		<Style Selector="StackPanel.form">
 			<Setter Property="Spacing" Value="10" />
 		</Style>
+		<!-- Material 3 filled cards: a tonal step up from the glass instead of a hairline border. -->
+		<Style Selector="Border.card">
+			<Setter Property="Background" Value="{StaticResource CardContainerBrush}" />
+			<Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
+		</Style>
 		<Style Selector="TextBlock.section-title">
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoLight}" />
+			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
 			<Setter Property="FontSize" Value="12" />
+			<Setter Property="LetterSpacing" Value="0.5" />
+			<Setter Property="Foreground" Value="{StaticResource PrimaryToneBrush}" />
 		</Style>
 		<Style Selector="Grid.field">
 			<Setter Property="ColumnSpacing" Value="12" />
@@ -70,8 +77,7 @@
 			           Text="{loc:T Settings.Title}" />
 
 			<Border Grid.Row="1" Margin="0,4,0,0" Padding="14"
-			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
-			        CornerRadius="{StaticResource RadiusMedium}">
+			        Classes="card">
 				<!-- A Grid spends RowSpacing on hidden rows, a StackPanel does not. -->
 				<StackPanel Classes="form" Grid.IsSharedSizeScope="True">
 					<TextBlock Classes="section-title" Text="{loc:T Settings.Profile.Section}" />
@@ -265,8 +271,7 @@
 			</Border>
 
 			<Border Grid.Row="2" Margin="0,12,0,0" Padding="14"
-			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
-			        CornerRadius="{StaticResource RadiusMedium}">
+			        Classes="card">
 				<StackPanel Classes="form">
 					<TextBlock Classes="section-title" Text="{loc:T Settings.Advanced.Section}" />
 					<Grid Classes="field" ColumnDefinitions="Auto,*,Auto,Auto">
@@ -286,8 +291,7 @@
 
 			<!-- Hidden until a translation ships, since English is the only choice before that. -->
 			<Border Grid.Row="3" Margin="0,12,0,0" Padding="14"
-			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
-			        CornerRadius="{StaticResource RadiusMedium}"
+			        Classes="card"
 			        IsVisible="{Binding ShowLanguagePicker}">
 				<Grid Classes="field" ColumnDefinitions="Auto,*">
 					<TextBlock Grid.Column="0" Classes="label" Text="{loc:T Settings.Language.Label}" />

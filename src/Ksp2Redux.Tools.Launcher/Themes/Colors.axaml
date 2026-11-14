@@ -87,6 +87,12 @@
     <SolidColorBrush x:Key="TonalContainerPressedBrush" Color="White" Opacity="0.20" />
     <SolidColorBrush x:Key="DisabledContainerBrush" Color="White" Opacity="0.06" />
     <SolidColorBrush x:Key="DisabledContentBrush" Color="White" Opacity="0.38" />
+    <!-- The light tone of the brand red that Material 3 uses for text and icons on dark
+         surfaces, where the saturated BrandRed is too dark to read at small sizes. -->
+    <Color x:Key="PrimaryToneColor">#FFB4A8</Color>
+    <SolidColorBrush x:Key="PrimaryToneBrush" Color="{StaticResource PrimaryToneColor}" />
+    <!-- A filled card one tonal step above the glass panel it sits on. -->
+    <SolidColorBrush x:Key="CardContainerBrush" Color="White" Opacity="0.04" />
     <!-- The error tone of the brand red that Material 3 uses on dark surfaces. Unlike
          DangerColor it stays readable as text and outline on the dark glass. -->
     <Color x:Key="ErrorColor">#FFB4AB</Color>
