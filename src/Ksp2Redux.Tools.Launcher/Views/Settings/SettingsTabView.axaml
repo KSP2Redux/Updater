@@ -22,6 +22,7 @@
 		</Style>
 		<!-- Material 3 filled cards: a tonal step up from the glass instead of a hairline border. -->
 		<Style Selector="Border.card">
+			<Setter Property="Padding" Value="16" />
 			<Setter Property="Background" Value="{StaticResource CardContainerBrush}" />
 			<Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
 		</Style>
@@ -63,20 +64,15 @@
 	</UserControl.Styles>
 
 	<Grid VerticalAlignment="Stretch">
-		<Border x:Name="GlassPanel" Margin="24,8,24,8"
-		        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-		        Background="{StaticResource GlassSurfaceBrush}"
-		        BorderBrush="{StaticResource GlassSurfaceBorderBrush}"
-		        BoxShadow="{StaticResource GlassPanelShadow}"
-		        BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}">
+		<Border x:Name="GlassPanel" Classes="glass-panel">
 		<ScrollViewer VerticalScrollBarVisibility="Auto"
 		              HorizontalScrollBarVisibility="Disabled">
-		<Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+		<Grid Margin="{StaticResource PanelInset}" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 			<TextBlock Grid.Row="0" FontFamily="{StaticResource JetBrainsMonoLight}"
-			           FontSize="24" TextAlignment="Left" Margin="0,8,0,4"
+			           FontSize="24" TextAlignment="Left" Margin="0,0,0,16"
 			           Text="{loc:T Settings.Title}" />
 
-			<Border Grid.Row="1" Margin="0,4,0,0" Padding="14"
+			<Border Grid.Row="1"
 			        Classes="card">
 				<!-- A Grid spends RowSpacing on hidden rows, a StackPanel does not. -->
 				<StackPanel Classes="form" Grid.IsSharedSizeScope="True">
@@ -270,7 +266,7 @@
 				</StackPanel>
 			</Border>
 
-			<Border Grid.Row="2" Margin="0,12,0,0" Padding="14"
+			<Border Grid.Row="2" Margin="0,16,0,0"
 			        Classes="card">
 				<StackPanel Classes="form">
 					<TextBlock Classes="section-title" Text="{loc:T Settings.Advanced.Section}" />
@@ -290,7 +286,7 @@
 			</Border>
 
 			<!-- Hidden until a translation ships, since English is the only choice before that. -->
-			<Border Grid.Row="3" Margin="0,12,0,0" Padding="14"
+			<Border Grid.Row="3" Margin="0,16,0,0"
 			        Classes="card"
 			        IsVisible="{Binding ShowLanguagePicker}">
 				<Grid Classes="field" ColumnDefinitions="Auto,*">
@@ -308,7 +304,7 @@
 				</Grid>
 			</Border>
 
-			<Grid Grid.Row="4" RowDefinitions="Auto,Auto,Auto" Margin="0,12,0,0">
+			<Grid Grid.Row="4" RowDefinitions="Auto,Auto,Auto" Margin="0,16,0,0">
 				<WrapPanel Grid.Row="0" Orientation="Horizontal">
 				<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4" Click="OpenLogsFolderClick"
 				        Content="{loc:T Settings.OpenLogsFolder}" />

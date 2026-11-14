@@ -82,6 +82,22 @@
         </Style>
     </Style>
 
+    <!--
+        The glass panel every tab sits in. The sidebar and panel share one 24px gutter, so the
+        panel has no margin of its own beyond the gap under the tabs. Content inside it is inset
+        by PanelInset rather than the panel having padding, so a scrollbar runs along its edge.
+    -->
+    <Style Selector="Border.glass-panel">
+        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlassSurfaceBorderBrush}" />
+        <Setter Property="Background" Value="{StaticResource GlassSurfaceBrush}" />
+        <Setter Property="BoxShadow" Value="{StaticResource GlassPanelShadow}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+
     <Style Selector="Button.link-button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="ToolTip.ShowDelay" Value="0" />

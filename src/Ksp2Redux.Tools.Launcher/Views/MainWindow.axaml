@@ -176,9 +176,9 @@
                     the Home/Community/Settings/Mods cards is faked with a second full-window
                     copy of the same background art, blurred, then clipped down to exactly
                     where the panel sits. Because both copies share the same bounds and
-                    stretch, they line up pixel-for-pixel; only the clip rect (kept in sync
-                    with the panel's fixed 24,8,24,8 margin in MainWindow.axaml.cs) needs to
-                    know where to cut. The panels themselves are then translucent instead of
+                    stretch, they line up pixel-for-pixel; only the clip rect (taken from the
+                    active panel's rendered bounds in MainWindow.axaml.cs) needs to know where
+                    to cut. The panels themselves are then translucent instead of
                     solid so this shows through.
                 -->
                 <Border Grid.RowSpan="2" Name="ContentBackdropBlur" IsHitTestVisible="False"
@@ -275,12 +275,14 @@
                 </Border>
 
                 <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
-                    <Border Grid.Column="0" Padding="24,16,24,12">
+                    <!-- 18 at the bottom, not 24: the link buttons have 6px of space under their
+                         icons, so the icons end on the same line as the content panel. -->
+                    <Border Grid.Column="0" Padding="24,16,24,18">
                         <views:SidebarView Name="Sidebar" />
                     </Border>
 
                     <Border Grid.Column="1" Padding="0,0,24,24">
-                        <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
+                        <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" Padding="0">
                             <TabItem Name="HomeTab" Header="{loc:T Tab.Home}">
                                 <home:HomeTabView Name="HomeView" DataContext="{Binding HomeTab}"/>
                             </TabItem>
@@ -312,7 +314,7 @@
                         Classes.connected="{Binding SettingsTab.IsSteamConnected}"
                         Classes.connecting="{Binding SettingsTab.IsSteamConnecting}"
                         HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                        Margin="0,0,2,2"
+                        Margin="0"
                         Click="SteamIndicator_Click"
                         ToolTip.Tip="{Binding SettingsTab.SteamIndicatorTooltip}">
                     <!-- Opened from SteamIndicator_Click, only while connected. -->

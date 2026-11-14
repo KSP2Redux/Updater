@@ -15,6 +15,9 @@
             <!-- Material 3's extra-small shape, for checkboxes. -->
             <CornerRadius x:Key="ShapeExtraSmall">4</CornerRadius>
 
+            <!-- How far content sits inside a glass panel, on every side. -->
+            <Thickness x:Key="PanelInset">24</Thickness>
+
             <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
             <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
 
