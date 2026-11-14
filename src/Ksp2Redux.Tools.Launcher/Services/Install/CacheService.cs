@@ -90,40 +90,40 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
             throw new CacheRestoreException(directory, "uninstall.zip");
         }
 
-        if (isForRepatch)
-        {
-            fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(directory, "UninstallTemp"));
-            foreach (var dir in SavedDirectories)
-            {
-                if (fileSystem.Directory.Exists(fileSystem.Path.Combine(directory, dir)))
-                {
-                    var parentDirectory = fileSystem.DirectoryInfo.New(fileSystem.Path.Combine(directory, "UninstallTemp", dir)).Parent!;
-                    if (!parentDirectory.Exists)
-                    {
-                        parentDirectory.Create();
-                    }
-                    fileSystem.Directory.Move(fileSystem.Path.Combine(directory, dir), fileSystem.Path.Combine(directory, "UninstallTemp", dir));
-                }
-            }
-        }
-        
-        foreach (var relative in PurgeOnRestore)
-        {
-            var full = fileSystem.Path.Combine(directory, relative);
-            if (fileSystem.Directory.Exists(full))
-            {
-                fileSystem.Directory.Delete(full, true);
-            }
-            else if (fileSystem.File.Exists(full))
-            {
-                fileSystem.File.Delete(full);
-            }
-        }
-
-        ClearOutFolder(directory);
-
         using (var zipFile = zipFileService.OpenRead(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
+            if (isForRepatch)
+            {
+                fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(directory, "UninstallTemp"));
+                foreach (var dir in SavedDirectories)
+                {
+                    if (fileSystem.Directory.Exists(fileSystem.Path.Combine(directory, dir)))
+                    {
+                        var parentDirectory = fileSystem.DirectoryInfo.New(fileSystem.Path.Combine(directory, "UninstallTemp", dir)).Parent!;
+                        if (!parentDirectory.Exists)
+                        {
+                            parentDirectory.Create();
+                        }
+                        fileSystem.Directory.Move(fileSystem.Path.Combine(directory, dir), fileSystem.Path.Combine(directory, "UninstallTemp", dir));
+                    }
+                }
+            }
+
+            foreach (var relative in PurgeOnRestore)
+            {
+                var full = fileSystem.Path.Combine(directory, relative);
+                if (fileSystem.Directory.Exists(full))
+                {
+                    fileSystem.Directory.Delete(full, true);
+                }
+                else if (fileSystem.File.Exists(full))
+                {
+                    fileSystem.File.Delete(full);
+                }
+            }
+
+            ClearOutFolder(directory);
+
             zipFileService.ExtractToDirectory(zipFile, directory, true);
         }
         
