@@ -152,7 +152,7 @@ internal static class BundleRewriter
         {
             blocks[index] = new AssetBundleBlockInfo
             {
-                DecompressedSize = (uint)Math.Min(BLOCK_SIZE, total - ((long)index * BLOCK_SIZE)),
+                DecompressedSize = (uint)Math.Min(BLOCK_SIZE, total - (long)index * BLOCK_SIZE),
             };
         }
 

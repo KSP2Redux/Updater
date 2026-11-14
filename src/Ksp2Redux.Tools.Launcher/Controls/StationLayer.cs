@@ -86,7 +86,7 @@ public class StationLayer : Control
         {
             var spread = Hash(r, 5) * 2 - 1;
             var fan = Math.Sign(spread) * Math.Pow(Math.Abs(spread), 1.1);
-            var rayAngle = (fan * PLUME_HALF_ANGLE + (Noise(t * 0.35, r + 60) - 0.5) * 0.04);
+            var rayAngle = fan * PLUME_HALF_ANGLE + (Noise(t * 0.35, r + 60) - 0.5) * 0.04;
             var edge = Math.Abs(fan);
             var rayLength = length * (0.55 + 0.45 * Hash(r, 6)) * (0.85 + 0.3 * Noise(t * 1.1, r)) * (1 - 0.25 * edge);
             var halfWidth = rayLength * (0.025 + 0.045 * Hash(r, 7));

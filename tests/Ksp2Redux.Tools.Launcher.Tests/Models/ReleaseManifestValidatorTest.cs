@@ -37,6 +37,22 @@ public class ReleaseManifestValidatorTest
     }
 
     [Test]
+    public void Validate_ChunkWithoutR2Url_Accepts()
+    {
+        var patch = CreateChunkedPatch();
+        patch.Chunks![0] = patch.Chunks[0] with { R2Url = null };
+        Assert.That(() => ReleaseManifestValidator.ValidatePatch(patch), Throws.Nothing);
+    }
+
+    [Test]
+    public void Validate_ChunkWithoutGitHubUrl_Rejects()
+    {
+        var patch = CreateChunkedPatch();
+        patch.Chunks![0] = patch.Chunks[0] with { GitHubUrl = "" };
+        Assert.That(() => ReleaseManifestValidator.ValidatePatch(patch), Throws.TypeOf<InvalidDataException>());
+    }
+
+    [Test]
     public void Validate_NonContiguousChunks_Rejects()
     {
         var patch = CreateChunkedPatch();

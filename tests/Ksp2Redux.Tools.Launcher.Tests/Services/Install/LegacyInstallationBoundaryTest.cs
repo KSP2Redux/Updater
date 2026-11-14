@@ -225,13 +225,13 @@ public class LegacyInstallationBoundaryTest
     /// <param name="pending">True for pending transaction evidence, false for archive metadata.</param>
     /// <param name="action">The legacy action that must not execute.</param>
     /// <returns>The completed test.</returns>
-    [TestCase(false, InstallPlanAction.Uninstall)]
-    [TestCase(false, InstallPlanAction.RevertToStock)]
-    [TestCase(false, InstallPlanAction.Prepatch)]
-    [TestCase(false, InstallPlanAction.ApplyPatchFile)]
-    [TestCase(true, InstallPlanAction.Uninstall)]
-    [TestCase(true, InstallPlanAction.Prepatch)]
-    public async Task InstallPlanStopsBeforeAnySideEffect(bool pending, InstallPlanAction action)
+    [TestCase(false, "Uninstall")]
+    [TestCase(false, "RevertToStock")]
+    [TestCase(false, "Prepatch")]
+    [TestCase(false, "ApplyPatchFile")]
+    [TestCase(true, "Uninstall")]
+    [TestCase(true, "Prepatch")]
+    public async Task InstallPlanStopsBeforeAnySideEffect(bool pending, string action)
     {
         var fileSystem = CreateFileSystem();
         WriteArchive(fileSystem, StockBaselineManifest.MANIFEST_PATH);
@@ -252,13 +252,13 @@ public class LegacyInstallationBoundaryTest
         bool downloaded = false;
         switch (action)
         {
-            case InstallPlanAction.Uninstall:
+            case "Uninstall":
                 plan.Uninstall();
                 break;
-            case InstallPlanAction.RevertToStock:
+            case "RevertToStock":
                 plan.RevertToStock();
                 break;
-            case InstallPlanAction.Prepatch:
+            case "Prepatch":
                 plan.Prepatch();
                 break;
             default:
@@ -288,19 +288,19 @@ public class LegacyInstallationBoundaryTest
     /// <param name="convert">True for conversion, false for journal reversal.</param>
     [TestCase(true)]
     [TestCase(false)]
-    public void DirectBundleMutationIsBlocked(bool convert)
+    public async Task DirectBundleMutationIsBlocked(bool convert)
     {
         var fileSystem = CreateFileSystem();
         WriteArchive(fileSystem, StockBaselineManifest.MANIFEST_PATH);
         var before = Snapshot(fileSystem);
         var service = new BundleConversionService(fileSystem, State(fileSystem));
 
-        Assert.Throws<IOException>(() =>
+        await Assert.ThrowsAsync<IOException>(async () =>
         {
             if (convert)
-                service.Convert(INSTALL_ROOT, _ => { }, CancellationToken.None);
+                await service.ConvertAsync(INSTALL_ROOT, _ => { }, CancellationToken.None);
             else
-                service.Revert(INSTALL_ROOT, _ => { }, CancellationToken.None);
+                await service.RevertAsync(INSTALL_ROOT, _ => { }, CancellationToken.None);
         });
         AssertUnchanged(fileSystem, before);
     }

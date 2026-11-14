@@ -151,7 +151,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
     public Task RestoreFilesAsync(uint appId, string targetDirectory, IReadOnlyCollection<string> relativePaths,
         IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
     {
-        var wanted = new HashSet<string>(relativePaths.Select(NormalizeDepotPath), StringComparer.OrdinalIgnoreCase);
+        HashSet<string> wanted = [with(StringComparer.OrdinalIgnoreCase), .. relativePaths.Select(NormalizeDepotPath)];
         return wanted.Count == 0
             ? Task.CompletedTask
             : DownloadCoreAsync(appId, null, targetDirectory, wanted, progress, cancellationToken);
@@ -385,7 +385,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
                 authTokens[(depot.DepotId, server.Host!)] = auth.Result == EResult.OK ? auth.Token : null;
                 last = ex;
             }
-            catch (Exception ex) when ((ex is SteamKitWebRequestException or HttpRequestException or IOException or TaskCanceledException)
+            catch (Exception ex) when (ex is SteamKitWebRequestException or HttpRequestException or IOException or TaskCanceledException
                                            && !cancellationToken.IsCancellationRequested)
             {
                 log.Debug($"Content server {server.Host} failed ({ex.Message}), trying another.");

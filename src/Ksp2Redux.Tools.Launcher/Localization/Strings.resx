@@ -1018,6 +1018,10 @@ softwareupdate --install-rosetta --agree-to-license</value>
     <value>KSP2 Redux Successfully Installed</value>
     <comment>Last line in the install log after a successful install or update.</comment>
   </data>
+  <data name="Home.Log.NoRoute" xml:space="preserve">
+    <value>No route from the installed version to {0}.</value>
+    <comment>Line in the install log when no chain of patches leads to the chosen version. {0} = the chosen version.</comment>
+  </data>
   <data name="Home.Log.Cancelled" xml:space="preserve">
     <value>Installation cancelled</value>
     <comment>Line in the install log after the player cancelled.</comment>
@@ -1079,6 +1083,11 @@ Please try again later.</value>
     <value>The launcher will download and update, it may restart a few times during this.
 Without updating you cannot install new Redux versions.</value>
     <comment>Last paragraph of the new-version box, two lines.</comment>
+  </data>
+  <data name="Update.ActionMessage.MacOS" xml:space="preserve">
+    <value>Click OK to download the new version, then drag KSP2 Redux from the disk image into Applications and replace the old one.
+Without updating you cannot install new Redux versions.</value>
+    <comment>Last paragraph of the new-version box on macOS, two lines. "KSP2 Redux" is the app name and "Applications" is the macOS folder, keep them as they are.</comment>
   </data>
   <data name="Update.WhatsNew.NoNotes" xml:space="preserve">
     <value>What's new in v{0}:
@@ -1343,10 +1352,6 @@ They may be lost if you close the launcher. Check that {1} is writable and try a
   <data name="Download.CouldNotDownload" xml:space="preserve">
     <value>Could not download a verified patch part from {0}.</value>
     <comment>Error shown when downloading a patch part failed every time. {0} = the download service name.</comment>
-  </data>
-  <data name="Download.Complete" xml:space="preserve">
-    <value>Download complete.</value>
-    <comment>Line in the install log after a patch finished downloading.</comment>
   </data>
   <!-- Bundle conversion -->
   <data name="Bundles.NoShaderBundles" xml:space="preserve">

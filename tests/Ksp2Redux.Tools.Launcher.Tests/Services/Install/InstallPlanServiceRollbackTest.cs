@@ -1,3 +1,4 @@
+using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -15,7 +16,7 @@ public class InstallPlanServiceRollbackTest
     private const string PatchPath = @"C:\downloads\corrupt.patch";
 
     private static (InstallPlanService Service, Mock<ICacheService> CacheService, MockFileSystem Fs)
-        MakeService(Mock<IZipFileService> zipFileService)
+        MakeService(Mock<IZipFileService> zipFileService, IReadOnlyList<Task<string>>? downloads = null, IInstallFileLockService? fileLock = null)
     {
         var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         fs.Directory.CreateDirectory(InstallDir);
@@ -32,13 +33,13 @@ public class InstallPlanServiceRollbackTest
         patchDownloadService.Setup(service => service.EnqueueAll(
                 It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
                 It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
-            .Returns([]);
+            .Returns(downloads ?? []);
         var configService = new Mock<ILauncherConfigService>();
         configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
 
         var service = new InstallPlanService(fs, cacheService.Object, environmentProvider, assemblyService.Object,
             moduleDefinitionService.Object, zipFileService.Object, diskSpace.Object,
-            patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>());
+            patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>(), installFileLockService: fileLock);
         return (service, cacheService, fs);
     }
 
@@ -100,5 +101,53 @@ public class InstallPlanServiceRollbackTest
 
         Assert.That(ex!.Message, Is.EqualTo("archive is corrupt"));
         cacheService.Verify(c => c.RecursivelyRestoreCache(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ApplyToFolder_DownloadFailsBeforeRevert_LeavesTheInstallUntouched()
+    {
+        var download = Task.FromException<string>(new IOException("connection dropped"));
+        var (service, cacheService, fs) = MakeService(new Mock<IZipFileService>(), [download]);
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "uninstall.zip"), [0x00]);
+
+        var ex = await Assert.ThrowsAsync<IOException>(async () =>
+            await service.ApplyToFolder(MakeDownloadingReinstallPlan(), InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
+
+        Assert.That(ex!.Message, Is.EqualTo("connection dropped"));
+        cacheService.Verify(c => c.RecursivelyRestoreCache(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ApplyToFolder_GameStartedDuringDownload_StopsBeforeTouchingTheInstall()
+    {
+        var fileLock = new Mock<IInstallFileLockService>();
+        fileLock.SetupSequence(l => l.EnsureNoFilesInUse(InstallDir))
+            .Pass()
+            .Throws(new FilesInUseException("KSP2 is running", [], ["KSP2"]));
+        var (service, cacheService, fs) = MakeService(new Mock<IZipFileService>(), [Task.FromResult(PatchPath)], fileLock.Object);
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "uninstall.zip"), [0x00]);
+
+        await Assert.ThrowsAsync<FilesInUseException>(async () =>
+            await service.ApplyToFolder(MakeDownloadingReinstallPlan(), InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
+
+        fileLock.Verify(l => l.EnsureNoFilesInUse(InstallDir), Times.Exactly(2));
+        cacheService.Verify(c => c.RecursivelyRestoreCache(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    private static InstallPlan MakeDownloadingReinstallPlan()
+    {
+        var request = new PatchDownloadRequest(new FeedInfo(), new ReleasePatch
+        {
+            Version = "1.0.0.1",
+            Requires = new PatchRequirement(),
+            ChecksumSha256 = "00",
+            Size = 1,
+            ReleasedAt = DateTime.UtcNow
+        }, @"C:\downloads");
+        var plan = new InstallPlan();
+        plan.Steps.Add(new InstallPlan.ApplyPatchStep(null, LogMessage.Literal("download"), DownloadRequest: request));
+        plan.Prepatch();
+        plan.RevertToStock();
+        return plan;
     }
 }

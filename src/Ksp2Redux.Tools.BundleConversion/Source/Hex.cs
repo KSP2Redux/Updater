@@ -28,7 +28,7 @@ internal static class Hex
         for (var index = 0; index < bytes.Length; index++)
         {
             chars[index * 2] = DIGITS[bytes[index] >> 4];
-            chars[(index * 2) + 1] = DIGITS[bytes[index] & 0xF];
+            chars[index * 2 + 1] = DIGITS[bytes[index] & 0xF];
         }
 
         return new string(chars);

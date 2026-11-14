@@ -246,7 +246,7 @@ public class JournalOperationsTest
         Assert.That(Names(root.GetProperty("Rewritten")[0]), Is.EqualTo(new[] { "File", "StockSize", "StockSha256", "Output", "OutputSha256" }));
         Assert.That(Names(root.GetProperty("Skipped")[0]), Is.EqualTo(new[] { "File", "Shader", "Reason" }));
         Assert.That(root.GetProperty("Skipped")[0].GetProperty("Shader").GetString(), Is.EqualTo("<CAB-1:2>"));
-        Assert.That(game.FileSystem.File.Exists(game.Layout.JournalPath + ".tmp"), Is.False);
+        Assert.That(game.FileSystem.File.Exists($"{game.Layout.JournalPath}.tmp"), Is.False);
     }
 
     [Test]

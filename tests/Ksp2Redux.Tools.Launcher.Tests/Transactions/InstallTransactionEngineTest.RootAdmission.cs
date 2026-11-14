@@ -217,9 +217,9 @@ public partial class InstallTransactionEngineTest
     }
 
     [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-    private static extern SafeFileHandle OpenIdentityProbePath(string path, uint access, uint share, IntPtr security,
+    private static safe extern SafeFileHandle OpenIdentityProbePath(string path, uint access, uint share, IntPtr security,
         uint disposition, uint flags, IntPtr template);
 
     [DllImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-    private static extern uint ReadIdentityProbePath(SafeFileHandle handle, StringBuilder path, uint capacity, uint flags);
+    private static safe extern uint ReadIdentityProbePath(SafeFileHandle handle, StringBuilder path, uint capacity, uint flags);
 }

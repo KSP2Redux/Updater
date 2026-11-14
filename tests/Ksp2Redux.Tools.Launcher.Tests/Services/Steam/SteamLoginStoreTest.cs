@@ -148,7 +148,7 @@ public class SteamLoginStoreTest
     {
         // Arrange
 #pragma warning disable CA1416
-        var vault = new KeychainSteamLoginVault("KSP2 Redux test " + Guid.NewGuid());
+        var vault = new KeychainSteamLoginVault($"KSP2 Redux test {Guid.NewGuid()}");
         const string payload = "{\"AccountName\":\"kerbal\",\"RefreshToken\":\"a.b-c_d\"}";
 
         try

@@ -101,43 +101,43 @@ public partial class StockArchive
         /// <summary>
         /// The fields actually supplied by the kernel.
         /// </summary>
-        [FieldOffset(0)] internal uint Mask;
+        [FieldOffset(0)] internal safe uint Mask;
         /// <summary>
         /// The additional inode attributes supplied by the kernel.
         /// </summary>
-        [FieldOffset(8)] internal ulong Attributes;
+        [FieldOffset(8)] internal safe ulong Attributes;
         /// <summary>
         /// The inode hard-link count.
         /// </summary>
-        [FieldOffset(16)] internal uint Links;
+        [FieldOffset(16)] internal safe uint Links;
         /// <summary>
         /// The owner user identity.
         /// </summary>
-        [FieldOffset(20)] internal uint User;
+        [FieldOffset(20)] internal safe uint User;
         /// <summary>
         /// The owner group identity.
         /// </summary>
-        [FieldOffset(24)] internal uint Group;
+        [FieldOffset(24)] internal safe uint Group;
         /// <summary>
         /// The file type and permission bits.
         /// </summary>
-        [FieldOffset(28)] internal ushort Mode;
+        [FieldOffset(28)] internal safe ushort Mode;
         /// <summary>
         /// The inode identity.
         /// </summary>
-        [FieldOffset(32)] internal ulong Inode;
+        [FieldOffset(32)] internal safe ulong Inode;
         /// <summary>
         /// The containing device major identity.
         /// </summary>
-        [FieldOffset(136)] internal uint DeviceMajor;
+        [FieldOffset(136)] internal safe uint DeviceMajor;
         /// <summary>
         /// The containing device minor identity.
         /// </summary>
-        [FieldOffset(140)] internal uint DeviceMinor;
+        [FieldOffset(140)] internal safe uint DeviceMinor;
         /// <summary>
         /// The containing mount identity.
         /// </summary>
-        [FieldOffset(144)] internal ulong Mount;
+        [FieldOffset(144)] internal safe ulong Mount;
     }
 
     /// <summary>
@@ -276,25 +276,25 @@ public partial class StockArchive
     }
 
     [DllImport("libc", EntryPoint = "open", SetLastError = true)]
-    private static extern int LinuxOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int flags);
+    private static safe extern int LinuxOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int flags);
     [DllImport("libc", EntryPoint = "close", SetLastError = true)]
-    private static extern int LinuxClose(int descriptor);
+    private static safe extern int LinuxClose(int descriptor);
     [DllImport("libc", EntryPoint = "statx", SetLastError = true)]
-    private static extern int LinuxStatx(int descriptor, [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
+    private static safe extern int LinuxStatx(int descriptor, [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
         int flags, uint mask, out LinuxStatus result);
     [DllImport("libc", EntryPoint = "readlink", SetLastError = true)]
-    private static extern nint LinuxReadLink([MarshalAs(UnmanagedType.LPUTF8Str)] string path, [Out] byte[] buffer, nuint length);
+    private static safe extern nint LinuxReadLink([MarshalAs(UnmanagedType.LPUTF8Str)] string path, [Out] byte[] buffer, nuint length);
     [DllImport("libc", EntryPoint = "flistxattr", SetLastError = true)]
-    private static extern nint LinuxListAttributes(int descriptor, IntPtr buffer, nuint length);
+    private static safe extern nint LinuxListAttributes(int descriptor, IntPtr buffer, nuint length);
     [DllImport("libc", EntryPoint = "fchmod", SetLastError = true)]
-    private static extern int LinuxChmod(int descriptor, uint mode);
+    private static safe extern int LinuxChmod(int descriptor, uint mode);
     [DllImport("libc", EntryPoint = "fsync", SetLastError = true)]
-    private static extern int LinuxSync(int descriptor);
+    private static safe extern int LinuxSync(int descriptor);
     [DllImport("libc", EntryPoint = "geteuid")]
-    private static extern uint LinuxUser();
+    private static safe extern uint LinuxUser();
     [DllImport("libc", EntryPoint = "getegid")]
-    private static extern uint LinuxGroup();
+    private static safe extern uint LinuxGroup();
     [DllImport("libc", EntryPoint = "renameat2", SetLastError = true)]
-    private static extern int LinuxRename(int sourceDirectory, [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
+    private static safe extern int LinuxRename(int sourceDirectory, [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
         int targetDirectory, [MarshalAs(UnmanagedType.LPUTF8Str)] string target, uint flags);
 }

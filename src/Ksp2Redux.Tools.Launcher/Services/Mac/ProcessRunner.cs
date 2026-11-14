@@ -21,16 +21,15 @@ public class ProcessRunner : IProcessRunner
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
 
-        using var process = new Process();
-        process.StartInfo = startInfo;
-        process.OutputDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) log(LogMessage.Literal(e.Data)); };
-        process.ErrorDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) log(LogMessage.Literal(e.Data)); };
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+        using var process = Process.Start(startInfo)!;
 
         try
         {
+            await foreach (var line in process.ReadAllLinesAsync(cancellationToken))
+            {
+                if (!string.IsNullOrWhiteSpace(line.Content)) log(LogMessage.Literal(line.Content));
+            }
+
             await process.WaitForExitAsync(cancellationToken);
         }
         catch (OperationCanceledException)

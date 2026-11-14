@@ -35,7 +35,7 @@ echo "==> Building the launcher .app ($RID)"
 dotnet msbuild "$PROJECT" -restore -t:BundleApp -p:RuntimeIdentifier="$RID" -p:Configuration=Release \
     -p:SelfContained=true -p:PublishSingleFile=false -v:minimal -nologo
 
-PUBLISH_DIR="$REPO_ROOT/src/Ksp2Redux.Tools.Launcher/bin/Release/net10.0/$RID/publish"
+PUBLISH_DIR="$REPO_ROOT/src/Ksp2Redux.Tools.Launcher/bin/Release/net11.0/$RID/publish"
 SOURCE_APP="$PUBLISH_DIR/KSP2 Redux.app"
 [ -d "$SOURCE_APP" ] || { echo "error: $SOURCE_APP was not produced" >&2; exit 1; }
 
@@ -43,6 +43,10 @@ mkdir -p "$OUTPUT"
 APP="$OUTPUT/KSP2 Redux.app"
 rm -rf "$APP"
 cp -R "$SOURCE_APP" "$APP"
+
+# Dotnet.Bundle cannot write LSMinimumSystemVersion. The .NET 11 runtime needs macOS 14, and with this Finder says so on
+# older Macs instead of the app failing to start.
+plutil -replace LSMinimumSystemVersion -string 14.0 "$APP/Contents/Info.plist"
 
 if [ -n "$RUNTIME" ]; then
     echo "==> Adding the Wine + DXMT runtime from $RUNTIME"

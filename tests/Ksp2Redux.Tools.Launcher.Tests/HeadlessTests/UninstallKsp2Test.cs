@@ -18,7 +18,7 @@ namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 public class UninstallKsp2Test
 {
     private const string GAME = @"C:\Games\Kerbal Space Program 2";
-    private const string EXE = GAME + @"\KSP2_x64.exe";
+    private const string EXE = $@"{GAME}\KSP2_x64.exe";
 
     private static (MainWindow Window, SettingsTabViewModel Settings) StartWithStandaloneInstall(ButtonResult confirm)
     {
@@ -32,7 +32,7 @@ public class UninstallKsp2Test
             .ReturnsAsync(confirm);
 
         var fileSystem = TestAppBuilder.FileSystem;
-        fileSystem.Directory.CreateDirectory(GAME + @"\KSP2_x64_Data");
+        fileSystem.Directory.CreateDirectory($@"{GAME}\KSP2_x64_Data");
         fileSystem.File.Copy(@"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2\KSP2_x64.exe", EXE);
 
         var main = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>();
@@ -82,7 +82,7 @@ public class UninstallKsp2Test
     {
         // Arrange
         var (_, settings) = StartWithStandaloneInstall(ButtonResult.Yes);
-        TestAppBuilder.FileSystem.Directory.Delete(GAME + @"\KSP2_x64_Data");
+        TestAppBuilder.FileSystem.Directory.Delete($@"{GAME}\KSP2_x64_Data");
 
         // Act
         await settings.UninstallKsp2Command.ExecuteAsync(null);

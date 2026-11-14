@@ -69,21 +69,15 @@ internal static class BundleCommandSupport
     /// <summary>
     /// Forwards progress lines from the converter's worker threads one at a time.
     /// </summary>
-    private sealed class LineProgress : IProgress<string>
+    private sealed class LineProgress(Action<string> write) : IProgress<string>
     {
-        private readonly Action<string> _write;
         private readonly object _gate = new();
-
-        public LineProgress(Action<string> write)
-        {
-            _write = write;
-        }
 
         public void Report(string value)
         {
             lock (_gate)
             {
-                _write(value);
+                write(value);
             }
         }
     }

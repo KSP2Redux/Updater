@@ -106,7 +106,7 @@ public static class InstallWorkflow
         {
             return context.Output.Fail(ExitCode.CANCELLED, "Install cancelled. The install may be in a partial state.");
         }
-        catch (InstallFailedException e)
+        catch (Exception e) when (e is InstallFailedException or FilesInUseException or InsufficientDiskSpaceException)
         {
             return context.Output.Fail(ExitCode.INSTALL_FAILED, e.Message);
         }
@@ -119,6 +119,7 @@ public static class InstallWorkflow
 
         context.InstallService.TryLoadKsp2Install();
         var installed = context.InstallService.Ksp2?.GameVersion;
+        context.InstallService.UpdateLastInstalledVersion(installed);
 
         context.Output.Payload(
             new

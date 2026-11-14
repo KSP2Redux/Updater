@@ -20,7 +20,6 @@ public interface IManifestReleasesFeedProviderService
     Task<TrustedReleaseManifest> GetTrustedManifestAsync(FeedInfo feed, CancellationToken ct) =>
         throw new NotSupportedException("This feed provider does not establish online release authority.");
     Task<ReleaseManifest?> GetManifest(FeedInfo feed);
-    Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct);
     Task<HttpResponseMessage> DownloadFileAsync(FeedInfo feed, string url, long offset, CancellationToken ct);
 }
 

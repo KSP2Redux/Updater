@@ -56,9 +56,9 @@ public partial class StockArchive
 
     [DllImport("kernel32.dll", EntryPoint = "MoveFileExW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool MoveFileEx(string source, string destination, uint flags);
+    private static safe extern bool MoveFileEx(string source, string destination, uint flags);
 
     [DllImport("libc", EntryPoint = "rename", ExactSpelling = true, SetLastError = true)]
-    private static extern int Rename([MarshalAs(UnmanagedType.LPUTF8Str)] string source,
+    private static safe extern int Rename([MarshalAs(UnmanagedType.LPUTF8Str)] string source,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string destination);
 }

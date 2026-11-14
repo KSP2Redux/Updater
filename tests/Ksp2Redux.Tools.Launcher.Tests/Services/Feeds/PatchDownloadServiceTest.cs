@@ -42,6 +42,49 @@ public class PatchDownloadServiceTest
     }
 
     [Test]
+    public async Task EnqueueAll_ChunkedPatchWithoutR2CopyDownloadsFromGitHub()
+    {
+        byte[] first = [1, 2, 3];
+        byte[] second = [4, 5];
+        byte[] whole = first.Concat(second).ToArray();
+        var patch = WithoutR2Urls(CreateChunkedPatch(first, second, whole));
+        var (service, provider, fileSystem) = MakeService();
+        provider.Setup(item => item.DownloadFileAsync(
+                It.IsAny<FeedInfo>(), "https://github.test/0", 0, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response(HttpStatusCode.OK, first));
+        provider.Setup(item => item.DownloadFileAsync(
+                It.IsAny<FeedInfo>(), "https://github.test/1", 0, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Response(HttpStatusCode.OK, second));
+
+        string result = await service.EnqueueAll(
+            [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
+            PatchDownloadSource.R2, 4, _ => { }, (_, _) => { }, CancellationToken.None)[0];
+
+        Assert.That(fileSystem.File.ReadAllBytes(result), Is.EqualTo(whole));
+        provider.VerifyAll();
+    }
+
+    [Test]
+    public async Task EnqueueAll_ChunkFailureWithoutR2CopyDoesNotOfferR2()
+    {
+        byte[] first = [1, 2, 3];
+        byte[] second = [4, 5];
+        var patch = WithoutR2Urls(CreateChunkedPatch(first, second, first.Concat(second).ToArray()));
+        var (service, provider, _) = MakeService();
+        provider.Setup(item => item.DownloadFileAsync(
+                It.IsAny<FeedInfo>(), It.IsAny<string>(), 0, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Response(HttpStatusCode.NotFound, []));
+
+        var tasks = service.EnqueueAll(
+            [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
+            PatchDownloadSource.R2, 1, _ => { }, (_, _) => { }, CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<PatchDownloadException>(async () => await tasks[0]);
+        Assert.That(exception!.DownloadSource, Is.EqualTo(PatchDownloadSource.GitHub));
+        Assert.That(exception.CanSwitchSource, Is.False);
+    }
+
+    [Test]
     public async Task EnqueueAll_PartialLegacyPatchResumesWithMatchingRange()
     {
         byte[] whole = [1, 2, 3, 4, 5];
@@ -249,6 +292,11 @@ public class PatchDownloadServiceTest
                 R2Url = "https://r2.test/1", GitHubUrl = "https://github.test/1"
             }
         ]
+    };
+
+    private static ReleasePatch WithoutR2Urls(ReleasePatch patch) => patch with
+    {
+        Chunks = patch.Chunks!.Select(chunk => chunk with { R2Url = null }).ToList()
     };
 
     private static HttpResponseMessage Response(HttpStatusCode status, byte[] bytes) => new(status)

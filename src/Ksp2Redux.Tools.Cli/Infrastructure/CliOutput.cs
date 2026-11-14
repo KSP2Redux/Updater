@@ -416,7 +416,7 @@ public sealed class CliOutput
         }
 
         // Two spaces of padding either side of every column, plus one border between and around.
-        var chrome = (headers.Count * 3) + 1;
+        var chrome = headers.Count * 3 + 1;
         var available = ResultConsole.Profile.Width - fixedWidth - chrome;
 
         return Math.Max(MINIMUM_PATH_WIDTH, available / pathColumns.Count);

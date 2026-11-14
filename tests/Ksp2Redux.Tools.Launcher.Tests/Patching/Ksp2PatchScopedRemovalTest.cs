@@ -48,4 +48,25 @@ public class Ksp2PatchScopedRemovalTest
             Assert.That(archive.GetEntry(ShapesPath), Is.Null, "A removed DLL must not be included as an add or patch payload.");
         });
     }
+
+    [Test]
+    public void FromDiff_IgnoredFolderOnlyInTheOriginal_EmitsNoRemoval()
+    {
+        var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
+        fs.Directory.CreateDirectory(fs.Path.Combine(OriginalDir, "BepInEx", "plugins"));
+        fs.Directory.CreateDirectory(fs.Path.Combine(OriginalDir, "Obsolete"));
+        fs.Directory.CreateDirectory(TargetDir);
+
+        using (Ksp2Patch.FromDiff(fs, PatchPath, OriginalDir, TargetDir, checkRemovals: true))
+        {
+        }
+
+        using var patchStream = new MemoryStream(fs.File.ReadAllBytes(PatchPath));
+        using var archive = new ZipArchive(patchStream, ZipArchiveMode.Read);
+        using var manifest = JsonDocument.Parse(archive.GetEntry("manifest.json")!.Open());
+        var removed = manifest.RootElement.GetProperty("operations").EnumerateArray()
+            .Select(operation => operation.GetProperty("fileName").GetString());
+
+        Assert.That(removed, Is.EqualTo(new[] { "Obsolete" }));
+    }
 }

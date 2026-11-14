@@ -17,6 +17,7 @@ namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 public class LaunchStopButtonTest
 {
     private TaskCompletionSource _gameExited = null!;
+    private TaskCompletionSource _gameTracked = null!;
     private MainWindow _window = null!;
 
     private Button SidebarButton(string name) =>
@@ -31,12 +32,17 @@ public class LaunchStopButtonTest
         TestHelpers.MockMessageBoxAcceptAll();
 
         _gameExited = new TaskCompletionSource();
+        _gameTracked = new TaskCompletionSource();
         TestAppBuilder.GameProcessService
             .Setup(g => g.WaitForStartAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(gameAppears);
         TestAppBuilder.GameProcessService
             .Setup(g => g.WaitForExitAsync(It.IsAny<CancellationToken>()))
-            .Returns((CancellationToken token) => _gameExited.Task.WaitAsync(token));
+            .Returns((CancellationToken token) =>
+            {
+                _gameTracked.TrySetResult();
+                return _gameExited.Task.WaitAsync(token);
+            });
         TestAppBuilder.GameProcessService.Setup(g => g.StopAsync())
             .Returns(Task.CompletedTask)
             .Callback(() => _gameExited.TrySetResult());
@@ -48,8 +54,10 @@ public class LaunchStopButtonTest
         return TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
     }
 
-    private static void Pump()
+    private async Task Pump()
     {
+        await _gameTracked.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Task.Yield();
         for (var i = 0; i < 5; i++) Dispatcher.UIThread.RunJobs();
     }
 
@@ -59,7 +67,7 @@ public class LaunchStopButtonTest
         var home = Start();
 
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
 
         Assert.Multiple(() =>
         {
@@ -74,7 +82,7 @@ public class LaunchStopButtonTest
 
         _gameExited.SetResult();
         await launching;
-        Pump();
+        await Pump();
 
         Assert.Multiple(() =>
         {
@@ -90,7 +98,7 @@ public class LaunchStopButtonTest
         TestAppBuilder.ServiceProvider.GetRequiredService<IKsp2InstallService>().ActiveEntry!.LaunchThroughSteam = true;
 
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
 
         Assert.That(home.MainButtonShown, Is.EqualTo(HomeTabViewModel.MainButtonState.Cancel));
         TestAppBuilder.GameProcessService.Verify(g => g.Start(It.Is<ProcessStartInfo>(s =>
@@ -105,10 +113,10 @@ public class LaunchStopButtonTest
     {
         var home = Start();
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
 
         home.CancelCurrentMainButtonActionCommand.Execute(null);
-        Pump();
+        await Pump();
         await launching;
 
         TestAppBuilder.GameProcessService.Verify(g => g.StopAsync(), Times.Once);
@@ -123,10 +131,10 @@ public class LaunchStopButtonTest
                 "Stop KSP2", It.IsAny<string>(), ButtonEnum.YesNo, It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>()))
             .ReturnsAsync(ButtonResult.No);
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
 
         home.CancelCurrentMainButtonActionCommand.Execute(null);
-        Pump();
+        await Pump();
 
         TestAppBuilder.GameProcessService.Verify(g => g.StopAsync(), Times.Never);
         Assert.That(home.MainButtonShown, Is.EqualTo(HomeTabViewModel.MainButtonState.Cancel));
@@ -141,10 +149,10 @@ public class LaunchStopButtonTest
         var home = Start();
         TestAppBuilder.GameProcessService.Setup(g => g.StopAsync()).ThrowsAsync(new InvalidOperationException("Access is denied."));
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
 
         home.CancelCurrentMainButtonActionCommand.Execute(null);
-        Pump();
+        await Pump();
 
         TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(
             "Couldn't Stop KSP2", It.Is<string>(s => s.Contains("Access is denied.")),
@@ -164,7 +172,7 @@ public class LaunchStopButtonTest
     {
         var home = Start();
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
 
         home.RefreshMainButtonState();
 
@@ -183,7 +191,7 @@ public class LaunchStopButtonTest
         home.GameExited += (_, _) => events.Add("exited");
 
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
         Assert.That(events, Is.EqualTo(new[] { "launched" }), "The station should stay away while the game runs.");
 
         _gameExited.SetResult();
@@ -199,10 +207,10 @@ public class LaunchStopButtonTest
         var exited = 0;
         home.GameExited += (_, _) => exited++;
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
-        Pump();
+        await Pump();
 
         home.CancelCurrentMainButtonActionCommand.Execute(null);
-        Pump();
+        await Pump();
         await launching;
 
         Assert.That(exited, Is.EqualTo(1));

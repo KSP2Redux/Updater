@@ -11,6 +11,8 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
 {
+    protected override bool ChangesConfig => true;
+
     private const string STEAM_UNINSTALL_URL = "steam://uninstall/954850";
 
     /// <inheritdoc />
@@ -33,8 +35,7 @@ public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
             case Ksp2GameRemovalKind.NotAGameFolder:
                 return context.Output.Fail(
                     ExitCode.INSTALL_NOT_FOUND,
-                    $"{removal.Folder} does not look like a KSP2 install folder (there is no {Ksp2Install.KSP2_EXE_NAME} " +
-                    "with KSP2_x64_Data beside it), so nothing was deleted. Use 'installs remove' if the profile points at the wrong place.");
+                    $"{removal.Folder} does not look like a KSP2 install folder (there is no {Ksp2Install.KSP2_EXE_NAME} with KSP2_x64_Data beside it), so nothing was deleted. Use 'installs remove' if the profile points at the wrong place.");
 
             case Ksp2GameRemovalKind.Missing:
                 return Confirmed(context, settings, $"The game folder for '{entry.Name}' is already gone. Remove the profile?") is { } missingRefusal
@@ -43,8 +44,7 @@ public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
 
             case Ksp2GameRemovalKind.UninstallThroughSteam:
                 if (Confirmed(context, settings,
-                        $"'{entry.Name}' is managed by Steam, so Steam will uninstall it and ask you to confirm there. " +
-                        "Remove the profile and hand the uninstall to Steam?") is { } steamRefusal)
+                        $"'{entry.Name}' is managed by Steam, so Steam will uninstall it and ask you to confirm there. Remove the profile and hand the uninstall to Steam?") is { } steamRefusal)
                 {
                     return steamRefusal;
                 }
@@ -67,8 +67,7 @@ public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
         }
 
         if (Confirmed(context, settings,
-                $"Delete {removal.Folder} and remove the '{entry.Name}' profile? The whole folder goes, Redux included, " +
-                "and this cannot be undone. Saves and settings are kept.") is { } refusal)
+                $"Delete {removal.Folder} and remove the '{entry.Name}' profile? The whole folder goes, Redux included, and this cannot be undone. Saves and settings are kept.") is { } refusal)
         {
             return refusal;
         }

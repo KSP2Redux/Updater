@@ -115,9 +115,8 @@ public class DownloadTest
                 byte[] fileBytes = TestAppBuilder.FileSystem.File.ReadAllBytes(path);
                 byte[] streamBytes = prepatchStream.ToArray();
                 if (fileBytes.SequenceEqual(streamBytes) == false)
-                    Assert.Fail($"Tried to open a zip file at {path}, but the content of this file doesn't match the prepatch content that was set up in the test:\n" +
-                                $"\tExpected: {Convert.ToBase64String(streamBytes)}\n" +
-                                $"\tActual: {Convert.ToBase64String(fileBytes)}");
+                    Assert.Fail(
+                        $"Tried to open a zip file at {path}, but the content of this file doesn't match the prepatch content that was set up in the test:\n\tExpected: {Convert.ToBase64String(streamBytes)}\n\tActual: {Convert.ToBase64String(fileBytes)}");
                 return prepatchArchive.Object;
             });
         
@@ -289,7 +288,7 @@ public class DownloadTest
             .Returns(cacheArchive.Object);
         
         Console.WriteLine();
-        Console.WriteLine("TEST: File system before Act:\n" + TestHelpers.DescribeFoldersAndFiles(@"C:\"));
+        Console.WriteLine($"TEST: File system before Act:\n{TestHelpers.DescribeFoldersAndFiles(@"C:\")}");
         Console.WriteLine();
         
         // Act - Assert
@@ -323,10 +322,11 @@ public class DownloadTest
         Assert.That(installButton.Command, Is.Not.Null);
         
         Console.WriteLine();
-        Console.WriteLine("TEST: File system before download:\n" + TestHelpers.DescribeFoldersAndFiles(@"C:\"));
+        Console.WriteLine($"TEST: File system before download:\n{TestHelpers.DescribeFoldersAndFiles(@"C:\")}");
         Console.WriteLine();
         
         installButton.Focus();
+        window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
         window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
         
@@ -344,7 +344,7 @@ public class DownloadTest
         
         // Assert
         Console.WriteLine();
-        Console.WriteLine("TEST: File system after test:\n" + TestHelpers.DescribeFoldersAndFiles(@"C:\"));
+        Console.WriteLine($"TEST: File system after test:\n{TestHelpers.DescribeFoldersAndFiles(@"C:\")}");
         Console.WriteLine();
 
         // Assert Prepatch

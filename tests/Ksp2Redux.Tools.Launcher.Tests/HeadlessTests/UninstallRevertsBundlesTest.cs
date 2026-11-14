@@ -29,7 +29,7 @@ public class UninstallRevertsBundlesTest
         var settings = Start();
         List<string> order = [];
         TestAppBuilder.BundleConversion
-            .Setup(b => b.Revert(It.IsAny<string>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+            .Setup(b => b.RevertAsync(It.IsAny<string>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => order.Add("revert bundles"));
         TestAppBuilder.ZipFileService
             .Setup(z => z.OpenRead(It.IsAny<string>()))
@@ -50,7 +50,7 @@ public class UninstallRevertsBundlesTest
         // Arrange
         var settings = Start();
         TestAppBuilder.BundleConversion
-            .Setup(b => b.Revert(It.IsAny<string>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+            .Setup(b => b.RevertAsync(It.IsAny<string>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Throws(new IOException("3 stock bundles hold converted shaders that only Steam's copies can put back."));
 
         // Act
@@ -74,7 +74,7 @@ public class UninstallRevertsBundlesTest
         TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
         TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
         TestHelpers.MockMessageBoxAcceptAll();
-        TestAppBuilder.FileSystem.File.WriteAllBytes(TestAppBuilder.FileSystem.Path.Combine(InstallDir, "uninstall.zip"), [0x00]);
+        TestAppBuilder.FileSystem.File.WriteAllBytes(TestAppBuilder.FileSystem.Path.Combine(InstallDir, "uninstall.zip"), Convert.FromHexString("504B0506000000000000000000000000000000000000"));
 
         MainWindow window = new MainWindow
         {

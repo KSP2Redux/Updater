@@ -436,24 +436,24 @@ public partial class InstallTransactionEngine
     }
 
     [DllImport("kernel32.dll", EntryPoint = "FindFirstStreamW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-    private static extern IntPtr FindFirstStream(string path, int level, out StreamData data, int flags);
+    private static safe extern IntPtr FindFirstStream(string path, int level, out StreamData data, int flags);
 
     [DllImport("kernel32.dll", EntryPoint = "FindNextStreamW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool FindNextStream(IntPtr handle, out StreamData data);
+    private static safe extern bool FindNextStream(IntPtr handle, out StreamData data);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool FindClose(IntPtr handle);
+    private static safe extern bool FindClose(IntPtr handle);
 
     [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-    private static extern SafeFileHandle OpenPath(string path, uint access, uint share, IntPtr security,
+    private static safe extern SafeFileHandle OpenPath(string path, uint access, uint share, IntPtr security,
         uint disposition, uint flags, IntPtr template);
 
     [DllImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-    private static extern uint GetFinalPath(SafeFileHandle handle, StringBuilder path, uint capacity, uint flags);
+    private static safe extern uint GetFinalPath(SafeFileHandle handle, StringBuilder path, uint capacity, uint flags);
 
     [DllImport("kernel32.dll", EntryPoint = "GetVolumeNameForVolumeMountPointW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetVolumeName(string root, StringBuilder name, uint capacity);
+    private static safe extern bool GetVolumeName(string root, StringBuilder name, uint capacity);
 }

@@ -313,11 +313,11 @@ public partial class InstallTransactionEngineTest
     }
 
     [DllImport("libc", EntryPoint = "link", SetLastError = true)]
-    private static extern int LinuxFixtureLink([MarshalAs(UnmanagedType.LPUTF8Str)] string source,
+    private static safe extern int LinuxFixtureLink([MarshalAs(UnmanagedType.LPUTF8Str)] string source,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string destination);
     [DllImport("libc", EntryPoint = "mkfifo", SetLastError = true)]
-    private static extern int LinuxFixtureFifo([MarshalAs(UnmanagedType.LPUTF8Str)] string path, uint mode);
+    private static safe extern int LinuxFixtureFifo([MarshalAs(UnmanagedType.LPUTF8Str)] string path, uint mode);
     [DllImport("libc", EntryPoint = "setxattr", SetLastError = true)]
-    private static extern int LinuxFixtureAttribute([MarshalAs(UnmanagedType.LPUTF8Str)] string path,
+    private static safe extern int LinuxFixtureAttribute([MarshalAs(UnmanagedType.LPUTF8Str)] string path,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string name, byte[] value, nuint length, int flags);
 }

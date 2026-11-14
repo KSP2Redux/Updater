@@ -32,11 +32,13 @@ public sealed class LogService : ILogService, IDisposable
 {
     private const int MaxLogFilesToKeep = 10;
     private const long DefaultMaxLogFileSizeBytes = 20 * 1024 * 1024;
-    private const string LogFilePrefix = "launcher-";
+    public const string LAUNCHER_LOG_PREFIX = "launcher-";
+    public const string CLI_LOG_PREFIX = "cli-";
     private const string LogFileExtension = ".log";
 
     private readonly IFileSystem _fileSystem;
     private readonly long _maxLogFileSizeBytes;
+    private readonly string _logFilePrefix;
     private readonly object _writeLock = new();
     private StreamWriter? _writer;
     private bool _disposed;
@@ -46,10 +48,11 @@ public sealed class LogService : ILogService, IDisposable
     public string? CurrentLogFilePath { get; private set; }
     public LogLevel MinimumLevel { get; set; } = LogLevel.Info;
 
-    public LogService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider, long maxLogFileSizeBytes = DefaultMaxLogFileSizeBytes)
+    public LogService(IFileSystem fileSystem, IEnvironmentProvider environmentProvider, long maxLogFileSizeBytes = DefaultMaxLogFileSizeBytes, string logFilePrefix = LAUNCHER_LOG_PREFIX)
     {
         _fileSystem = fileSystem;
         _maxLogFileSizeBytes = maxLogFileSizeBytes;
+        _logFilePrefix = logFilePrefix;
         _processId = environmentProvider.ProcessId;
         try
         {
@@ -57,7 +60,7 @@ public sealed class LogService : ILogService, IDisposable
             fileSystem.Directory.CreateDirectory(logsDir);
             RotateOldLogs(logsDir);
 
-            var fileName = LogFilePrefix + DateTime.Now.ToString("yyyyMMdd-HHmmss") + LogFileExtension;
+            var fileName = _logFilePrefix + DateTime.Now.ToString("yyyyMMdd-HHmmss") + LogFileExtension;
             CurrentLogFilePath = fileSystem.Path.Combine(logsDir, fileName);
 
             var stream = fileSystem.FileStream.New(CurrentLogFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
@@ -96,7 +99,7 @@ public sealed class LogService : ILogService, IDisposable
         try
         {
             var existing = _fileSystem.Directory
-                .EnumerateFiles(logsDir, LogFilePrefix + "*" + LogFileExtension)
+                .EnumerateFiles(logsDir, $"{_logFilePrefix}*{LogFileExtension}")
                 .Select(p => new { Path = p, Info = _fileSystem.FileInfo.New(p) })
                 .OrderByDescending(f => f.Info.LastWriteTimeUtc)
                 .Skip(MaxLogFilesToKeep - 1)

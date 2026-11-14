@@ -135,7 +135,7 @@ public static class CliCommandCatalog
 
     private static IReadOnlyList<string> Children(string path)
     {
-        var prefix = path.Length == 0 ? "" : path + " ";
+        var prefix = path.Length == 0 ? "" : $"{path} ";
 
         List<string> children = [];
         foreach (var command in Commands)

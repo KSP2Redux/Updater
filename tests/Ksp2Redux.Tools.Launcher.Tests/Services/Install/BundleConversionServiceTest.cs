@@ -22,13 +22,13 @@ public class BundleConversionServiceTest
     private static readonly byte[] ConvertedBytes = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
 
     [Test]
-    public void ConvertForABuildWithoutShaderBundles_PutsTheConvertedBundlesBackToStock()
+    public async Task ConvertForABuildWithoutShaderBundles_PutsTheConvertedBundlesBackToStock()
     {
         var (fs, bundlePath, journalPath) = MakeConvertedInstall();
 
         // The installed build ships no Redux/ShaderBundles manifest.
-        new BundleConversionService(fs, new InstallationStateService(fs, new Ksp2Redux.Tools.Common.Services.ZipFileService(fs)))
-            .Convert(InstallDir, _ => { }, CancellationToken.None);
+        await new BundleConversionService(fs, new InstallationStateService(fs, new Ksp2Redux.Tools.Common.Services.ZipFileService(fs)))
+            .ConvertAsync(InstallDir, _ => { }, CancellationToken.None);
 
         var expected = new byte[64];
         StockBytes.CopyTo(expected, EditOffset);
@@ -37,28 +37,28 @@ public class BundleConversionServiceTest
     }
 
     [Test]
-    public void RevertingABundleAnotherProgramHoldsOpenFailsAndKeepsTheJournal()
+    public async Task RevertingABundleAnotherProgramHoldsOpenFailsAndKeepsTheJournal()
     {
         var (fs, bundlePath, journalPath) = MakeConvertedInstall();
         using var editor = fs.File.Open(bundlePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         // An uninstall that carried on would delete the journal, and the bundle would stay converted for good.
-        Assert.Throws<IOException>(() => new BundleConversionService(fs,
+        await Assert.ThrowsAsync<IOException>(() => new BundleConversionService(fs,
             new InstallationStateService(fs, new Ksp2Redux.Tools.Common.Services.ZipFileService(fs)))
-            .Revert(InstallDir, _ => { }, CancellationToken.None));
+            .RevertAsync(InstallDir, _ => { }, CancellationToken.None));
 
         Assert.That(fs.File.Exists(journalPath), Is.True);
     }
 
     [Test]
-    public void RevertingAnInstallWhoseJournalWasLost_PutsSteamsCopyOfTheConvertedBundleBack()
+    public async Task RevertingAnInstallWhoseJournalWasLost_PutsSteamsCopyOfTheConvertedBundleBack()
     {
         // Arrange
         var (game, stock) = GameWithUnrecordedEdits();
         var downloader = StockDownloader(game, stock, out var restored);
 
         // Act
-        new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), SignedIn().Object, downloader.Object).Revert(TestGame.ROOT, _ => { }, CancellationToken.None);
+        await new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), SignedIn().Object, downloader.Object).RevertAsync(TestGame.ROOT, _ => { }, CancellationToken.None);
 
         // Assert
         Assert.That(restored, Is.EqualTo(new[] { $"{BundleConversionLayout.BUNDLE_ROOT}/{CONTENT}" }));
@@ -67,7 +67,7 @@ public class BundleConversionServiceTest
     }
 
     [Test]
-    public void RevertingAnInstallWhoseJournalWasLost_WithoutSteam_FailsAndLeavesTheBundle()
+    public async Task RevertingAnInstallWhoseJournalWasLost_WithoutSteam_FailsAndLeavesTheBundle()
     {
         // Arrange
         var (game, _) = GameWithUnrecordedEdits();
@@ -76,13 +76,13 @@ public class BundleConversionServiceTest
         session.SetupGet(steam => steam.HasSavedLogin).Returns(false);
 
         // Act / Assert: carrying on would hand a build without the URP shaders magenta bundles.
-        Assert.Throws<IOException>(() => new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), session.Object, new Mock<ISteamDepotDownloader>().Object)
-            .Revert(TestGame.ROOT, _ => { }, CancellationToken.None));
+        await Assert.ThrowsAsync<IOException>(() => new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), session.Object, new Mock<ISteamDepotDownloader>().Object)
+            .RevertAsync(TestGame.ROOT, _ => { }, CancellationToken.None));
         Assert.That(game.Read(CONTENT), Is.EqualTo(converted));
     }
 
     [Test]
-    public void ConvertingAnInstallWhoseJournalWasLost_RestoresFromSteamAndJournalsTheEdits()
+    public async Task ConvertingAnInstallWhoseJournalWasLost_RestoresFromSteamAndJournalsTheEdits()
     {
         // Arrange
         var (game, stock) = GameWithUnrecordedEdits();
@@ -90,7 +90,7 @@ public class BundleConversionServiceTest
         var downloader = StockDownloader(game, stock, out _);
 
         // Act
-        new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), SignedIn().Object, downloader.Object).Convert(TestGame.ROOT, _ => { }, CancellationToken.None);
+        await new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), SignedIn().Object, downloader.Object).ConvertAsync(TestGame.ROOT, _ => { }, CancellationToken.None);
 
         // Assert: converted again, and this time a revert can find every edit.
         Assert.That(game.Journal()!.InPlace.Select(entry => entry.File), Is.EqualTo(new[] { CONTENT }));
@@ -98,7 +98,7 @@ public class BundleConversionServiceTest
     }
 
     [Test]
-    public void ConvertingAnInstallWhoseJournalWasLost_WithoutSteam_StillConverts()
+    public async Task ConvertingAnInstallWhoseJournalWasLost_WithoutSteam_StillConverts()
     {
         // Arrange: the URP build draws these bundles fine, so missing Steam must not stop its install.
         var (game, _) = GameWithUnrecordedEdits();
@@ -108,8 +108,8 @@ public class BundleConversionServiceTest
         List<LogMessage> log = [];
 
         // Act
-        new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), session.Object, new Mock<ISteamDepotDownloader>().Object)
-            .Convert(TestGame.ROOT, log.Add, CancellationToken.None);
+        await new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), session.Object, new Mock<ISteamDepotDownloader>().Object)
+            .ConvertAsync(TestGame.ROOT, log.Add, CancellationToken.None);
 
         // Assert
         Assert.That(log.Select(line => line.English), Has.Some.StartsWith("Warning:"));

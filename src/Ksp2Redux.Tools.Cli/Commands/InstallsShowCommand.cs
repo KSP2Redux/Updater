@@ -63,5 +63,5 @@ public sealed class InstallsShowCommand : ReduxCommand<InstallsShowSettings>
     }
 
     private static void Row(CliContext context, string label, string value) =>
-        context.Output.Result($"  {label + ":",-15}{value}");
+        context.Output.Result($"  {$"{label}:",-15}{value}");
 }

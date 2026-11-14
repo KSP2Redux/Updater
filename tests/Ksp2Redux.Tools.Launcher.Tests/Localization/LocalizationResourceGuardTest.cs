@@ -43,7 +43,7 @@ public partial class LocalizationResourceGuardTest
             // A literal that starts like a key may be a prefix, because some keys are completed in code.
             unknown.AddRange(DottedLiteral().Matches(text).Select(match => match.Groups[1].Value)
                 .Where(literal => areas.Contains(literal[..literal.IndexOf('.')]))
-                .Where(literal => !keys.Contains(literal) && !keys.Any(key => key.StartsWith(literal + ".")))
+                .Where(literal => !keys.Contains(literal) && !keys.Any(key => key.StartsWith($"{literal}.")))
                 .Select(literal => $"{name}: {literal}"));
         }
 
@@ -64,7 +64,7 @@ public partial class LocalizationResourceGuardTest
 
         // A key is also used when code completes a literal prefix with a suffix.
         var unused = ReadResx(Path.Combine(LocalizationDirectory, NeutralFileName)).Keys
-            .Where(key => !literals.Contains(key) && !literals.Any(literal => key.StartsWith(literal + ".")));
+            .Where(key => !literals.Contains(key) && !literals.Any(literal => key.StartsWith($"{literal}.")));
 
         Assert.That(unused, Is.Empty, "Translators would translate these for nothing");
     }

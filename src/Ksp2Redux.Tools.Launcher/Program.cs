@@ -108,21 +108,12 @@ sealed class Program
                     File.Copy(whereAmI, exe, true);
                     Thread.Sleep(StageSettleDelay);
                     var stageArgs = $"--pid \"{Environment.ProcessId}\" --prev \"{whereAmI}\" {RenderingFlags}".TrimEnd();
-                    var startInfo = new ProcessStartInfo
+                    var startInfo = new ProcessStartInfo(exe, stageArgs)
                     {
                         UseShellExecute = false,
-                        WorkingDirectory = Path.GetDirectoryName(exe)
+                        WorkingDirectory = Path.GetDirectoryName(exe),
+                        StartDetached = !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                     };
-                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    {
-                        startInfo.FileName = exe;
-                        startInfo.Arguments = stageArgs;
-                    }
-                    else
-                    {
-                        startInfo.FileName = "setsid";
-                        startInfo.Arguments = $"-f \"{exe}\" {stageArgs}";
-                    }
                     Process.Start(startInfo);
                     Environment.Exit(0);
 #pragma warning restore RS0030
@@ -152,6 +143,7 @@ sealed class Program
         });
         try
         {
+            LauncherInstance.MarkRunning();
             var builder = BuildAvaloniaApp();
             if (CreateWin32Options(_softwareRendering, _noComposition) is { } win32Options)
             {

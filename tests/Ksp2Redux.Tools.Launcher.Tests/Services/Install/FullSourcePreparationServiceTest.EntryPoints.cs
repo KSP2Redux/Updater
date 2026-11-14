@@ -36,7 +36,7 @@ public partial class FullSourcePreparationServiceTest
 
     private static async Task<InstallPlan> SelectedPlan(Fixture fixture, bool repair = false)
     {
-        var feed = new ManifestReleasesFeed(fixture.Fs, fixture.Transport.Object, Mock.Of<ILogService>(),
+        var feed = new ManifestReleasesFeed(fixture.Transport.Object, Mock.Of<ILogService>(),
             fixture.Storage, fixture.Config.Feeds.Single());
         Assert.That(await feed.UpdateManifest(), Is.True);
         var selected = feed.GetAllVersions().Single();
@@ -371,9 +371,9 @@ public partial class FullSourcePreparationServiceTest
         IServiceProvider services = Services(fixture);
         var installs = services.GetRequiredService<IKsp2InstallService>();
         installs.TryLoadKsp2Install();
-        var feed = new ManifestReleasesFeed(fixture.Fs, fixture.Transport.Object, Mock.Of<ILogService>(), fixture.Storage, fixture.Config.Feeds[0]);
+        var feed = new ManifestReleasesFeed(fixture.Transport.Object, Mock.Of<ILogService>(), fixture.Storage, fixture.Config.Feeds[0]);
         await feed.UpdateManifest();
-        services.GetRequiredService<IReleasesFeedService>().AddOrSet(CHANNEL, feed);
+        services.GetRequiredService<IReleasesFeedService>().Add(feed);
         var home = new HomeTabViewModel(installs, fixture.Configuration.Object, services.GetRequiredService<IReleasesFeedService>(),
             services.GetRequiredService<IInstallPlanService>(), Mock.Of<IUpdateService>(), fixture.Os.Object,
             Mock.Of<IMessageBoxService>(), services.GetRequiredService<IEnvironmentProvider>(), fixture.Fs,
@@ -401,11 +401,11 @@ public partial class FullSourcePreparationServiceTest
         IServiceProvider services = Services(fixture);
         var installs = services.GetRequiredService<IKsp2InstallService>();
         installs.TryLoadKsp2Install();
-        var feed = new ManifestReleasesFeed(fixture.Fs, fixture.Transport.Object, Mock.Of<ILogService>(),
+        var feed = new ManifestReleasesFeed(fixture.Transport.Object, Mock.Of<ILogService>(),
             At(fixture.Fs, fixture.Storage, "legacy-downloads"), fixture.Config.Feeds[0]);
         await feed.UpdateManifest();
         var feeds = services.GetRequiredService<IReleasesFeedService>();
-        feeds.AddOrSet(CHANNEL, feed);
+        feeds.Add(feed);
         var home = new HomeTabViewModel(installs, fixture.Configuration.Object, feeds,
             services.GetRequiredService<IInstallPlanService>(), Mock.Of<IUpdateService>(), fixture.Os.Object,
             Mock.Of<IMessageBoxService>(), services.GetRequiredService<IEnvironmentProvider>(), fixture.Fs,

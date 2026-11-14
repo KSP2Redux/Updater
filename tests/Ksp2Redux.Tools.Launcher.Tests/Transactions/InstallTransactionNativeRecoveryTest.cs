@@ -148,10 +148,10 @@ public partial class InstallTransactionEngineTest
     }
 
     [DllImport("kernel32.dll", EntryPoint = "GetLongPathNameW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-    private static extern uint GetLongPath(string path, StringBuilder buffer, uint capacity);
+    private static safe extern uint GetLongPath(string path, StringBuilder buffer, uint capacity);
 
     [DllImport("kernel32.dll", EntryPoint = "GetShortPathNameW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-    private static extern uint GetShortPath(string path, StringBuilder buffer, uint capacity);
+    private static safe extern uint GetShortPath(string path, StringBuilder buffer, uint capacity);
 
     private static IFileSystem InterceptReplacement(IFileSystem fs, Action<string, string> replace)
     {

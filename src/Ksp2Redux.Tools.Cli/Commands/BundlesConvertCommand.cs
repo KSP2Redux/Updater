@@ -275,9 +275,7 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
         output.Result($"  materials already on a replacement bundle {plan.MaterialsOnReplacement}");
         var converted = Textures(plan).Where(texture => texture.ChangesFormat).ToList();
         output.Result(
-            $"  cloud textures             {converted.Count} smaller in {plan.TextureBundles.Count} bundles, " +
-            $"{CliFormat.Bytes(converted.Sum(texture => texture.StockBytes))} to {CliFormat.Bytes(converted.Sum(texture => texture.ConvertedBytes))}, " +
-            $"{Textures(plan).Count(texture => !texture.ChangesFormat)} CPU copies dropped, {plan.SkippedTextures.Count} left as they are");
+            $"  cloud textures             {converted.Count} smaller in {plan.TextureBundles.Count} bundles, {CliFormat.Bytes(converted.Sum(texture => texture.StockBytes))} to {CliFormat.Bytes(converted.Sum(texture => texture.ConvertedBytes))}, {Textures(plan).Count(texture => !texture.ChangesFormat)} CPU copies dropped, {plan.SkippedTextures.Count} left as they are");
         if (plan.UnrecordedEdits.Count > 0)
         {
             output.Result($"  unrecorded converted bundles {plan.UnrecordedEdits.Count}, only Steam's copies can put them back: {string.Join(", ", plan.UnrecordedEdits)}");

@@ -112,7 +112,7 @@ public class Ksp2Install
 
             // Verifying the game files through the store puts the stock game code back but leaves everything Redux
             // added, so the Redux folder alone is not proof. When the game code was read, it decides.
-            Distribution = (gameCodeIsRedux ?? isRedux) ? Distribution.Redux :
+            Distribution = gameCodeIsRedux ?? isRedux ? Distribution.Redux :
                 isPrepatch ? Distribution.Prepatched :
                 isSteam ? Distribution.Steam :
                 isEpic ? Distribution.Epic :

@@ -151,10 +151,10 @@ public partial class FullSourcePreparationServiceTest
             fixture.Patch = fixture.Patch with { FullSource = fixture.Patch.FullSource! with { Channel = CHANNEL, ReleaseId = "owned-gui-beta" } };
             var installs = services.GetRequiredService<IKsp2InstallService>();
             installs.TryLoadKsp2Install();
-            var feed = new ManifestReleasesFeed(fs, fixture.Provider, Mock.Of<ILogService>(), fixture.Storage, configured);
+            var feed = new ManifestReleasesFeed(fixture.Provider, Mock.Of<ILogService>(), fixture.Storage, configured);
             Assert.That(await feed.UpdateManifest(), Is.True);
             var feeds = services.GetRequiredService<IReleasesFeedService>();
-            feeds.AddOrSet(CHANNEL, feed);
+            feeds.Add(feed);
             var home = new HomeTabViewModel(installs, fixture.Configuration.Object, feeds, services.GetRequiredService<IInstallPlanService>(),
                 Mock.Of<IUpdateService>(), fixture.Os.Object, Mock.Of<IMessageBoxService>(), services.GetRequiredService<IEnvironmentProvider>(),
                 fs, Mock.Of<ILogService>(), Mock.Of<IWineRuntimeService>(), services.GetRequiredService<IGameProcessService>(),

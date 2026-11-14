@@ -271,7 +271,7 @@ public partial class FullSourcePreparationServiceTest
         async Task ApplyPlanAsync()
         {
             CheckFinalFeedback(fs, options, workspace);
-            var feed = new ManifestReleasesFeed(fs, fixture.Transport.Object, Mock.Of<ILogService>(), fixture.Storage, fixture.Config.Feeds.Single());
+            var feed = new ManifestReleasesFeed(fixture.Transport.Object, Mock.Of<ILogService>(), fixture.Storage, fixture.Config.Feeds.Single());
             Assert.That(await feed.UpdateManifest(), Is.True);
             GameVersion selected = feed.GetAllVersions().Single(version => $"{version.VersionNumber}.{version.BuildNumber}" == fixture.Patch.Version);
             InstallPlan plan = feed.GetPatchListToVersion(selected, selected);
@@ -426,7 +426,7 @@ public partial class FullSourcePreparationServiceTest
             new InstallTransactionEngine(fixture.Fs, validateFileStreams: _ => { }), profile.RootElement, fixture.Stock);
         fixture.SuppliedFeed = feed;
         fixture.Patch = patch;
-        var consumer = new ManifestReleasesFeed(fixture.Fs, fixture.Transport.Object, Mock.Of<ILogService>(), fixture.Storage, fixture.Config.Feeds.Single());
+        var consumer = new ManifestReleasesFeed(fixture.Transport.Object, Mock.Of<ILogService>(), fixture.Storage, fixture.Config.Feeds.Single());
         Assert.That(await consumer.UpdateManifest(), Is.True);
         GameVersion selected = consumer.GetAllVersions().Single();
         InstallPlan plan = consumer.GetPatchListToVersion(selected, selected);

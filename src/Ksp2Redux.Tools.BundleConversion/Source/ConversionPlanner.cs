@@ -31,11 +31,7 @@ internal static class ConversionPlanner
 
             foreach (var file in bundle.Files)
             {
-                if (!files.ContainsKey(file.Name))
-                {
-                    files.Add(file.Name, file);
-                }
-                else
+                if (!files.TryAdd(file.Name, file))
                 {
                     warnings.Add(new BundleProblem(bundle.File, $"{file.Name} also appears in another bundle, the first one is used"));
                 }
@@ -174,7 +170,7 @@ internal static class ConversionPlanner
             return null;
         }
 
-        if (texture.Value(ScannedTexture.STREAM_OFFSET) < 0 || texture.Value(ScannedTexture.STREAM_OFFSET) + (faceSize * CubemapRecompression.FACES) > entry.Size)
+        if (texture.Value(ScannedTexture.STREAM_OFFSET) < 0 || texture.Value(ScannedTexture.STREAM_OFFSET) + faceSize * CubemapRecompression.FACES > entry.Size)
         {
             reason = "its pixels run past the end of their resource file";
             return null;
@@ -253,11 +249,10 @@ internal static class ConversionPlanner
         Dictionary<string, ScannedSerializedFile> shaderFiles = new(StringComparer.OrdinalIgnoreCase);
         foreach (var file in bundles.Where(bundle => bundle.Error is null).SelectMany(bundle => bundle.Files))
         {
-            if ((string.Equals(file.Name, ShaderBundleIds.SHARED_SHADERS_CAB, StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(file.Name, ShaderBundleIds.BUILTIN_SHADERS_CAB, StringComparison.OrdinalIgnoreCase)) &&
-                !shaderFiles.ContainsKey(file.Name))
+            if (string.Equals(file.Name, ShaderBundleIds.SHARED_SHADERS_CAB, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(file.Name, ShaderBundleIds.BUILTIN_SHADERS_CAB, StringComparison.OrdinalIgnoreCase))
             {
-                shaderFiles.Add(file.Name, file);
+                shaderFiles.TryAdd(file.Name, file);
             }
         }
 
@@ -290,24 +285,17 @@ internal static class ConversionPlanner
     /// <summary>
     /// Plans one bundle.
     /// </summary>
-    private sealed class BundlePlanner
+    private sealed class BundlePlanner(
+        ScannedBundle bundle,
+        IReadOnlyDictionary<string, ScannedSerializedFile> files,
+        ShaderManifestIndex manifest)
     {
-        private readonly ScannedBundle _bundle;
-        private readonly IReadOnlyDictionary<string, ScannedSerializedFile> _files;
-        private readonly ShaderManifestIndex _manifest;
         private readonly List<PlannedEdit> _edits = [];
         private readonly Dictionary<string, List<string>> _addedExternals = new(StringComparer.Ordinal);
 
         // Keyed by the shader's own CAB and path ID, so preload entries in any serialized file of the
         // bundle can find the retarget whatever file ID they use to reach it.
         private readonly Dictionary<(string Cab, long PathId), (ShaderTarget Target, string Name)> _retargets = [];
-
-        public BundlePlanner(ScannedBundle bundle, IReadOnlyDictionary<string, ScannedSerializedFile> files, ShaderManifestIndex manifest)
-        {
-            _bundle = bundle;
-            _files = files;
-            _manifest = manifest;
-        }
 
         public List<SkippedShaderReference> Skipped { get; } = [];
 
@@ -319,7 +307,7 @@ internal static class ConversionPlanner
 
         public void Run()
         {
-            foreach (var file in _bundle.Files)
+            foreach (var file in bundle.Files)
             {
                 foreach (var field in file.ShaderFields)
                 {
@@ -327,7 +315,7 @@ internal static class ConversionPlanner
                 }
             }
 
-            foreach (var file in _bundle.Files)
+            foreach (var file in bundle.Files)
             {
                 foreach (var preload in file.Preloads)
                 {
@@ -347,7 +335,7 @@ internal static class ConversionPlanner
             }
 
             var ordered = _edits.OrderBy(edit => edit.DataOffset).ToList();
-            Plan = new BundleEditPlan(_bundle.File, _bundle.Size, ordered, added);
+            Plan = new BundleEditPlan(bundle.File, bundle.Size, ordered, added);
             ChooseMode(Plan);
         }
 
@@ -361,7 +349,7 @@ internal static class ConversionPlanner
                 return;
             }
 
-            var layout = _bundle.Layout!;
+            var layout = bundle.Layout!;
             foreach (var edit in plan.Edits)
             {
                 if (!layout.TryMapUncompressed(edit.DataOffset, Hex.PPTR_SIZE, out _))
@@ -413,7 +401,7 @@ internal static class ConversionPlanner
                 return;
             }
 
-            if (!_manifest.TryFind(shaderName, out var targets))
+            if (!manifest.TryFind(shaderName, out var targets))
             {
                 Skip(file, field, kind, shaderName, NOT_IN_MANIFEST);
                 return;
@@ -462,19 +450,19 @@ internal static class ConversionPlanner
         private Resolution Resolve(ScannedSerializedFile file, int fileId, long pathId, out string shaderName, out string shaderCab)
         {
             shaderCab = file.ResolveFileId(fileId) ?? "";
-            shaderName = $"<{(shaderCab.Length > 0 ? shaderCab : "file " + fileId)}:{pathId}>";
+            shaderName = $"<{(shaderCab.Length > 0 ? shaderCab : $"file {fileId}")}:{pathId}>";
 
             if (shaderCab.Length == 0)
             {
                 return Resolution.BadFileId;
             }
 
-            if (_files.TryGetValue(shaderCab, out var owner) && owner.Shaders.TryGetValue(pathId, out var name))
+            if (files.TryGetValue(shaderCab, out var owner) && owner.Shaders.TryGetValue(pathId, out var name))
             {
                 shaderName = name;
             }
 
-            if (_manifest.IsReplacementCab(shaderCab))
+            if (manifest.IsReplacementCab(shaderCab))
             {
                 return Resolution.OnReplacement;
             }
@@ -544,8 +532,8 @@ internal static class ConversionPlanner
 
         private void Skip(ScannedSerializedFile file, ScannedShaderField field, ShaderReferenceKind kind, string shaderName, string reason)
         {
-            Skipped.Add(new SkippedShaderReference(_bundle.File, kind, field.ObjectName, field.FieldPath, shaderName, reason));
-            Report(file, field, kind, shaderName, "skipped: " + reason);
+            Skipped.Add(new SkippedShaderReference(bundle.File, kind, field.ObjectName, field.FieldPath, shaderName, reason));
+            Report(file, field, kind, shaderName, $"skipped: {reason}");
         }
 
         private void Report(ScannedSerializedFile file, ScannedShaderField field, ShaderReferenceKind kind, string shaderName, string outcome)
@@ -555,7 +543,7 @@ internal static class ConversionPlanner
                 return;
             }
 
-            FieldReferences.Add(new ShaderFieldReference(_bundle.File, kind, ScriptName(file, field), field.FieldPath, shaderName, outcome));
+            FieldReferences.Add(new ShaderFieldReference(bundle.File, kind, ScriptName(file, field), field.FieldPath, shaderName, outcome));
         }
 
         private string ScriptName(ScannedSerializedFile file, ScannedShaderField field)
@@ -566,12 +554,12 @@ internal static class ConversionPlanner
             }
 
             var cab = file.ResolveFileId(field.ScriptFileId);
-            if (cab is not null && _files.TryGetValue(cab, out var owner) && owner.MonoScripts.TryGetValue(field.ScriptPathId, out var name))
+            if (cab is not null && files.TryGetValue(cab, out var owner) && owner.MonoScripts.TryGetValue(field.ScriptPathId, out var name))
             {
                 return name;
             }
 
-            return $"<script {cab ?? "file " + field.ScriptFileId}:{field.ScriptPathId}>";
+            return $"<script {cab ?? $"file {field.ScriptFileId}"}:{field.ScriptPathId}>";
         }
     }
 

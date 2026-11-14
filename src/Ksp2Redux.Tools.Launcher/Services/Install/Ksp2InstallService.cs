@@ -37,9 +37,8 @@ public interface IKsp2InstallService
     void RemoveInstall(Guid id);
     void RenameInstall(Guid id, string newName);
     void SetActiveInstall(Guid id);
-    void UpdateActiveReleaseChannel(string channel);
     void AutoSwitchToStableIfPending(bool stableHasReleases);
-    void UpdateActiveLastInstalledVersion(GameVersion? version);
+    void UpdateLastInstalledVersion(GameVersion? version);
     void UpdateInstallReleaseChannel(Guid id, string channel);
     void UpdateInstallExePath(Guid id, string newExePath);
     void UpdateInstallDisableGraphicsJobs(Guid id, bool value);
@@ -129,8 +128,8 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
             ExePath = exePath,
             Name = string.IsNullOrWhiteSpace(name) ? LauncherConfigService.DeriveDefaultInstallName(exePath) : name!,
             ReleaseChannel = launcherConfigService.Config.Ksp2Installs.Count > 0
-                ? (ActiveEntry?.ReleaseChannel ?? "beta")
-                : (string.IsNullOrEmpty(launcherConfigService.Config.ReleaseChannel) ? "beta" : launcherConfigService.Config.ReleaseChannel)
+                ? ActiveEntry?.ReleaseChannel ?? "beta"
+                : string.IsNullOrEmpty(launcherConfigService.Config.ReleaseChannel) ? "beta" : launcherConfigService.Config.ReleaseChannel
         };
         launcherConfigService.Config.Ksp2Installs.Add(entry);
 
@@ -197,15 +196,6 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateActiveReleaseChannel(string channel)
-    {
-        if (ActiveEntry is not { } entry) return;
-        if (entry.ReleaseChannel == channel) return;
-        entry.ReleaseChannel = channel;
-        launcherConfigService.Save();
-        ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
-    }
-
     public void AutoSwitchToStableIfPending(bool stableHasReleases)
     {
         if (launcherConfigService.Config.AutoSwitchedToStable) return;
@@ -219,9 +209,9 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (switched) ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateActiveLastInstalledVersion(GameVersion? version)
+    public void UpdateLastInstalledVersion(GameVersion? version)
     {
-        if (ActiveEntry is not { } entry) return;
+        if (TargetEntry is not { } entry) return;
         entry.LastInstalledVersion = version;
         launcherConfigService.Save();
     }
@@ -305,7 +295,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         {
             if (!fileSystem.File.Exists(bootConfigPath)) return;
             var lines = fileSystem.File.ReadAllLines(bootConfigPath).ToList();
-            int index = lines.FindIndex(line => line.StartsWith(KEY + "=", StringComparison.Ordinal));
+            int index = lines.FindIndex(line => line.StartsWith($"{KEY}=", StringComparison.Ordinal));
             if (index >= 0)
             {
                 if (lines[index] == desiredLine)

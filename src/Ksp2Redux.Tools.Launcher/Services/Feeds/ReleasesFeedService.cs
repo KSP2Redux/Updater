@@ -5,16 +5,29 @@ namespace Ksp2Redux.Tools.Launcher.Services.Feeds;
 public interface IReleasesFeedService
 {
     IReadOnlyDictionary<string, ManifestReleasesFeed> ReleasesFeed { get; }
-    void AddOrSet(string channel, ManifestReleasesFeed releasesFeed);
+    IReadOnlyList<ManifestReleasesFeed> Feeds { get; }
+    void Add(ManifestReleasesFeed releasesFeed);
 }
 
 public class ReleasesFeedService : IReleasesFeedService
 {
-    private Dictionary<string, ManifestReleasesFeed> _releasesFeed = [];
-    public IReadOnlyDictionary<string, ManifestReleasesFeed> ReleasesFeed => _releasesFeed;
+    private readonly List<ManifestReleasesFeed> _feeds = [];
 
-    public void AddOrSet(string channel, ManifestReleasesFeed releasesFeed)
+    public IReadOnlyList<ManifestReleasesFeed> Feeds => _feeds;
+
+    public IReadOnlyDictionary<string, ManifestReleasesFeed> ReleasesFeed
     {
-        _releasesFeed[channel] = releasesFeed;
+        get
+        {
+            Dictionary<string, ManifestReleasesFeed> byChannel = [];
+            foreach (var feed in _feeds.Where(feed => feed.CurrentChannel != ManifestReleasesFeed.INVALID_CHANNEL))
+            {
+                byChannel[feed.CurrentChannel] = feed;
+            }
+
+            return byChannel;
+        }
     }
+
+    public void Add(ManifestReleasesFeed releasesFeed) => _feeds.Add(releasesFeed);
 }

@@ -15,7 +15,7 @@ public class GameVersionTest
     {
         // Arrange
         TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
-            ("VERSION_TEXT", version + "." + buildNumber),
+            ("VERSION_TEXT", $"{version}.{buildNumber}"),
             ("DEBUG_INFO", "0000")
         ).type;
 
@@ -44,7 +44,7 @@ public class GameVersionTest
     {
         // Arrange
         TypeDefinition versionIDType = TestHelpers.GenerateMockVersionID(
-            ("VERSION_TEXT", version + "." + buildNumber),
+            ("VERSION_TEXT", $"{version}.{buildNumber}"),
             ("CHANNEL_NAME", channel),
             ("DEBUG_INFO", "0000")
         ).type;

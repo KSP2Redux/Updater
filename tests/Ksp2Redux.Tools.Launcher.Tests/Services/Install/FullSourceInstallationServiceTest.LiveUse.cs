@@ -466,6 +466,7 @@ public partial class FullSourceInstallationServiceTest
             Mock.Of<ILogService>(), state, coordinator);
         var feeds = new Mock<IReleasesFeedService>();
         feeds.SetupGet(service => service.ReleasesFeed).Returns(new Dictionary<string, ManifestReleasesFeed>());
+        feeds.SetupGet(service => service.Feeds).Returns([]);
         var handedOff = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         fixture.GameProcesses.Setup(service => service.Start(It.IsAny<ProcessStartInfo>()))
             .Callback(() => handedOff.TrySetResult());
@@ -545,6 +546,7 @@ public partial class FullSourceInstallationServiceTest
             Mock.Of<ILogService>(), state, coordinator);
         var feeds = new Mock<IReleasesFeedService>();
         feeds.SetupGet(service => service.ReleasesFeed).Returns(new Dictionary<string, ManifestReleasesFeed>());
+        feeds.SetupGet(service => service.Feeds).Returns([]);
         var messages = new Mock<IMessageBoxService>();
         messages.Setup(service => service.ShowMessageBoxAsOwnedAsync(It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<ButtonEnum>(), It.IsAny<Icon>(), It.IsAny<object>(), It.IsAny<WindowStartupLocation>())).ReturnsAsync(ButtonResult.Yes);

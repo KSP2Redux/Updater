@@ -11,6 +11,8 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 // Bypasses the Steam client, which will not download KSP2 on macOS.
 public sealed class SteamDownloadCommand : ReduxCommand<SteamDownloadSettings>
 {
+    protected override bool ChangesConfig => true;
+
     private const string DEFAULT_PROFILE_NAME = "KSP2 (Steam download)";
     private const string GAMES_FOLDER = "Games";
 

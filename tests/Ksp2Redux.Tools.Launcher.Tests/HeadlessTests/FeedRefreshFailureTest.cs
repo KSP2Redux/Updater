@@ -8,6 +8,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -97,6 +98,87 @@ public class FeedRefreshFailureTest
         // Assert - banner clears once refreshes succeed again
         Assert.That(homeTabViewModel.FeedRefreshFailed, Is.False);
         Assert.That(warningText.IsVisible, Is.False);
+    }
+
+    [AvaloniaTest]
+    public async Task RefreshFeeds_StartedOffline_FilesEveryFeedUnderItsChannelOnceOnline()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestHelpers.MockKsp2StockSteamInstall();
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .ThrowsAsync(new HttpRequestException("network unreachable"));
+
+        MainWindow window = new MainWindow
+        {
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
+        };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var homeTabViewModel = TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
+        var settingsTabViewModel = TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>();
+        Assert.That(homeTabViewModel.FeedRefreshFailed, Is.True);
+        Assert.That(settingsTabViewModel.ValidChannels, Is.Empty);
+
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .ReturnsAsync((FeedInfo f) => new ReleaseManifest
+            {
+                Channel = f.Filename.Contains(DefaultChannel) ? DefaultChannel : OtherChannel,
+                GeneratedAt = new DateTime(2020, 1, 4),
+                Patches = [],
+                SchemaVersion = 1
+            });
+
+        await homeTabViewModel.RefreshFeedsCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.That(homeTabViewModel.FeedRefreshFailed, Is.False);
+        Assert.That(settingsTabViewModel.ValidChannels, Is.EquivalentTo(new[] { DefaultChannel, OtherChannel }));
+        Assert.That(TestAppBuilder.ServiceProvider.GetRequiredService<IReleasesFeedService>().ReleasesFeed.Keys,
+            Is.EquivalentTo(new[] { DefaultChannel, OtherChannel }));
+    }
+
+    [AvaloniaTest]
+    public async Task RefreshFeeds_OneFeedRecovers_AddsItsChannelWhileTheOtherStillFails()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestHelpers.MockKsp2StockSteamInstall();
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .ThrowsAsync(new HttpRequestException("network unreachable"));
+
+        MainWindow window = new MainWindow
+        {
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
+        };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.Is<FeedInfo>(f => f.Filename.Contains(DefaultChannel))))
+            .ReturnsAsync(new ReleaseManifest
+            {
+                Channel = DefaultChannel,
+                GeneratedAt = new DateTime(2020, 1, 4),
+                Patches = [],
+                SchemaVersion = 1
+            });
+
+        var homeTabViewModel = TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
+        await homeTabViewModel.RefreshFeedsCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.That(homeTabViewModel.FeedRefreshFailed, Is.True);
+        Assert.That(TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>().ValidChannels,
+            Is.EquivalentTo(new[] { DefaultChannel }));
     }
 
     private static async Task VerifyManifestFailureOffersAlternateMirror(PatchDownloadSource failedSource)

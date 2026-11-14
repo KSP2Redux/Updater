@@ -166,7 +166,7 @@ public class InstallsProfileCommandsTest
 
         // Assert
         Assert.That(exit, Is.EqualTo(ExitCode.USAGE_ERROR));
-        Assert.That(harness.FileSystem.File.Exists(GAME + @"\KSP2_x64.exe"), Is.True);
+        Assert.That(harness.FileSystem.File.Exists($@"{GAME}\KSP2_x64.exe"), Is.True);
         Assert.That(harness.Installs.Entries.Any(e => e.Id == id), Is.True);
     }
 
@@ -175,14 +175,14 @@ public class InstallsProfileCommandsTest
     {
         // Arrange
         var (harness, id) = WithProfile();
-        harness.FileSystem.Directory.Delete(GAME + @"\KSP2_x64_Data", recursive: true);
+        harness.FileSystem.Directory.Delete($@"{GAME}\KSP2_x64_Data", recursive: true);
 
         // Act
         var exit = await new InstallsDeleteCommand().RunWithContextAsync(harness.Context, new InstallsDeleteSettings { Install = "Testing", AssumeYes = true });
 
         // Assert
         Assert.That(exit, Is.EqualTo(ExitCode.INSTALL_NOT_FOUND));
-        Assert.That(harness.FileSystem.File.Exists(GAME + @"\KSP2_x64.exe"), Is.True);
+        Assert.That(harness.FileSystem.File.Exists($@"{GAME}\KSP2_x64.exe"), Is.True);
         Assert.That(harness.Installs.Entries.Any(e => e.Id == id), Is.True);
     }
 
@@ -221,5 +221,20 @@ public class InstallsProfileCommandsTest
         Assert.That(exit, Is.EqualTo(ExitCode.LAUNCH_FAILED));
         Assert.That(harness.Json.GetProperty("error").GetString(), Does.Contain("softwareupdate --install-rosetta"));
         harness.Wine.Verify(w => w.PrepareAsync(It.IsAny<WineRuntime>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Launch_OnLinuxWithoutSteamLaunch_SaysToTurnItOn()
+    {
+        // Arrange
+        var (harness, _) = WithProfile();
+        harness.OperatingSystem.Setup(o => o.IsLinux()).Returns(true);
+
+        // Act
+        var exit = await new LaunchCommand().RunWithContextAsync(harness.Context, new LaunchSettings { NoBanner = true });
+
+        // Assert
+        Assert.That(exit, Is.EqualTo(ExitCode.LAUNCH_FAILED));
+        Assert.That(harness.Json.GetProperty("error").GetString(), Does.Contain("--steam-launch on"));
     }
 }

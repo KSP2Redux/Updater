@@ -42,7 +42,8 @@ public static class CliServiceProvider
         // and self-uninstall needs to edit the user's PATH.
         services.AddSingleton<IEnvironmentProvider>(SystemEnvironmentProvider.Instance);
         services.AddSingleton<IEnvironmentVariableProvider>(SystemEnvironmentProvider.Instance);
-        services.AddSingleton<ILogService, LogService>();
+        services.AddSingleton<ILogService>(provider => new LogService(
+            provider.GetRequiredService<IFileSystem>(), SystemEnvironmentProvider.Instance, logFilePrefix: LogService.CLI_LOG_PREFIX));
 
         // Nothing sets a language here, so the services the launcher shares with the CLI keep writing English.
         services.AddSingleton<ILocalizationService>(LocalizationService.Default);

@@ -34,6 +34,8 @@ public partial class FullSourceInstallationServiceTest
             operation["ProtectedRoots"]!.Deserialize<string[]>()!);
         operation.AsObject().Remove("ChangedFileStaging");
         operation.AsObject().Remove("SparseSourceStaging");
+        operation.AsObject().Remove("MovedFileUndo");
+        operation.AsObject().Remove("OwnedSourceStaging");
         Put(fixture.Fs, operation["SourceRoot"]!.GetValue<string>(), RETAINED, "explicit retained bytes");
         operation["PlanDigest"] = plan.GetDigest();
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(operation);

@@ -3,6 +3,8 @@
     <PropertyGroup>
         <!-- netstandard2.1 so the Unity editor can load the same converter the launcher runs. -->
         <TargetFramework>netstandard2.1</TargetFramework>
+        <!-- Unity compiles this source with its own compiler, so new C# versions must not leak in through the SDK default. -->
+        <LangVersion>14</LangVersion>
         <AssemblyTitle>KSP2 Redux Bundle Conversion</AssemblyTitle>
         <Description>Retargets stock KSP2 bundle materials from embedded BRP shader copies to the Redux URP replacement shader bundles</Description>
         <IsPackable>false</IsPackable>

@@ -39,9 +39,9 @@ public class InstallPlanServiceBundleConversionTest
         cacheService.Setup(c => c.RecursivelyRestoreCache(It.IsAny<string>(), It.IsAny<bool>()))
             .Callback(() => calls.Add("restore"));
         var conversion = new Mock<IBundleConversionService>();
-        conversion.Setup(c => c.Revert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.RevertAsync(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("revert"));
-        conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.ConvertAsync(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("convert"));
 
         // Every patch, the prepatch included, fails to open, so a plan that reaches one rolls back.
@@ -100,7 +100,7 @@ public class InstallPlanServiceBundleConversionTest
     public async Task UninstallStopsBeforeTheRestoreWhenABundleCannotBePutBack()
     {
         var (service, _, conversion, calls, _) = MakeService();
-        conversion.Setup(c => c.Revert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.RevertAsync(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("revert"))
             .Throws(new IOException("A stock bundle could not be put back to stock."));
         var plan = new InstallPlan();
@@ -117,7 +117,7 @@ public class InstallPlanServiceBundleConversionTest
     public async Task AFailedConversionAfterThePatchRollsTheInstallBack()
     {
         var (service, _, conversion, calls, _) = MakeService(patchesApply: true);
-        conversion.Setup(c => c.Convert(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+        conversion.Setup(c => c.ConvertAsync(InstallDir, It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("convert"))
             .Throws(new IOException("4 stock bundles could not be converted."));
         var plan = new InstallPlan();

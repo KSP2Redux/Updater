@@ -1,7 +1,6 @@
 ﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 using Spectre.Console;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
@@ -14,6 +13,7 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
     private const int CHOICE_COUNT = 15;
 
     /// <inheritdoc />
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the plan outcome is not recognized</exception>
     protected override async Task<int> RunAsync(
         CliContext context,
         InstallSettings settings,
@@ -52,18 +52,35 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
                 $"'{entry.Name}' does not point at a valid KSP2 install: {entry.ExePath}");
         }
 
-        var (plan, target, failure) = hasPatchFile
+        var outcome = hasPatchFile
             ? PlanFromPatchFile(settings.PatchFile!)
             : await PlanFromChannel(context, settings, entry, install);
 
-        if (failure is { } code)
+        return outcome switch
         {
-            return code;
-        }
+            Failed(var exitCode) => exitCode,
+            Planned(var plan, var target) => await RunPlanAsync(context, settings, install, plan, target, cancellationToken),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
 
+    private sealed record Planned(InstallPlan Plan, GameVersion? Target);
+
+    private sealed record Failed(int ExitCode);
+
+    private union PlanOutcome(Planned, Failed);
+
+    private static async Task<int> RunPlanAsync(
+        CliContext context,
+        InstallSettings settings,
+        Ksp2Install install,
+        InstallPlan plan,
+        GameVersion? target,
+        CancellationToken cancellationToken)
+    {
         if (settings.IsDryRun)
         {
-            return InstallWorkflow.Describe(context, plan!, install.GameVersion, target);
+            return InstallWorkflow.Describe(context, plan, install.GameVersion, target);
         }
 
         if (plan!.Steps.Count == 0 && !plan.IsFullSource)
@@ -80,16 +97,16 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
 
     // A patch file is applied from stock, so the plan reverts and prepatches first. This mirrors
     // what the launcher does for a hand supplied patch.
-    private static (InstallPlan? Plan, GameVersion? Target, int? Failure) PlanFromPatchFile(string patchFile)
+    private static PlanOutcome PlanFromPatchFile(string patchFile)
     {
         var plan = new InstallPlan();
         plan.ApplyPatchFile(patchFile);
         plan.Prepatch();
         plan.RevertToStock();
-        return (plan, null, null);
+        return new Planned(plan, null);
     }
 
-    private static async Task<(InstallPlan? Plan, GameVersion? Target, int? Failure)> PlanFromChannel(
+    private static async Task<PlanOutcome> PlanFromChannel(
         CliContext context,
         InstallSettings settings,
         Ksp2InstallEntry entry,
@@ -98,7 +115,7 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
         var channel = CliContext.ResolveChannel(settings.Channel, entry);
         if (channel is null)
         {
-            return (null, null, context.Output.Fail(
+            return new Failed(context.Output.Fail(
                 ExitCode.USAGE_ERROR,
                 "No channel to install from. Name a channel, or configure one on the install."));
         }
@@ -106,12 +123,12 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
         var loaded = await context.LoadFeedsAsync();
         if (!context.FeedService.ReleasesFeed.TryGetValue(channel, out var feed))
         {
-            return (null, null, context.FailFeedNotConfigured(channel, loaded));
+            return new Failed(context.FailFeedNotConfigured(channel, loaded));
         }
 
         if (install.GameVersion is null)
         {
-            return (null, null, context.Output.Fail(
+            return new Failed(context.Output.Fail(
                 ExitCode.INSTALL_NOT_FOUND,
                 $"Could not read the installed version out of {entry.ExePath}: {install.VersionDetectionException?.Message ?? "unknown reason"}"));
         }
@@ -123,12 +140,12 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
         if (target is null)
         {
             return string.IsNullOrWhiteSpace(settings.Version)
-                ? (null, null, context.Output.Fail(ExitCode.VERSION_NOT_FOUND, $"Channel '{ReleaseChannels.DisplayName(channel)}' has published no versions."))
-                : (null, null, context.FailVersionNotFound(settings.Version, channel));
+                ? new Failed(context.Output.Fail(ExitCode.VERSION_NOT_FOUND, $"Channel '{ReleaseChannels.DisplayName(channel)}' has published no versions."))
+                : new Failed(context.FailVersionNotFound(settings.Version, channel));
         }
 
         context.Output.Heading($"Planning {CliContext.FormatVersion(install.GameVersion)} -> {CliContext.FormatVersion(target)} on channel {channel}.");
-        return (feed.GetPatchListToVersion(install.GameVersion, target), target, null);
+        return new Planned(feed.GetPatchListToVersion(install.GameVersion, target), target);
     }
 
     // Only reached on a terminal, where erroring out over a missing argument the user can simply be
