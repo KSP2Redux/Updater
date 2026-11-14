@@ -43,6 +43,13 @@
     <!-- ReSharper disable Xaml.RedundantResource -->
     <Window.Resources>
         <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{StaticResource BrandRedColor}" />
+        <!-- Material 3 navigation answers hover and press with a state layer. The dotted red
+             underline already marks the current tab, so it gets no filled indicator as well. -->
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPointerOver" Color="White" Opacity="0.08" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="White" Opacity="0.10" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelected" Color="Transparent" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="White" Opacity="0.08" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="White" Opacity="0.10" />
     </Window.Resources>
     <!-- ReSharper restore Xaml.RedundantResource -->
 
@@ -127,7 +134,13 @@
         <Style Selector="TabItem">
             <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
             <Setter Property="FontSize" Value="32" />
-            <Setter Property="Margin" Value="20,0" />
+            <Setter Property="Margin" Value="8,0" />
+            <!-- The LED font sits high in its line box (about 0.5px above the letters, 7.5px below),
+                 so the top gets 7px more padding to centre the letters in the hover indicator.
+                 The selected tab's underline is drawn inside the bottom padding. -->
+            <Setter Property="Padding" Value="18,12,18,5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
 
             <Style Selector="^ Rectangle.tint">
                 <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselected}" />
@@ -279,7 +292,7 @@
                             </TabItem>
                             <TabItem Name="SettingsTab">
                                 <TabItem.Header>
-                                    <Grid Margin="2,6,2,8">
+                                    <Grid Margin="2,1,2,6">
                                         <Canvas Width="16" Height="16">
                                             <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
                                                 <Rectangle.OpacityMask>
