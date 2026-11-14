@@ -97,6 +97,8 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
+
+    public bool IsOperationRunning => _cancelCurrentOperation is not null;
     private CancellationTokenSource? _gameSession;
     private bool _stoppingGame;
 

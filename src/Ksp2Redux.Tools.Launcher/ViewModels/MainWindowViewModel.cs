@@ -142,6 +142,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
         timer.Tick += async (sender, args) =>
         {
+            if (HomeTab.IsOperationRunning)
+            {
+                return;
+            }
+
             try
             {
                 if (!await _updateService.CheckAndPerformUpdateAsync()) HomeTab.DisableInstallation();
