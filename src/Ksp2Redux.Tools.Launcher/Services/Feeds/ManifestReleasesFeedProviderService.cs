@@ -168,7 +168,7 @@ public class ManifestReleasesFeedProviderService(
         {
             request.Headers.Range = new RangeHeaderValue(offset, null);
         }
-        if (hasToken)
+        if (hasToken && request.RequestUri?.Host is "github.com" or "api.github.com")
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", feed.Token);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
