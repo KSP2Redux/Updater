@@ -90,12 +90,11 @@ public class ProtonLaunchOptionsTest
         fileSystem.File.WriteAllBytes(fileSystem.Path.Combine(fileSystem.Path.GetDirectoryName(EXE)!, "uninstall.zip"), new byte[] { 0 });
         var started = new TaskCompletionSource();
         TestAppBuilder.BundleConversion
-            .Setup(service => service.Revert(It.IsAny<string>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
-            .Callback<string, Action<LogMessage>, CancellationToken>((_, _, cancellation) =>
+            .Setup(service => service.RevertAsync(It.IsAny<string>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+            .Returns<string, Action<LogMessage>, CancellationToken>(async (_, _, cancellation) =>
             {
                 started.TrySetResult();
-                cancellation.WaitHandle.WaitOne();
-                cancellation.ThrowIfCancellationRequested();
+                await Task.Delay(Timeout.Infinite, cancellation);
             });
 
         Task uninstalling = home.UninstallRedux();
@@ -151,11 +150,16 @@ public class ProtonLaunchOptionsTest
         settings.SelectedInstall.LaunchArguments = "-screen-width 1280";
         var prepared = HoldPreparation();
         var exited = new TaskCompletionSource();
+        var tracking = new TaskCompletionSource();
         TestAppBuilder.GameProcessService
             .Setup(g => g.WaitForStartAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         TestAppBuilder.GameProcessService
             .Setup(g => g.WaitForExitAsync(It.IsAny<CancellationToken>()))
-            .Returns((CancellationToken token) => exited.Task.WaitAsync(token));
+            .Returns((CancellationToken token) =>
+            {
+                tracking.TrySetResult();
+                return exited.Task.WaitAsync(token);
+            });
 
         var launching = home.LaunchGameCommand.ExecuteAsync(null);
         home.RefreshMainButtonState();
@@ -167,7 +171,7 @@ public class ProtonLaunchOptionsTest
         Assert.That(home.IsInstallLogVisible, Is.True);
 
         prepared.SetResult();
-        Pump();
+        await tracking.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         TestAppBuilder.ProtonRuntimeService.Verify(p => p.CreateLaunchInfo(
             EXE, It.IsAny<string>(), "-screen-width 1280"), Times.Once);
