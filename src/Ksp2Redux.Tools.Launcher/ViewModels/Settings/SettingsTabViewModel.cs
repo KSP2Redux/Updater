@@ -18,6 +18,7 @@ using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 using MsBox.Avalonia.Enums;
@@ -44,6 +45,8 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly IWineRuntimeService _wineRuntimeService;
     private readonly IDiskSpaceService _diskSpaceService;
     private readonly IOperatingSystemService _operatingSystemService;
+    private readonly ISaveBackupService _saveBackups;
+    private readonly IGameProcessService _gameProcessService;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -207,13 +210,15 @@ public partial class SettingsTabViewModel : ViewModelBase
         IGameDataFolderService gameDataFolderService, ISteamSessionService steamSession, ISteamDialogService steamDialogs,
         IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService,
         ILocalizationService localization, IReleasesFeedService releasesFeedService, IWineRuntimeService wineRuntimeService,
-        IDiskSpaceService diskSpaceService)
+        IDiskSpaceService diskSpaceService, ISaveBackupService saveBackups, IGameProcessService gameProcessService)
     {
         _localization = localization;
         _releasesFeedService = releasesFeedService;
         _wineRuntimeService = wineRuntimeService;
         _diskSpaceService = diskSpaceService;
         _operatingSystemService = operatingSystemService;
+        _saveBackups = saveBackups;
+        _gameProcessService = gameProcessService;
         _gameUninstallService = gameUninstallService;
         IsSteamLaunchSupported = !operatingSystemService.IsMacOS();
         _steamSession = steamSession;
@@ -233,8 +238,13 @@ public partial class SettingsTabViewModel : ViewModelBase
         _launcherConfigService.ConfigSaved += () => Dispatcher.UIThread.Post(SyncDownloadSettings);
 
         _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
-        _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
+        _ksp2InstallService.ActiveInstallChanged += (_, _) =>
+        {
+            SyncSelectedInstall();
+            RefreshSaveBackups();
+        };
         RebuildInstalls();
+        RefreshSaveBackups();
 
         _suppressSettingsSave = true;
         try
@@ -825,6 +835,82 @@ public partial class SettingsTabViewModel : ViewModelBase
         return files?.Count >= 1 ? files[0] : null;
     }
 
+    /// <summary>The save backups, newest first, as the Settings list shows them.</summary>
+    public ObservableCollection<SaveBackupChoice> SaveBackups { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RestoreSaveBackupCommand))]
+    public partial SaveBackupChoice? SelectedSaveBackup { get; set; }
+
+    /// <summary>Reads the backups from disk again, keeping the selection when that backup still exists.</summary>
+    public void RefreshSaveBackups()
+    {
+        var selected = SelectedSaveBackup?.Backup.Path;
+        SaveBackups.Clear();
+        foreach (var backup in _saveBackups.List())
+        {
+            SaveBackups.Add(new SaveBackupChoice(backup, $"{backup.Created:g}  ·  {SteamDownloadViewModel.FormatBytes(backup.SizeBytes)}"));
+        }
+
+        SelectedSaveBackup = SaveBackups.FirstOrDefault(choice => choice.Backup.Path == selected) ?? SaveBackups.FirstOrDefault();
+    }
+
+    private bool CanRestoreSaveBackup() => SelectedSaveBackup is not null;
+
+    [RelayCommand(CanExecute = nameof(CanRestoreSaveBackup))]
+    public async Task RestoreSaveBackup()
+    {
+        if (SelectedSaveBackup is not { } choice || await RefuseWhileBusyAsync()) return;
+
+        var answer = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Confirm.Title"],
+            _localization.Format("Settings.SaveBackups.Confirm", choice.DisplayName),
+            ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        // KSP2 can be started while the question is open.
+        if (answer != ButtonResult.Yes || await RefuseWhileBusyAsync()) return;
+
+        try
+        {
+            await Task.Run(() => _saveBackups.Restore(choice.Backup));
+            _log.Info($"Restored the saves from {choice.Backup.Path}.");
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Settings.SaveBackups.Restored.Title"],
+                _localization["Settings.SaveBackups.Restored"], windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to restore the saves from {choice.Backup.Path}.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.SaveBackups.Failed", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+
+        RefreshSaveBackups();
+    }
+
+    private async Task<bool> RefuseWhileBusyAsync()
+    {
+        if (!_homeTabViewModel.IsOperationRunning && !_gameProcessService.IsRunning()) return false;
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+            _localization["Settings.SaveBackups.Busy"], windowStartupLocation: WindowStartupLocation.CenterOwner);
+        return true;
+    }
+
+    [RelayCommand]
+    public async Task OpenSaveBackupsFolder()
+    {
+        try
+        {
+            var directory = _saveBackups.BackupDirectory
+                            ?? throw new InvalidOperationException(_localization["Settings.GameData.Unknown"]);
+            _fileSystem.Directory.CreateDirectory(directory);
+            Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the save backups folder.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.SaveBackups.FolderFailed", ex.Message), windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+    }
+
     public async Task OpenLogsFolder()
     {
         try
@@ -970,3 +1056,6 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 }
+
+/// <summary>A save backup with the text the Settings list shows for it.</summary>
+public sealed record SaveBackupChoice(SaveBackup Backup, string DisplayName);

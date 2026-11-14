@@ -22,7 +22,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService, IZipFileService zipFileService,
     IDiskSpaceService diskSpaceService, IPatchDownloadService patchDownloadService,
     ILauncherConfigService launcherConfigService, IBundleConversionService? bundleConversionService = null,
-    IInstallFileLockService? installFileLockService = null) : IInstallPlanService
+    IInstallFileLockService? installFileLockService = null, ISaveBackupService? saveBackupService = null) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -97,6 +97,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         {
             await EnsureNoFilesInUseAsync(install, log, ct);
         }
+
+        if (installPlan.Steps.Count > 0) BackUpSaves(install, log, ct);
 
         var i = 0;
         bool mutationStarted = false;
@@ -267,6 +269,24 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             {
                 await RollbackOrRethrowAsync(install, log, ex);
             }
+        }
+    }
+
+    // Installs never touch saves, but a save opened in another game version may not load in this one, so the
+    // backup is a way back rather than a precondition: a failed backup is reported and the install goes on.
+    private void BackUpSaves(string install, Action<LogMessage> log, CancellationToken ct)
+    {
+        if (saveBackupService is null) return;
+        try
+        {
+            if (saveBackupService.BackUp(install, ct) is { } backup)
+            {
+                log(Loc.Message("Install.SavesBackedUp", fileSystem.Path.GetFileName(backup.Path)));
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log(Loc.Message("Install.SavesBackupFailed", e.Message));
         }
     }
 

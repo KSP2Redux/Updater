@@ -628,6 +628,54 @@ https://ksp2redux.org</value>
 {0}</value>
     <comment>Message box text when the game data folder could not be opened. Two lines. {0} = the reason, in English.</comment>
   </data>
+  <data name="Settings.SaveBackups" xml:space="preserve">
+    <value>Save backups:</value>
+    <comment>Label in Settings in front of the list of save backups.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Tooltip" xml:space="preserve">
+    <value>Your saves and crafts are backed up before every install, update or uninstall. The five newest backups are kept.</value>
+    <comment>Tooltip on the save backups list in Settings.</comment>
+  </data>
+  <data name="Settings.SaveBackups.None" xml:space="preserve">
+    <value>None yet</value>
+    <comment>Shown in the save backups list before the first backup exists.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Restore" xml:space="preserve">
+    <value>Restore</value>
+    <comment>Button that puts back the saves from the selected backup.</comment>
+  </data>
+  <data name="Settings.SaveBackups.OpenFolder" xml:space="preserve">
+    <value>Open Backups Folder</value>
+    <comment>Button that opens the folder the save backups are kept in.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Confirm" xml:space="preserve">
+    <value>Replace your saves and crafts with the backup from {0}?
+
+Your current saves are backed up first, so you can go back to them from this list.</value>
+    <comment>Confirmation before restoring a save backup. {0} is the backup's date and size.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Busy" xml:space="preserve">
+    <value>Close KSP2 and wait for the launcher to finish what it is doing, then restore the backup.</value>
+    <comment>Shown when a backup restore is refused because the game or an install is running.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Restored.Title" xml:space="preserve">
+    <value>Saves restored</value>
+    <comment>Title of the message after a save backup was restored.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Restored" xml:space="preserve">
+    <value>Your saves and crafts are back as they were in the backup. The saves you had before are in the newest backup.</value>
+    <comment>Message after a save backup was restored.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Failed" xml:space="preserve">
+    <value>The backup could not be restored: {0}
+
+If some of your saves were already replaced, the saves you had before are in the newest backup.</value>
+    <comment>Message when restoring a save backup failed. {0} = the reason.</comment>
+  </data>
+  <data name="Settings.SaveBackups.FolderFailed" xml:space="preserve">
+    <value>Couldn't open the save backups folder: {0}</value>
+    <comment>Message box text when the save backups folder could not be opened. {0} = the reason, in English.</comment>
+  </data>
   <data name="Settings.LogsFolder.Failed" xml:space="preserve">
     <value>Couldn't open the logs folder: {0}</value>
     <comment>Message box text when the logs folder could not be opened. {0} = the reason, in English.</comment>
@@ -1259,6 +1307,14 @@ They may be lost if you close the launcher. Check that {1} is writable and try a
   <data name="Install.CheckingFiles" xml:space="preserve">
     <value>Checking that no other program is using the game files...</value>
     <comment>Line in the install log.</comment>
+  </data>
+  <data name="Install.SavesBackedUp" xml:space="preserve">
+    <value>Backed up your saves and crafts to {0}</value>
+    <comment>Line in the install log, written before the game files change. {0} is the backup's file name.</comment>
+  </data>
+  <data name="Install.SavesBackupFailed" xml:space="preserve">
+    <value>Could not back up your saves, continuing without a backup: {0}</value>
+    <comment>Line in the install log. The install goes on, since it does not touch saves. {0} is the error.</comment>
   </data>
   <data name="Install.Uninstalling" xml:space="preserve">
     <value>Uninstalling KSP2 Redux</value>
