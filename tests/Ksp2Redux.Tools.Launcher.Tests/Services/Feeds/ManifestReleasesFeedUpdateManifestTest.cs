@@ -3,7 +3,6 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
-using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Services.Feeds;
 
@@ -12,12 +11,11 @@ public class ManifestReleasesFeedUpdateManifestTest
     private static (ManifestReleasesFeed Feed, Mock<IManifestReleasesFeedProviderService> Provider)
         MakeFeed()
     {
-        var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         var provider = new Mock<IManifestReleasesFeedProviderService>();
         var log = new Mock<ILogService>();
         var feedInfo = new FeedInfo { Repository = "KSP2Redux/Redux", Filename = "manifest-beta.json" };
 
-        var feed = new ManifestReleasesFeed(fs, provider.Object, log.Object, @"C:\downloads", feedInfo);
+        var feed = new ManifestReleasesFeed(provider.Object, log.Object, @"C:\downloads", feedInfo);
         return (feed, provider);
     }
 

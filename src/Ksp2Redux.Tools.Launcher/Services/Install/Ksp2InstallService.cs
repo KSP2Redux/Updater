@@ -36,7 +36,6 @@ public interface IKsp2InstallService
     void RemoveInstall(Guid id);
     void RenameInstall(Guid id, string newName);
     void SetActiveInstall(Guid id);
-    void UpdateActiveReleaseChannel(string channel);
     void AutoSwitchToStableIfPending(bool stableHasReleases);
     void UpdateActiveLastInstalledVersion(GameVersion? version);
     void UpdateInstallReleaseChannel(Guid id, string channel);
@@ -168,15 +167,6 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         launcherConfigService.Save();
         TryLoadKsp2Install();
         ApplyActiveInstallBootConfig();
-        ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    public void UpdateActiveReleaseChannel(string channel)
-    {
-        if (ActiveEntry is not { } entry) return;
-        if (entry.ReleaseChannel == channel) return;
-        entry.ReleaseChannel = channel;
-        launcherConfigService.Save();
         ActiveInstallChanged?.Invoke(this, EventArgs.Empty);
     }
 

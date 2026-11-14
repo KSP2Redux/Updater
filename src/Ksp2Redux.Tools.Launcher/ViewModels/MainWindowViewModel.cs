@@ -45,9 +45,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly TaskCompletionSource _mainWindowOpened = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     [ObservableProperty]
-    public partial InstallState CurrentInstallState { get; set; }
-
-    [ObservableProperty]
     public partial bool IsUpdateDownloading { get; set; }
     public HomeTabViewModel HomeTab { get; }
     public CommunityTabViewModel CommunityTab { get; }
@@ -104,12 +101,6 @@ public partial class MainWindowViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() => _ = LoadNews().ContinueWith(LogErrors));
         ksp2InstallService.TryLoadKsp2Install();
         ksp2InstallService.ApplyActiveInstallBootConfig();
-        // ReleasesFeed =
-        // [
-        //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir),
-        //     new ManifestReleasesFeed(LauncherConfig.GetLocalStorageDirectory(), Config.ReduxRepoUrl, Config.Pat, releaseDownloadCacheDir)
-        // ];
-        // ReleasesFeed = [];
 
         HomeTab = homeTab;
         CommunityTab = communityTab;
@@ -258,7 +249,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _log.Info($"Adding feed: {feed.Repository} / {feed.Filename}");
             var newFeed = new ManifestReleasesFeed(
-                _fileSystem, _manifestReleasesFeedProviderService, _log, releaseDownloadCacheDir, feed);
+                _manifestReleasesFeedProviderService, _log, releaseDownloadCacheDir, feed);
             _log.Info($"Updating manifest for feed: {feed.Repository} / {feed.Filename}");
             try
             {

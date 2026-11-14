@@ -9,7 +9,6 @@ namespace Ksp2Redux.Tools.Launcher.Services.Feeds;
 public interface IManifestReleasesFeedProviderService
 {
     Task<ReleaseManifest?> GetManifest(FeedInfo feed);
-    Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct);
     Task<HttpResponseMessage> DownloadFileAsync(FeedInfo feed, string url, long offset, CancellationToken ct);
 }
 
@@ -185,13 +184,6 @@ public class ManifestReleasesFeedProviderService(
             log.Error($"Patch download failed for {url}.", ex);
             throw;
         }
-    }
-
-    public Task<HttpResponseMessage> DownloadPatchAsync(FeedInfo feed, ReleasePatch patch, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(patch.Url))
-            throw new InvalidOperationException("The patch does not have a legacy download URL.");
-        return DownloadFileAsync(feed, patch.Url, 0, ct);
     }
 
     private HttpRequestMessage CreateRequest(HttpMethod method, string url)

@@ -286,89 +286,6 @@ public class Ksp2Patch : IDisposable
         await source.CopyToAsync(dest, bufferSize);
     }
 
-    public static async Task AsyncCopyKsp2Directory(
-        IFileSystem fileSystem,
-        string ksp2Directory,
-        string targetDirectory,
-        Action<string>? log = null
-    )
-    {
-        if (!fileSystem.Directory.Exists(ksp2Directory)) throw new DirectoryNotFoundException(ksp2Directory);
-        if (!fileSystem.Directory.Exists(targetDirectory)) fileSystem.Directory.CreateDirectory(targetDirectory);
-
-        foreach (string file in FileInformation.CopyFiles.Where(file =>
-                     fileSystem.File.Exists(fileSystem.Path.Combine(ksp2Directory, file))))
-        {
-            await CopyFileAsync(fileSystem,
-                fileSystem.Path.Combine(ksp2Directory, file),
-                fileSystem.Path.Combine(targetDirectory, file));
-        }
-
-        foreach (string directory in FileInformation.CopyFolders.Where(directory =>
-                     fileSystem.Directory.Exists(fileSystem.Path.Combine(ksp2Directory, directory))))
-        {
-            var source = fileSystem.Path.Combine(ksp2Directory, directory);
-            var destination = fileSystem.Path.Combine(targetDirectory, directory);
-            log?.Invoke($"Copying directory {source} to {destination}");
-            await AsyncCopyDirectory(fileSystem, source, destination, true, log);
-        }
-    }
-
-    private static async Task AsyncCopyDirectory(
-        IFileSystem fileSystem,
-        string sourceDir,
-        string destinationDir,
-        bool recursive,
-        Action<string>? log = null
-    )
-    {
-        var src = fileSystem.DirectoryInfo.New(sourceDir);
-        if (!src.Exists) throw new DirectoryNotFoundException(sourceDir);
-
-        fileSystem.Directory.CreateDirectory(destinationDir);
-        
-        foreach (var d in src.EnumerateDirectories("*", SearchOption.AllDirectories))
-        {
-            fileSystem.Directory.CreateDirectory(fileSystem.Path.Join(destinationDir, fileSystem.Path.GetRelativePath(sourceDir, d.FullName)));
-        }
-
-        var semaphore = new SemaphoreSlim(8);
-        var tasks = new List<Task>();
-
-        foreach (var file in src.EnumerateFiles("*", SearchOption.AllDirectories))
-        {
-            var rel = fileSystem.Path.GetRelativePath(sourceDir, file.FullName);
-            var dst = fileSystem.Path.Join(destinationDir, rel);
-
-            await semaphore.WaitAsync().ConfigureAwait(false);
-            tasks.Add(Task.Run(async () =>
-            {
-                try
-                {
-                    await CopyFileAsync(fileSystem, file.FullName, dst).ConfigureAwait(false);
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            }));
-        }
-
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-    }
-
-    public async Task AsyncCopyAndApply(
-        IEnvironmentProvider environmentProvider,
-        string ksp2Directory,
-        string targetDirectory,
-        Action<string>? log = null,
-        Action<string>? error = null
-    )
-    {
-        await AsyncCopyKsp2Directory(_fileSystem, ksp2Directory, targetDirectory, log);
-        await AsyncApply(environmentProvider, targetDirectory, ksp2Directory, log, error);
-    }
-
     public async Task AsyncApply(
         IEnvironmentProvider environmentProvider,
         string targetDirectory,
@@ -623,11 +540,6 @@ public class Ksp2Patch : IDisposable
         return path.Open();
     }
 
-    public void CreateRemove(string removePath)
-    {
-        _archive.CreateEntry($"{removePath}.remove");
-    }
-
     public string GetDiffInfo()
     {
         using var reader = new StreamReader(_archive.GetEntry(ManifestJsonFileName)!.Open());
@@ -683,16 +595,6 @@ public class Ksp2Patch : IDisposable
         }
 
         return fullCombined;
-    }
-
-    private static bool ValidateFileHash(Stream stream, byte[] hash)
-    {
-        var wasPosition = stream.Position;
-        stream.Position = 0;
-        using SHA256 sha = SHA256.Create();
-        sha.ComputeHash(stream);
-        stream.Position = wasPosition;
-        return sha.Hash!.SequenceEqual(hash);
     }
 
     private static async Task<bool> ValidateFileHashAsync(Stream stream, byte[] hash)

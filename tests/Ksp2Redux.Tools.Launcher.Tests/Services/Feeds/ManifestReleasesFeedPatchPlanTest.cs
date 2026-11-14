@@ -3,7 +3,6 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
-using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Services.Feeds;
 
@@ -107,7 +106,7 @@ public class ManifestReleasesFeedPatchPlanTest
             GeneratedAt = DateTime.UtcNow,
             Patches = patches.ToList()
         });
-        var feed = new ManifestReleasesFeed(new MockFileSystem(), provider.Object, Mock.Of<ILogService>(),
+        var feed = new ManifestReleasesFeed(provider.Object, Mock.Of<ILogService>(),
             "downloads", new FeedInfo { Repository = "example/test", Filename = "manifest.json" });
         Assert.That(await feed.UpdateManifest(), Is.True);
         return feed;

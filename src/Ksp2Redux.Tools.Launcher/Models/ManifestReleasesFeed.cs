@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.IO.Abstractions;
-using System.Security.Cryptography;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -9,7 +6,6 @@ using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 namespace Ksp2Redux.Tools.Launcher.Models;
 
 public class ManifestReleasesFeed(
-    IFileSystem fileSystem,
     IManifestReleasesFeedProviderService manifestReleasesFeedProviderService,
     ILogService log,
     string downloadStorageDir,
@@ -52,61 +48,6 @@ public class ManifestReleasesFeed(
             FallBackToInvalidIfNeverLoaded();
             return false;
         }
-    }
-
-    /// <summary>
-    /// Downloads a legacy single-URL patch. New install plans use the shared chunk download service.
-    /// </summary>
-    public async Task<string> DownloadPatch(
-        ReleasePatch patch, Action<LogMessage> downloadLog, Action<long, long> progress, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(patch.Url))
-            throw new InvalidOperationException("The patch does not have a legacy download URL.");
-        string fileName = patch.Url.Split('/').Last();
-        string destination = fileSystem.Path.Combine(downloadStorageDir, fileName);
-        progress(0, patch.Size);
-        if (!await MatchesChecksum(destination, patch, ct))
-        {
-            using var response = await manifestReleasesFeedProviderService.DownloadPatchAsync(feed, patch, ct);
-            response.EnsureSuccessStatusCode();
-            await using var input = await response.Content.ReadAsStreamAsync(ct);
-            {
-                await using var output = fileSystem.FileStream.New(
-                    destination, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, true);
-                var buffer = new byte[64 * 1024];
-                long written = 0;
-                var timer = Stopwatch.StartNew();
-                int read;
-                while ((read = await input.ReadAsync(buffer, ct)) > 0)
-                {
-                    await output.WriteAsync(buffer.AsMemory(0, read), ct);
-                    written += read;
-                    if (timer.ElapsedMilliseconds >= 100)
-                    {
-                        progress(written, patch.Size);
-                        timer.Restart();
-                    }
-                }
-                await output.FlushAsync(ct);
-            }
-            if (!await MatchesChecksum(destination, patch, ct))
-            {
-                fileSystem.File.Delete(destination);
-                throw new InvalidOperationException("The downloaded patch did not match its expected checksum.");
-            }
-        }
-        progress(patch.Size, patch.Size);
-        downloadLog(LocalizationService.Default.Message("Download.Complete"));
-        return destination;
-    }
-
-    private async Task<bool> MatchesChecksum(string path, ReleasePatch patch, CancellationToken ct)
-    {
-        if (!fileSystem.File.Exists(path) || fileSystem.FileInfo.New(path).Length != patch.Size)
-            return false;
-        await using var stream = fileSystem.File.OpenRead(path);
-        byte[] hash = await SHA256.HashDataAsync(stream, ct);
-        return string.Equals(Convert.ToHexString(hash), patch.ChecksumSha256, StringComparison.OrdinalIgnoreCase);
     }
 
     private void FallBackToInvalidIfNeverLoaded()
