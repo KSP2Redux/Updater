@@ -126,20 +126,6 @@ public class Ksp2InstallServiceTest
     }
 
     [Test]
-    public void UpdateActiveReleaseChannel_UpdatesActiveEntryChannel()
-    {
-        var (svc, _, _) = MakeService();
-        var entry = svc.AddInstall("/a/KSP2_x64.exe");
-
-        var raised = 0;
-        svc.ActiveInstallChanged += (_, _) => raised++;
-        svc.UpdateActiveReleaseChannel("alpha");
-
-        Assert.That(entry.ReleaseChannel, Is.EqualTo("alpha"));
-        Assert.That(raised, Is.EqualTo(1));
-    }
-
-    [Test]
     public void AutoSwitchToStableIfPending_SwitchesActiveBetaInstall_Once()
     {
         var (svc, cfgMock, config) = MakeService();
@@ -193,7 +179,7 @@ public class Ksp2InstallServiceTest
     {
         var (svc, _, config) = MakeService();
         var entry = svc.AddInstall("/a/KSP2_x64.exe");
-        svc.UpdateActiveReleaseChannel("alpha");
+        svc.UpdateInstallReleaseChannel(entry.Id, "alpha");
 
         var raised = 0;
         svc.ActiveInstallChanged += (_, _) => raised++;

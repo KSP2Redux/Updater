@@ -143,6 +143,44 @@ public class FeedRefreshFailureTest
             Is.EquivalentTo(new[] { DefaultChannel, OtherChannel }));
     }
 
+    [AvaloniaTest]
+    public async Task RefreshFeeds_OneFeedRecovers_AddsItsChannelWhileTheOtherStillFails()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestHelpers.MockKsp2StockSteamInstall();
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .ThrowsAsync(new HttpRequestException("network unreachable"));
+
+        MainWindow window = new MainWindow
+        {
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
+        };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.Is<FeedInfo>(f => f.Filename.Contains(DefaultChannel))))
+            .ReturnsAsync(new ReleaseManifest
+            {
+                Channel = DefaultChannel,
+                GeneratedAt = new DateTime(2020, 1, 4),
+                Patches = [],
+                SchemaVersion = 1
+            });
+
+        var homeTabViewModel = TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
+        await homeTabViewModel.RefreshFeedsCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.That(homeTabViewModel.FeedRefreshFailed, Is.True);
+        Assert.That(TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>().ValidChannels,
+            Is.EquivalentTo(new[] { DefaultChannel }));
+    }
+
     private static async Task VerifyManifestFailureOffersAlternateMirror(PatchDownloadSource failedSource)
     {
         TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);

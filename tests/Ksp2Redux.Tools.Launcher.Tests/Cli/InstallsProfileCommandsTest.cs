@@ -222,4 +222,19 @@ public class InstallsProfileCommandsTest
         Assert.That(harness.Json.GetProperty("error").GetString(), Does.Contain("softwareupdate --install-rosetta"));
         harness.Wine.Verify(w => w.PrepareAsync(It.IsAny<WineRuntime>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Test]
+    public async Task Launch_OnLinuxWithoutSteamLaunch_SaysToTurnItOn()
+    {
+        // Arrange
+        var (harness, _) = WithProfile();
+        harness.OperatingSystem.Setup(o => o.IsLinux()).Returns(true);
+
+        // Act
+        var exit = await new LaunchCommand().RunWithContextAsync(harness.Context, new LaunchSettings { NoBanner = true });
+
+        // Assert
+        Assert.That(exit, Is.EqualTo(ExitCode.LAUNCH_FAILED));
+        Assert.That(harness.Json.GetProperty("error").GetString(), Does.Contain("--steam-launch on"));
+    }
 }

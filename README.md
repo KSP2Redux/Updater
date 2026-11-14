@@ -24,7 +24,9 @@ xattr -dr com.apple.quarantine "/Applications/KSP2 Redux.app"
 ## Command line
 
 `redux-launcher-cli` drives the same install path as the launcher window, from a terminal. It reads
-and writes the same configuration, so the two stay in step.
+and writes the same configuration, so the two stay in step. Commands that change that configuration, such
+as `installs add` or `settings set`, ask you to close the launcher window first, because the window
+would overwrite the change when it next saves.
 
 Install it with one line. Nothing needs administrator rights.
 

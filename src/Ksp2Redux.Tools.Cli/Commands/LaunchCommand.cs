@@ -54,6 +54,13 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
             return LaunchThroughSteam(context, entry);
         }
 
+        if (context.OperatingSystemService.IsLinux())
+        {
+            return context.Output.Fail(
+                ExitCode.LAUNCH_FAILED,
+                $"KSP2 runs on Linux through Steam's Proton. Turn on launching through Steam with 'redux-launcher-cli installs set --install \"{entry.Name}\" --steam-launch on' and try again.");
+        }
+
         ProcessStartInfo startInfo = new(install.ExePath) { WorkingDirectory = install.InstallDir };
         if (!string.IsNullOrWhiteSpace(entry.LaunchArguments))
         {

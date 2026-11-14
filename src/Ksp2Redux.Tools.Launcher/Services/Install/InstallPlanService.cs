@@ -60,11 +60,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         // Patching, rollback and bundle conversion rewrite files in place. A file another program holds open (a
         // running KSP2, or a Unity editor that loaded the game's bundles) fails partway through and leaves old and
         // new files mixed, so nothing starts while any is held.
-        if (installFileLockService is not null)
-        {
-            log(Loc.Message("Install.CheckingFiles"));
-            await Task.Run(() => installFileLockService.EnsureNoFilesInUse(install), ct);
-        }
+        await EnsureNoFilesInUseAsync(install, log, ct);
 
         EnsureEnoughDiskSpace(installPlan, install, log);
         using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -95,6 +91,11 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         {
             downloadCts.Cancel();
             throw;
+        }
+
+        if (downloadTasks.Count > 0)
+        {
+            await EnsureNoFilesInUseAsync(install, log, ct);
         }
 
         var i = 0;
@@ -267,6 +268,17 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 await RollbackOrRethrowAsync(install, log, ex);
             }
         }
+    }
+
+    private async Task EnsureNoFilesInUseAsync(string install, Action<LogMessage> log, CancellationToken ct)
+    {
+        if (installFileLockService is null)
+        {
+            return;
+        }
+
+        log(Loc.Message("Install.CheckingFiles"));
+        await Task.Run(() => installFileLockService.EnsureNoFilesInUse(install), ct);
     }
 
     private async Task RevertBundleConversion(string install, Action<LogMessage> log, CancellationToken ct)

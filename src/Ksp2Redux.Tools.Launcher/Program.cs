@@ -116,6 +116,7 @@ sealed class Program
         });
         try
         {
+            LauncherInstance.MarkRunning();
             var builder = BuildAvaloniaApp();
             if (CreateWin32Options(_softwareRendering, _noComposition) is { } win32Options)
             {

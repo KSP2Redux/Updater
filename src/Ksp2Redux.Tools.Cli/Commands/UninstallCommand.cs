@@ -30,7 +30,15 @@ public sealed class UninstallCommand : ReduxCommand<UninstallSettings>
                 $"'{entry.Name}' does not point at a valid KSP2 install: {entry.ExePath}");
         }
 
-        if (install.Distribution != Distribution.Redux)
+        var hasSnapshot = context.FileSystem.File.Exists(context.FileSystem.Path.Combine(install.InstallDir, "uninstall.zip"));
+        if (!hasSnapshot && install.Distribution == Distribution.Redux)
+        {
+            return context.Output.Fail(
+                ExitCode.INSTALL_FAILED,
+                $"'{entry.Name}' has no uninstall.zip to restore the stock files from. Verify the game files in Steam or Epic to return it to stock.");
+        }
+
+        if (!hasSnapshot)
         {
             context.Output.Heading($"{entry.Name} is already {install.Distribution}, nothing to remove.");
             context.Output.Payload(new { ok = true, removed = false, distribution = install.Distribution.ToString() },

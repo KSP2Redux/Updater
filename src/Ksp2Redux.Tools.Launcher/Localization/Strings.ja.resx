@@ -973,9 +973,6 @@ softwareupdate --install-rosetta --agree-to-license</value>
   <data name="Download.CouldNotDownload" xml:space="preserve">
     <value>{0} から検証済みのパッチパーツをダウンロードできませんでした。</value>
   </data>
-  <data name="Download.Complete" xml:space="preserve">
-    <value>ダウンロード完了。</value>
-  </data>
   <data name="Bundles.NoShaderBundles" xml:space="preserve">
     <value>このReduxビルドにはURPシェーダーバンドルが含まれていないため、バニラゲームのバンドルは変換されないままとなります。</value>
   </data>

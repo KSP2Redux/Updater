@@ -209,7 +209,7 @@ public sealed class CliContext
             foreach (var feed in ConfigService.Config.Feeds)
             {
                 update($"Loading {feed.Filename}");
-                var manifestFeed = new ManifestReleasesFeed(_fileSystem, _feedProvider, _log, cacheDirectory, feed);
+                var manifestFeed = new ManifestReleasesFeed(_feedProvider, _log, cacheDirectory, feed);
                 try
                 {
                     if (!await manifestFeed.UpdateManifest())

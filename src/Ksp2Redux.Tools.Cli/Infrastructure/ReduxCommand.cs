@@ -27,6 +27,13 @@ public abstract class ReduxCommand<TSettings> : AsyncCommand<TSettings>
 
         var capabilities = CliCapabilities.Detect(settings.Color, settings.IsJson, settings.IsVerbose, settings.IsQuiet);
         var output = new CliOutput(results, settings.IsJson, capabilities);
+        if (ChangesConfig && LauncherInstance.IsRunning())
+        {
+            return output.Fail(
+                ExitCode.CONFIG_WRITE_FAILED,
+                "Close the KSP2 Redux launcher first. It keeps its own copy of the config and would overwrite this change when it saves.");
+        }
+
         try
         {
             var services = CliServiceProvider.Build(output);
@@ -84,6 +91,8 @@ public abstract class ReduxCommand<TSettings> : AsyncCommand<TSettings>
     // The commands that are about the CLI's own version do their own reporting, and a second notice
     // underneath would only repeat them.
     protected virtual bool NoticeApplies => true;
+
+    protected virtual bool ChangesConfig => false;
 
     /// <summary>
     /// Runs the command against a prepared context.

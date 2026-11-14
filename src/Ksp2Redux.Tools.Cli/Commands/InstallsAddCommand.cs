@@ -9,6 +9,8 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class InstallsAddCommand : ReduxCommand<InstallsAddSettings>
 {
+    protected override bool ChangesConfig => true;
+
     /// <inheritdoc />
     protected override Task<int> RunAsync(
         CliContext context,
