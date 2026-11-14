@@ -26,12 +26,6 @@
 			<Setter Property="Background" Value="{StaticResource CardContainerBrush}" />
 			<Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
 		</Style>
-		<Style Selector="TextBlock.section-title">
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
-			<Setter Property="FontSize" Value="12" />
-			<Setter Property="LetterSpacing" Value="0.5" />
-			<Setter Property="Foreground" Value="{StaticResource PrimaryToneBrush}" />
-		</Style>
 		<Style Selector="Grid.field">
 			<Setter Property="ColumnSpacing" Value="12" />
 		</Style>
