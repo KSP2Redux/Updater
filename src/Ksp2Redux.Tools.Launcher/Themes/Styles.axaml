@@ -48,6 +48,14 @@
             </Transitions>
         </Setter>
     </Style>
+    <!-- A progress bar's fill eases toward each new value; ProgressFill marks drops as instant. -->
+    <Style Selector=":is(Window).motion ProgressBar:not(.instant) /template/ Border#PART_Indicator">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Width" Duration="0:0:0.3" Easing="0.2,0,0,1" />
+            </Transitions>
+        </Setter>
+    </Style>
     <Style Selector="Button.tonal">
         <Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
