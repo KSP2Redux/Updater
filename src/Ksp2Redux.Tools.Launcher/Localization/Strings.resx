@@ -368,6 +368,14 @@ https://ksp2redux.org</value>
     <value>Copy Diagnostic Info</value>
     <comment>Button that copies version, system and log information to the clipboard for bug reports.</comment>
   </data>
+  <data name="Settings.CopyDiagnosticInfo.Tooltip" xml:space="preserve">
+    <value>Copies your launcher version, system, install and recent logs, ready to paste into a bug report. Your user folder is shown as ~.</value>
+    <comment>Tooltip on the Copy Diagnostic Info button. "~" stands for the user's home folder and must stay as is.</comment>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo.Copied" xml:space="preserve">
+    <value>Copied to the clipboard</value>
+    <comment>Shown briefly under the Copy Diagnostic Info button after it copied the report.</comment>
+  </data>
   <data name="Settings.VerboseLogging" xml:space="preserve">
     <value>Verbose logging</value>
     <comment>Label of a check box.</comment>

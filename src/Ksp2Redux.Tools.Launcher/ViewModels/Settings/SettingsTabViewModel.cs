@@ -830,8 +830,9 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     /// <summary>
     /// Everything a bug report needs in one paste-ready block: launcher version, active install
-    /// details, OS, and the tail of the current log file - so a support conversation doesn't have to
-    /// start with four separate questions before diagnosis can even begin.
+    /// details, OS, game data folder, and the tails of the launcher log and KSP2's Player.log - so a
+    /// support conversation doesn't have to start with four separate questions before diagnosis can even begin.
+    /// The user's home folder is shown as <c>~</c>.
     /// </summary>
     public string BuildDiagnosticInfo()
     {
@@ -854,25 +855,45 @@ public partial class SettingsTabViewModel : ViewModelBase
             sb.AppendLine("Active install: (none configured)");
         }
 
+        var gameDataFolder = _gameDataFolderService.Resolve(_ksp2InstallService.ActiveEntry);
+        sb.AppendLine($"Game data folder: {gameDataFolder ?? "(unknown)"}");
+
+        AppendLogTail(sb, "Recent log", _log.CurrentLogFilePath, 100);
+        AppendLogTail(sb, "KSP2 Player.log", gameDataFolder is null ? null : _fileSystem.Path.Combine(gameDataFolder, "Player.log"), 50);
+
+        // The report gets pasted into public support threads, and the home folder name is often the player's real name.
+        var home = _environmentProvider.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var report = sb.ToString();
+        return string.IsNullOrEmpty(home) ? report : report.Replace(home, "~", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void AppendLogTail(StringBuilder sb, string title, string? path, int lineCount)
+    {
         sb.AppendLine();
-        sb.AppendLine("--- Recent log ---");
+        sb.AppendLine($"--- {title} ---");
+        if (path is null || !_fileSystem.File.Exists(path))
+        {
+            sb.AppendLine("(no log file available)");
+            return;
+        }
+
         try
         {
-            if (_log.CurrentLogFilePath is { } logPath && _fileSystem.File.Exists(logPath))
+            // The launcher and KSP2 keep their logs open for writing, which a plain read is refused on Windows.
+            using var stream = _fileSystem.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            Queue<string> tail = new(lineCount);
+            while (reader.ReadLine() is { } line)
             {
-                var lines = _fileSystem.File.ReadAllLines(logPath);
-                sb.AppendLine(string.Join(_environmentProvider.NewLine, lines.TakeLast(100)));
+                if (tail.Count == lineCount) tail.Dequeue();
+                tail.Enqueue(line);
             }
-            else
-            {
-                sb.AppendLine("(no log file available)");
-            }
+
+            sb.AppendLine(string.Join(_environmentProvider.NewLine, tail));
         }
         catch (Exception ex)
         {
             sb.AppendLine($"(could not read log file: {ex.Message})");
         }
-
-        return sb.ToString();
     }
 }
