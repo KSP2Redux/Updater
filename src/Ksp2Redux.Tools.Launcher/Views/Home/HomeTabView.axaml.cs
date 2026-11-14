@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
 namespace Ksp2Redux.Tools.Launcher.Views.Home;
@@ -76,6 +77,8 @@ public partial class HomeTabView : UserControl
 
     private async Task CopyToClipboard(string text)
     {
-        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard) await clipboard.SetTextAsync(text);
+        if (TopLevel.GetTopLevel(this) is not { Clipboard: { } clipboard } topLevel) return;
+        await clipboard.SetTextAsync(text);
+        (topLevel as MainWindow)?.ShowSnackbar(TExtension.Service["Home.InstallLog.Copied"]);
     }
 }

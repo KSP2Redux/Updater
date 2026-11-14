@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
+using Avalonia.Controls.Notifications;
 using Avalonia.Controls.Primitives;
 using Avalonia.Styling;
 using Avalonia.Input;
@@ -43,6 +44,8 @@ public partial class MainWindow : Window
             UpdateMaximizedState();
             RefreshBackdropClips();
             (DataContext as MainWindowViewModel)?.OnMainWindowOpened();
+            // Created up front: a notification shown before the manager's template is applied is lost.
+            _snackbars = new WindowNotificationManager(this) { Position = NotificationPosition.BottomCenter, MaxItems = 2 };
         };
         PositionChanged += (_, e) =>
         {
@@ -115,6 +118,18 @@ public partial class MainWindow : Window
         _ = TabFadeIn.RunAsync(content);
         _ = TabFadeIn.RunAsync(ContentBackdropBlur);
     }
+
+    private WindowNotificationManager? _snackbars;
+
+    /// <summary>
+    /// Shows a short confirmation at the bottom of the window that goes away by itself: Material 3's
+    /// snackbar. Only for things that already happened; anything needing a decision stays a dialog.
+    /// </summary>
+    public void ShowSnackbar(string message) =>
+        _snackbars?.Show(new TextBlock { Text = message, Classes = { "snackbar" } }, NotificationType.Information, SNACKBAR_TIME);
+
+    // Material 3 keeps a snackbar up for 4 to 10 seconds; these are a single short line.
+    private static readonly TimeSpan SNACKBAR_TIME = TimeSpan.FromSeconds(4);
 
     // Avalonia does not expose the system's reduce-motion preference, so the Motion setting is the one
     // switch. Every interface animation is styled under Window.motion and goes when it is off.

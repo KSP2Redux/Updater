@@ -106,6 +106,9 @@
     <SolidColorBrush x:Key="ErrorPressedBrush" Color="#1AFFB4AB" />
     <SolidColorBrush x:Key="DisabledOutlineBrush" Color="White" Opacity="0.12" />
 
+    <!-- Snackbars float over anything without a blur behind them, so they are nearly opaque. -->
+    <SolidColorBrush x:Key="SnackbarBrush" Color="#262626" Opacity="0.96" />
+
     <!-- Overlays / scrims: dimming layers over background art or content -->
     <SolidColorBrush x:Key="OverlayHoverBrush" Color="#21000000" />
     <SolidColorBrush x:Key="OverlayPressedBrush" Color="#40000000" />

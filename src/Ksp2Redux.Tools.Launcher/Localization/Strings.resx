@@ -187,6 +187,10 @@ https://ksp2redux.org</value>
     <value>Copy the whole log. To copy some lines, select them and press Ctrl+C.</value>
     <comment>Tooltip on the install log's Copy button. On macOS the shortcut is Cmd+C.</comment>
   </data>
+  <data name="Home.InstallLog.Copied" xml:space="preserve">
+    <value>Log copied to the clipboard</value>
+    <comment>Short confirmation at the bottom of the window after the install log was copied.</comment>
+  </data>
   <data name="Home.InstallLog.Title" xml:space="preserve">
     <value>INSTALL LOG</value>
     <comment>Small heading over the install log on the Home tab, written in capitals like the Settings section headings.</comment>
@@ -588,10 +592,6 @@ https://ksp2redux.org</value>
     <value>Confirm</value>
     <comment>Title of a message box that asks Yes or No.</comment>
   </data>
-  <data name="Dialog.Done.Title" xml:space="preserve">
-    <value>Done!</value>
-    <comment>Title of a message box that reports success.</comment>
-  </data>
   <!-- Settings tab dialogs and messages -->
   <data name="Settings.FilePicker.Failed" xml:space="preserve">
     <value>Couldn't open the file picker: {0}</value>
@@ -677,10 +677,6 @@ Your current saves are backed up first, so you can go back to them from this lis
   <data name="Settings.SaveBackups.Busy" xml:space="preserve">
     <value>Close KSP2 and wait for the launcher to finish what it is doing, then restore the backup.</value>
     <comment>Shown when a backup restore is refused because the game or an install is running.</comment>
-  </data>
-  <data name="Settings.SaveBackups.Restored.Title" xml:space="preserve">
-    <value>Saves restored</value>
-    <comment>Title of the message after a save backup was restored.</comment>
   </data>
   <data name="Settings.SaveBackups.Restored" xml:space="preserve">
     <value>Your saves and crafts are back as they were in the backup. The saves you had before are in the newest backup.</value>

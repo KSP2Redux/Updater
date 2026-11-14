@@ -162,6 +162,36 @@
         <Setter Property="Foreground" Value="{StaticResource PrimaryToneBrush}" />
     </Style>
 
+    <!-- Snackbars (MainWindow.ShowSnackbar): Material 3's short confirmations at the bottom of the window. -->
+    <Style Selector="NotificationCard">
+        <Setter Property="Background" Value="{StaticResource SnackbarBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlassSurfaceBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+    <!-- Fluent's card is a fixed 350 x 150 with a colour strip for the notification type. A snackbar is
+         one line sized to its text, so the width, the minimum height and the strip go. -->
+    <Style Selector="NotificationCard">
+        <Setter Property="Width" Value="NaN" />
+        <Setter Property="MinWidth" Value="240" />
+    </Style>
+    <Style Selector="NotificationCard /template/ Panel#PART_HeaderBar">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="NotificationCard /template/ ContentControl#PART_Content">
+        <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <!-- The card keeps a minimum height taller than one line, so the text centres itself in it. -->
+    <Style Selector="TextBlock.snackbar">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MaxWidth" Value="440" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="16,12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
     <Style Selector="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
     </Style>

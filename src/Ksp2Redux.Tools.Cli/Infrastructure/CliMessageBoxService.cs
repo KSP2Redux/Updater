@@ -45,6 +45,13 @@ public sealed class CliMessageBoxService : IMessageBoxService
         WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen)
         => ShowMessageBoxAsOwnedAsync(title, text, @enum, windowStartupLocation: windowStartupLocation);
 
+    /// <inheritdoc />
+    // Snackbars only confirm launcher actions the CLI never runs, and every CLI command reports its own
+    // result, so there is nothing to add here.
+    public void ShowSnackbar(string message)
+    {
+    }
+
     // Mirrors the button a user gets by dismissing the dialog, so a caller branching on the result
     // takes its non destructive path rather than reading Ok as consent it never got.
     private static ButtonResult DefaultResultFor(ButtonEnum buttons) => buttons switch

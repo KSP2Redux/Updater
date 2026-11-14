@@ -892,11 +892,7 @@ public partial class HomeTabViewModel : ViewModelBase
             await UpdateVersionsList();
         }
 
-        if (uninstalled)
-        {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
-                _localization["Settings.UninstallRedux.Done"], windowStartupLocation: WindowStartupLocation.CenterOwner);
-        }
+        if (uninstalled) _messageBoxService.ShowSnackbar(_localization["Settings.UninstallRedux.Done"]);
     }
 
     // Certain install plans replace or delete the launcher's own files. If the launcher is running
