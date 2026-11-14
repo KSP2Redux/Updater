@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Abstractions;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -35,7 +36,8 @@ public interface IGameProcessService
     Task StopAsync();
 }
 
-public class GameProcessService(IOperatingSystemService operatingSystem, IWineRuntimeService wineRuntime, ILogService log) : IGameProcessService
+public class GameProcessService(IOperatingSystemService operatingSystem, IWineRuntimeService wineRuntime, ILogService log,
+    IFileSystem fileSystem) : IGameProcessService
 {
     private static readonly TimeSpan StartPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan ExitPollInterval = TimeSpan.FromSeconds(1);
@@ -118,6 +120,7 @@ public class GameProcessService(IOperatingSystemService operatingSystem, IWineRu
     private IReadOnlyList<int> FindGame()
     {
         if (operatingSystem.IsMacOS()) return GameProcessFinder.FindUnderWine();
+        if (operatingSystem.IsLinux()) return GameProcessFinder.FindUnderProton(fileSystem);
 
         var exeName = Ksp2Install.KSP2_EXE_NAME;
         var processName = exeName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? exeName[..^4] : exeName;

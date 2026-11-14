@@ -9,6 +9,7 @@ using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.News;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Linux;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Community;
@@ -35,6 +36,7 @@ public static class TestAppBuilder
     public static Mock<IOperatingSystemService> OperatingSystemService { get; private set; } = null!;
     public static Mock<IDiskSpaceService> DiskSpaceService { get; private set; } = null!;
     public static Mock<IWineRuntimeService> WineRuntimeService { get; private set; } = null!;
+    public static Mock<IProtonRuntimeService> ProtonRuntimeService { get; private set; } = null!;
     public static Mock<IGameProcessService> GameProcessService { get; private set; } = null!;
     public static Mock<ISteamSessionService> SteamSessionService { get; private set; } = null!;
     public static Mock<ISteamDialogService> SteamDialogService { get; private set; } = null!;
@@ -71,6 +73,7 @@ public static class TestAppBuilder
         UpdateService = new();
         DiskSpaceService = new();
         WineRuntimeService = new();
+        ProtonRuntimeService = new();
         GameProcessService = new();
         SteamSessionService = new();
         SteamDialogService = new();
@@ -108,6 +111,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton(OperatingSystemService.Object);
         serviceCollection.AddSingleton(DiskSpaceService.Object);
         serviceCollection.AddSingleton(WineRuntimeService.Object);
+        serviceCollection.AddSingleton(ProtonRuntimeService.Object);
         serviceCollection.AddSingleton(GameProcessService.Object);
         serviceCollection.AddSingleton(SteamSessionService.Object);
         serviceCollection.AddSingleton(SteamDialogService.Object);

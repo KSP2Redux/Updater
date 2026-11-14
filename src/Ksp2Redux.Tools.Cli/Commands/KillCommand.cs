@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
 
@@ -11,15 +12,13 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 public sealed class KillCommand : ReduxCommand<KillSettings>
 {
     /// <inheritdoc />
-    // Matched by process name rather than by the pid launch reported, because a game started through
-    // Steam is not a child of anything this tool ran, and a hung game is often one nobody launched
-    // from here at all.
+    // A game started through Steam is not a child of anything this tool ran, and a hung game may not have been launched here.
     protected override Task<int> RunAsync(
         CliContext context,
         KillSettings settings,
         CancellationToken cancellationToken)
     {
-        if (context.OperatingSystemService.IsMacOS())
+        if (context.OperatingSystemService.IsMacOS() || context.OperatingSystemService.IsLinux())
         {
             return KillUnderWineAsync(context, settings, cancellationToken);
         }
@@ -116,10 +115,13 @@ public sealed class KillCommand : ReduxCommand<KillSettings>
         return Task.FromResult(failures.Count == 0 ? ExitCode.SUCCESS : ExitCode.KILL_FAILED);
     }
 
-    // Only ending the Wine session frees the game's files and prefix. Killing pids is the fallback.
+    // The macOS runtime can end its Wine session before the process fallback.
     private static async Task<int> KillUnderWineAsync(CliContext context, KillSettings settings, CancellationToken cancellationToken)
     {
-        var pids = CliWineProcesses.FindGame();
+        IReadOnlyList<int> FindRunning() => context.OperatingSystemService.IsLinux()
+            ? GameProcessFinder.FindUnderProton(context.FileSystem)
+            : CliWineProcesses.FindGame();
+        var pids = FindRunning();
         if (pids.Count == 0)
         {
             context.Output.Heading("KSP2 is not running.");
@@ -145,7 +147,7 @@ public sealed class KillCommand : ReduxCommand<KillSettings>
                 break;
         }
 
-        if (context.WineRuntimeService.Detect() is { } runtime)
+        if (context.OperatingSystemService.IsMacOS() && context.WineRuntimeService.Detect() is { } runtime)
         {
             try
             {
@@ -162,7 +164,7 @@ public sealed class KillCommand : ReduxCommand<KillSettings>
         }
 
         List<string> failures = [];
-        foreach (var pid in CliWineProcesses.FindGame())
+        foreach (var pid in FindRunning())
         {
             try
             {

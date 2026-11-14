@@ -1,10 +1,11 @@
 using System.Diagnostics;
+using System.Text;
 using Ksp2Redux.Tools.Launcher.Services.Game;
 
 namespace Ksp2Redux.Tools.Cli.Infrastructure;
 
 /// <summary>
-/// Finds KSP2 and gives it somewhere to write when it runs under Wine on macOS.
+/// Finds KSP2 and captures process output from Unix compatibility runtimes.
 /// </summary>
 // Under Wine every process is named "wine" to .NET, but ps reports the Windows program as the command.
 public static class CliWineProcesses
@@ -23,7 +24,7 @@ public static class CliWineProcesses
     internal static IReadOnlyList<int> ParseGame(string listing) => GameProcessFinder.ParseWineListing(listing);
 
     /// <summary>
-    /// Wraps a launch so everything the game and Wine print goes to a file rather than the terminal.
+    /// Wraps a launch so everything the game and its runtime print goes to a file rather than the terminal.
     /// </summary>
     /// <param name="launch">The launch to wrap.</param>
     /// <param name="logPath">The file to write, replaced on every launch.</param>
@@ -36,12 +37,22 @@ public static class CliWineProcesses
             WorkingDirectory = launch.WorkingDirectory,
             UseShellExecute = false,
         };
-        wrapped.ArgumentList.Add("-c");
-        wrapped.ArgumentList.Add("exec \"$0\" \"$@\" > \"$REDUX_GAME_OUTPUT\" 2>&1");
-        wrapped.ArgumentList.Add(launch.FileName);
-        foreach (var argument in launch.ArgumentList)
+        const string EXECUTE = "exec \"$0\" \"$@\" > \"$REDUX_GAME_OUTPUT\" 2>&1";
+        if (!string.IsNullOrEmpty(launch.Arguments))
         {
-            wrapped.ArgumentList.Add(argument);
+            // Process parses the caller's argument string once, just as for an unwrapped launch.
+            // The shell receives those arguments as data through "$@", so it never evaluates them.
+            wrapped.Arguments = $"-c {QuoteArgument(EXECUTE)} {QuoteArgument(launch.FileName)} {launch.Arguments}";
+        }
+        else
+        {
+            wrapped.ArgumentList.Add("-c");
+            wrapped.ArgumentList.Add(EXECUTE);
+            wrapped.ArgumentList.Add(launch.FileName);
+            foreach (var argument in launch.ArgumentList)
+            {
+                wrapped.ArgumentList.Add(argument);
+            }
         }
 
         foreach (var (key, value) in launch.Environment)
@@ -51,5 +62,26 @@ public static class CliWineProcesses
 
         wrapped.Environment["REDUX_GAME_OUTPUT"] = logPath;
         return wrapped;
+    }
+
+    private static string QuoteArgument(string argument)
+    {
+        var quoted = new StringBuilder("\"");
+        int backslashes = 0;
+        foreach (char character in argument)
+        {
+            if (character == '\\')
+            {
+                backslashes++;
+                continue;
+            }
+
+            quoted.Append('\\', character == '"' ? backslashes * 2 + 1 : backslashes);
+            quoted.Append(character);
+            backslashes = 0;
+        }
+
+        quoted.Append('\\', backslashes * 2);
+        return quoted.Append('"').ToString();
     }
 }

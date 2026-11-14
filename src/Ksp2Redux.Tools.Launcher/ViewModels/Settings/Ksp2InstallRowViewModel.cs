@@ -37,6 +37,10 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool LaunchThroughSteam { get; set; }
 
+    /// <summary>Gets or sets whether this install starts through the managed Linux Proton runtime.</summary>
+    [ObservableProperty]
+    public partial bool LaunchThroughProton { get; set; }
+
     [ObservableProperty]
     public partial string SteamAppId { get; set; }
 
@@ -62,6 +66,7 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
         ReleaseChannel = entry.ReleaseChannel;
         IsActive = isActive;
         LaunchThroughSteam = entry.LaunchThroughSteam;
+        LaunchThroughProton = entry.LaunchThroughProton;
         SteamAppId = entry.SteamAppId;
         LaunchArguments = entry.LaunchArguments;
         DisableGraphicsJobs = entry.DisableGraphicsJobs;
@@ -101,6 +106,15 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     {
         if (_entry.LaunchThroughSteam == value) return;
         _entry.LaunchThroughSteam = value;
+        if (value) LaunchThroughProton = false;
+        _ksp2InstallService.NotifyInstallChanged(_entry.Id);
+    }
+
+    partial void OnLaunchThroughProtonChanged(bool value)
+    {
+        if (_entry.LaunchThroughProton == value) return;
+        _entry.LaunchThroughProton = value;
+        if (value) LaunchThroughSteam = false;
         _ksp2InstallService.NotifyInstallChanged(_entry.Id);
     }
 

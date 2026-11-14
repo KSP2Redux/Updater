@@ -8,6 +8,9 @@ public class Ksp2InstallEntry
     public string ReleaseChannel { get; set; } = "beta";
     public GameVersion? LastInstalledVersion { get; set; }
     public bool LaunchThroughSteam { get; set; } = false;
+
+    /// <summary>Gets or sets whether Linux launches prepare and use the launcher's Proton runtime.</summary>
+    public bool LaunchThroughProton { get; set; } = false;
     public string SteamAppId { get; set; } = "954850";
     public string LaunchArguments { get; set; } = "";
     public bool DisableGraphicsJobs { get; set; } = false;

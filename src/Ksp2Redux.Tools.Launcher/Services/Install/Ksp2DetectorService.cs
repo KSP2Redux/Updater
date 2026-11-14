@@ -47,14 +47,24 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
     {
         if (operatingSystemService.IsLinux())
         {
-            return DetectSteamInstall(EnumerateLinuxSteamRoots());
+            return DetectSteamInstall(EnumerateLinuxSteamRoots(fileSystem, environmentProvider));
         }
 
         return DetectSteamInstall(WindowsSteamRoots) ?? DetectWindowsNonSteam();
     }
 
-    private IEnumerable<string> EnumerateLinuxSteamRoots()
+    /// <summary>
+    /// Enumerates the standard native and Flatpak Steam roots on Linux.
+    /// </summary>
+    /// <param name="fileSystem">The host filesystem.</param>
+    /// <param name="environmentProvider">The host environment.</param>
+    /// <returns>The possible Steam roots, including roots that have not been installed.</returns>
+    internal static IEnumerable<string> EnumerateLinuxSteamRoots(IFileSystem fileSystem, IEnvironmentProvider environmentProvider)
     {
+        string? dataHome = environmentProvider.GetEnvironmentVariable("XDG_DATA_HOME");
+        if (!string.IsNullOrWhiteSpace(dataHome) && fileSystem.Path.IsPathFullyQualified(dataHome))
+            yield return fileSystem.Path.Combine(dataHome, "Steam");
+
         var home = environmentProvider.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (string.IsNullOrEmpty(home)) yield break;
 
@@ -70,7 +80,7 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
         {
             if (!fileSystem.Directory.Exists(steamRoot)) continue;
             
-            foreach (var libraryPath in ReadLibraryFolders(steamRoot))
+            foreach (var libraryPath in ReadLibraryFolders(fileSystem, log, steamRoot))
             {
                 var steamapps = fileSystem.Path.Combine(libraryPath, "steamapps");
                 var manifest = fileSystem.Path.Combine(steamapps, $"appmanifest_{Ksp2SteamAppId}.acf");
@@ -107,7 +117,14 @@ public class Ksp2DetectorService(IFileSystem fileSystem, IEnvironmentProvider en
         return fileSystem.File.Exists(privateDivisionPath) ? privateDivisionPath : null;
     }
 
-    private IEnumerable<string> ReadLibraryFolders(string steamRoot)
+    /// <summary>
+    /// Enumerates a Steam root and its configured additional library directories.
+    /// </summary>
+    /// <param name="fileSystem">The host filesystem.</param>
+    /// <param name="log">The destination for unreadable Steam metadata warnings.</param>
+    /// <param name="steamRoot">The Steam root containing libraryfolders.vdf.</param>
+    /// <returns>The root and library paths reported by Steam.</returns>
+    internal static IEnumerable<string> ReadLibraryFolders(IFileSystem fileSystem, ILogService log, string steamRoot)
     {
         yield return steamRoot;
 

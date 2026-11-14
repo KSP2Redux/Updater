@@ -36,6 +36,7 @@ public sealed class InstallsCommand : ReduxCommand<InstallsSettings>
                 channel = e.ReleaseChannel,
                 active = e.Id == activeId,
                 lastInstalledVersion = e.LastInstalledVersion is null ? null : CliContext.FormatVersion(e.LastInstalledVersion),
+                protonLaunch = e.LaunchThroughProton,
             }),
             () =>
             {

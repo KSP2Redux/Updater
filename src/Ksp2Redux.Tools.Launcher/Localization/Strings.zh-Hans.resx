@@ -668,9 +668,6 @@ https://ksp2redux.org</value>
   <data name="Home.Tooltip.NoRuntime" xml:space="preserve">
     <value>未找到Windows兼容运行时。请使用macOS版本的启动器，或安装CrossOver。</value>
   </data>
-  <data name="Home.Tooltip.LinuxSteam" xml:space="preserve">
-    <value>请在设置中启用“通过Steam启动”，以便在Linux上启动。</value>
-  </data>
   <data name="Home.Tooltip.LauncherUpdate" xml:space="preserve">
     <value>启动器需要先进行自我更新，才能安装或更新Redux。</value>
   </data>
