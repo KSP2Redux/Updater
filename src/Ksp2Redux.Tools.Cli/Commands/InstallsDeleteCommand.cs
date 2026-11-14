@@ -11,6 +11,8 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
 {
+    protected override bool ChangesConfig => true;
+
     private const string STEAM_UNINSTALL_URL = "steam://uninstall/954850";
 
     /// <inheritdoc />
