@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Abstractions;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -15,7 +16,10 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
@@ -36,6 +40,10 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly IGameDataFolderService _gameDataFolderService;
     private readonly ISteamSessionService _steamSession;
     private readonly ISteamDialogService _steamDialogs;
+    private readonly IReleasesFeedService _releasesFeedService;
+    private readonly IWineRuntimeService _wineRuntimeService;
+    private readonly IDiskSpaceService _diskSpaceService;
+    private readonly IOperatingSystemService _operatingSystemService;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -198,9 +206,14 @@ public partial class SettingsTabViewModel : ViewModelBase
         IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
         IGameDataFolderService gameDataFolderService, ISteamSessionService steamSession, ISteamDialogService steamDialogs,
         IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService,
-        ILocalizationService localization)
+        ILocalizationService localization, IReleasesFeedService releasesFeedService, IWineRuntimeService wineRuntimeService,
+        IDiskSpaceService diskSpaceService)
     {
         _localization = localization;
+        _releasesFeedService = releasesFeedService;
+        _wineRuntimeService = wineRuntimeService;
+        _diskSpaceService = diskSpaceService;
+        _operatingSystemService = operatingSystemService;
         _gameUninstallService = gameUninstallService;
         IsSteamLaunchSupported = !operatingSystemService.IsMacOS();
         _steamSession = steamSession;
@@ -838,16 +851,36 @@ public partial class SettingsTabViewModel : ViewModelBase
     {
         var sb = new StringBuilder();
         sb.AppendLine($"KSP2 Redux Launcher v{LauncherVersion}");
-        sb.AppendLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+        // A launcher process that differs from the OS architecture is an x64 build running under Rosetta or emulation.
+        sb.AppendLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture}), launcher process {RuntimeInformation.ProcessArchitecture}");
+        sb.AppendLine($"Culture: {CultureInfo.CurrentCulture.Name}, launcher language {_localization.Culture.Name}");
         sb.AppendLine($"Patch downloads: source={PatchDownloadSource}, concurrency={MaxConcurrentChunkDownloads}");
+        var downloadCache = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
+        sb.AppendLine($"Download cache: {downloadCache} ({SteamDownloadViewModel.FormatBytes(DirectorySize(downloadCache))})");
+        // Only whether a login is saved: the account name is half of the credentials.
+        sb.AppendLine($"Steam: {(_steamSession.HasSavedLogin ? "signed in" : "not signed in")}");
+        AppendFeeds(sb);
+        if (_operatingSystemService.IsMacOS()) AppendMacRuntime(sb);
+
+        sb.AppendLine("Installs:");
+        foreach (var install in _ksp2InstallService.Entries)
+        {
+            var active = install.Id == _ksp2InstallService.ActiveEntry?.Id;
+            var launch = install.LaunchThroughSteam ? "steam" : "direct";
+            var free = _diskSpaceService.GetAvailableFreeSpace(install.ExePath) is { } bytes ? SteamDownloadViewModel.FormatBytes(bytes) : "unknown";
+            var arguments = string.IsNullOrWhiteSpace(install.LaunchArguments) ? "none" : "set";
+            sb.AppendLine($"{(active ? "*" : " ")} {install.Name} [{install.ReleaseChannel}] launch={launch}, graphicsJobs={(install.DisableGraphicsJobs ? "off" : "on")}, launchArguments={arguments}, free={free}");
+            sb.AppendLine($"    {install.ExePath}");
+        }
 
         if (_ksp2InstallService.ActiveEntry is { } entry)
         {
-            sb.AppendLine($"Active install: {entry.Name} (channel={entry.ReleaseChannel}, launchThroughSteam={entry.LaunchThroughSteam})");
-            sb.AppendLine($"Exe path: {entry.ExePath}");
+            sb.AppendLine($"Active install: {entry.Name}");
             var ksp2 = _ksp2InstallService.Ksp2;
+            var installDir = _fileSystem.Path.GetDirectoryName(entry.ExePath);
+            var reduxInstalled = installDir is not null && _fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip"));
             sb.AppendLine(ksp2 is { IsValid: true }
-                ? $"Detected: {ksp2.Distribution}, version {ksp2.GameVersion}"
+                ? $"Detected: {ksp2.Distribution}, version {ksp2.GameVersion}, Redux stock snapshot {(reduxInstalled ? "present" : "missing")}"
                 : "Detected: (not currently detected as valid)");
         }
         else
@@ -872,6 +905,39 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
 
         return report;
+    }
+
+    private void AppendFeeds(StringBuilder sb)
+    {
+        sb.AppendLine(_releasesFeedService.Feeds.Count == 0 ? "Feeds: (none loaded)" : "Feeds:");
+        foreach (var feed in _releasesFeedService.Feeds)
+        {
+            var status = feed.LastUpdateException is { } failure ? $"FAILED: {failure.Message}" : "ok";
+            sb.AppendLine($"  {feed.Info.Filename} [{feed.CurrentChannel}] {status}");
+        }
+    }
+
+    private void AppendMacRuntime(StringBuilder sb)
+    {
+        var runtime = _wineRuntimeService.Detect();
+        sb.AppendLine(runtime is null
+            ? "Wine runtime: none found"
+            : $"Wine runtime: {runtime.Kind} ({runtime.DisplayName}), wine={runtime.WineBinary}, prefix={runtime.PrefixPath}");
+        sb.AppendLine($"Rosetta: {(_wineRuntimeService.IsRosettaInstalled() ? "installed" : "missing")}");
+    }
+
+    private long DirectorySize(string directory)
+    {
+        try
+        {
+            return _fileSystem.Directory.Exists(directory)
+                ? _fileSystem.Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Sum(file => _fileSystem.FileInfo.New(file).Length)
+                : 0;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
     }
 
     private void AppendLogTail(StringBuilder sb, string title, string? path, int lineCount)
