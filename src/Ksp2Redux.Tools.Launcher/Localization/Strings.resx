@@ -175,8 +175,12 @@ https://ksp2redux.org</value>
     <comment>Large heading on the Mods tab, which has no content yet.</comment>
   </data>
   <data name="Mods.Roadmap" xml:space="preserve">
-    <value>Mod support is on the roadmap :3</value>
-    <comment>Line under the heading on the Mods tab. The ":3" is a smiley.</comment>
+    <value>Mod support is on the roadmap. Until then, the news has what is coming next.</value>
+    <comment>Line under the heading on the Mods tab, which has no content yet.</comment>
+  </data>
+  <data name="Mods.ReadNews" xml:space="preserve">
+    <value>Read the latest news</value>
+    <comment>Button on the empty Mods tab that opens the Community tab.</comment>
   </data>
   <!-- Home tab -->
   <data name="Home.InstallLog.Copy" xml:space="preserve">

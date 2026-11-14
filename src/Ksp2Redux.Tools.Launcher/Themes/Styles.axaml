@@ -192,6 +192,22 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
     </Style>
 
+    <!-- Keyboard focus: a 2px ring in the light brand tone, rounded to match the controls, instead of
+         Fluent's square black-and-white outline. It shows for keyboard focus only, not for clicks. -->
+    <Style Selector=":is(Control)">
+        <Setter Property="FocusAdorner">
+            <FocusAdornerTemplate>
+                <Border BorderThickness="2" BorderBrush="{DynamicResource PrimaryToneBrush}" CornerRadius="10" Margin="-3" />
+            </FocusAdornerTemplate>
+        </Setter>
+    </Style>
+
+    <!-- A focused ComboBox also draws Fluent's own highlight, an accent fill that is a heavy red block
+         here, inside the shared focus ring. The ring is enough. -->
+    <Style Selector="ComboBox:focus-visible /template/ Border#HighlightBackground">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+
     <Style Selector="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
     </Style>

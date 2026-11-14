@@ -140,26 +140,29 @@
             </Style.Animations>
         </Style>
 
+        <!-- A tonal icon button, matching the version dropdown beside it. -->
         <Style Selector="Button.refresh-button">
-            <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
+            <Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="FontSize" Value="16" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style Selector="^ PathIcon">
+                <Setter Property="Width" Value="16" />
+                <Setter Property="Height" Value="16" />
+            </Style>
             <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SuccessHoverBrush}" />
-                <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="{StaticResource TonalContainerHoverBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             </Style>
             <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SuccessPressedBrush}" />
-                <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="{StaticResource TonalContainerPressedBrush}" />
             </Style>
             <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource DisabledSurfaceBrush}" />
-                <Setter Property="Opacity" Value="0.6" />
+                <Setter Property="Background" Value="{StaticResource DisabledContainerBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource DisabledContentBrush}" />
             </Style>
         </Style>
 
@@ -221,11 +224,13 @@
                     Classes="refresh-button"
                     Name="RefreshVersionsButton"
                     Command="{Binding RefreshFeedsCommand}"
-                    Content="⟳"
                     ToolTip.Tip="{loc:T Sidebar.RefreshVersions.Tooltip}"
                     Width="32"
                     VerticalAlignment="Stretch"
-                    Margin="8,0,0,0" />
+                    Margin="8,0,0,0">
+                    <!-- Material Symbols "refresh" (Apache License 2.0). -->
+                    <PathIcon Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                </Button>
             </Grid>
             <TextBlock Name="FeedRefreshWarning"
                        IsVisible="{Binding FeedRefreshFailed}"

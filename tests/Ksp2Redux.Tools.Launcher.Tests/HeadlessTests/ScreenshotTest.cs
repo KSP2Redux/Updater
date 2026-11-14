@@ -27,7 +27,7 @@ namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 [Explicit("Writes screenshots for design review; set LAUNCHER_SCREENSHOT_DIR.")]
 public class ScreenshotTest
 {
-    private const int HOME = 0, COMMUNITY = 1, SETTINGS = 3;
+    private const int HOME = 0, COMMUNITY = 1, MODS = 2, SETTINGS = 3;
 
     [AvaloniaTest]
     [TestCase("home")]
@@ -37,6 +37,8 @@ public class ScreenshotTest
     [TestCase("home-installed")]
     [TestCase("home-failed")]
     [TestCase("community")]
+    [TestCase("mods")]
+    [TestCase("settings-keyboard")]
     [TestCase("settings")]
     [TestCase("settings@min")]
     [TestCase("settings-bottom")]
@@ -94,6 +96,16 @@ public class ScreenshotTest
                 break;
             case "settings":
                 viewModel.CurrentTab = SETTINGS;
+                break;
+            case "mods":
+                viewModel.CurrentTab = MODS;
+                break;
+            case "settings-keyboard":
+                viewModel.CurrentTab = SETTINGS;
+                Pump();
+                for (var press = 0; press < 3; press++) window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+                Pump();
+                window.GetVisualDescendants().OfType<Button>().First(button => button.Content is "Add").Focus(NavigationMethod.Tab);
                 break;
             case "settings-bottom":
                 viewModel.CurrentTab = SETTINGS;
