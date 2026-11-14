@@ -25,7 +25,7 @@
                           ClipToBounds="True"
                           VerticalScrollBarVisibility="Auto">
                 <!-- 8 here plus each row's own padding puts the text 20 in from the card's edge. -->
-                <ItemsControl Margin="8" ItemsSource="{Binding NewsCollection}"
+                <ItemsControl x:Name="NewsItems" Margin="8" ItemsSource="{Binding NewsCollection}"
                               Background="Transparent">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
