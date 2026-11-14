@@ -169,7 +169,8 @@ public class LauncherConfigServiceTest
         LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<IMessageBoxService>().Object, new Mock<ILogService>().Object);
         
         // Assert
-        file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
+        file.Verify(f => f.Move("/appdata/Ksp2Redux/redux-launcher-config.json.tmp", "/appdata/Ksp2Redux/redux-launcher-config.json", true), Times.Once);
+        file.Verify(f => f.Copy("/appdata/Ksp2Redux/redux-launcher-config.json", "/appdata/Ksp2Redux/redux-launcher-config.json.bak", true), Times.Once);
         Assert.That(launcherConfigService.Config, Is.Not.Null);
     }
 
@@ -202,7 +203,8 @@ public class LauncherConfigServiceTest
         LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<IMessageBoxService>().Object, new Mock<ILogService>().Object);
         
         // Assert
-        file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
+        file.Verify(f => f.Move("/appdata/Ksp2Redux/redux-launcher-config.json.tmp", "/appdata/Ksp2Redux/redux-launcher-config.json", true), Times.Once);
+        file.Verify(f => f.Copy("/appdata/Ksp2Redux/redux-launcher-config.json", "/appdata/Ksp2Redux/redux-launcher-config.json.bak", true), Times.Once);
         Assert.That(launcherConfigService.Config, Is.Not.Null);
     }
 
@@ -235,7 +237,7 @@ public class LauncherConfigServiceTest
         LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<IMessageBoxService>().Object, new Mock<ILogService>().Object);
         
         // Assert
-        file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
+        file.Verify(f => f.Move("/appdata/Ksp2Redux/redux-launcher-config.json.tmp", "/appdata/Ksp2Redux/redux-launcher-config.json", true), Times.Once);
         Assert.That(launcherConfigService.Config, Is.Not.Null);
     }
 
@@ -279,7 +281,7 @@ public class LauncherConfigServiceTest
             Assert.That(cfg.ActiveKsp2InstallId, Is.EqualTo(cfg.Ksp2Installs[0].Id));
         });
         // Migration must persist immediately so the file isn't re-migrated next launch.
-        file.Verify(f => f.WriteAllText("/appdata/Ksp2Redux/redux-launcher-config.json", It.IsAny<string>()), Times.Once);
+        file.Verify(f => f.Move("/appdata/Ksp2Redux/redux-launcher-config.json.tmp", "/appdata/Ksp2Redux/redux-launcher-config.json", true), Times.Once);
     }
 
     [Test]
@@ -315,7 +317,7 @@ public class LauncherConfigServiceTest
         Assert.That(cfg.Ksp2Installs, Has.Count.EqualTo(1));
         Assert.That(cfg.ActiveKsp2InstallId, Is.EqualTo(Guid.Parse("11111111-1111-1111-1111-111111111111")));
         // Already migrated => no migration save expected.
-        file.Verify(f => f.WriteAllText(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        file.Verify(f => f.Move(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
     }
     
     // Save
@@ -372,7 +374,7 @@ public class LauncherConfigServiceTest
         log.Verify(l => l.Error(It.IsAny<string>(), It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         directory.Verify(d => d.CreateDirectory(It.IsNotIn("/appdata/Ksp2Redux")), Times.Never,
             "Tried creating a directory when IPath.GetDirectoryName returned null");
-        file.Verify(f => f.WriteAllText("storage path", It.IsAny<string>()), Times.Never,
+        file.Verify(f => f.Move(It.IsAny<string>(), "storage path", It.IsAny<bool>()), Times.Never,
             "Tried writing to storage path when IPath.GetDirectoryName returned null");
     }
     
@@ -423,6 +425,6 @@ public class LauncherConfigServiceTest
         launcherConfigService.Save();
         
         // Assert
-        file.Verify(f => f.WriteAllText("storage path", It.IsAny<string>()), Times.Once);
+        file.Verify(f => f.Move("storage path.tmp", "storage path", true), Times.Once);
     }
 }
