@@ -253,24 +253,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _log.Info($"Updating manifest for feed: {feed.Repository} / {feed.Filename}");
             try
             {
-                bool updated = await newFeed.UpdateManifest();
-                if (!updated &&
-                    FindPatchDownloadException(newFeed.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
-                    _launcherConfigService.Config.PatchDownloadSource == downloadFailure.DownloadSource)
-                {
-                    var alternateSource = downloadFailure.DownloadSource.GetAlternate();
-                    var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                        _localization.Format("Mirror.Manifest.Title", downloadFailure.DownloadSource),
-                        _localization.Format("Mirror.Manifest.Message", downloadFailure.DownloadSource, alternateSource),
-                        ButtonEnum.YesNo,
-                        windowStartupLocation: WindowStartupLocation.CenterOwner);
-                    if (result == ButtonResult.Yes)
-                    {
-                        _launcherConfigService.Config.PatchDownloadSource = alternateSource;
-                        _launcherConfigService.Save();
-                        updated = await newFeed.UpdateManifest();
-                    }
-                }
+                bool updated = await newFeed.UpdateManifest() || await HomeTab.OfferManifestMirrorSwitchAsync(newFeed);
                 _log.Info($"Done adding feed: {feed.Repository} / {feed.Filename}, channel={newFeed.CurrentChannel}");
                 _releasesFeedService.Add(newFeed);
                 HomeTab.FeedRefreshFailed |= !updated;
@@ -333,18 +316,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }
         }
-    }
-
-    private static PatchDownloadException? FindPatchDownloadException(Exception? exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            if (current is PatchDownloadException downloadException)
-            {
-                return downloadException;
-            }
-        }
-        return null;
     }
 
     private async Task CheckActiveInstallWarnings()

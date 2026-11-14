@@ -196,27 +196,34 @@ public partial class HomeTabViewModel : ViewModelBase
         var allSucceeded = true;
         foreach (var feed in _releasesFeedService.Feeds)
         {
-            bool succeeded = await feed.UpdateManifest();
-            if (!succeeded &&
-                FindPatchDownloadException(feed.LastUpdateException) is { CanSwitchSource: true } downloadFailure &&
-                _launcherConfigService.Config.PatchDownloadSource == downloadFailure.DownloadSource)
-            {
-                var alternateSource = downloadFailure.DownloadSource.GetAlternate();
-                var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
-                    _localization.Format("Mirror.Manifest.Title", downloadFailure.DownloadSource),
-                    _localization.Format("Mirror.Manifest.Message", downloadFailure.DownloadSource, alternateSource),
-                    ButtonEnum.YesNo,
-                    windowStartupLocation: WindowStartupLocation.CenterOwner);
-                if (result == ButtonResult.Yes)
-                {
-                    _launcherConfigService.Config.PatchDownloadSource = alternateSource;
-                    _launcherConfigService.Save();
-                    succeeded = await feed.UpdateManifest();
-                }
-            }
+            bool succeeded = await feed.UpdateManifest() || await OfferManifestMirrorSwitchAsync(feed);
             if (!succeeded) allSucceeded = false;
         }
         FeedRefreshFailed = !allSucceeded;
+    }
+
+    internal async Task<bool> OfferManifestMirrorSwitchAsync(ManifestReleasesFeed feed)
+    {
+        if (FindPatchDownloadException(feed.LastUpdateException) is not { CanSwitchSource: true } downloadFailure ||
+            _launcherConfigService.Config.PatchDownloadSource != downloadFailure.DownloadSource)
+        {
+            return false;
+        }
+
+        var alternateSource = downloadFailure.DownloadSource.GetAlternate();
+        var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(
+            _localization.Format("Mirror.Manifest.Title", downloadFailure.DownloadSource),
+            _localization.Format("Mirror.Manifest.Message", downloadFailure.DownloadSource, alternateSource),
+            ButtonEnum.YesNo,
+            windowStartupLocation: WindowStartupLocation.CenterOwner);
+        if (result != ButtonResult.Yes)
+        {
+            return false;
+        }
+
+        _launcherConfigService.Config.PatchDownloadSource = alternateSource;
+        _launcherConfigService.Save();
+        return await feed.UpdateManifest();
     }
 
     // Single refresh entry point shared by the periodic timer and, later, a manual button / F5.
