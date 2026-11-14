@@ -12,6 +12,8 @@
             -->
             <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
             <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
+            <!-- Material 3's extra-small shape, for checkboxes. -->
+            <CornerRadius x:Key="ShapeExtraSmall">4</CornerRadius>
 
             <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
             <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>

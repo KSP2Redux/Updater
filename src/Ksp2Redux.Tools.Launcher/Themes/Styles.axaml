@@ -108,6 +108,11 @@
         </Style>
     </Style>
 
+    <!-- Checkboxes inherited the 8px control radius, which turns a 20px box into a circle that reads as a radio button. -->
+    <Style Selector="CheckBox">
+        <Setter Property="CornerRadius" Value="{StaticResource ShapeExtraSmall}" />
+    </Style>
+
     <Style Selector="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
     </Style>
