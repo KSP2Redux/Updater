@@ -460,6 +460,11 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void UpdateMainButtonState()
     {
+        if (_cancelCurrentOperation is not null)
+        {
+            return;
+        }
+
         if (_gameSession is not null)
         {
             MainButtonShown = MainButtonState.Cancel;
