@@ -8,7 +8,7 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
 public class SteamCommandsTest
 {
-    private const string TARGET = CliCommandHarness.HOME + @"\Games\Kerbal Space Program 2";
+    private const string TARGET = $@"{CliCommandHarness.HOME}\Games\Kerbal Space Program 2";
 
     private static CliCommandHarness SignedIn()
     {
@@ -196,7 +196,7 @@ public class SteamCommandsTest
         Assert.That(exit, Is.EqualTo(ExitCode.SUCCESS));
         var active = harness.Installs.ActiveEntry!;
         Assert.That(active.Name, Is.EqualTo("Mac copy"));
-        Assert.That(active.ExePath, Is.EqualTo(TARGET + @"\KSP2_x64.exe"));
+        Assert.That(active.ExePath, Is.EqualTo($@"{TARGET}\KSP2_x64.exe"));
         Assert.That(harness.Json.GetProperty("added").GetBoolean(), Is.True);
     }
 
@@ -240,7 +240,7 @@ public class SteamCommandsTest
     [TestCase(null, TARGET)]
     [TestCase(@"D:\SteamGames", @"D:\SteamGames\Kerbal Space Program 2")]
     [TestCase(@"D:\SteamGames\Kerbal Space Program 2", @"D:\SteamGames\Kerbal Space Program 2")]
-    [TestCase(@"~\Stuff", CliCommandHarness.HOME + @"\Stuff\Kerbal Space Program 2")]
+    [TestCase(@"~\Stuff", $@"{CliCommandHarness.HOME}\Stuff\Kerbal Space Program 2")]
     public void ResolveTarget_AnyFolder_EndsInAKsp2Folder(string? folder, string expected)
     {
         // Arrange

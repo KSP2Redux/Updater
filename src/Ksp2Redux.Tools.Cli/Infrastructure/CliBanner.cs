@@ -114,7 +114,7 @@ public static class CliBanner
         for (var column = 0; column < logo.Width; column++)
         {
             var upper = logo[column, row * 2];
-            var lower = logo[column, (row * 2) + 1];
+            var lower = logo[column, row * 2 + 1];
 
             var hasUpper = upper.A >= ALPHA_THRESHOLD;
             var hasLower = lower.A >= ALPHA_THRESHOLD;

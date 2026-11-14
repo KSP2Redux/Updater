@@ -55,7 +55,7 @@ public sealed class ShaderManifestBundle
     /// <summary>
     /// Gets or sets the internal serialized file name shared with the stock bundle.
     /// </summary>
-    public string Cab { get; set; } = "";
+    public string Cab { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the SHA-256 of the replacement bundle.
@@ -76,12 +76,12 @@ public sealed class ShaderManifestShader
     /// <summary>
     /// Gets or sets the shader name, identical to the stock shader it replaces.
     /// </summary>
-    public string Name { get; set; } = "";
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the object path ID inside the bundle, as a decimal string.
     /// </summary>
-    public string PathId { get; set; } = "";
+    public string PathId { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets a value indicating whether the path ID is the stock one rather than a synthetic one.
@@ -248,6 +248,7 @@ public sealed class ShaderManifestIndex
     }
 
     // JsonUtility and some editors write a byte order mark, which the UTF-8 reader rejects.
-    private static ReadOnlySpan<byte> StripBom(byte[] bytes) =>
-        bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? bytes.AsSpan(3) : bytes;
+    private static ReadOnlySpan<byte> StripBom(byte[] bytes) => bytes is [0xEF, 0xBB, 0xBF, ..]
+        ? bytes.AsSpan(3)
+        : bytes;
 }

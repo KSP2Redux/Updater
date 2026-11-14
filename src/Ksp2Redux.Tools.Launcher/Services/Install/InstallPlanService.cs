@@ -370,13 +370,13 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         var availableBytes = diskSpaceService.GetAvailableFreeSpace(path);
         if (availableBytes is null)
         {
-            log(Loc.Message(purposeKey + ".Unknown"));
+            log(Loc.Message($"{purposeKey}.Unknown"));
             return;
         }
 
         if (availableBytes < requiredBytes)
         {
-            throw Loc.Message(purposeKey + ".NotEnough", FormatBytes(requiredBytes), FormatBytes(availableBytes.Value))
+            throw Loc.Message($"{purposeKey}.NotEnough", FormatBytes(requiredBytes), FormatBytes(availableBytes.Value))
                 .ToException(message => new InsufficientDiskSpaceException(
                     message, path, requiredBytes, availableBytes.Value));
         }

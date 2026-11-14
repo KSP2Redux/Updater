@@ -125,7 +125,7 @@ public static class TestHelpers
 
     public static string DescribeFoldersAndFiles(string root)
     {
-        return "\t- " + string.Join("\n\t- ",
-            TestAppBuilder.FileSystem.Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories));
+        return $"\t- {string.Join("\n\t- ",
+            TestAppBuilder.FileSystem.Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories))}";
     }
 }

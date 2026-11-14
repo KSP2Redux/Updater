@@ -185,7 +185,7 @@ public class LogServiceTest
         var path = new Mock<IPath>();
         var directory = new Mock<IDirectory>();
         path.Setup(p => p.Combine(It.IsAny<string>(), It.IsAny<string>()))
-            .Returns<string, string>((a, b) => a + "\\" + b);
+            .Returns<string, string>((a, b) => $"{a}\\{b}");
         directory.Setup(d => d.CreateDirectory(It.IsAny<string>()))
             .Throws(new UnauthorizedAccessException("simulated permission failure"));
         fs.SetupGet(f => f.Path).Returns(path.Object);

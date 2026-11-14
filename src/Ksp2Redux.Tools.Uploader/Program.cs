@@ -1,5 +1,3 @@
-using System.IO.Abstractions;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -28,7 +26,7 @@ if (repositoryParts.Length != 2)
     throw new InvalidOperationException("Repository must use the owner/name form.");
 string repoOwner = repositoryParts[0];
 string repoName = repositoryParts[1];
-string tag = "v" + uploadManifest.Version;
+string tag = $"v{uploadManifest.Version}";
 bool isMigration = uploadManifest.MigrateExisting;
 bool isDeleteOnly = !isMigration && uploadManifest.Patches is not { Count: > 0 };
 bool isPublicChannel = uploadManifest.Channel is "stable" or "beta";
@@ -46,8 +44,7 @@ if (isDeleteOnly && string.IsNullOrWhiteSpace(uploadManifest.Label))
     throw new InvalidOperationException("The manifest has no patches and no label.");
 
 Console.WriteLine(
-    $"Publishing {tag} to {uploadManifest.Channel} as " +
-    $"{(uploadManifest.Prerelease ? "a prerelease" : "a release")}.");
+    $"Publishing {tag} to {uploadManifest.Channel} as {(uploadManifest.Prerelease ? "a prerelease" : "a release")}.");
 
 var github = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Uploader"))
 {
@@ -110,8 +107,8 @@ try
         string requiredVersion = string.IsNullOrWhiteSpace(patchEntry.PreviousVersion)
             ? "base"
             : Uri.EscapeDataString(patchEntry.PreviousVersion);
-        string prefix = $"patches/{uploadManifest.Channel}/{Uri.EscapeDataString(uploadManifest.Version)}/" +
-                        $"{requiredVersion}/{packaged.ChecksumSha256.ToLowerInvariant()}";
+        string prefix =
+            $"patches/{uploadManifest.Channel}/{Uri.EscapeDataString(uploadManifest.Version)}/{requiredVersion}/{packaged.ChecksumSha256.ToLowerInvariant()}";
         var chunks = new List<ReleasePatchChunk>();
 
         foreach (var chunk in packaged.Chunks)
@@ -163,12 +160,10 @@ try
             repoOwner, repoName, uploadManifest.File, uploadManifest.Branch))[0];
         if (!string.Equals(currentFeed.Sha, feedFile.Sha, StringComparison.Ordinal))
             throw new InvalidOperationException(
-                $"The live manifest {uploadManifest.File} changed while chunks were being staged. " +
-                "It was left untouched; rerun staging to include the new content.");
+                $"The live manifest {uploadManifest.File} changed while chunks were being staged. It was left untouched; rerun staging to include the new content.");
 
         Console.WriteLine(
-            $"Staging complete: prepared schema {feedJson.SchemaVersion} with {feedJson.Patches.Count} patch entries. " +
-            $"The live {uploadManifest.File} manifest was left unchanged; no cache purge or retention deletion ran.");
+            $"Staging complete: prepared schema {feedJson.SchemaVersion} with {feedJson.Patches.Count} patch entries. The live {uploadManifest.File} manifest was left unchanged; no cache purge or retention deletion ran.");
         await r2!.ReportUsageAsync(CancellationToken.None);
         return 0;
     }
@@ -179,8 +174,7 @@ try
             repoOwner, repoName, uploadManifest.File, uploadManifest.Branch))[0];
         if (!string.Equals(currentFeed.Sha, feedFile.Sha, StringComparison.Ordinal))
             throw new InvalidOperationException(
-                $"The live GitHub manifest {uploadManifest.File} changed while the R2 manifest was prepared. " +
-                "Nothing was published; rerun to include the new content.");
+                $"The live GitHub manifest {uploadManifest.File} changed while the R2 manifest was prepared. Nothing was published; rerun to include the new content.");
 
         await r2!.UploadManifestAsync(uploadManifest.File, feedContent, CancellationToken.None);
         string r2ManifestUrl = r2.GetPublicUrl(uploadManifest.File);
@@ -191,12 +185,10 @@ try
             repoOwner, repoName, uploadManifest.File, uploadManifest.Branch))[0];
         if (!string.Equals(unchangedGitHubFeed.Sha, feedFile.Sha, StringComparison.Ordinal))
             throw new InvalidOperationException(
-                $"The GitHub manifest {uploadManifest.File} changed during R2 publication. " +
-                "Rerun R2-manifest-only publication so both feeds describe the same releases.");
+                $"The GitHub manifest {uploadManifest.File} changed during R2 publication. Rerun R2-manifest-only publication so both feeds describe the same releases.");
 
         Console.WriteLine(
-            $"Published schema {feedJson.SchemaVersion} to R2 only. " +
-            $"The live GitHub {uploadManifest.File} manifest was left unchanged; no retention deletion ran.");
+            $"Published schema {feedJson.SchemaVersion} to R2 only. The live GitHub {uploadManifest.File} manifest was left unchanged; no retention deletion ran.");
         await r2.ReportUsageAsync(CancellationToken.None);
         return 0;
     }
@@ -314,8 +306,8 @@ static async Task<List<ReleasePatch>> MigrateLegacyPatchesAsync(
         string requiredVersion = patch.Requires.IsBasePatch
             ? "base"
             : Uri.EscapeDataString(patch.Requires.Version!);
-        string prefix = $"patches/{upload.Channel}/{Uri.EscapeDataString(patch.Version)}/" +
-                        $"{requiredVersion}/{packaged.ChecksumSha256.ToLowerInvariant()}";
+        string prefix =
+            $"patches/{upload.Channel}/{Uri.EscapeDataString(patch.Version)}/{requiredVersion}/{packaged.ChecksumSha256.ToLowerInvariant()}";
         var chunks = new List<ReleasePatchChunk>();
         foreach (var chunk in packaged.Chunks)
         {
@@ -372,8 +364,7 @@ static async Task<Release> GetOrCreateReleaseAsync(
 
         var updated = await github.Repository.Release.Edit(owner, repo, release.Id, update);
         Console.WriteLine(
-            $"Updated existing GitHub release (changelog: {!string.IsNullOrWhiteSpace(changelog)}, " +
-            $"prerelease: {updated.Prerelease}).");
+            $"Updated existing GitHub release (changelog: {!string.IsNullOrWhiteSpace(changelog)}, prerelease: {updated.Prerelease}).");
         return updated;
     }
     catch (NotFoundException)
@@ -521,8 +512,7 @@ static async Task UpdateSwinfoVersionAsync(
     var matches = Regex.Matches(existing.Content, versionFieldPattern);
     if (matches.Count != 1)
         throw new InvalidDataException(
-            $"Expected exactly one version field in {swinfoFile}, found {matches.Count}. " +
-            "The published release is unaffected; fix the file and rerun the publish.");
+            $"Expected exactly one version field in {swinfoFile}, found {matches.Count}. The published release is unaffected; fix the file and rerun the publish.");
 
     var currentVersion = matches[0].Groups[1];
     if (string.Equals(currentVersion.Value, version, StringComparison.Ordinal))
@@ -540,13 +530,12 @@ static async Task UpdateSwinfoVersionAsync(
         $"Update version in {swinfoFile} for release {version}", updated, existing.Sha, branch);
     var result = await github.Repository.Content.UpdateFile(owner, repo, swinfoFile, request);
     Console.WriteLine(
-        $"Updated {swinfoFile} from version {currentVersion.Value} to {version} " +
-        $"with commit {result.Commit.Sha}.");
+        $"Updated {swinfoFile} from version {currentVersion.Value} to {version} with commit {result.Commit.Sha}.");
 }
 
 static string? TryGetR2ObjectKey(string publicBaseUrl, string? url)
 {
-    string prefix = publicBaseUrl.TrimEnd('/') + "/";
+    string prefix = $"{publicBaseUrl.TrimEnd('/')}/";
     return url is not null && url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
         ? Uri.UnescapeDataString(url[prefix.Length..])
         : null;

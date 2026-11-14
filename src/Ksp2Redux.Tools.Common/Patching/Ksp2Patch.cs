@@ -261,8 +261,7 @@ public class Ksp2Patch : IDisposable
         if (current.Length != sizeAtSnapshot || current.LastWriteTimeUtc != lastWriteAtSnapshot)
         {
             throw new InvalidOperationException(
-                $"{_fileSystem.Path.Combine(prefix, file.Name)} changed while the patch was being generated. " +
-                "The source directory must stay stable for the whole diff - re-run the generator once nothing else is writing to it.");
+                $"{_fileSystem.Path.Combine(prefix, file.Name)} changed while the patch was being generated. The source directory must stay stable for the whole diff - re-run the generator once nothing else is writing to it.");
         }
     }
 
@@ -389,7 +388,8 @@ public class Ksp2Patch : IDisposable
         }
 
         // 1. Extract patch entries to temp folder
-        string tempPatchDir = _fileSystem.Path.Combine(_fileSystem.Path.GetTempPath(), "Ksp2ReduxPatch_" + Guid.NewGuid());
+        string tempPatchDir = _fileSystem.Path.Combine(_fileSystem.Path.GetTempPath(),
+            $"Ksp2ReduxPatch_{Guid.NewGuid()}");
         _fileSystem.Directory.CreateDirectory(tempPatchDir);
 
         try
@@ -403,10 +403,10 @@ public class Ksp2Patch : IDisposable
                 {
                     case PatchOperation.PatchAction.Patch:
                     {
-                        IZipArchiveEntry? entry = _archive.GetEntry(operation.FileName + ".bsdiff");
+                        IZipArchiveEntry? entry = _archive.GetEntry($"{operation.FileName}.bsdiff");
                         if (entry != null)
                         {
-                            string outPath = ResolveContainedPath(tempPatchDir, entryFsName + ".bsdiff");
+                            string outPath = ResolveContainedPath(tempPatchDir, $"{entryFsName}.bsdiff");
                             _fileSystem.Directory.CreateDirectory(_fileSystem.Path.GetDirectoryName(outPath)!);
                             entry.ExtractToFile(_fileSystem, outPath);
                         }
@@ -445,7 +445,7 @@ public class Ksp2Patch : IDisposable
                         string trueName = NormalizeEntryPath(operation.FileName);
                         string targetPath = ResolveContainedPath(targetDirectory, trueName);
                         string sourcePath = ResolveContainedPath(sourceDirectory, trueName);
-                        string tempPath = targetPath + ".temp";
+                        string tempPath = $"{targetPath}.temp";
 
                         // Each file write below is already atomic (verify-then-swap), so if a previous
                         // attempt at this same plan got partway through before failing elsewhere, this
@@ -470,8 +470,7 @@ public class Ksp2Patch : IDisposable
                             if (!_fileSystem.File.Exists(sourcePath))
                             {
                                 throw new Exception(
-                                    $"Failed to apply patch because {trueName} does not exist in target " +
-                                    $"installation directory"
+                                    $"Failed to apply patch because {trueName} does not exist in target installation directory"
                                 );
                             }
                             log?.Invoke($"Creating temporary file for {trueName}");
@@ -482,7 +481,7 @@ public class Ksp2Patch : IDisposable
                             // before ever touching the real target file, instead of truncating the
                             // target up front - a crash or disk-full mid-write must never leave the
                             // live game file half-written.
-                            string swapPath = targetPath + ".newtemp";
+                            string swapPath = $"{targetPath}.newtemp";
                             try
                             {
                                 await using (FileSystemStream originalFile = _fileSystem.File.OpenRead(tempPath))
@@ -490,10 +489,7 @@ public class Ksp2Patch : IDisposable
                                     if (!await ValidateFileHashAsync(originalFile, operation.OriginalHash!))
                                     {
                                         throw new InvalidDataException(
-                                            $"File {originalFile.Name} does not match expected hash " +
-                                            $"{FormatHash(operation.OriginalHash!)}. Cannot apply patch! Check that the " +
-                                            $"Redux patch you are applying is for the version of the game (Steam, portable " +
-                                            $"zip, or Epic) you are patching."
+                                            $"File {originalFile.Name} does not match expected hash {FormatHash(operation.OriginalHash!)}. Cannot apply patch! Check that the Redux patch you are applying is for the version of the game (Steam, portable zip, or Epic) you are patching."
                                         );
                                     }
 
@@ -502,7 +498,8 @@ public class Ksp2Patch : IDisposable
                                     {
                                         try
                                         {
-                                            string patchPath = _fileSystem.Path.Combine(tempPatchDir, trueName + ".bsdiff");
+                                            string patchPath = _fileSystem.Path.Combine(tempPatchDir,
+                                                $"{trueName}.bsdiff");
                                             BinaryPatch.Apply(originalFile, () =>
                                             {
                                                 var memory = new MemoryStream(_fileSystem.File.ReadAllBytes(patchPath));
@@ -518,8 +515,7 @@ public class Ksp2Patch : IDisposable
                                         if (!await ValidateFileHashAsync(swapFile, operation.FinalHash!))
                                         {
                                             throw new InvalidDataException(
-                                                $"Patched result for {trueName} does not match expected hash " +
-                                                $"{FormatHash(operation.FinalHash!)}."
+                                                $"Patched result for {trueName} does not match expected hash {FormatHash(operation.FinalHash!)}."
                                             );
                                         }
                                     }
@@ -564,7 +560,7 @@ public class Ksp2Patch : IDisposable
                             // extracted file already sits complete in tempPatchDir, but that may be on
                             // a different volume, so copy it in next to the target first to make the
                             // final swap a same-volume rename rather than a cross-volume copy.
-                            string swapPath = targetPath + ".newtemp";
+                            string swapPath = $"{targetPath}.newtemp";
                             try
                             {
                                 string patchPath = _fileSystem.Path.Combine(tempPatchDir, trueName);
@@ -577,8 +573,7 @@ public class Ksp2Patch : IDisposable
                                     if (!await ValidateFileHashAsync(swapFile, operation.FinalHash!))
                                     {
                                         throw new InvalidDataException(
-                                            $"File {trueName} does not match expected hash " +
-                                            $"{FormatHash(operation.FinalHash!)}."
+                                            $"File {trueName} does not match expected hash {FormatHash(operation.FinalHash!)}."
                                         );
                                     }
                                 }
@@ -618,7 +613,7 @@ public class Ksp2Patch : IDisposable
 
     public Stream CreateDiff(string diffPath)
     {
-        IZipArchiveEntry path = _archive.CreateEntry(diffPath + ".bsdiff");
+        IZipArchiveEntry path = _archive.CreateEntry($"{diffPath}.bsdiff");
         return path.Open();
     }
 
@@ -630,7 +625,7 @@ public class Ksp2Patch : IDisposable
 
     public void CreateRemove(string removePath)
     {
-        _archive.CreateEntry(removePath + ".remove");
+        _archive.CreateEntry($"{removePath}.remove");
     }
 
     public string GetDiffInfo()
@@ -684,8 +679,7 @@ public class Ksp2Patch : IDisposable
         if (!isContained)
         {
             throw new InvalidDataException(
-                $"Patch entry '{relativePath}' resolves outside of '{fullBase}'. Refusing to apply - " +
-                "this patch may be corrupted or tampered with.");
+                $"Patch entry '{relativePath}' resolves outside of '{fullBase}'. Refusing to apply - this patch may be corrupted or tampered with.");
         }
 
         return fullCombined;

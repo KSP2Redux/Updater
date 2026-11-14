@@ -137,7 +137,7 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
     private static async Task ReplaceAsync(CliContext context, string executable, byte[] bytes)
     {
         var fileSystem = context.FileSystem;
-        var staging = executable + ".new";
+        var staging = $"{executable}.new";
 
         await fileSystem.File.WriteAllBytesAsync(staging, bytes);
 

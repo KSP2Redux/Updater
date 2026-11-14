@@ -29,21 +29,15 @@ public enum SteamSignInStage
 /// Drives the "Sign in with Steam" window: a QR code for the Steam Mobile App, with an account name
 /// and password form as the fallback.
 /// </summary>
-public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
+public partial class SteamSignInViewModel(
+    ISteamSessionService session,
+    ILogService log,
+    ILocalizationService localization)
+    : ViewModelBase, ISteamGuardPrompt
 {
-    private readonly ISteamSessionService _session;
-    private readonly ILogService _log;
-    private readonly ILocalizationService _localization;
     private CancellationTokenSource? _qrCancellation;
     private CancellationTokenSource? _credentialsCancellation;
     private TaskCompletionSource<string>? _guardCode;
-
-    public SteamSignInViewModel(ISteamSessionService session, ILogService log, ILocalizationService localization)
-    {
-        _session = session;
-        _log = log;
-        _localization = localization;
-    }
 
     /// <summary>Raised when sign-in ends. The argument is true if the player signed in.</summary>
     public event EventHandler<bool>? Completed;
@@ -86,7 +80,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
     {
         if (string.IsNullOrWhiteSpace(AccountName) || string.IsNullOrEmpty(Password))
         {
-            ErrorMessage = _localization["Steam.SignIn.EnterCredentials"];
+            ErrorMessage = localization["Steam.SignIn.EnterCredentials"];
             return;
         }
 
@@ -98,7 +92,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
 
         try
         {
-            await _session.SignInWithCredentialsAsync(AccountName.Trim(), Password, this, _credentialsCancellation.Token);
+            await session.SignInWithCredentialsAsync(AccountName.Trim(), Password, this, _credentialsCancellation.Token);
             Password = string.Empty;
             Finish(true);
         }
@@ -107,8 +101,8 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         }
         catch (Exception ex)
         {
-            _log.Warn($"Steam password sign-in failed: {ex.Message}");
-            ErrorMessage = ex is SteamSignInException ? ex.UserMessage() : _localization.Format("Steam.SignIn.Failed", ex.UserMessage());
+            log.Warn($"Steam password sign-in failed: {ex.Message}");
+            ErrorMessage = ex is SteamSignInException ? ex.UserMessage() : localization.Format("Steam.SignIn.Failed", ex.UserMessage());
             Stage = SteamSignInStage.Choose;
             _ = RunQrSignInAsync();
         }
@@ -137,11 +131,11 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
 
     /// <inheritdoc />
     public Task<string> GetEmailCodeAsync(string email, bool previousCodeWasIncorrect) =>
-        AskForCode(_localization.Format(previousCodeWasIncorrect ? "Steam.SignIn.EmailCodeWrong" : "Steam.SignIn.EmailCode", email));
+        AskForCode(localization.Format(previousCodeWasIncorrect ? "Steam.SignIn.EmailCodeWrong" : "Steam.SignIn.EmailCode", email));
 
     /// <inheritdoc />
     public Task<string> GetDeviceCodeAsync(bool previousCodeWasIncorrect) =>
-        AskForCode(_localization[previousCodeWasIncorrect ? "Steam.SignIn.DeviceCodeWrong" : "Steam.SignIn.DeviceCode"]);
+        AskForCode(localization[previousCodeWasIncorrect ? "Steam.SignIn.DeviceCodeWrong" : "Steam.SignIn.DeviceCode"]);
 
     /// <inheritdoc />
     public async Task<bool> AcceptDeviceConfirmationAsync()
@@ -149,7 +143,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         // Shown before answering, because Steam starts waiting for the approval as soon as this returns.
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            GuardPrompt = _localization["Steam.SignIn.Approve"];
+            GuardPrompt = localization["Steam.SignIn.Approve"];
             Stage = SteamSignInStage.AwaitingApproval;
         });
         return true;
@@ -175,7 +169,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
         {
             try
             {
-                await _session.SignInWithQrAsync(
+                await session.SignInWithQrAsync(
                     url => Dispatcher.UIThread.Post(() => QrCode = RenderQrCode(url)),
                     cancellation.Token);
                 await Dispatcher.UIThread.InvokeAsync(() => Finish(true));
@@ -187,7 +181,7 @@ public partial class SteamSignInViewModel : ViewModelBase, ISteamGuardPrompt
             }
             catch (Exception ex)
             {
-                _log.Info($"Steam QR sign-in restarted: {ex.Message}");
+                log.Info($"Steam QR sign-in restarted: {ex.Message}");
                 await Dispatcher.UIThread.InvokeAsync(() => QrCode = null);
                 try
                 {

@@ -214,7 +214,7 @@ public sealed class BundleConverter
                     result.CopiesDeleted++;
                 }
 
-                _fileSystem.File.Delete(output + ".tmp");
+                _fileSystem.File.Delete($"{output}.tmp");
             }
             catch (IOException e)
             {
@@ -245,7 +245,7 @@ public sealed class BundleConverter
                     result.OverlaysDeleted++;
                 }
 
-                _fileSystem.File.Delete(data + ".tmp");
+                _fileSystem.File.Delete($"{data}.tmp");
             }
             catch (IOException e)
             {
@@ -474,6 +474,9 @@ public sealed class BundleConverter
                             result.ForeignEdits.Add(new EditStatus(entry.File, edit.Offset, EditState.Foreign));
                             AddLeftover(leftovers, entry.File, edit);
                             break;
+                        case EditState.Stock:
+                        case EditState.FileChanged:
+                            break;
                     }
                 }
             }
@@ -576,7 +579,7 @@ public sealed class BundleConverter
         {
             var copy = pending[index];
             var output = Layout.Resolve(copy.Entry.Output);
-            var temporary = output + ".tmp";
+            var temporary = $"{output}.tmp";
             try
             {
                 using (var stock = _fileSystem.FileStream.New(Layout.BundlePath(copy.Bundle.File), FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -708,7 +711,7 @@ public sealed class BundleConverter
             var overlay = pending[index];
             var bundle = overlay.Bundle!;
             var data = Layout.Resolve(overlay.Entry.Data);
-            var temporary = data + ".tmp";
+            var temporary = $"{data}.tmp";
             try
             {
                 using (var stock = _fileSystem.FileStream.New(Layout.BundlePath(bundle.File), FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20))
@@ -1085,36 +1088,22 @@ public sealed class BundleConverter
         CancellationToken = cancellationToken,
     };
 
-    private sealed class PlannedCopy
+    private sealed class PlannedCopy(BundleEditPlan bundle, JournalRewrittenFile entry, bool pending)
     {
-        public PlannedCopy(BundleEditPlan bundle, JournalRewrittenFile entry, bool pending)
-        {
-            Bundle = bundle;
-            Entry = entry;
-            Pending = pending;
-        }
+        public BundleEditPlan Bundle { get; } = bundle;
 
-        public BundleEditPlan Bundle { get; }
+        public JournalRewrittenFile Entry { get; } = entry;
 
-        public JournalRewrittenFile Entry { get; }
-
-        public bool Pending { get; }
+        public bool Pending { get; } = pending;
     }
 
-    private sealed class PlannedOverlay
+    private sealed class PlannedOverlay(BundleTexturePlan? bundle, JournalOverlayFile entry, bool pending)
     {
-        public PlannedOverlay(BundleTexturePlan? bundle, JournalOverlayFile entry, bool pending)
-        {
-            Bundle = bundle;
-            Entry = entry;
-            Pending = pending;
-        }
-
         // Null for an overlay carried over from an earlier run because its bundle could not be read this time.
-        public BundleTexturePlan? Bundle { get; }
+        public BundleTexturePlan? Bundle { get; } = bundle;
 
-        public JournalOverlayFile Entry { get; }
+        public JournalOverlayFile Entry { get; } = entry;
 
-        public bool Pending { get; }
+        public bool Pending { get; } = pending;
     }
 }

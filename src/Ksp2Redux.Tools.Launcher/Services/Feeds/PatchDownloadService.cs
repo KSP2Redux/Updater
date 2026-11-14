@@ -154,7 +154,7 @@ public sealed class PatchDownloadService(
         log(Loc.Message("Download.Parts", chunks.Count, request.Patch.Version, chunkSource));
         await Task.WhenAll(chunkTasks);
 
-        string temporaryPatchPath = completedPatchPath + ".tmp";
+        string temporaryPatchPath = $"{completedPatchPath}.tmp";
         if (fileSystem.File.Exists(temporaryPatchPath))
             fileSystem.File.Delete(temporaryPatchPath);
 
@@ -218,7 +218,7 @@ public sealed class PatchDownloadService(
         if (fileSystem.File.Exists(completedPath))
             fileSystem.File.Delete(completedPath);
 
-        string partialPath = completedPath + ".partial";
+        string partialPath = $"{completedPath}.partial";
         Exception? lastFailure = null;
         for (var attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)
         {

@@ -14,10 +14,10 @@ public class Bc7EncoderTest
         for (var pixel = 0; pixel < 16; pixel++)
         {
             var t = ((pixel & 3) + (pixel >> 2)) / 6f;
-            pixels[(pixel * 4) + 0] = 40f + (150f * t);
-            pixels[(pixel * 4) + 1] = 200f - (120f * t);
-            pixels[(pixel * 4) + 2] = 90f + (30f * t);
-            pixels[(pixel * 4) + 3] = 255f;
+            pixels[pixel * 4 + 0] = 40f + 150f * t;
+            pixels[pixel * 4 + 1] = 200f - 120f * t;
+            pixels[pixel * 4 + 2] = 90f + 30f * t;
+            pixels[pixel * 4 + 3] = 255f;
         }
 
         // Act
@@ -37,10 +37,10 @@ public class Bc7EncoderTest
         var pixels = new float[64];
         for (var pixel = 0; pixel < 16; pixel++)
         {
-            var value = pixel == 0 ? 250f : 10f + (pixel * 3f);
+            var value = pixel == 0 ? 250f : 10f + pixel * 3f;
             for (var channel = 0; channel < 4; channel++)
             {
-                pixels[(pixel * 4) + channel] = value;
+                pixels[pixel * 4 + channel] = value;
             }
         }
 
@@ -72,7 +72,7 @@ public class Bc7EncoderTest
         {
             for (var channel = 0; channel < 4; channel++)
             {
-                Assert.That(decoded[(corners[index] * 4) + channel], Is.EqualTo(pixels[(index * 4) + channel]).Within(4f));
+                Assert.That(decoded[corners[index] * 4 + channel], Is.EqualTo(pixels[index * 4 + channel]).Within(4f));
             }
         }
     }
@@ -115,7 +115,7 @@ public class Bc7EncoderTest
             {
                 var from = (endpoints[0, channel] << 1) | lowBit;
                 var to = (endpoints[1, channel] << 1) | highBit;
-                pixels[(pixel * 4) + channel] = (((64 - weight) * from) + (weight * to) + 32) >> 6;
+                pixels[pixel * 4 + channel] = ((64 - weight) * from + weight * to + 32) >> 6;
             }
         }
 

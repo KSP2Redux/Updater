@@ -17,8 +17,8 @@ public class TextureOverlayTest
     private const int HALF_FACE = HALF_PIXELS * 8;
     private const int COLOR_FACE = WIDTH * WIDTH * 4;
     private const int NORMAL_OFFSET = 16;
-    private const int DENSITY_OFFSET = NORMAL_OFFSET + (HALF_FACE * 6);
-    private const int COLOR_OFFSET = DENSITY_OFFSET + (HALF_FACE * 6);
+    private const int DENSITY_OFFSET = NORMAL_OFFSET + HALF_FACE * 6;
+    private const int COLOR_OFFSET = DENSITY_OFFSET + HALF_FACE * 6;
 
     private static readonly ShaderManifestIndex NO_SHADERS = TestGame.Manifest(Array.Empty<string>());
 
@@ -47,7 +47,7 @@ public class TextureOverlayTest
         Assert.That(overlay.Ranges, Has.Count.EqualTo(2));
         Assert.That(overlay.DataSha256, Is.Not.Empty);
         var data = game.FileSystem.File.ReadAllBytes(game.Layout.Resolve(overlay.Data));
-        Assert.That(data, Has.Length.EqualTo((HALF_FACE * 3) + (Bc7Encoder.EncodedSize(WIDTH, WIDTH) * 6)));
+        Assert.That(data, Has.Length.EqualTo(HALF_FACE * 3 + Bc7Encoder.EncodedSize(WIDTH, WIDTH) * 6));
         Assert.That(result.OverlaysWritten, Is.EqualTo(1));
     }
 
@@ -79,7 +79,7 @@ public class TextureOverlayTest
 
         // The normal map's halves come back as the bytes they were made from, face by face and mip by mip.
         var normalStart = (int)overlay.Ranges.First().Offset;
-        var expected = Enumerable.Range(0, HALF_PIXELS * 4 * 6).Select(index => (byte)((index * 37) % 256)).ToArray();
+        var expected = Enumerable.Range(0, HALF_PIXELS * 4 * 6).Select(index => (byte)(index * 37 % 256)).ToArray();
         Assert.That(view.AsSpan(normalStart, expected.Length).ToArray(), Is.EqualTo(expected));
 
         // The color map's blocks decode close to its smooth source on every face.
@@ -88,14 +88,14 @@ public class TextureOverlayTest
         {
             for (var blockIndex = 0; blockIndex < 4; blockIndex++)
             {
-                var decoded = Bc7EncoderTest.DecodeMode6(view, colorStart + (((face * 4) + blockIndex) * Bc7Encoder.BLOCK_BYTES));
+                var decoded = Bc7EncoderTest.DecodeMode6(view, colorStart + (face * 4 + blockIndex) * Bc7Encoder.BLOCK_BYTES);
                 for (var pixel = 0; pixel < 16; pixel++)
                 {
-                    var x = ((blockIndex & 1) * 4) + (pixel & 3);
-                    var y = ((blockIndex >> 1) * 4) + (pixel >> 2);
+                    var x = (blockIndex & 1) * 4 + (pixel & 3);
+                    var y = (blockIndex >> 1) * 4 + (pixel >> 2);
                     for (var channel = 0; channel < 4; channel++)
                     {
-                        Assert.That(decoded[(pixel * 4) + channel], Is.EqualTo(ColorValue(face, x, y, channel)).Within(4f));
+                        Assert.That(decoded[pixel * 4 + channel], Is.EqualTo(ColorValue(face, x, y, channel)).Within(4f));
                     }
                 }
             }
@@ -199,11 +199,11 @@ public class TextureOverlayTest
     // file, and a small readable normal map with its pixels inside the object.
     private static byte[] CloudBundle(bool compress, float normalScale = 1f)
     {
-        var resource = new byte[COLOR_OFFSET + (COLOR_FACE * 6)];
+        var resource = new byte[COLOR_OFFSET + COLOR_FACE * 6];
         for (var index = 0; index < HALF_PIXELS * 4 * 6; index++)
         {
-            WriteHalf(resource, NORMAL_OFFSET + (index * 2), (index * 37) % 256 / 255f * normalScale);
-            WriteHalf(resource, DENSITY_OFFSET + (index * 2), index % 4 == 2 ? 640f : 0.64f);
+            WriteHalf(resource, NORMAL_OFFSET + index * 2, index * 37 % 256 / 255f * normalScale);
+            WriteHalf(resource, DENSITY_OFFSET + index * 2, index % 4 == 2 ? 640f : 0.64f);
         }
 
         for (var face = 0; face < 6; face++)
@@ -212,7 +212,7 @@ public class TextureOverlayTest
             {
                 for (var channel = 0; channel < 4; channel++)
                 {
-                    resource[COLOR_OFFSET + (face * COLOR_FACE) + (pixel * 4) + channel] = (byte)ColorValue(face, pixel % WIDTH, pixel / WIDTH, channel);
+                    resource[COLOR_OFFSET + face * COLOR_FACE + pixel * 4 + channel] = (byte)ColorValue(face, pixel % WIDTH, pixel / WIDTH, channel);
                 }
             }
         }
@@ -230,10 +230,10 @@ public class TextureOverlayTest
             .Object(42, SyntheticBundles.CUBEMAP, SyntheticBundles.Cubemap(COLOR, WIDTH, CubemapRecompression.RGBA32, 1, COLOR_FACE, false, null, COLOR_OFFSET, resourcePath))
             .Object(43, SyntheticBundles.CUBEMAP, SyntheticBundles.Cubemap(READABLE, 4, CubemapRecompression.RGBA_HALF, 1, 128, true, inline, 0, ""));
 
-        return SyntheticBundles.Bundle(compress, (CAB, file.Build(), true), (CAB + ".resS", resource, false));
+        return SyntheticBundles.Bundle(compress, (CAB, file.Build(), true), ($"{CAB}.resS", resource, false));
     }
 
-    private static float ColorValue(int face, int x, int y, int channel) => (x * 8) + (y * 4) + (channel * 30) + (face * 5);
+    private static float ColorValue(int face, int x, int y, int channel) => x * 8 + y * 4 + channel * 30 + face * 5;
 
     private static void WriteHalf(byte[] buffer, int offset, float value)
     {

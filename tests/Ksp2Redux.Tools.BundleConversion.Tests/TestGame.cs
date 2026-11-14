@@ -88,7 +88,7 @@ internal sealed class TestGame
         return SyntheticBundles.Bundle(
             compress,
             (CONTENT_CAB, file.Build(), true),
-            (CONTENT_CAB + ".resS", Enumerable.Range(0, 300_000).Select(index => (byte)(index * 7)).ToArray(), false));
+            ($"{CONTENT_CAB}.resS", Enumerable.Range(0, 300_000).Select(index => (byte)(index * 7)).ToArray(), false));
     }
 
     /// <summary>

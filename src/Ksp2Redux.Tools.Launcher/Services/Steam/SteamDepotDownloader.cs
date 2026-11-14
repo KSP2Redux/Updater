@@ -351,7 +351,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
                 authTokens[(depot.DepotId, server.Host!)] = auth.Result == EResult.OK ? auth.Token : null;
                 last = ex;
             }
-            catch (Exception ex) when ((ex is SteamKitWebRequestException or HttpRequestException or IOException or TaskCanceledException)
+            catch (Exception ex) when (ex is SteamKitWebRequestException or HttpRequestException or IOException or TaskCanceledException
                                            && !cancellationToken.IsCancellationRequested)
             {
                 log.Debug($"Content server {server.Host} failed ({ex.Message}), trying another.");

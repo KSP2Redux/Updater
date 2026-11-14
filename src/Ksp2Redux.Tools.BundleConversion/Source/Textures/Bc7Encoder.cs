@@ -65,16 +65,16 @@ internal static class Bc7Encoder
             {
                 for (var pixel = 0; pixel < BLOCK_PIXELS; pixel++)
                 {
-                    var x = Math.Min((column * 4) + (pixel & 3), width - 1);
-                    var y = Math.Min((row * 4) + (pixel >> 2), height - 1);
-                    var source = ((y * width) + x) * CHANNELS;
+                    var x = Math.Min(column * 4 + (pixel & 3), width - 1);
+                    var y = Math.Min(row * 4 + (pixel >> 2), height - 1);
+                    var source = (y * width + x) * CHANNELS;
                     for (var channel = 0; channel < CHANNELS; channel++)
                     {
-                        block[(pixel * CHANNELS) + channel] = pixels[source + channel];
+                        block[pixel * CHANNELS + channel] = pixels[source + channel];
                     }
                 }
 
-                EncodeBlock(block, output.AsSpan(outputOffset + (((row * across) + column) * BLOCK_BYTES), BLOCK_BYTES));
+                EncodeBlock(block, output.AsSpan(outputOffset + (row * across + column) * BLOCK_BYTES, BLOCK_BYTES));
             }
         });
     }
@@ -144,7 +144,7 @@ internal static class Bc7Encoder
         {
             for (var channel = 0; channel < CHANNELS; channel++)
             {
-                mean[channel] += pixels[(pixel * CHANNELS) + channel];
+                mean[channel] += pixels[pixel * CHANNELS + channel];
             }
         }
 
@@ -158,10 +158,10 @@ internal static class Bc7Encoder
         {
             for (var row = 0; row < CHANNELS; row++)
             {
-                var deviation = pixels[(pixel * CHANNELS) + row] - mean[row];
+                var deviation = pixels[pixel * CHANNELS + row] - mean[row];
                 for (var column = 0; column < CHANNELS; column++)
                 {
-                    covariance[(row * CHANNELS) + column] += deviation * (pixels[(pixel * CHANNELS) + column] - mean[column]);
+                    covariance[row * CHANNELS + column] += deviation * (pixels[pixel * CHANNELS + column] - mean[column]);
                 }
             }
         }
@@ -170,7 +170,7 @@ internal static class Bc7Encoder
         var widest = 0;
         for (var channel = 1; channel < CHANNELS; channel++)
         {
-            if (covariance[(channel * CHANNELS) + channel] > covariance[(widest * CHANNELS) + widest])
+            if (covariance[channel * CHANNELS + channel] > covariance[widest * CHANNELS + widest])
             {
                 widest = channel;
             }
@@ -180,7 +180,7 @@ internal static class Bc7Encoder
         Span<float> next = stackalloc float[CHANNELS];
         for (var channel = 0; channel < CHANNELS; channel++)
         {
-            axis[channel] = covariance[(channel * CHANNELS) + widest];
+            axis[channel] = covariance[channel * CHANNELS + widest];
         }
 
         var length = Normalize(axis);
@@ -191,7 +191,7 @@ internal static class Bc7Encoder
                 var sum = 0f;
                 for (var column = 0; column < CHANNELS; column++)
                 {
-                    sum += covariance[(row * CHANNELS) + column] * axis[column];
+                    sum += covariance[row * CHANNELS + column] * axis[column];
                 }
 
                 next[row] = sum;
@@ -215,7 +215,7 @@ internal static class Bc7Encoder
             var projection = 0f;
             for (var channel = 0; channel < CHANNELS; channel++)
             {
-                projection += (pixels[(pixel * CHANNELS) + channel] - mean[channel]) * axis[channel];
+                projection += (pixels[pixel * CHANNELS + channel] - mean[channel]) * axis[channel];
             }
 
             minimum = Math.Min(minimum, projection);
@@ -224,8 +224,8 @@ internal static class Bc7Encoder
 
         for (var channel = 0; channel < CHANNELS; channel++)
         {
-            low[channel] = Clamp(mean[channel] + (minimum * axis[channel]));
-            high[channel] = Clamp(mean[channel] + (maximum * axis[channel]));
+            low[channel] = Clamp(mean[channel] + minimum * axis[channel]);
+            high[channel] = Clamp(mean[channel] + maximum * axis[channel]);
         }
     }
 
@@ -277,7 +277,7 @@ internal static class Bc7Encoder
             for (var index = 0; index < INDEX_COUNT; index++)
             {
                 var weight = WEIGHTS[index];
-                palette[(index * CHANNELS) + channel] = (((WEIGHT_TOTAL - weight) * from) + (weight * to) + 32) >> 6;
+                palette[index * CHANNELS + channel] = ((WEIGHT_TOTAL - weight) * from + weight * to + 32) >> 6;
             }
         }
 
@@ -291,7 +291,7 @@ internal static class Bc7Encoder
                 var error = 0f;
                 for (var channel = 0; channel < CHANNELS; channel++)
                 {
-                    var difference = palette[(index * CHANNELS) + channel] - pixels[(pixel * CHANNELS) + channel];
+                    var difference = palette[index * CHANNELS + channel] - pixels[pixel * CHANNELS + channel];
                     error += difference * difference;
                 }
 
@@ -325,13 +325,13 @@ internal static class Bc7Encoder
             highHigh += weight * weight;
             for (var channel = 0; channel < CHANNELS; channel++)
             {
-                var value = pixels[(pixel * CHANNELS) + channel];
+                var value = pixels[pixel * CHANNELS + channel];
                 lowSum[channel] += lowWeight * value;
                 highSum[channel] += weight * value;
             }
         }
 
-        var determinant = (lowLow * highHigh) - (lowHigh * lowHigh);
+        var determinant = lowLow * highHigh - lowHigh * lowHigh;
         if (Math.Abs(determinant) < 1e-6f)
         {
             return false;
@@ -339,8 +339,8 @@ internal static class Bc7Encoder
 
         for (var channel = 0; channel < CHANNELS; channel++)
         {
-            low[channel] = Clamp(((highHigh * lowSum[channel]) - (lowHigh * highSum[channel])) / determinant);
-            high[channel] = Clamp(((lowLow * highSum[channel]) - (lowHigh * lowSum[channel])) / determinant);
+            low[channel] = Clamp((highHigh * lowSum[channel] - lowHigh * highSum[channel]) / determinant);
+            high[channel] = Clamp((lowLow * highSum[channel] - lowHigh * lowSum[channel]) / determinant);
         }
 
         return true;

@@ -108,24 +108,17 @@ public static class CliProgressDisplay
     /// <summary>
     /// Draws an inner column only while the task is tracking a download.
     /// </summary>
-    private sealed class WhileDownloadingColumn : ProgressColumn
+    private sealed class WhileDownloadingColumn(ProgressColumn inner) : ProgressColumn
     {
         /// <summary>
         /// The task state key holding whether the task is tracking a download.
         /// </summary>
         public const string STATE_KEY = "isDownload";
 
-        private readonly ProgressColumn _inner;
-
-        public WhileDownloadingColumn(ProgressColumn inner)
-        {
-            _inner = inner;
-        }
-
         public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
         {
             return task.State.Get<bool>(STATE_KEY)
-                ? _inner.Render(options, task, deltaTime)
+                ? inner.Render(options, task, deltaTime)
                 : new Text(string.Empty);
         }
     }

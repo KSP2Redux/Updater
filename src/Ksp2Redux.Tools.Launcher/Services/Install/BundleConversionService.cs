@@ -199,7 +199,7 @@ public class BundleConversionService(
             await steamDownloader.RestoreFilesAsync(
                 SteamDepotDownloader.KSP2_APP_ID,
                 install,
-                [.. bundles.Select(file => BundleConversionLayout.BUNDLE_ROOT + "/" + file)],
+                [.. bundles.Select(file => $"{BundleConversionLayout.BUNDLE_ROOT}/{file}")],
                 new Progress<SteamDownloadProgress>(),
                 ct);
         }

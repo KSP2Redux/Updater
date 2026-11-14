@@ -321,7 +321,7 @@ public sealed class JournalStore
             _fileSystem.Directory.CreateDirectory(directory);
         }
 
-        var temporary = _path + ".tmp";
+        var temporary = $"{_path}.tmp";
         _fileSystem.File.WriteAllBytes(temporary, JsonCodec.Write(journal));
         AtomicFile.Replace(_fileSystem, temporary, _path);
     }
@@ -332,7 +332,7 @@ public sealed class JournalStore
     public void Delete()
     {
         _fileSystem.File.Delete(_path);
-        _fileSystem.File.Delete(_path + ".tmp");
+        _fileSystem.File.Delete($"{_path}.tmp");
     }
 }
 

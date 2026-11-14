@@ -103,8 +103,8 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
             ExePath = exePath,
             Name = string.IsNullOrWhiteSpace(name) ? LauncherConfigService.DeriveDefaultInstallName(exePath) : name!,
             ReleaseChannel = launcherConfigService.Config.Ksp2Installs.Count > 0
-                ? (ActiveEntry?.ReleaseChannel ?? "beta")
-                : (string.IsNullOrEmpty(launcherConfigService.Config.ReleaseChannel) ? "beta" : launcherConfigService.Config.ReleaseChannel)
+                ? ActiveEntry?.ReleaseChannel ?? "beta"
+                : string.IsNullOrEmpty(launcherConfigService.Config.ReleaseChannel) ? "beta" : launcherConfigService.Config.ReleaseChannel
         };
         launcherConfigService.Config.Ksp2Installs.Add(entry);
 
@@ -274,7 +274,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         {
             if (!fileSystem.File.Exists(bootConfigPath)) return;
             var lines = fileSystem.File.ReadAllLines(bootConfigPath).ToList();
-            int index = lines.FindIndex(line => line.StartsWith(KEY + "=", StringComparison.Ordinal));
+            int index = lines.FindIndex(line => line.StartsWith($"{KEY}=", StringComparison.Ordinal));
             if (index >= 0)
             {
                 if (lines[index] == desiredLine)

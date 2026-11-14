@@ -199,8 +199,8 @@ public class InstallRevertEndToEndTest
                     .ToList();
                 var convertedBundles = verify.Edits.Select(edit => edit.File)
                     .Concat(verify.Outputs.Select(copy => copy.File)).Distinct(StringComparer.Ordinal).Count();
-                Log($"Converted bundles: {convertedBundles}. Applied edits: {verify.Count(EditState.Applied)}. " +
-                    $"Verified copies: {verify.Count(OutputState.Ok)}. Problems: {problems.Count}.");
+                Log(
+                    $"Converted bundles: {convertedBundles}. Applied edits: {verify.Count(EditState.Applied)}. Verified copies: {verify.Count(OutputState.Ok)}. Problems: {problems.Count}.");
                 using (Assert.EnterMultipleScope())
                 {
                     Assert.That(verify.IsComplete, Is.True, string.Join("\n", problems.Take(50)));
@@ -242,26 +242,22 @@ public class InstallRevertEndToEndTest
         var after = Snapshot(fileSystem, install, "6. Restored snapshot", Log);
         WriteSnapshot(fileSystem, report, "restored-snapshot.json", after);
         var differences = Compare(before, after);
-        var totals = $"Before: {before.Files.Count} files, {before.TotalBytes} bytes. " +
-                     $"After: {after.Files.Count} files, {after.TotalBytes} bytes. " +
-                     $"Differences: {differences.Count} " +
-                     $"(added {differences.Count(item => item.Kind == "added")}, " +
-                     $"removed {differences.Count(item => item.Kind == "removed")}, " +
-                     $"changed {differences.Count(item => item.Kind == "changed")}).";
+        var totals =
+            $"Before: {before.Files.Count} files, {before.TotalBytes} bytes. After: {after.Files.Count} files, {after.TotalBytes} bytes. Differences: {differences.Count} (added {differences.Count(item => item.Kind == "added")}, removed {differences.Count(item => item.Kind == "removed")}, changed {differences.Count(item => item.Kind == "changed")}).";
         Log(totals);
         if (report is not null)
         {
             fileSystem.File.WriteAllText(fileSystem.Path.Combine(report, "diff.json"), JsonSerializer.Serialize(
                 new { Totals = totals, Differences = differences }, new JsonSerializerOptions { WriteIndented = true }));
             fileSystem.File.WriteAllText(fileSystem.Path.Combine(report, "diff.txt"),
-                totals + "\n" + string.Join("\n", differences.Select(item => $"{item.Kind}: {item.Path}")) + "\n");
+                $"{totals}\n{string.Join("\n", differences.Select(item => $"{item.Kind}: {item.Path}"))}\n");
         }
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(installFailure, Is.Null, $"Install/verification failed: {installFailure}");
             Assert.That(differences, Is.Empty,
-                totals + "\n" + string.Join("\n", differences.Take(50).Select(item => $"{item.Kind}: {item.Path}")));
+                $"{totals}\n{string.Join("\n", differences.Take(50).Select(item => $"{item.Kind}: {item.Path}"))}");
             Assert.That(after.TotalBytes, Is.EqualTo(before.TotalBytes), totals);
         }
     }

@@ -37,7 +37,7 @@ public class RealBundlesIntegrationTest
 
         IFileSystem fileSystem = new RealFileSystem();
         var sourceLayout = new BundleConversionLayout(fileSystem, source!);
-        var game = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), "ksp2redux-bundle-test-" + Guid.NewGuid().ToString("N"));
+        var game = fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), $"ksp2redux-bundle-test-{Guid.NewGuid():N}");
         var layout = new BundleConversionLayout(fileSystem, game);
         fileSystem.Directory.CreateDirectory(layout.BundleDirectory);
         Dictionary<string, string> stockHashes = [];

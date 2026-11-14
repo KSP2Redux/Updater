@@ -170,16 +170,16 @@ public sealed class DoctorCommand : ReduxCommand<DoctorSettings>
             }
             else
             {
-                context.Output.Result($"  {"runtime:",-16}" + (wineRuntime.Kind == WineRuntimeKind.Bundled
+                context.Output.Result($"  {"runtime:",-16}{(wineRuntime.Kind == WineRuntimeKind.Bundled
                     ? $"bundled with the launcher ({wineRuntime.DisplayName})"
-                    : "the CrossOver app"));
+                    : "the CrossOver app")}");
                 WritePath(context, "wine", wineRuntime.WineBinary);
                 WritePath(context, "prefix", wineRuntime.PrefixPath);
             }
 
-            context.Output.Result($"  {"rosetta:",-16}" + (context.WineRuntimeService.IsRosettaInstalled()
+            context.Output.Result($"  {"rosetta:",-16}{(context.WineRuntimeService.IsRosettaInstalled()
                 ? "installed"
-                : "missing, run: softwareupdate --install-rosetta --agree-to-license"));
+                : "missing, run: softwareupdate --install-rosetta --agree-to-license")}");
         }
 
         context.Output.Section("Steam");

@@ -1062,8 +1062,7 @@ static async Task RunStructuralSwitchLifecycle(
         if (alternate == null)
         {
             throw new InvalidOperationException(
-                $"The requested structural lifecycle target '{requestedSecondGuid}' " +
-                "is not a distinct vessel with at least one part.");
+                $"The requested structural lifecycle target '{requestedSecondGuid}' is not a distinct vessel with at least one part.");
         }
     }
     else
@@ -1233,15 +1232,13 @@ static async Task<JsonObject> ActivateStructuralLifecycleTarget(
             readiness["terminalReason"]?.GetValue<string>() ??
             "structural readiness returned ready=false";
         throw new InvalidOperationException(
-            $"Structural lifecycle target '{guid}' did not become ready: " +
-            $"{terminalReason}. Last status: {readiness.ToJsonString()}");
+            $"Structural lifecycle target '{guid}' did not become ready: {terminalReason}. Last status: {readiness.ToJsonString()}");
     }
     JsonObject snapshot = await CaptureStructuralLifecycleSnapshot(port, guid);
     if (snapshot["memory"] == null || snapshot["activation"] == null)
     {
         throw new InvalidOperationException(
-            $"Structural lifecycle target '{guid}' became ready but its memory or activation " +
-            "snapshot was unavailable.");
+            $"Structural lifecycle target '{guid}' became ready but its memory or activation snapshot was unavailable.");
     }
     point["memory"] = snapshot["memory"]?.DeepClone();
     point["activation"] = snapshot["activation"]?.DeepClone();
@@ -1712,8 +1709,7 @@ static async Task<(Process Process, JsonNode Session)> StartFreshBenchmarkPlayer
     if (!await WaitForLoopbackPortAvailable(port, 30))
     {
         throw new InvalidOperationException(
-            $"Cannot start the standalone benchmark player because loopback port {port} " +
-            "remained in use for 30 seconds.");
+            $"Cannot start the standalone benchmark player because loopback port {port} remained in use for 30 seconds.");
     }
 
     string workingDirectory = Path.GetDirectoryName(playerExe)
@@ -1748,8 +1744,7 @@ static async Task<(Process Process, JsonNode Session)> StartFreshBenchmarkPlayer
         if (completed == exitTask)
         {
             throw new InvalidOperationException(
-                $"Standalone benchmark player exited before its CLI listener was ready " +
-                $"(pid {process.Id}, exit code {process.ExitCode}).");
+                $"Standalone benchmark player exited before its CLI listener was ready (pid {process.Id}, exit code {process.ExitCode}).");
         }
 
         JsonNode runtime = await runtimeTask;
@@ -1942,7 +1937,7 @@ static void DeletePlayerPortFile(string workingDirectory, string fileName)
     try
     {
         File.Delete(path);
-        File.Delete(path + ".Pid");
+        File.Delete($"{path}.Pid");
     }
     catch
     {
@@ -2306,7 +2301,7 @@ static async Task<JsonNode> Watch(Dictionary<string, string?> options)
             }
             else if (kill)
             {
-                int? pid = TryReadProjectPidFile(EditorPortFileName + ".Pid");
+                int? pid = TryReadProjectPidFile($"{EditorPortFileName}.Pid");
                 if (pid == null)
                 {
                     Console.Error.WriteLine("watch: no editor PID file found, cannot kill.");
@@ -2947,7 +2942,7 @@ static string McpMethodName(string name)
         return name;
     }
 
-    return name[..underscore] + "." + name[(underscore + 1)..];
+    return $"{name[..underscore]}.{name[(underscore + 1)..]}";
 }
 
 static JsonObject Obj(params (string Key, object? Value)[] values)

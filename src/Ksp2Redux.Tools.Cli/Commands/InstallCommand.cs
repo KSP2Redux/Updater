@@ -1,7 +1,6 @@
 ﻿using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
-using Ksp2Redux.Tools.Launcher.Services.Install;
 using Spectre.Console;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
@@ -14,6 +13,7 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
     private const int CHOICE_COUNT = 15;
 
     /// <inheritdoc />
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the plan outcome is not recognized</exception>
     protected override async Task<int> RunAsync(
         CliContext context,
         InstallSettings settings,
@@ -60,6 +60,7 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
         {
             Failed(var exitCode) => exitCode,
             Planned(var plan, var target) => await RunPlanAsync(context, settings, install, plan, target, cancellationToken),
+            _ => throw new ArgumentOutOfRangeException()
         };
     }
 

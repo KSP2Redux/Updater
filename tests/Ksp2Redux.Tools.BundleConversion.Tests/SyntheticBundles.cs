@@ -281,18 +281,13 @@ internal static class SyntheticBundles
 /// <summary>
 /// Builds one serialized file (CAB) for a synthetic bundle.
 /// </summary>
-internal sealed class SerializedFileBuilder
+internal sealed class SerializedFileBuilder(string name)
 {
     private readonly List<string> _externals = [];
     private readonly List<(long PathId, TypeTreeType Type, byte[] Data)> _objects = [];
     private readonly List<AssetPPtr> _scripts = [];
 
-    public SerializedFileBuilder(string name)
-    {
-        Name = name;
-    }
-
-    public string Name { get; }
+    public string Name { get; } = name;
 
     public SerializedFileBuilder External(string cab)
     {

@@ -1,7 +1,6 @@
 using System.Globalization;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
-using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Game;

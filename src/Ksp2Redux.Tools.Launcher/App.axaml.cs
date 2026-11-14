@@ -102,8 +102,7 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
     // Avalonia itself has already failed, so neither can be trusted to show a dialog.
     internal static void ShowFatalError(string headline, Exception ex)
     {
-        var message = $"{headline}:\n\n{ex.Message}\n\n" +
-                      $"More detail was written to {LogService.BootstrapLogPath}";
+        var message = $"{headline}:\n\n{ex.Message}\n\nMore detail was written to {LogService.BootstrapLogPath}";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             try

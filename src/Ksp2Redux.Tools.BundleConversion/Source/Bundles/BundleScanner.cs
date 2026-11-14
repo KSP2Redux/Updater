@@ -19,19 +19,13 @@ internal static class UnityClassId
 /// <summary>
 /// Everything the planner needs from one bundle.
 /// </summary>
-internal sealed class ScannedBundle
+internal sealed class ScannedBundle(string file, long size)
 {
-    public ScannedBundle(string file, long size)
-    {
-        File = file;
-        Size = size;
-    }
-
     /// <summary>Gets the bundle file name.</summary>
-    public string File { get; }
+    public string File { get; } = file;
 
     /// <summary>Gets the bundle size in bytes.</summary>
-    public long Size { get; }
+    public long Size { get; } = size;
 
     /// <summary>Gets or sets the block layout, or null when the bundle could not be opened.</summary>
     public BlockLayout? Layout { get; set; }
@@ -57,19 +51,13 @@ internal sealed record BundleEntry(string Name, long DataOffset, long Size);
 /// <summary>
 /// Everything the planner needs from one serialized file inside a bundle.
 /// </summary>
-internal sealed class ScannedSerializedFile
+internal sealed class ScannedSerializedFile(string name, long dataOffset)
 {
-    public ScannedSerializedFile(string name, long dataOffset)
-    {
-        Name = name;
-        DataOffset = dataOffset;
-    }
-
     /// <summary>Gets the file name, the CAB-... name other files reference it by.</summary>
-    public string Name { get; }
+    public string Name { get; } = name;
 
     /// <summary>Gets the offset of the file in the bundle's data stream.</summary>
-    public long DataOffset { get; }
+    public long DataOffset { get; } = dataOffset;
 
     /// <summary>Gets the externals, as CAB names for bundle files and raw paths otherwise. File ID n is entry n - 1.</summary>
     public List<string> Externals { get; } = [];
@@ -525,19 +513,12 @@ internal static class BundleScanner
     /// <summary>
     /// A compiled object type and, for MonoBehaviours, the script it belongs to.
     /// </summary>
-    private readonly struct CompiledType
+    private readonly struct CompiledType(TypeField field, int scriptFileId, long scriptPathId)
     {
-        public CompiledType(TypeField field, int scriptFileId, long scriptPathId)
-        {
-            Field = field;
-            ScriptFileId = scriptFileId;
-            ScriptPathId = scriptPathId;
-        }
+        public TypeField Field { get; } = field;
 
-        public TypeField Field { get; }
+        public int ScriptFileId { get; } = scriptFileId;
 
-        public int ScriptFileId { get; }
-
-        public long ScriptPathId { get; }
+        public long ScriptPathId { get; } = scriptPathId;
     }
 }
