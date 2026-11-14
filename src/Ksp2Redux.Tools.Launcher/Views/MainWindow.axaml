@@ -45,11 +45,13 @@
         <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{StaticResource BrandRedColor}" />
         <!-- Material 3 navigation answers hover and press with a state layer. The dotted red
              underline already marks the current tab, so it gets no filled indicator as well. -->
-        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPointerOver" Color="White" Opacity="0.08" />
-        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="White" Opacity="0.10" />
-        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelected" Color="Transparent" />
-        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="White" Opacity="0.08" />
-        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="White" Opacity="0.10" />
+        <!-- Transparency in the colour, not Opacity, so the hover transition does not flash (see Colors.axaml). -->
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselected" Color="#00FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPointerOver" Color="#14FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="#1AFFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelected" Color="#00FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="#14FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="#1AFFFFFF" />
     </Window.Resources>
     <!-- ReSharper restore Xaml.RedundantResource -->
 
