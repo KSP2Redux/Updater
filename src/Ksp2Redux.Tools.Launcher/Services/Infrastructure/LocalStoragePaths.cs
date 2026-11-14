@@ -2,7 +2,7 @@ using System.IO.Abstractions;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
-internal static class LocalStoragePaths
+public static class LocalStoragePaths
 {
     public const string ReduxFolder = "Ksp2Redux";
     public const string LogsSubfolder = "logs";
