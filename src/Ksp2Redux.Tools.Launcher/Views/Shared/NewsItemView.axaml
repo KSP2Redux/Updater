@@ -19,9 +19,9 @@
     
     <Border Padding="4" Margin="0,0,0,8" PointerPressed="NewsPanel_OnPointerPressed">
         <StackPanel Spacing="2">
-            <TextBlock FontSize="14" FontFamily="{StaticResource JetBrainsMonoBold}"
+            <TextBlock FontSize="14" FontFamily="{DynamicResource JetBrainsMonoBold}"
                        Text="{Binding Title}" TextWrapping="WrapWithOverflow" />
-            <TextBlock FontSize="11" FontFamily="{StaticResource JetBrainsMonoRegular}"
+            <TextBlock FontSize="11" FontFamily="{DynamicResource JetBrainsMonoRegular}"
                        Text="{Binding Subtitle}" TextWrapping="WrapWithOverflow" />
         </StackPanel>
     </Border>

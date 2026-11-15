@@ -13,10 +13,10 @@
         <Border x:Name="GlassPanel" Margin="24,8,24,8" BorderThickness="2" BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}" BoxShadow="{StaticResource GlassPanelShadow}" CornerRadius="{StaticResource RadiusLarge}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" IsVisible="{Binding NewsVisible}">
             <DockPanel Name="NewsDock" Margin="8" DataContext="{Binding SelectedNews}" LastChildFill="True">
                 <Grid Name="NewsHeader" DockPanel.Dock="Top" ColumnDefinitions="*, Auto">
-                    <TextBlock Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{StaticResource JetBrainsMonoRegular}"
+                    <TextBlock Grid.Column="0" Margin="0, 0, 4, 4" FontSize="12" FontFamily="{DynamicResource JetBrainsMonoRegular}"
                                TextWrapping="WrapWithOverflow" >
                         <TextBlock.Inlines>
-                            <Run FontSize="24" FontFamily="{StaticResource JetBrainsMonoBold}" Text="{Binding Title}"/>
+                            <Run FontSize="24" FontFamily="{DynamicResource JetBrainsMonoBold}" Text="{Binding Title}"/>
                             <LineBreak/>
                             <Run Text="{Binding Subtitle}"/>
                         </TextBlock.Inlines></TextBlock>

@@ -125,7 +125,7 @@
         </Style>
 
         <Style Selector="TabItem">
-            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="FontFamily" Value="{DynamicResource LedCounter7}" />
             <Setter Property="FontSize" Value="32" />
             <Setter Property="Margin" Value="20,0" />
 
@@ -333,7 +333,7 @@
                 <Border Grid.RowSpan="2" IsVisible="{Binding IsUpdateDownloading}" Background="{StaticResource ScrimMediumBrush}">
                     <TextBlock Text="{loc:T Window.UpdateDownloading}"
                                Foreground="{StaticResource TextPrimaryBrush}" FontSize="32"
-                               FontFamily="{StaticResource JetBrainsMonoLight}"
+                               FontFamily="{DynamicResource JetBrainsMonoLight}"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
             </Grid>

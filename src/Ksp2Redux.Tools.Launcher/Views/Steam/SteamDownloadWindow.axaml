@@ -10,10 +10,10 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Background="#181818"
-        FontFamily="{StaticResource JetBrainsMonoRegular}">
+        FontFamily="{DynamicResource JetBrainsMonoRegular}">
 	<StackPanel Margin="32,28,32,24" Spacing="16">
 		<StackPanel Spacing="4">
-			<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="20" Foreground="White"
+			<TextBlock FontFamily="{DynamicResource JetBrainsMonoBold}" FontSize="20" Foreground="White"
 			           Text="{Binding StageText, Converter={StaticResource CaseConverter}}" />
 			<TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
 			           Text="{Binding TargetDirectoryText}" />
@@ -24,7 +24,7 @@
 		             Foreground="{StaticResource BrandOrangeBrush}"
 		             Background="{StaticResource InputSurfaceBrush}" />
 
-		<TextBlock FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="12"
+		<TextBlock FontFamily="{DynamicResource JetBrainsMonoLight}" FontSize="12"
 		           Foreground="{StaticResource TextMutedBrush}" Text="{Binding DetailText}" />
 
 		<TextBlock FontSize="12" Foreground="{StaticResource DangerHoverBrush}" TextWrapping="Wrap"

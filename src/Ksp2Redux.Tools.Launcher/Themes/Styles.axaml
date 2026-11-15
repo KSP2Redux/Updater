@@ -9,7 +9,7 @@
     <Style Selector="Button">
         <Setter Property="Background" Value="{StaticResource NeutralButtonBrush}"></Setter>
         <Setter Property="BorderThickness" Value="0"></Setter>
-        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
+        <Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"></Setter>
         <Style Selector="^:pointerover">
             <Setter Property="Background" Value="{StaticResource NeutralButtonHoverBrush}"></Setter>
         </Style>
@@ -66,6 +66,6 @@
     </Style>
 
     <Style Selector="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
+        <Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"></Setter>
     </Style>
 </Styles>

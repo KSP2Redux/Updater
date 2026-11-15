@@ -21,11 +21,11 @@
 				</Setter.Value>
 			</Setter>
 			<Setter Property="Background" Value="{StaticResource ScrimSoftBrush}"/>
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"/>
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"/>
 			<Setter Property="FontSize" Value="12"/>
 		</Style>
 		<Style Selector="TextBlock.progress-label">
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"/>
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"/>
 			<Setter Property="VerticalAlignment" Value="Center"/>
 			<Setter Property="TextAlignment" Value="Right"/>
 		</Style>
@@ -95,7 +95,7 @@
 	        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
 		        <TextBlock Grid.Column="0"
 		                   Foreground="{StaticResource BrandRedBrush}"
-		                   FontFamily="{StaticResource JetBrainsMonoRegular}"
+		                   FontFamily="{DynamicResource JetBrainsMonoRegular}"
 		                   FontSize="11"
 		                   VerticalAlignment="Center"
 		                   Text="{loc:T Home.LauncherUpdateNeeded}" />

@@ -44,7 +44,7 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="FontSize" Value="32" />
-            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="FontFamily" Value="{DynamicResource LedCounter7}" />
             <Setter Property="HorizontalAlignment" Value="Center" />
 
             <Style Selector="^ Border.main-button-tint">
@@ -95,7 +95,7 @@
                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                 <Setter Property="Background" Value="Black" />
                 <Setter Property="FontSize" Value="12" />
-                <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoLight}" />
+                <Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoLight}" />
                 <Setter Property="Padding" Value="8,4" />
                 <Setter Property="MaxWidth" Value="320" />
             </Style>
@@ -147,7 +147,7 @@
                     DataContext="{Binding HomeTab}">
           <StackPanel x:DataType="home:HomeTabViewModel">
             <ComboBox Name="InstallSelector"
-                      FontFamily="{StaticResource JetBrainsMonoRegular}"
+                      FontFamily="{DynamicResource JetBrainsMonoRegular}"
                       HorizontalAlignment="Stretch" Margin="0,0,0,6"
                       Background="{StaticResource InputSurfaceBrush}" CornerRadius="{StaticResource RadiusMedium}" BorderBrush="Transparent" FontSize="11"
                       IsEnabled="{Binding IsInstallSwitcherEnabled}"
@@ -163,7 +163,7 @@
                 <controls:GroupedComboBox
                     Grid.Column="0"
                     Name="VersionSelector"
-                    FontFamily="{StaticResource JetBrainsMonoRegular}"
+                    FontFamily="{DynamicResource JetBrainsMonoRegular}"
                     HorizontalAlignment="Stretch"
                     Background="{StaticResource InputSurfaceBrush}" CornerRadius="{StaticResource RadiusMedium}" BorderBrush="Transparent" FontSize="11"
                     ItemsSource="{Binding Versions}"
@@ -207,7 +207,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.InstallButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.InstallButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
@@ -220,7 +220,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.UpdateButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.UpdateButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
@@ -233,7 +233,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.CancelButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.CancelButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
@@ -246,7 +246,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.LaunchButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.LaunchButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
