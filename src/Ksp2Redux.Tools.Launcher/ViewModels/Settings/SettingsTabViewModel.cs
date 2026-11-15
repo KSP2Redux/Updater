@@ -1027,6 +1027,8 @@ public partial class SettingsTabViewModel : ViewModelBase
         }
     }
 
+    private const int LOG_TAIL_BYTES = 256 * 1024;
+
     private void AppendLogTail(StringBuilder sb, string title, string? path, int lineCount)
     {
         sb.AppendLine();
@@ -1041,7 +1043,11 @@ public partial class SettingsTabViewModel : ViewModelBase
         {
             // The launcher and KSP2 keep their logs open for writing, which a plain read is refused on Windows.
             using var stream = _fileSystem.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            // A long game session can write a Player.log of hundreds of MB, and this runs on the UI thread.
+            var startsMidLine = stream.Length > LOG_TAIL_BYTES;
+            if (startsMidLine) stream.Seek(-LOG_TAIL_BYTES, SeekOrigin.End);
             using var reader = new StreamReader(stream);
+            if (startsMidLine) reader.ReadLine();
             Queue<string> tail = new(lineCount);
             while (reader.ReadLine() is { } line)
             {

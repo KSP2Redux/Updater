@@ -111,6 +111,29 @@ public class DiagnosticInfoTest
     }
 
     [AvaloniaTest]
+    public void BuildDiagnosticInfo_HugePlayerLog_ReportsOnlyWholeLinesFromItsEnd()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsMacOS()).Returns(false);
+        TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.UserProfile, @"C:\Users\Val");
+        var fileSystem = TestAppBuilder.FileSystem;
+        var gameData = @"C:\Users\Val\AppData\LocalLow\Intercept Games\Kerbal Space Program 2";
+        fileSystem.Directory.CreateDirectory(gameData);
+        var padding = new string('x', 10_000);
+        fileSystem.File.WriteAllLines(fileSystem.Path.Combine(gameData, "Player.log"),
+            Enumerable.Range(0, 40).Select(i => $"frame {i:00} {padding}"));
+
+        var diagnosticInfo = TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>().BuildDiagnosticInfo();
+
+        var playerLog = diagnosticInfo[diagnosticInfo.IndexOf("--- KSP2 Player.log ---", StringComparison.Ordinal)..]
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Skip(1).ToList();
+        Assert.That(playerLog, Is.Not.Empty);
+        Assert.That(playerLog, Has.All.Match(@"^frame \d\d x{10000}$"), "A line cut by the seek should be left out.");
+        Assert.That(playerLog[^1], Does.StartWith("frame 39 "));
+        Assert.That(playerLog[0], Does.Not.StartWith("frame 00 "), "Only the end of a large log should be read.");
+    }
+
+    [AvaloniaTest]
     public void CopyDiagnosticInfoButton_ReportFails_KeepsTheLauncherRunning()
     {
         TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
