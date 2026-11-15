@@ -114,6 +114,46 @@ public partial class HomeTabViewModel : ViewModelBase
     private TimeSpan? _lastDownloadRateRefresh;
 
     public bool IsOperationRunning => _cancelCurrentOperation is not null;
+
+    private bool _explainingClose;
+
+    /// <summary>Tells the player the window stays open until the running operation ends. Shown once at a time.</summary>
+    public async Task ExplainCloseWhileBusyAsync()
+    {
+        if (_explainingClose) return;
+        _explainingClose = true;
+        try
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.CloseWhileBusy.Title"],
+                _localization["Home.CloseWhileBusy.Message"], ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        finally
+        {
+            _explainingClose = false;
+        }
+    }
+
+    /// <summary>
+    /// Runs work that changes the game's folders outside an install, such as restoring saves, as the current
+    /// operation: the main button is off and no install, launch or second operation can start until it ends.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Another operation is already running.</exception>
+    public async Task RunBlockingOperationAsync(Func<Task> work)
+    {
+        if (IsOperationRunning) throw new InvalidOperationException("Another operation is already running.");
+        using var operation = new CancellationTokenSource();
+        _cancelCurrentOperation = operation;
+        MainButtonEnabled = false;
+        try
+        {
+            await work();
+        }
+        finally
+        {
+            _cancelCurrentOperation = null;
+            UpdateMainButtonState();
+        }
+    }
     private CancellationTokenSource? _gameSession;
     private bool _stoppingGame;
 
@@ -770,6 +810,7 @@ public partial class HomeTabViewModel : ViewModelBase
 
     public async Task InstallFromPatchFile(string path)
     {
+        if (IsOperationRunning) return;
         _ksp2InstallService.TryLoadKsp2Install();
         if (_ksp2InstallService.Ksp2 is { } target && await BlockIfLauncherInsideInstallDir(target))
         {
@@ -838,6 +879,7 @@ public partial class HomeTabViewModel : ViewModelBase
     // StreamingAssets would stay converted, which draws the main menu magenta.
     public async Task UninstallRedux()
     {
+        if (IsOperationRunning) return;
         _ksp2InstallService.TryLoadKsp2Install();
         if (_ksp2InstallService.Ksp2 is not { } ksp2)
         {

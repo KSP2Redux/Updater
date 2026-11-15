@@ -2,6 +2,7 @@ using System.IO.Compression;
 using Avalonia.Headless.NUnit;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -42,6 +43,19 @@ public class SaveBackupRestoreTest
         await settings.RestoreSaveBackup();
 
         Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(SAVE), Is.EqualTo("after the update"));
+    }
+
+    [AvaloniaTest]
+    public async Task RestoreSaveBackup_WhileItRuns_NothingElseCanStart()
+    {
+        var settings = StartWithABackup();
+        var home = TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
+
+        var restoring = settings.RestoreSaveBackup();
+
+        Assert.That(home.IsOperationRunning, Is.True, "Launch and Update stay off while the save folders are swapped.");
+        await restoring;
+        Assert.That(home.IsOperationRunning, Is.False);
     }
 
     [AvaloniaTest]

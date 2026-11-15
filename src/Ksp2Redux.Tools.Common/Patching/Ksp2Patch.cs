@@ -587,8 +587,10 @@ public class Ksp2Patch : IDisposable
         string fullBase = _fileSystem.Path.GetFullPath(baseDirectory);
         string fullCombined = _fileSystem.Path.GetFullPath(_fileSystem.Path.Combine(fullBase, relativePath));
 
-        bool isContained = fullCombined.Equals(fullBase, StringComparison.OrdinalIgnoreCase) ||
-                            fullCombined.StartsWith(fullBase + _fileSystem.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        // A drive root such as D:\ already ends in a separator. The base itself is refused too: an entry named
+        // "." or "Data\.." resolves to it, and removing it deletes the whole install along with uninstall.zip.
+        string root = _fileSystem.Path.EndsInDirectorySeparator(fullBase) ? fullBase : fullBase + _fileSystem.Path.DirectorySeparatorChar;
+        bool isContained = fullCombined.Length > root.Length && fullCombined.StartsWith(root, StringComparison.OrdinalIgnoreCase);
         if (!isContained)
         {
             throw new InvalidDataException(

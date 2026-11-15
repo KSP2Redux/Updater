@@ -16,6 +16,9 @@
         <!-- The launcher is a WinExe and brings Avalonia in transitively. This project stays a console
              Exe so stdout, stderr and exit codes behave normally when driven from a script. -->
         <InvariantGlobalization>true</InvariantGlobalization>
+        <!-- The shared localization service asks for named cultures such as "en", which invariant mode
+             refuses by default, and every command that builds the service container would exit 1. -->
+        <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
     </PropertyGroup>
 
     <ItemGroup>

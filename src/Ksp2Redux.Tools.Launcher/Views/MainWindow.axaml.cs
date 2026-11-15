@@ -51,7 +51,7 @@ public partial class MainWindow : Window
         {
             if (WindowState == WindowState.Normal) _lastNormalPosition = e.Point;
         };
-        Closing += (_, _) => SaveWindowPlacement();
+        Closing += OnClosing;
         TExtension.Service.LanguageChanged += (_, _) => Dispatcher.UIThread.Post(UpdateMaximizedState);
 
         // Which panel is "active" changes on every tab switch and every time Home's log
@@ -78,6 +78,16 @@ public partial class MainWindow : Window
     private bool _parallaxFrameRequested;
 
     private SettingsTabViewModel? _motionSource;
+
+    // Patches rewrite game files in place and only roll back when they fail, not when the process is killed,
+    // so the window stays open until the player cancels the install or it finishes.
+    private void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        SaveWindowPlacement();
+        if (e.CloseReason == WindowCloseReason.OSShutdown || DataContext is not MainWindowViewModel { HomeTab.IsOperationRunning: true } viewModel) return;
+        e.Cancel = true;
+        _ = viewModel.HomeTab.ExplainCloseWhileBusyAsync();
+    }
 
     private bool ParallaxEnabled => _motionSource?.ParallaxMotion ?? true;
 

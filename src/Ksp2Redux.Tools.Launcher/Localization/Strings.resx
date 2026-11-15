@@ -760,6 +760,18 @@ Make sure the game isn't running, then try again.</value>
     <value>Redux is not installed...</value>
     <comment>Message box text when Uninstall Redux is used on a game without Redux.</comment>
   </data>
+  <data name="Settings.Busy" xml:space="preserve">
+    <value>Close KSP2 and wait for the launcher to finish what it is doing, then try again.</value>
+    <comment>Shown when uninstalling, deleting the game or installing a patch file is refused because the game or another install is running.</comment>
+  </data>
+  <data name="Home.CloseWhileBusy.Title" xml:space="preserve">
+    <value>Still working</value>
+    <comment>Title of the message shown when the window is closed while an install is running.</comment>
+  </data>
+  <data name="Home.CloseWhileBusy.Message" xml:space="preserve">
+    <value>The launcher is changing your game files. Closing now would leave KSP2 half updated. Cancel the install on the Home tab, or wait for it to finish, then close the launcher.</value>
+    <comment>Shown when the window is closed while an install, uninstall or restore is running.</comment>
+  </data>
   <data name="Settings.UninstallRedux.Confirm" xml:space="preserve">
     <value>Are you sure you want to uninstall Redux?</value>
     <comment>Yes/No question before Redux is removed.</comment>
