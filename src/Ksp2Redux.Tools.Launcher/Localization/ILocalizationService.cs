@@ -25,7 +25,10 @@ public interface ILocalizationService : INotifyPropertyChanged
     /// <summary>The culture texts are currently looked up in.</summary>
     CultureInfo Culture { get; }
 
-    /// <summary>English plus every language that has a translation file in the build.</summary>
+    /// <summary>
+    /// English plus every language that has a translation file in the build or a downloaded one. Raises
+    /// <see cref="INotifyPropertyChanged.PropertyChanged"/> when a download adds or removes a language.
+    /// </summary>
     IReadOnlyList<LanguageOption> AvailableLanguages { get; }
 
     /// <summary>
@@ -33,6 +36,15 @@ public interface ILocalizationService : INotifyPropertyChanged
     /// </summary>
     void SetLanguage(string? cultureName);
 
-    /// <summary>Raised after the language changed, once every lookup returns the new texts.</summary>
+    /// <summary>
+    /// Replaces the downloaded texts, keyed by culture name and then by key. They win over the texts in the
+    /// build. The caller has already checked that each one still fits this launcher version.
+    /// </summary>
+    void SetDownloadedTexts(IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> texts);
+
+    /// <summary>
+    /// Raised after the language changed, or after downloaded texts changed the shown language, once every
+    /// lookup returns the new texts.
+    /// </summary>
     event EventHandler? LanguageChanged;
 }

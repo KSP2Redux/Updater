@@ -23,6 +23,7 @@ namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 public partial class SettingsTabViewModel : ViewModelBase
 {
     private readonly ILocalizationService _localization;
+    private readonly ITranslationUpdateService _translationUpdates;
     private readonly IFileSystem _fileSystem;
     private readonly ILauncherConfigService _launcherConfigService;
     private readonly IKsp2InstallService _ksp2InstallService;
@@ -63,6 +64,9 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool ParallaxMotion { get; set; }
+
+    [ObservableProperty]
+    public partial bool DownloadTranslationUpdates { get; set; }
 
     [ObservableProperty]
     public partial PatchDownloadSource PatchDownloadSource { get; set; }
@@ -126,7 +130,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public string LauncherVersionText => _localization.Format("Settings.LauncherVersion", LauncherVersion);
 
-    // English alone is no choice at all, so the picker stays hidden until a translation is in the build.
+    // English alone is no choice at all, so the picker stays hidden until a translation is in the build or downloaded.
     public bool ShowLanguagePicker => _localization.AvailableLanguages.Count > 1;
 
     public ObservableCollection<LanguageOption> LanguageChoices { get; } = [];
@@ -198,9 +202,10 @@ public partial class SettingsTabViewModel : ViewModelBase
         IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
         IGameDataFolderService gameDataFolderService, ISteamSessionService steamSession, ISteamDialogService steamDialogs,
         IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService,
-        ILocalizationService localization)
+        ILocalizationService localization, ITranslationUpdateService translationUpdates)
     {
         _localization = localization;
+        _translationUpdates = translationUpdates;
         _gameUninstallService = gameUninstallService;
         IsSteamLaunchSupported = !operatingSystemService.IsMacOS();
         _steamSession = steamSession;
@@ -228,6 +233,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         {
             VerboseLogging = _launcherConfigService.Config.VerboseLogging;
             ParallaxMotion = _launcherConfigService.Config.ParallaxMotion;
+            DownloadTranslationUpdates = _launcherConfigService.Config.DownloadTranslationUpdates;
             PatchDownloadSource = _launcherConfigService.Config.PatchDownloadSource;
             MaxConcurrentChunkDownloads = _launcherConfigService.Config.MaxConcurrentChunkDownloads;
         }
@@ -239,6 +245,39 @@ public partial class SettingsTabViewModel : ViewModelBase
 
         RebuildLanguageChoices();
         _localization.LanguageChanged += (_, _) => OnLanguageChanged();
+        _localization.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(ILocalizationService.AvailableLanguages)) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                RebuildLanguageChoices();
+                OnPropertyChanged(nameof(ShowLanguagePicker));
+            });
+        };
+    }
+
+    partial void OnDownloadTranslationUpdatesChanged(bool value)
+    {
+        if (_suppressSettingsSave) return;
+        _launcherConfigService.Config.DownloadTranslationUpdates = value;
+        _launcherConfigService.Save();
+
+        // Off drops the downloaded texts at once. On fetches them now rather than at the next start.
+        _translationUpdates.ApplyCached();
+        _localization.SetLanguage(_launcherConfigService.Config.Language);
+        if (value) _ = UpdateTranslationsAsync();
+    }
+
+    private async Task UpdateTranslationsAsync()
+    {
+        try
+        {
+            await Task.Run(() => _translationUpdates.UpdateAsync());
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Updating the translations failed.", ex);
+        }
     }
 
     private void SyncDownloadSettings()

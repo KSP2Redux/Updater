@@ -384,6 +384,14 @@ https://ksp2redux.org</value>
     <value>Shift the background slightly as the mouse moves. Turn this off if the motion is distracting or uncomfortable.</value>
     <comment>Tooltip of the Background motion check box.</comment>
   </data>
+  <data name="Settings.TranslationUpdates" xml:space="preserve">
+    <value>Download translation updates</value>
+    <comment>Check box in Settings. When on, the launcher downloads translations finished after its release.</comment>
+  </data>
+  <data name="Settings.TranslationUpdates.Tooltip" xml:space="preserve">
+    <value>Get new and improved translations as soon as translators finish them, without waiting for the next launcher update.</value>
+    <comment>Tooltip of the Download translation updates check box.</comment>
+  </data>
   <data name="Settings.LauncherVersion" xml:space="preserve">
     <value>Launcher v{0}</value>
     <comment>Small text at the bottom right of the Settings tab. {0} = launcher version number.</comment>
