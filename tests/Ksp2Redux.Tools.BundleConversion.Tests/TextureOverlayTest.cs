@@ -162,6 +162,23 @@ public class TextureOverlayTest
     }
 
     [Test]
+    public void Revert_OverlayFolderDeleted_StillDeletesTheJournal()
+    {
+        // Arrange
+        TestGame game = new();
+        game.Write(BODY, CloudBundle(compress: false));
+        game.Converter().Apply(NO_SHADERS);
+        game.FileSystem.Directory.Delete(game.Layout.OverlayDirectory, recursive: true);
+
+        // Act
+        var result = game.Converter().Revert();
+
+        // Assert
+        Assert.That(result.Failures, Is.Empty);
+        Assert.That(result.JournalDeleted, Is.True);
+    }
+
+    [Test]
     public void Apply_CompressedBundle_LeavesTheCloudCubemapsAndSaysWhy()
     {
         // Arrange

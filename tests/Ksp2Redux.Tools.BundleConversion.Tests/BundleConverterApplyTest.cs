@@ -419,6 +419,23 @@ public class BundleConverterApplyTest
         Assert.That(again.HadJournal, Is.False);
     }
 
+    [Test]
+    public void Revert_ConvertedCopiesFolderDeleted_StillRevertsAndDeletesTheJournal()
+    {
+        // Arrange
+        TestGame game = new();
+        game.Write(CONTENT, TestGame.ContentBundle(compress: true, ShaderBundleIds.SHARED_SHADERS_CAB));
+        game.Converter().Apply(TestGame.Manifest(TestGame.EMBEDDED_SHADER));
+        game.FileSystem.Directory.Delete(game.Layout.OutputDirectory, recursive: true);
+
+        // Act
+        var result = game.Converter().Revert();
+
+        // Assert
+        Assert.That(result.Failures, Is.Empty);
+        Assert.That(result.JournalDeleted, Is.True);
+    }
+
     // The manifest a shader bundle build writes: the build hashes in it change with every build.
     private static ShaderManifestIndex RebuiltManifest(string build, long pathIdOffset = 0)
     {

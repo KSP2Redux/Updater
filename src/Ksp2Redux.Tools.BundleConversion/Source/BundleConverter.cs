@@ -214,7 +214,7 @@ public sealed class BundleConverter
                     result.CopiesDeleted++;
                 }
 
-                _fileSystem.File.Delete($"{output}.tmp");
+                TryDelete($"{output}.tmp");
             }
             catch (IOException e)
             {
@@ -245,7 +245,7 @@ public sealed class BundleConverter
                     result.OverlaysDeleted++;
                 }
 
-                _fileSystem.File.Delete($"{data}.tmp");
+                TryDelete($"{data}.tmp");
             }
             catch (IOException e)
             {
