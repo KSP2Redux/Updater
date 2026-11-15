@@ -40,6 +40,25 @@ public class CliContextTest
         Assert.That(harness.Installs.ActiveEntry, Is.SameAs(active));
     }
 
+    // The launcher config outlives the shell the path was typed in, so a relative path would later
+    // resolve against whatever folder the launcher or CLI happens to run from.
+    [TestCase(".")]
+    [TestCase("KSP2_x64.exe")]
+    [TestCase(@"..\KSP2\KSP2_x64.exe")]
+    public void ResolveExePath_RelativePath_ReturnsTheFullExePath(string path)
+    {
+        // Arrange
+        CliCommandHarness harness = new();
+        var exe = harness.CreateGame(@"C:\Games\KSP2");
+        harness.FileSystem.Directory.SetCurrentDirectory(@"C:\Games\KSP2");
+
+        // Act
+        var result = harness.Context.ResolveExePath(path);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(exe));
+    }
+
     [Test]
     public void FormatVersion_VersionAndBuild_JoinedByDot()
     {

@@ -337,13 +337,19 @@ public sealed class CliContext
     /// Turns a path to a KSP2 folder or executable into the executable path the launcher stores.
     /// </summary>
     /// <param name="path">A path to the KSP2 folder or to KSP2_x64.exe.</param>
-    /// <returns>The path to the executable, which may not exist.</returns>
+    /// <returns>The full path to the executable, which may not exist, or an empty string for a blank path.</returns>
     public string ResolveExePath(string path)
     {
         var trimmed = path.Trim().Trim('"');
-        return _fileSystem.Directory.Exists(trimmed)
-            ? _fileSystem.Path.Combine(trimmed, Ksp2Install.KSP2_EXE_NAME)
-            : trimmed;
+        if (trimmed.Length == 0)
+        {
+            return trimmed;
+        }
+
+        var full = _fileSystem.Path.GetFullPath(trimmed);
+        return _fileSystem.Directory.Exists(full)
+            ? _fileSystem.Path.Combine(full, Ksp2Install.KSP2_EXE_NAME)
+            : full;
     }
 
     /// <summary>
