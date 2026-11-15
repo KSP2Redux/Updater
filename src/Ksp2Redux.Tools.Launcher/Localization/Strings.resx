@@ -171,6 +171,10 @@ https://ksp2redux.org</value>
     <comment>Line under the heading on the Mods tab. The ":3" is a smiley.</comment>
   </data>
   <!-- Home tab -->
+  <data name="Home.InstallLog.Title" xml:space="preserve">
+    <value>INSTALL LOG</value>
+    <comment>Small heading over the install log on the Home tab, written in capitals like the Settings section headings.</comment>
+  </data>
   <data name="Home.Progress.Downloaded" xml:space="preserve">
     <value>Downloaded:</value>
     <comment>Label in front of the download progress bar on the Home tab.</comment>

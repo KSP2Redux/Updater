@@ -76,9 +76,39 @@
     <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
     <SolidColorBrush x:Key="TextFaintBrush" Color="White" Opacity="0.5" />
 
+    <!--
+        Material 3 button containers and state layers. A state layer is a translucent
+        tint of the content colour laid over the container: about 8% on hover and 10%
+        when pressed. Avalonia cannot stack two fills on one presenter, so the hover and
+        pressed brushes below are the container with its layer already added.
+
+        Brushes that change in a transition carry their transparency in the colour, not in
+        Opacity: a BrushTransition blends colour and Opacity separately, and going from
+        Transparent to white at Opacity 0.08 passed through about 0.27 on the way, a visible flash.
+    -->
+    <SolidColorBrush x:Key="TonalContainerBrush" Color="#1AFFFFFF" />
+    <SolidColorBrush x:Key="TonalContainerHoverBrush" Color="#2EFFFFFF" />
+    <SolidColorBrush x:Key="TonalContainerPressedBrush" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="DisabledContainerBrush" Color="#0FFFFFFF" />
+    <SolidColorBrush x:Key="DisabledContentBrush" Color="White" Opacity="0.38" />
+    <!-- The light tone of the brand red that Material 3 uses for text and icons on dark
+         surfaces, where the saturated BrandRed is too dark to read at small sizes. -->
+    <Color x:Key="PrimaryToneColor">#FFB4A8</Color>
+    <SolidColorBrush x:Key="PrimaryToneBrush" Color="{StaticResource PrimaryToneColor}" />
+    <!-- A filled card one tonal step above the glass panel it sits on. -->
+    <SolidColorBrush x:Key="CardContainerBrush" Color="White" Opacity="0.04" />
+    <!-- The error tone of the brand red that Material 3 uses on dark surfaces. Unlike
+         DangerColor it stays readable as text and outline on the dark glass. -->
+    <Color x:Key="ErrorColor">#FFB4AB</Color>
+    <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}" />
+    <SolidColorBrush x:Key="ErrorOutlineBrush" Color="{StaticResource ErrorColor}" Opacity="0.6" />
+    <SolidColorBrush x:Key="ErrorHoverBrush" Color="#14FFB4AB" />
+    <SolidColorBrush x:Key="ErrorPressedBrush" Color="#1AFFB4AB" />
+    <SolidColorBrush x:Key="DisabledOutlineBrush" Color="White" Opacity="0.12" />
+
     <!-- Overlays / scrims: dimming layers over background art or content -->
-    <SolidColorBrush x:Key="OverlayHoverBrush" Color="Black" Opacity="0.13" />
-    <SolidColorBrush x:Key="OverlayPressedBrush" Color="Black" Opacity="0.25" />
+    <SolidColorBrush x:Key="OverlayHoverBrush" Color="#21000000" />
+    <SolidColorBrush x:Key="OverlayPressedBrush" Color="#40000000" />
     <SolidColorBrush x:Key="OverlayHighlightBrush" Color="White" Opacity="0.31" />
     <SolidColorBrush x:Key="ScrimSoftBrush" Color="Black" Opacity="0.5" />
     <SolidColorBrush x:Key="ScrimMediumBrush" Color="Black" Opacity="0.8" />

@@ -9,7 +9,8 @@
              x:DataType="home:HomeTabViewModel">
 	<UserControl.Styles>
 		<Style Selector="ProgressBar">
-			<Setter Property="Margin" Value="8"/>
+			<Setter Property="Margin" Value="12,0,0,0"/>
+			<Setter Property="CornerRadius" Value="{StaticResource ShapeExtraSmall}"/>
 			<Setter Property="ShowProgressText" Value="True"/>
 			<Setter Property="VerticalAlignment" Value="Center"/>
 			<Setter Property="Foreground">
@@ -52,15 +53,19 @@
 	</UserControl.Styles>
 
     <Grid>
-		<Border x:Name="GlassPanel" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
-				BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
-				BoxShadow="{StaticResource GlassPanelShadow}"
-				HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="24,8,24,8"
+		<Border x:Name="GlassPanel" Classes="glass-panel"
 				IsVisible="{Binding IsInstallLogVisible}">
-			<Grid RowDefinitions="*,Auto">
+			<Grid RowDefinitions="Auto,*,Auto" Margin="{StaticResource PanelInset}">
+				<TextBlock Grid.Row="0" Classes="section-title" Margin="0,0,0,12"
+				           Text="{loc:T Home.InstallLog.Title}" />
 				<TextBox x:Name="InstallLogTextBox"
-	                     Grid.Row="0"
-	                     Margin="16,8"
+	                     Grid.Row="1"
+	                     Margin="0"
+	                     Padding="0"
+	                     FontFamily="{StaticResource JetBrainsMonoRegular}"
+	                     FontSize="13"
+	                     LineHeight="21"
+	                     Foreground="{StaticResource TextMutedBrush}"
 	                     Background="Transparent"
 	                     BorderThickness="0"
 	                     IsReadOnly="True"
@@ -71,12 +76,14 @@
 	                     TextChanged="InstallLogTextBox_OnTextChanged"
 	                     Text="{Binding InstallLogText}" />
 
-				<Grid Grid.Row="1" Margin="16,0,16,16"
-	                  ColumnDefinitions="Auto,*" RowDefinitions="Auto,*,*"
-					  IsVisible="{Binding IsProgressVisible}">
+				<!-- A hairline between the log and the progress area, 16 above and below. -->
+				<Border Grid.Row="2" Margin="0,16,0,0" Padding="0,16,0,0"
+				        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="0,1,0,0"
+				        IsVisible="{Binding IsProgressVisible}">
+				<Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*,*" RowSpacing="8">
 					<!-- Above the bars so its changing width never resizes them. It keeps its line
 					     while empty, so the bars do not jump when the speed first appears. -->
-					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="1" Margin="0,0,0,4"
+					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="1" Margin="12,0,0,0"
 					           HorizontalAlignment="Center" TextAlignment="Center"
 					           Text="{Binding DownloadRateText}" />
 					<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0"
@@ -90,6 +97,7 @@
 								 Value="{Binding InstallProgressSteps}" Maximum="{Binding InstallProgressTotalSteps}"
 	                             ProgressTextFormat="{loc:T Home.Progress.InstallFormat}" />
 				</Grid>
+				</Border>
 			</Grid>
 		</Border>
 

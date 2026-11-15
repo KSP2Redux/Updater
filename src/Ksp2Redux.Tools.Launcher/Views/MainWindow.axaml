@@ -43,6 +43,15 @@
     <!-- ReSharper disable Xaml.RedundantResource -->
     <Window.Resources>
         <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{StaticResource BrandRedColor}" />
+        <!-- Material 3 navigation answers hover and press with a state layer. The dotted red
+             underline already marks the current tab, so it gets no filled indicator as well. -->
+        <!-- Transparency in the colour, not Opacity, so the hover transition does not flash (see Colors.axaml). -->
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselected" Color="#00FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPointerOver" Color="#14FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="#1AFFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelected" Color="#00FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="#14FFFFFF" />
+        <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="#1AFFFFFF" />
     </Window.Resources>
     <!-- ReSharper restore Xaml.RedundantResource -->
 
@@ -127,7 +136,13 @@
         <Style Selector="TabItem">
             <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
             <Setter Property="FontSize" Value="32" />
-            <Setter Property="Margin" Value="20,0" />
+            <Setter Property="Margin" Value="8,0" />
+            <!-- The LED font sits high in its line box (about 0.5px above the letters, 7.5px below),
+                 so the top gets 7px more padding to centre the letters in the hover indicator.
+                 The selected tab's underline is drawn inside the bottom padding. -->
+            <Setter Property="Padding" Value="18,12,18,5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
 
             <Style Selector="^ Rectangle.tint">
                 <Setter Property="Fill" Value="{DynamicResource TabItemHeaderForegroundUnselected}" />
@@ -163,9 +178,9 @@
                     the Home/Community/Settings/Mods cards is faked with a second full-window
                     copy of the same background art, blurred, then clipped down to exactly
                     where the panel sits. Because both copies share the same bounds and
-                    stretch, they line up pixel-for-pixel; only the clip rect (kept in sync
-                    with the panel's fixed 24,8,24,8 margin in MainWindow.axaml.cs) needs to
-                    know where to cut. The panels themselves are then translucent instead of
+                    stretch, they line up pixel-for-pixel; only the clip rect (taken from the
+                    active panel's rendered bounds in MainWindow.axaml.cs) needs to know where
+                    to cut. The panels themselves are then translucent instead of
                     solid so this shows through.
                 -->
                 <Border Grid.RowSpan="2" Name="ContentBackdropBlur" IsHitTestVisible="False"
@@ -262,12 +277,14 @@
                 </Border>
 
                 <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
-                    <Border Grid.Column="0" Padding="24,16,24,12">
+                    <!-- 18 at the bottom, not 24: the link buttons have 6px of space under their
+                         icons, so the icons end on the same line as the content panel. -->
+                    <Border Grid.Column="0" Padding="24,16,24,18">
                         <views:SidebarView Name="Sidebar" />
                     </Border>
 
                     <Border Grid.Column="1" Padding="0,0,24,24">
-                        <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" >
+                        <TabControl Name="MainTabControl" SelectedIndex="{Binding CurrentTab}" Padding="0">
                             <TabItem Name="HomeTab" Header="{loc:T Tab.Home}">
                                 <home:HomeTabView Name="HomeView" DataContext="{Binding HomeTab}"/>
                             </TabItem>
@@ -279,7 +296,7 @@
                             </TabItem>
                             <TabItem Name="SettingsTab">
                                 <TabItem.Header>
-                                    <Grid Margin="2,6,2,8">
+                                    <Grid Margin="2,1,2,6">
                                         <Canvas Width="16" Height="16">
                                             <Rectangle Classes="tint" Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
                                                 <Rectangle.OpacityMask>
@@ -299,7 +316,7 @@
                         Classes.connected="{Binding SettingsTab.IsSteamConnected}"
                         Classes.connecting="{Binding SettingsTab.IsSteamConnecting}"
                         HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                        Margin="0,0,2,2"
+                        Margin="0"
                         Click="SteamIndicator_Click"
                         ToolTip.Tip="{Binding SettingsTab.SteamIndicatorTooltip}">
                     <!-- Opened from SteamIndicator_Click, only while connected. -->

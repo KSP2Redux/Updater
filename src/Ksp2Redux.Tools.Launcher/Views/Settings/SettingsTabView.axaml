@@ -20,9 +20,11 @@
 		<Style Selector="StackPanel.form">
 			<Setter Property="Spacing" Value="10" />
 		</Style>
-		<Style Selector="TextBlock.section-title">
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoLight}" />
-			<Setter Property="FontSize" Value="12" />
+		<!-- Material 3 filled cards: a tonal step up from the glass instead of a hairline border. -->
+		<Style Selector="Border.card">
+			<Setter Property="Padding" Value="16" />
+			<Setter Property="Background" Value="{StaticResource CardContainerBrush}" />
+			<Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
 		</Style>
 		<Style Selector="Grid.field">
 			<Setter Property="ColumnSpacing" Value="12" />
@@ -56,22 +58,16 @@
 	</UserControl.Styles>
 
 	<Grid VerticalAlignment="Stretch">
-		<Border x:Name="GlassPanel" Margin="24,8,24,8"
-		        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-		        Background="{StaticResource GlassSurfaceBrush}"
-		        BorderBrush="{StaticResource GlassSurfaceBorderBrush}"
-		        BoxShadow="{StaticResource GlassPanelShadow}"
-		        BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}">
+		<Border x:Name="GlassPanel" Classes="glass-panel">
 		<ScrollViewer VerticalScrollBarVisibility="Auto"
 		              HorizontalScrollBarVisibility="Disabled">
-		<Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+		<Grid Margin="{StaticResource PanelInset}" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 			<TextBlock Grid.Row="0" FontFamily="{StaticResource JetBrainsMonoLight}"
-			           FontSize="24" TextAlignment="Left" Margin="0,8,0,4"
+			           FontSize="24" TextAlignment="Left" Margin="0,0,0,16"
 			           Text="{loc:T Settings.Title}" />
 
-			<Border Grid.Row="1" Margin="0,4,0,0" Padding="14"
-			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
-			        CornerRadius="{StaticResource RadiusMedium}">
+			<Border Grid.Row="1"
+			        Classes="card">
 				<!-- A Grid spends RowSpacing on hidden rows, a StackPanel does not. -->
 				<StackPanel Classes="form" Grid.IsSharedSizeScope="True">
 					<TextBlock Classes="section-title" Text="{loc:T Settings.Profile.Section}" />
@@ -99,14 +95,14 @@
 							         Text="{Binding RenameText, Mode=TwoWay}"
 							         PlaceholderText="{loc:T Settings.Profile.NamePlaceholder}"
 							         LostFocus="RenameBox_LostFocus" />
-							<Button Grid.Column="1" Classes="icon"
+							<Button Grid.Column="1" Classes="icon tonal"
 							        IsVisible="{Binding !IsRenamingInstall}"
 							        IsEnabled="{Binding HasSelectedInstall}"
 							        Command="{Binding BeginRenameInstallCommand}"
 							        ToolTip.Tip="{loc:T Settings.Profile.Rename.Tooltip}">
 								<PathIcon Data="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18.17,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z" />
 							</Button>
-							<Button Grid.Column="1" Classes="icon"
+							<Button Grid.Column="1" Classes="icon tonal"
 							        IsVisible="{Binding IsRenamingInstall}"
 							        Command="{Binding CommitRenameInstallCommand}"
 							        ToolTip.Tip="{loc:T Settings.Profile.RenameSave.Tooltip}">
@@ -116,7 +112,7 @@
 
 						<!-- The negative bottom margin cancels the last line's button margin. -->
 						<WrapPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,-6">
-							<Button Margin="0,0,6,6" Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
+							<Button Margin="0,0,6,6" Classes="tonal" Command="{Binding AddInstallCommand}" IsEnabled="{Binding !IsAddingInstall}"
 							        Content="{loc:T Settings.Profile.Add}"
 							        ToolTip.Tip="{loc:T Settings.Profile.Add.Tooltip}" />
 							<Button Margin="0,0,6,6" Classes="danger"
@@ -124,12 +120,12 @@
 							        IsEnabled="{Binding CanRemoveSelectedInstall}"
 							        Content="{loc:T Settings.Profile.Remove}"
 							        ToolTip.Tip="{loc:T Settings.Profile.Remove.Tooltip}" />
-							<Button Margin="0,0,6,6" Command="{Binding OpenInstallFolderCommand}"
+							<Button Margin="0,0,6,6" Classes="tonal" Command="{Binding OpenInstallFolderCommand}"
 							        IsEnabled="{Binding HasSelectedInstall}"
 							        Content="{loc:T Settings.Profile.OpenFolder}"
 							        ToolTip.Tip="{loc:T Settings.Profile.OpenFolder.Tooltip}" />
 							<!-- The tooltip explains the disabled state, so it must show while disabled. -->
-							<Button Margin="0,0,6,6" Command="{Binding DownloadFromSteamCommand}"
+							<Button Margin="0,0,6,6" Classes="tonal" Command="{Binding DownloadFromSteamCommand}"
 							        IsEnabled="{Binding CanDownloadFromSteam}"
 							        ToolTip.ShowOnDisabled="True"
 							        Content="{loc:T Settings.Profile.DownloadKsp2}"
@@ -149,7 +145,7 @@
 							<TextBox HorizontalAlignment="Stretch"
 							         Text="{Binding SelectedInstall.ExePath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
 							         PlaceholderText="C:\Steam\SteamGames\KSP2\KSP2_x64.exe" />
-							<Button Grid.Column="1" Classes="icon-text"
+							<Button Grid.Column="1" Classes="icon-text tonal"
 							        Command="{Binding BrowseExePathCommand}"
 							        ToolTip.Tip="{loc:T Settings.Exe.Browse.Tooltip}">
 								<StackPanel Orientation="Horizontal" Spacing="6">
@@ -248,7 +244,7 @@
 					<Grid ColumnDefinitions="*,*,*" ColumnSpacing="10"
 					      IsVisible="{Binding HasSelectedInstall}">
 						<Button Grid.Column="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-						        Click="InstallFromPatchFile"
+						        Classes="tonal" Click="InstallFromPatchFile"
 						        Content="{loc:T Settings.InstallPatch.Button}"
 						        ToolTip.Tip="{loc:T Settings.InstallPatch.Tooltip}" />
 						<Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
@@ -264,9 +260,8 @@
 				</StackPanel>
 			</Border>
 
-			<Border Grid.Row="2" Margin="0,12,0,0" Padding="14"
-			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
-			        CornerRadius="{StaticResource RadiusMedium}">
+			<Border Grid.Row="2" Margin="0,16,0,0"
+			        Classes="card">
 				<StackPanel Classes="form">
 					<TextBlock Classes="section-title" Text="{loc:T Settings.Advanced.Section}" />
 					<Grid Classes="field" ColumnDefinitions="Auto,*,Auto,Auto">
@@ -285,9 +280,8 @@
 			</Border>
 
 			<!-- Hidden until a translation ships, since English is the only choice before that. -->
-			<Border Grid.Row="3" Margin="0,12,0,0" Padding="14"
-			        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="1"
-			        CornerRadius="{StaticResource RadiusMedium}"
+			<Border Grid.Row="3" Margin="0,16,0,0"
+			        Classes="card"
 			        IsVisible="{Binding ShowLanguagePicker}">
 				<Grid Classes="field" ColumnDefinitions="Auto,*">
 					<TextBlock Grid.Column="0" Classes="label" Text="{loc:T Settings.Language.Label}" />
@@ -304,15 +298,15 @@
 				</Grid>
 			</Border>
 
-			<Grid Grid.Row="4" RowDefinitions="Auto,Auto,Auto" Margin="0,12,0,0">
+			<Grid Grid.Row="4" RowDefinitions="Auto,Auto,Auto" Margin="0,16,0,0">
 				<WrapPanel Grid.Row="0" Orientation="Horizontal">
-				<Button Margin="0,0,10,6" FontSize="11" Padding="8,4" Click="OpenLogsFolderClick"
+				<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4" Click="OpenLogsFolderClick"
 				        Content="{loc:T Settings.OpenLogsFolder}" />
-				<Button Margin="0,0,10,6" Name="OpenGameDataFolderButton" FontSize="11" Padding="8,4"
+				<Button Margin="0,0,10,6" Classes="tonal" Name="OpenGameDataFolderButton" FontSize="11" Padding="12,4"
 				        Command="{Binding OpenGameDataFolderCommand}"
 				        Content="{loc:T Settings.OpenGameDataFolder}"
 				        ToolTip.Tip="{loc:T Settings.OpenGameDataFolder.Tooltip}" />
-				<Button Margin="0,0,10,6" FontSize="11" Padding="8,4" Click="CopyDiagnosticInfoClick"
+				<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4" Click="CopyDiagnosticInfoClick"
 				        Content="{loc:T Settings.CopyDiagnosticInfo}"
 				        ToolTip.Tip="{loc:T Settings.CopyDiagnosticInfo.Tooltip}">
 					<FlyoutBase.AttachedFlyout>
@@ -344,10 +338,10 @@
 							</DataTemplate>
 						</ComboBox.ItemTemplate>
 					</ComboBox>
-					<Button Margin="0,0,10,6" FontSize="11" Padding="8,4"
+					<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4"
 					        Command="{Binding RestoreSaveBackupCommand}"
 					        Content="{loc:T Settings.SaveBackups.Restore}" />
-					<Button Margin="0,0,10,6" FontSize="11" Padding="8,4"
+					<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4"
 					        Command="{Binding OpenSaveBackupsFolderCommand}"
 					        Content="{loc:T Settings.SaveBackups.OpenFolder}" />
 				</WrapPanel>
