@@ -15,6 +15,7 @@ using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Ksp2Redux.Tools.Launcher.Services.Linux;
+using Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -80,6 +81,10 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial float DownloadProgressTotalMb { get; set; } = 450;
 
+    /// <summary>Download speed and time left while patches download, or null before it is measured.</summary>
+    [ObservableProperty]
+    public partial string? DownloadRateText { get; set; }
+
     [ObservableProperty]
     public partial float InstallProgressSteps { get; set; } = 1;
 
@@ -96,10 +101,20 @@ public partial class HomeTabViewModel : ViewModelBase
     public partial bool InstallationDisabled { get; set; }
 
     private readonly StringBuilder _installLogBuilder = new();
+    private readonly List<InstallLogEntry> _pendingLogEntries = [];
+
+    /// <summary>The install log as timestamped lines, for showing each kind of line in its own colour.</summary>
+    public ObservableCollection<InstallLogEntry> InstallLogEntries { get; } = [];
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
     private (CancellationTokenSource Cancellation, TaskCompletionSource Finished)? _protonPreparation;
+    // Cached and resumed patches count as downloaded the moment downloads start, so measuring starts after that jump.
+    private static readonly TimeSpan DOWNLOAD_RATE_WARM_UP = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan DOWNLOAD_RATE_REFRESH_INTERVAL = TimeSpan.FromSeconds(1);
+    private TransferRateMeter _downloadRate = new();
+    private readonly Stopwatch _downloadClock = new();
+    private TimeSpan? _lastDownloadRateRefresh;
 
     public bool IsOperationRunning => _cancelCurrentOperation is not null;
     private CancellationTokenSource? _gameSession;
@@ -492,7 +507,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 activeEntry.Id != installId || _ksp2InstallService.Ksp2 is not { IsValid: true } current ||
                 current.ExePath != ksp2.ExePath)
             {
-                Log(_localization.Message("Home.Proton.InstallChanged"));
+                LogOutcome(_localization.Message("Home.Proton.InstallChanged"), InstallLogKind.Notice);
                 return;
             }
 
@@ -503,7 +518,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         catch (OperationCanceledException) when (operation.IsCancellationRequested)
         {
-            Log(_localization.Message("Home.Proton.Cancelled"));
+            LogOutcome(_localization.Message("Home.Proton.Cancelled"), InstallLogKind.Notice);
         }
         catch (Exception exception)
         {
@@ -727,13 +742,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        ResetInstallLog();
-        IsInstallLogVisible = true;
-        IsProgressVisible = true;
-        DownloadProgressMb = 0;
-        DownloadProgressTotalMb = 0;
-        InstallProgressSteps = 0;
-        InstallProgressTotalSteps = 1;
+        ResetProgress();
         
         // gather process dependencies.
         
@@ -771,7 +780,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 if (plan.Steps.Count == 0)
                 {
                     LogError(_localization.Message("Home.Log.NoRoute", SelectedVersion.Version));
-                    Log(_localization.Message("Home.Log.NothingChanged"));
+                    LogOutcome(_localization.Message("Home.Log.NothingChanged"), InstallLogKind.Notice);
                     return;
                 }
 
@@ -803,11 +812,11 @@ public partial class HomeTabViewModel : ViewModelBase
                 }
             }
             RecordInstalledVersion();
-            Log(_localization.Message("Home.Log.Installed"));
+            LogOutcome(_localization.Message("Home.Log.Installed"), InstallLogKind.Success);
         }
         catch (OperationCanceledException)
         {
-            Log(_localization.Message("Home.Log.Cancelled"));
+            LogOutcome(_localization.Message("Home.Log.Cancelled"), InstallLogKind.Notice);
         }
         catch (InsufficientDiskSpaceException e)
         {
@@ -824,7 +833,7 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception e)
         {
             LogError(_localization.Message("Home.Log.UpdateError", e.ToLogMessage()), e);
-            Log(_localization.Message("Home.Log.InvalidState"));
+            LogOutcome(_localization.Message("Home.Log.InvalidState"), InstallLogKind.Error);
         }
         finally
         {
@@ -866,13 +875,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        ResetInstallLog();
-        IsInstallLogVisible = true;
-        IsProgressVisible = true;
-        DownloadProgressMb = 0;
-        DownloadProgressTotalMb = 0;
-        InstallProgressSteps = 0;
-        InstallProgressTotalSteps = 1;
+        ResetProgress();
         
         var plan = new InstallPlan();
         plan.ApplyPatchFile(path);
@@ -896,11 +899,11 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             await RunPlanOnInstall(plan, ksp2);
             RecordInstalledVersion();
-            Log(_localization.Message("Home.Log.Installed"));
+            LogOutcome(_localization.Message("Home.Log.Installed"), InstallLogKind.Success);
         }
         catch (OperationCanceledException)
         {
-            Log(_localization.Message("Home.Log.Cancelled"));
+            LogOutcome(_localization.Message("Home.Log.Cancelled"), InstallLogKind.Notice);
         }
         catch (InsufficientDiskSpaceException e)
         {
@@ -917,7 +920,7 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception e)
         {
             LogError(_localization.Message("Home.Log.UpdateError", e.ToLogMessage()), e);
-            Log(_localization.Message("Home.Log.InvalidState"));
+            LogOutcome(_localization.Message("Home.Log.InvalidState"), InstallLogKind.Error);
         }
         finally
         {
@@ -947,13 +950,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        ResetInstallLog();
-        IsInstallLogVisible = true;
-        IsProgressVisible = true;
-        DownloadProgressMb = 0;
-        DownloadProgressTotalMb = 0;
-        InstallProgressSteps = 0;
-        InstallProgressTotalSteps = 1;
+        ResetProgress();
 
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
@@ -967,12 +964,12 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
-            Log(_localization.Message("Settings.UninstallRedux.Done"));
+            LogOutcome(_localization.Message("Settings.UninstallRedux.Done"), InstallLogKind.Success);
             uninstalled = true;
         }
         catch (OperationCanceledException)
         {
-            Log(_localization.Message("Home.Log.Cancelled"));
+            LogOutcome(_localization.Message("Home.Log.Cancelled"), InstallLogKind.Notice);
         }
         catch (FilesInUseException e)
         {
@@ -994,11 +991,7 @@ public partial class HomeTabViewModel : ViewModelBase
             await UpdateVersionsList();
         }
 
-        if (uninstalled)
-        {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
-                _localization["Settings.UninstallRedux.Done"], windowStartupLocation: WindowStartupLocation.CenterOwner);
-        }
+        if (uninstalled) _messageBoxService.ShowSnackbar(_localization["Settings.UninstallRedux.Done"]);
     }
 
     // Certain install plans replace or delete the launcher's own files. If the launcher is running
@@ -1019,7 +1012,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private async Task ShowNotEnoughDiskSpace(InsufficientDiskSpaceException e)
     {
         LogError(e.ToLogMessage(), e);
-        Log(_localization.Message("Home.Log.NothingChanged"));
+        LogOutcome(_localization.Message("Home.Log.NothingChanged"), InstallLogKind.Notice);
         await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.DiskSpace.Title"],
             _localization.Format("Home.DiskSpace.Message", e.UserMessage(), e.Path),
             ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
@@ -1082,9 +1075,54 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 DownloadProgressMb = value / 1024f / 1024f;
                 DownloadProgressTotalMb = max / 1024f / 1024f;
+                UpdateDownloadRate(value, max);
             });
         }
     }
+
+    private void ResetProgress()
+    {
+        ResetInstallLog();
+        IsInstallLogVisible = true;
+        IsProgressVisible = true;
+        DownloadProgressMb = 0;
+        DownloadProgressTotalMb = 0;
+        InstallProgressSteps = 0;
+        InstallProgressTotalSteps = 1;
+        DownloadRateText = null;
+        _downloadRate = new TransferRateMeter();
+        _downloadClock.Reset();
+        _lastDownloadRateRefresh = null;
+    }
+
+    internal void UpdateDownloadRate(long downloaded, long total)
+    {
+        if (total <= 0 || downloaded >= total)
+        {
+            DownloadRateText = null;
+            return;
+        }
+
+        if (!_downloadClock.IsRunning) _downloadClock.Start();
+        var now = _downloadClock.Elapsed;
+        if (now < DOWNLOAD_RATE_WARM_UP) return;
+
+        _downloadRate.Sample(downloaded, now);
+        if (_lastDownloadRateRefresh is { } last && now - last < DOWNLOAD_RATE_REFRESH_INTERVAL) return;
+        if (_downloadRate.BytesPerSecond is not { } rate || rate < 1) return;
+
+        _lastDownloadRateRefresh = now;
+        var remaining = TimeSpan.FromSeconds((total - downloaded) / rate);
+        DownloadRateText = _localization.Format("Home.Progress.Rate",
+            SteamDownloadViewModel.FormatBytes((long)rate), FormatTimeLeft(remaining));
+    }
+
+    private string FormatTimeLeft(TimeSpan remaining) => remaining.TotalMinutes switch
+    {
+        < 1 => _localization.Format("Home.Progress.TimeLeft.Seconds", Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds))),
+        < 60 => _localization.Format("Home.Progress.TimeLeft.Minutes", (int)Math.Ceiling(remaining.TotalMinutes)),
+        _ => _localization.Format("Home.Progress.TimeLeft.Hours", (int)remaining.TotalHours, remaining.Minutes),
+    };
 
     // The log file always gets English, and the install log on screen the user's language.
     internal void Log(LogMessage message)
@@ -1099,15 +1137,24 @@ public partial class HomeTabViewModel : ViewModelBase
     internal void LogError(LogMessage message, Exception? exception = null)
     {
         _log.Error(message.English, exception);
-        AppendToInstallLog(message.Localized);
+        AppendToInstallLog(message.Localized, InstallLogKind.Error);
     }
 
-    private void AppendToInstallLog(string message)
+    // The line that says how an operation ended, so the log can show it as the result.
+    internal void LogOutcome(LogMessage message, InstallLogKind kind)
+    {
+        if (kind == InstallLogKind.Error) _log.Error(message.English);
+        else _log.Info(message.English);
+        AppendToInstallLog(message.Localized, kind);
+    }
+
+    private void AppendToInstallLog(string message, InstallLogKind kind = InstallLogKind.Info)
     {
         bool queueUpdate;
         lock (_installLogLock)
         {
             _installLogBuilder.AppendLine(message);
+            _pendingLogEntries.Add(new InstallLogEntry(DateTime.Now, message, kind));
             queueUpdate = !_installLogUpdateQueued;
             if (queueUpdate) _installLogUpdateQueued = true;
         }
@@ -1120,12 +1167,16 @@ public partial class HomeTabViewModel : ViewModelBase
     private void FlushInstallLogToUi()
     {
         string text;
+        InstallLogEntry[] entries;
         lock (_installLogLock)
         {
             text = _installLogBuilder.ToString();
+            entries = [.. _pendingLogEntries];
+            _pendingLogEntries.Clear();
             _installLogUpdateQueued = false;
         }
         InstallLogText = text;
+        foreach (var entry in entries) InstallLogEntries.Add(entry);
     }
 
     private Task FlushPendingLogWrites() =>
@@ -1136,9 +1187,11 @@ public partial class HomeTabViewModel : ViewModelBase
         lock (_installLogLock)
         {
             _installLogBuilder.Clear();
+            _pendingLogEntries.Clear();
             _installLogUpdateQueued = false;
         }
         InstallLogText = string.Empty;
+        InstallLogEntries.Clear();
     }
     
     public void DisableInstallation()
@@ -1160,4 +1213,28 @@ public partial class HomeTabViewModel : ViewModelBase
                 _localization.Format("Home.UpdateFailed.Message", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
+}
+
+/// <summary>What a line in the install log reports.</summary>
+public enum InstallLogKind
+{
+    Info,
+    Error,
+    /// <summary>The operation finished and changed what it set out to.</summary>
+    Success,
+    /// <summary>The operation ended without changing anything: cancelled, or nothing to do.</summary>
+    Notice,
+}
+
+/// <summary>A line of the install log, in the user's language.</summary>
+public sealed record InstallLogEntry(DateTime Time, string Text, InstallLogKind Kind)
+{
+    public string TimeText => Time.ToString("HH:mm:ss");
+    public string DisplayText => Kind == InstallLogKind.Success ? $"✓ {Text}" : Text;
+    public bool IsError => Kind == InstallLogKind.Error;
+    public bool IsSuccess => Kind == InstallLogKind.Success;
+    public bool IsNotice => Kind == InstallLogKind.Notice;
+
+    /// <summary>The line as it is copied to the clipboard.</summary>
+    public override string ToString() => $"{TimeText}  {Text}";
 }

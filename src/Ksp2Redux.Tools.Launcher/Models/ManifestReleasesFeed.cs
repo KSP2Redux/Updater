@@ -15,6 +15,9 @@ public class ManifestReleasesFeed(
 
     public Exception? LastUpdateException { get; private set; }
 
+    /// <summary>The repository and manifest file this feed reads.</summary>
+    public FeedInfo Info => feed;
+
     public const string INVALID_CHANNEL = "invalid";
 
     public string CurrentChannel { get; private set; } = INVALID_CHANNEL;

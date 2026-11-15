@@ -9,7 +9,8 @@
              x:DataType="home:HomeTabViewModel">
 	<UserControl.Styles>
 		<Style Selector="ProgressBar">
-			<Setter Property="Margin" Value="8"/>
+			<Setter Property="Margin" Value="12,0,0,0"/>
+			<Setter Property="CornerRadius" Value="{StaticResource ShapeExtraSmall}"/>
 			<Setter Property="ShowProgressText" Value="True"/>
 			<Setter Property="VerticalAlignment" Value="Center"/>
 			<Setter Property="Foreground">
@@ -30,61 +31,99 @@
 			<Setter Property="TextAlignment" Value="Right"/>
 		</Style>
 
-		<!--
-			This is a read-only log viewer dressed up as a TextBox for its scrolling/selection
-			behavior, not an actual input field, so it shouldn't visually react to focus/hover/
-			press the way a real input does. Pin the Fluent theme's internal border part to one
-			consistent (transparent) look in every state instead of the default focused/
-			pointerover/pressed variations (which otherwise include an accent-blue focus ring).
-		-->
-		<Style Selector="TextBox#InstallLogTextBox /template/ Border#PART_BorderElement">
+		<Style Selector="ListBox.install-log">
 			<Setter Property="Background" Value="Transparent" />
-			<Setter Property="BorderBrush" Value="Transparent" />
-			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="0" />
 		</Style>
-		<Style Selector="TextBox#InstallLogTextBox:focus /template/ Border#PART_BorderElement,
-		                 TextBox#InstallLogTextBox:pointerover /template/ Border#PART_BorderElement,
-		                 TextBox#InstallLogTextBox:focus-within /template/ Border#PART_BorderElement">
-			<Setter Property="Background" Value="Transparent" />
-			<Setter Property="BorderBrush" Value="Transparent" />
-			<Setter Property="BorderThickness" Value="0" />
+		<Style Selector="ListBox.install-log ListBoxItem">
+			<Setter Property="Padding" Value="0" />
+			<Setter Property="MinHeight" Value="21" />
+			<Setter Property="CornerRadius" Value="4" />
+		</Style>
+		<Style Selector="ListBox.install-log ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource CardContainerBrush}" />
+		</Style>
+		<Style Selector="ListBox.install-log ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+			<Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
+		</Style>
+		<Style Selector="TextBlock.log-time">
+			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
+			<Setter Property="FontSize" Value="12" />
+			<Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+		<Style Selector="TextBlock.log-line">
+			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
+			<Setter Property="FontSize" Value="13" />
+			<Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+			<Setter Property="TextWrapping" Value="Wrap" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+		<Style Selector="TextBlock.log-line.error">
+			<Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+		</Style>
+		<Style Selector="TextBlock.log-line.success">
+			<Setter Property="Foreground" Value="{StaticResource SuccessHoverBrush}" />
+			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoBold}" />
+		</Style>
+		<Style Selector="TextBlock.log-line.notice">
+			<Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoBold}" />
 		</Style>
 	</UserControl.Styles>
 
     <Grid>
-		<Border x:Name="GlassPanel" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
-				BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
-				BoxShadow="{StaticResource GlassPanelShadow}"
-				HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="24,8,24,8"
+		<Border x:Name="GlassPanel" Classes="glass-panel"
 				IsVisible="{Binding IsInstallLogVisible}">
-			<Grid RowDefinitions="*,Auto">
-				<TextBox x:Name="InstallLogTextBox"
-	                     Grid.Row="0"
-	                     Margin="16,8"
-	                     Background="Transparent"
-	                     BorderThickness="0"
-	                     IsReadOnly="True"
-	                     AcceptsReturn="True"
-	                     TextWrapping="Wrap"
-	                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-	                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-	                     TextChanged="InstallLogTextBox_OnTextChanged"
-	                     Text="{Binding InstallLogText}" />
+			<Grid RowDefinitions="Auto,*,Auto" Margin="{StaticResource PanelInset}">
+				<Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+					<TextBlock Classes="section-title" VerticalAlignment="Center"
+					           Text="{loc:T Home.InstallLog.Title}" />
+					<Button Grid.Column="1" Classes="tonal" FontSize="11" Padding="10,2"
+					        Content="{loc:T Home.InstallLog.Copy}" ToolTip.Tip="{loc:T Home.InstallLog.Copy.Tooltip}"
+					        Click="CopyInstallLog_OnClick" />
+				</Grid>
+				<!-- A virtualized list, because an install logs every file it touches and can run to tens of
+				     thousands of lines. Lines are selected with click, shift-click and Ctrl+A, and copied
+				     with Ctrl+C or the Copy button. -->
+				<ListBox x:Name="InstallLogList" Grid.Row="1" Classes="install-log"
+				         ItemsSource="{Binding InstallLogEntries}" SelectionMode="Multiple"
+				         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+				         KeyDown="InstallLogList_OnKeyDown">
+					<ListBox.ItemTemplate>
+						<DataTemplate x:DataType="home:InstallLogEntry">
+							<Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+								<TextBlock Grid.Column="0" Classes="log-time" Text="{Binding TimeText}" />
+								<TextBlock Grid.Column="1" Classes="log-line"
+								           Classes.error="{Binding IsError}" Classes.success="{Binding IsSuccess}" Classes.notice="{Binding IsNotice}"
+								           Text="{Binding DisplayText}" />
+							</Grid>
+						</DataTemplate>
+					</ListBox.ItemTemplate>
+				</ListBox>
 
-				<Grid Grid.Row="1" Margin="16,0,16,16"
-	                  ColumnDefinitions="Auto,*" RowDefinitions="*,*"
-					  IsVisible="{Binding IsProgressVisible}">
-					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="0"
+				<!-- A hairline between the log and the progress area, 16 above and below. -->
+				<Border Grid.Row="2" Margin="0,16,0,0" Padding="0,16,0,0"
+				        BorderBrush="{StaticResource GlassSurfaceBorderBrush}" BorderThickness="0,1,0,0"
+				        IsVisible="{Binding IsProgressVisible}">
+				<Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*,*" RowSpacing="8">
+					<!-- Above the bars so its changing width never resizes them. It keeps its line
+					     while empty, so the bars do not jump when the speed first appears. -->
+					<TextBlock Classes="progress-label" Grid.Row="0" Grid.Column="1" Margin="12,0,0,0"
+					           HorizontalAlignment="Center" TextAlignment="Center"
+					           Text="{Binding DownloadRateText}" />
+					<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0"
 					           Text="{loc:T Home.Progress.Downloaded}" />
-					<ProgressBar Grid.Row="0" Grid.Column="1" Minimum="0"
+					<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0"
 								 Value="{Binding DownloadProgressMb}" Maximum="{Binding DownloadProgressTotalMb}"
 	                             ProgressTextFormat="{loc:T Home.Progress.DownloadFormat}" />
-					<TextBlock Classes="progress-label" Grid.Row="1" Grid.Column="0"
+					<TextBlock Classes="progress-label" Grid.Row="2" Grid.Column="0"
 					           Text="{loc:T Home.Progress.Installed}" />
-					<ProgressBar Grid.Row="1" Grid.Column="1" Minimum="0"
+					<ProgressBar Grid.Row="2" Grid.Column="1" Minimum="0"
 								 Value="{Binding InstallProgressSteps}" Maximum="{Binding InstallProgressTotalSteps}"
 	                             ProgressTextFormat="{loc:T Home.Progress.InstallFormat}" />
 				</Grid>
+				</Border>
 			</Grid>
 		</Border>
 

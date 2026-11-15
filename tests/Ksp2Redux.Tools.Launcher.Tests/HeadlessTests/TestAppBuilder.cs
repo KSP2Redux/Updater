@@ -46,6 +46,7 @@ public static class TestAppBuilder
 
     public static AppBuilder BuildAvaloniaApp()
     {
+        Ksp2Redux.Tools.Launcher.Views.MainWindow.AnimationsSupported = false;
         return AppBuilder.Configure(() =>
             {
                 InitServiceProvider();  // Resets all services
@@ -88,6 +89,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton<SettingsTabViewModel>();
         serviceCollection.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         serviceCollection.AddSingleton<IGameDataFolderService, GameDataFolderService>();
+        serviceCollection.AddSingleton<ISaveBackupService, SaveBackupService>();
         serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
         serviceCollection.AddSingleton<ILogService, LogService>();
         serviceCollection.AddSingleton<ILocalizationService>(LocalizationService.Default);

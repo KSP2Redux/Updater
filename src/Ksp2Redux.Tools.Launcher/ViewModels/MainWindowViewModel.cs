@@ -122,6 +122,10 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 UpdateContentPanelVisible();
             }
+            else if (e.PropertyName == nameof(CommunityTabViewModel.SelectedNewsId))
+            {
+                SyncSelectedNews();
+            }
         };
         UpdateContentPanelVisible();
 
@@ -348,6 +352,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         MaybeAutoSelectLatestCommunityNews();
+        SyncSelectedNews();
+    }
+
+    // Marks the post the Community tab shows in the sidebar list.
+    private void SyncSelectedNews()
+    {
+        foreach (var item in NewsCollectionViewModel.NewsCollection)
+        {
+            item.IsSelected = item.NewsId == CommunityTab.SelectedNewsId;
+        }
     }
 
     private void CurrentTabChanged(object? sender, ITabNavigatorService.CurrentTabChangedEventArgs e)

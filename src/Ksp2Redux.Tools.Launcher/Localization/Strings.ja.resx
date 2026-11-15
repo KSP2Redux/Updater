@@ -370,9 +370,6 @@ https://ksp2redux.org</value>
   <data name="Dialog.Confirm.Title" xml:space="preserve">
     <value>確認する</value>
   </data>
-  <data name="Dialog.Done.Title" xml:space="preserve">
-    <value>完了！</value>
-  </data>
   <data name="Settings.FilePicker.Failed" xml:space="preserve">
     <value>ファイル選択ツールを開くことができませんでした: {0}</value>
   </data>

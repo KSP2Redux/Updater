@@ -24,11 +24,12 @@
                           VerticalAlignment="Stretch"
                           ClipToBounds="True"
                           VerticalScrollBarVisibility="Auto">
-                <ItemsControl Margin="20,16, 20,16" ItemsSource="{Binding NewsCollection}"
+                <!-- 8 here plus each row's own padding puts the text 20 in from the card's edge. -->
+                <ItemsControl x:Name="NewsItems" Margin="8" ItemsSource="{Binding NewsCollection}"
                               Background="Transparent">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel />
+                            <StackPanel Spacing="2" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>

@@ -4,24 +4,30 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:mods="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Mods"
              xmlns:loc="using:Ksp2Redux.Tools.Launcher.Localization"
+             xmlns:vm="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels"
              x:DataType="mods:ModsTabViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Mods.ModsTabView">
-    <Border x:Name="GlassPanel" Margin="24,8,24,8" BorderThickness="2" CornerRadius="{StaticResource RadiusLarge}"
-            BorderBrush="{StaticResource GlassSurfaceBorderBrush}" Background="{StaticResource GlassSurfaceBrush}"
-            BoxShadow="{StaticResource GlassPanelShadow}"
-            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Border x:Name="GlassPanel" Classes="glass-panel">
+        <!-- An empty state: what this tab will hold, and somewhere to go meanwhile. -->
+        <StackPanel Spacing="12" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <!-- Material Symbols "extension" (Apache License 2.0). -->
+            <PathIcon Width="48" Height="48" Foreground="{StaticResource PrimaryToneBrush}" HorizontalAlignment="Center"
+                      Data="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z" />
             <TextBlock Text="{loc:T Mods.ComingSoon}"
-                       FontFamily="{StaticResource JetBrainsMonoLight}"
+                       FontFamily="{StaticResource LedCounter7}"
                        FontSize="32"
                        Foreground="{StaticResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
             <TextBlock Text="{loc:T Mods.Roadmap}"
-                       FontFamily="{StaticResource JetBrainsMonoRegular}"
-                       FontSize="14"
+                       FontSize="14" LineHeight="22"
                        Foreground="{StaticResource TextMutedBrush}"
+                       TextWrapping="Wrap" TextAlignment="Center"
                        HorizontalAlignment="Center" />
+            <Button Classes="tonal" Margin="0,4,0,0" HorizontalAlignment="Center"
+                    Content="{loc:T Mods.ReadNews}"
+                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).GoToTabCommand}"
+                    CommandParameter="1" />
         </StackPanel>
     </Border>
 </UserControl>

@@ -15,12 +15,96 @@
         </Style>
     </Style>
 
-    <Style Selector="Button.danger">
-        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+    <!--
+        Material 3 buttons. Fluent paints hover, press and disabled on the template's
+        ContentPresenter, so the state brushes go there; a Background set on the Button
+        itself for :pointerover is overridden and left danger buttons grey on hover.
+        tonal: the everyday action. danger: the error-outlined button for actions that
+        remove something, kept calmer than a red fill since they all ask to confirm.
+    -->
+    <!-- Every variant has the same 1px border, transparent where there is no outline, so
+         tonal and outlined buttons in one row are the same height. The 10px sides are
+         tighter than Material 3's 24, so the four profile buttons still fit on one line
+         at the minimum window width. -->
+    <Style Selector="Button.tonal, Button.danger">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <!-- Material 3 motion: state changes ease in over a short duration instead of
+         switching instantly. 0.2,0,0,1 is the standard easing curve. Every animation sits
+         under :is(Window).motion, which the Motion setting turns off. -->
+    <Style Selector=":is(Window).motion Button.tonal /template/ ContentPresenter#PART_ContentPresenter, :is(Window).motion Button.danger /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="ContentPresenter.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=":is(Window).motion TabItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Border.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- A progress bar's fill eases toward each new value; ProgressFill marks drops as instant. -->
+    <Style Selector=":is(Window).motion ProgressBar:not(.instant) /template/ Border#PART_Indicator">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Width" Duration="0:0:0.3" Easing="0.2,0,0,1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.tonal">
+        <Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Style Selector="^:pointerover">
-            <Setter Property="Background" Value="{StaticResource DangerHoverBrush}" />
+        <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource TonalContainerHoverBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         </Style>
+        <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource TonalContainerPressedBrush}" />
+        </Style>
+        <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DisabledContainerBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DisabledContentBrush}" />
+        </Style>
+    </Style>
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ErrorOutlineBrush}" />
+        <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ErrorHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource ErrorBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+        </Style>
+        <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ErrorPressedBrush}" />
+        </Style>
+        <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{StaticResource DisabledOutlineBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource DisabledContentBrush}" />
+        </Style>
+    </Style>
+
+    <!--
+        The glass panel every tab sits in. The sidebar and panel share one 24px gutter, so the
+        panel has no margin of its own beyond the gap under the tabs. Content inside it is inset
+        by PanelInset rather than the panel having padding, so a scrollbar runs along its edge.
+    -->
+    <Style Selector="Border.glass-panel">
+        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlassSurfaceBorderBrush}" />
+        <Setter Property="Background" Value="{StaticResource GlassSurfaceBrush}" />
+        <Setter Property="BoxShadow" Value="{StaticResource GlassPanelShadow}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
 
     <Style Selector="Button.link-button">
@@ -63,6 +147,65 @@
                 <Setter Property="Background" Value="{StaticResource OverlayPressedBrush}" />
             </Style>
         </Style>
+    </Style>
+
+    <!-- Checkboxes inherited the 8px control radius, which turns a 20px box into a circle that reads as a radio button. -->
+    <Style Selector="CheckBox">
+        <Setter Property="CornerRadius" Value="{StaticResource ShapeExtraSmall}" />
+    </Style>
+
+    <!-- A small heading over a group of content, in the light Material 3 tone of the brand red. -->
+    <Style Selector="TextBlock.section-title">
+        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="LetterSpacing" Value="0.5" />
+        <Setter Property="Foreground" Value="{StaticResource PrimaryToneBrush}" />
+    </Style>
+
+    <!-- Snackbars (MainWindow.ShowSnackbar): Material 3's short confirmations at the bottom of the window. -->
+    <Style Selector="NotificationCard">
+        <Setter Property="Background" Value="{StaticResource SnackbarBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlassSurfaceBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+    <!-- Fluent's card is a fixed 350 x 150 with a colour strip for the notification type. A snackbar is
+         one line sized to its text, so the width, the minimum height and the strip go. -->
+    <Style Selector="NotificationCard">
+        <Setter Property="Width" Value="NaN" />
+        <Setter Property="MinWidth" Value="240" />
+    </Style>
+    <Style Selector="NotificationCard /template/ Panel#PART_HeaderBar">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="NotificationCard /template/ ContentControl#PART_Content">
+        <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <!-- The card keeps a minimum height taller than one line, so the text centres itself in it. -->
+    <Style Selector="TextBlock.snackbar">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MaxWidth" Value="440" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="16,12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- Keyboard focus: a 2px ring in the light brand tone, rounded to match the controls, instead of
+         Fluent's square black-and-white outline. It shows for keyboard focus only, not for clicks. -->
+    <Style Selector=":is(Control)">
+        <Setter Property="FocusAdorner">
+            <FocusAdornerTemplate>
+                <Border BorderThickness="2" BorderBrush="{DynamicResource PrimaryToneBrush}" CornerRadius="10" Margin="-3" />
+            </FocusAdornerTemplate>
+        </Setter>
+    </Style>
+
+    <!-- A focused ComboBox also draws Fluent's own highlight, an accent fill that is a heavy red block
+         here, inside the shared focus ring. The ring is enough. -->
+    <Style Selector="ComboBox:focus-visible /template/ Border#HighlightBackground">
+        <Setter Property="IsVisible" Value="False" />
     </Style>
 
     <Style Selector="TextBlock">
