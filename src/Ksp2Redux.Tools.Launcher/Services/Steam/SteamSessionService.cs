@@ -131,7 +131,31 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
 
     public bool HasSavedLogin => SavedAccountName is not null;
 
-    public string? SavedAccountName => loginStore.Load()?.AccountName;
+    public string? SavedAccountName => SavedLogin?.AccountName;
+
+    // Read once: on macOS each read runs /usr/bin/security, which can wait seconds for the keychain.
+    private SavedSteamLogin? _savedLogin;
+    private bool _savedLoginRead;
+
+    private SavedSteamLogin? SavedLogin
+    {
+        get
+        {
+            if (!_savedLoginRead)
+            {
+                _savedLogin = loginStore.Load();
+                _savedLoginRead = true;
+            }
+            return _savedLogin;
+        }
+        set
+        {
+            if (value is null) loginStore.Clear();
+            else loginStore.Save(value);
+            _savedLogin = value;
+            _savedLoginRead = true;
+        }
+    }
 
     public event EventHandler? SignInChanged;
 
@@ -159,7 +183,7 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
         await RunExclusiveAsync(async () =>
         {
             var client = await ConnectAsync(cancellationToken);
-            var saved = loginStore.Load();
+            var saved = SavedLogin;
             AuthSession session;
             try
             {
@@ -186,7 +210,7 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
     public async Task<bool> TryResumeAsync(CancellationToken cancellationToken)
     {
         if (IsSignedIn) return true;
-        if (loginStore.Load() is not { } saved) return false;
+        if (SavedLogin is not { } saved) return false;
 
         try
         {
@@ -203,7 +227,7 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
                                                   or EResult.Expired or EResult.InvalidSignature or EResult.Revoked)
         {
             log.Info($"The saved Steam login is no longer valid ({ex.Result}), forgetting it.");
-            loginStore.Clear();
+            SavedLogin = null;
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -219,8 +243,8 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
         await _gate.WaitAsync();
         try
         {
-            revoked = loginStore.Load() is not { } saved || await TryRevokeAsync(saved);
-            loginStore.Clear();
+            revoked = SavedLogin is not { } saved || await TryRevokeAsync(saved);
+            SavedLogin = null;
             _client?.GetHandler<SteamUser>()?.LogOff();
             TearDown();
         }
@@ -370,7 +394,7 @@ public class SteamSessionService(ISteamLoginStore loginStore, ILogService log) :
             await Task.Delay(50, cancellationToken);
         }
 
-        if (remember) loginStore.Save(new SavedSteamLogin(accountName, refreshToken, guardData));
+        if (remember) SavedLogin = new SavedSteamLogin(accountName, refreshToken, guardData);
         Account = new SteamAccount(accountName, _personaName);
         Connection = new SteamConnection(client, client.GetHandler<SteamApps>()!, client.GetHandler<SteamContent>()!);
         log.Info("Signed in to Steam.");
