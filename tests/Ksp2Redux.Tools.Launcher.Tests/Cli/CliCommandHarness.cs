@@ -53,6 +53,8 @@ internal sealed class CliCommandHarness
 
     public Mock<IModuleDefinitionService> Modules { get; } = new();
 
+    public Mock<IManifestReleasesFeedProviderService> FeedProvider { get; } = new();
+
     public StringWriter Results { get; } = new();
 
     /// <summary>The context, built on first use so a test can arrange files and mocks before the config loads.</summary>
@@ -94,7 +96,7 @@ internal sealed class CliCommandHarness
         services.AddSingleton(Mock.Of<IAssemblyService>());
         services.AddSingleton(GameDataFolder.Object);
         services.AddSingleton(News.Object);
-        services.AddSingleton(Mock.Of<IManifestReleasesFeedProviderService>());
+        services.AddSingleton(FeedProvider.Object);
         services.AddSingleton(OperatingSystem.Object);
         services.AddSingleton(DiskSpace.Object);
         services.AddSingleton(Wine.Object);
