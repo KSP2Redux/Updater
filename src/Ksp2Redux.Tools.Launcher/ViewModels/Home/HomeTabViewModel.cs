@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Abstractions;
-using System.Text;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -93,12 +92,8 @@ public partial class HomeTabViewModel : ViewModelBase
     public partial bool IsInstallLogVisible { get; set; }
 
     [ObservableProperty]
-    public partial string InstallLogText { get; set; } = string.Empty;
-
-    [ObservableProperty]
     public partial bool InstallationDisabled { get; set; }
 
-    private readonly StringBuilder _installLogBuilder = new();
     private readonly List<InstallLogEntry> _pendingLogEntries = [];
 
     /// <summary>The install log as timestamped lines, for showing each kind of line in its own colour.</summary>
@@ -1107,7 +1102,6 @@ public partial class HomeTabViewModel : ViewModelBase
         bool queueUpdate;
         lock (_installLogLock)
         {
-            _installLogBuilder.AppendLine(message);
             _pendingLogEntries.Add(new InstallLogEntry(DateTime.Now, message, kind));
             queueUpdate = !_installLogUpdateQueued;
             if (queueUpdate) _installLogUpdateQueued = true;
@@ -1120,16 +1114,13 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void FlushInstallLogToUi()
     {
-        string text;
         InstallLogEntry[] entries;
         lock (_installLogLock)
         {
-            text = _installLogBuilder.ToString();
             entries = [.. _pendingLogEntries];
             _pendingLogEntries.Clear();
             _installLogUpdateQueued = false;
         }
-        InstallLogText = text;
         foreach (var entry in entries) InstallLogEntries.Add(entry);
     }
 
@@ -1140,11 +1131,9 @@ public partial class HomeTabViewModel : ViewModelBase
     {
         lock (_installLogLock)
         {
-            _installLogBuilder.Clear();
             _pendingLogEntries.Clear();
             _installLogUpdateQueued = false;
         }
-        InstallLogText = string.Empty;
         InstallLogEntries.Clear();
     }
     

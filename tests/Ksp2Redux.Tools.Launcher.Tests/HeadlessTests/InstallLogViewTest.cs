@@ -53,8 +53,7 @@ public class InstallLogViewTest
 
         Assert.That(home.InstallLogEntries.Select(e => e.Kind),
             Is.EqualTo(new[] { InstallLogKind.Info, InstallLogKind.Error, InstallLogKind.Success }));
-        Assert.That(home.InstallLogText, Does.Contain("Creating an install plan").And.Contain("Patch failed"),
-            "The plain-text log stays as it was for everything that reads it.");
+        Assert.That(home.InstallLogEntries.Select(e => e.Text), Is.EqualTo(new[] { "Creating an install plan", "Patch failed", "Installed" }));
         var lines = LogList(window).GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("log-line")).ToList();
         Assert.That(lines.Single(t => t.Text == "Patch failed").Foreground, Is.SameAs(window.FindResource("ErrorBrush")));
         Assert.That(lines.Single(t => t.Text == "✓ Installed").Foreground, Is.SameAs(window.FindResource("SuccessHoverBrush")));
