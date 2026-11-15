@@ -691,7 +691,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task UninstallKsp2()
     {
-        if (IsUninstallingKsp2 || SelectedInstall is not { } row) return;
+        if (IsUninstallingKsp2 || SelectedInstall is not { } row || await RefuseWhileBusyAsync()) return;
 
         var removal = _gameUninstallService.Inspect(row.ExePath);
         switch (removal.Kind)
@@ -766,6 +766,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public async Task UninstallRedux()
     {
+        if (await RefuseWhileBusyAsync()) return;
         var activeExe = _ksp2InstallService.ActiveEntry?.ExePath;
         if (string.IsNullOrWhiteSpace(activeExe))
         {
@@ -785,7 +786,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Confirm.Title"],
             _localization["Settings.UninstallRedux.Confirm"],
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
-        if (result != ButtonResult.Yes) return;
+        if (result != ButtonResult.Yes || await RefuseWhileBusyAsync()) return;
 
         _tabNavigatorService.GoToHome();
 
@@ -794,6 +795,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public async Task InstallFromPatchFile()
     {
+        if (await RefuseWhileBusyAsync()) return;
         IStorageFile? chosenPath;
         try
         {
@@ -807,7 +809,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             return;
         }
 
-        if (chosenPath is null) return;
+        if (chosenPath is null || await RefuseWhileBusyAsync()) return;
 
         _tabNavigatorService.GoToHome();
 
@@ -858,17 +860,17 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanRestoreSaveBackup))]
     public async Task RestoreSaveBackup()
     {
-        if (SelectedSaveBackup is not { } choice || await RefuseWhileBusyAsync()) return;
+        if (SelectedSaveBackup is not { } choice || await RefuseWhileBusyAsync("Settings.SaveBackups.Busy")) return;
 
         var answer = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Confirm.Title"],
             _localization.Format("Settings.SaveBackups.Confirm", choice.DisplayName),
             ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
         // KSP2 can be started while the question is open.
-        if (answer != ButtonResult.Yes || await RefuseWhileBusyAsync()) return;
+        if (answer != ButtonResult.Yes || await RefuseWhileBusyAsync("Settings.SaveBackups.Busy")) return;
 
         try
         {
-            await Task.Run(() => _saveBackups.Restore(choice.Backup));
+            await _homeTabViewModel.RunBlockingOperationAsync(() => Task.Run(() => _saveBackups.Restore(choice.Backup)));
             _log.Info($"Restored the saves from {choice.Backup.Path}.");
             _messageBoxService.ShowSnackbar(_localization["Settings.SaveBackups.Restored"]);
         }
@@ -882,11 +884,13 @@ public partial class SettingsTabViewModel : ViewModelBase
         RefreshSaveBackups();
     }
 
-    private async Task<bool> RefuseWhileBusyAsync()
+    // Every action here that changes the game's folders refuses while KSP2 runs or the launcher is busy with
+    // another one, since two of them writing the same folder leave it half of each.
+    private async Task<bool> RefuseWhileBusyAsync(string messageKey = "Settings.Busy")
     {
         if (!_homeTabViewModel.IsOperationRunning && !_gameProcessService.IsRunning()) return false;
         await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
-            _localization["Settings.SaveBackups.Busy"], windowStartupLocation: WindowStartupLocation.CenterOwner);
+            _localization[messageKey], windowStartupLocation: WindowStartupLocation.CenterOwner);
         return true;
     }
 
