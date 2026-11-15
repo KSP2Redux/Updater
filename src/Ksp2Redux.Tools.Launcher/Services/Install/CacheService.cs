@@ -160,6 +160,8 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
         foreach (var file in info.GetFiles())
         {
             if (file.Name == "uninstall.zip" && prefix == "") continue;
+            // Windows refuses to delete a read-only file.
+            file.IsReadOnly = false;
             file.Delete();
         }
 

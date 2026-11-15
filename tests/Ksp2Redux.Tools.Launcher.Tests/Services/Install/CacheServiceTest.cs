@@ -73,6 +73,25 @@ public class CacheServiceTest
         });
     }
 
+    // Windows refuses to delete a read-only file, which stopped the restore with the folder half emptied.
+    [Test]
+    public void RecursivelyRestoreCache_ReadOnlyFile_IsClearedAndRestored()
+    {
+        var (service, fs, zipFileService) = MakeService();
+        string readOnlyFile = fs.Path.Combine(InstallDir, "KSP2_x64_Data", "Managed", "Assembly-CSharp.dll");
+        fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(readOnlyFile)!);
+        fs.File.WriteAllText(readOnlyFile, "redux");
+        fs.File.SetAttributes(readOnlyFile, FileAttributes.ReadOnly);
+        fs.File.WriteAllText(fs.Path.Combine(InstallDir, "uninstall.zip"), "zip");
+        zipFileService.Setup(z => z.OpenRead(It.IsAny<string>()))
+            .Returns(new Mock<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>().Object);
+
+        service.RecursivelyRestoreCache(InstallDir);
+
+        Assert.That(fs.File.Exists(readOnlyFile), Is.False);
+        zipFileService.Verify(z => z.ExtractToDirectory(It.IsAny<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>(), InstallDir, true), Times.Once);
+    }
+
     [Test]
     public void AddFolder_ManagedShapesRuntime_IsIncludedInUninstallSnapshot()
     {
