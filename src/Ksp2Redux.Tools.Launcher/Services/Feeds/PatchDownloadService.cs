@@ -425,6 +425,15 @@ public sealed class PatchDownloadService(
                         return new Reservation(this, bytes);
                     continue;
                 }
+
+                // Other downloads only fill the drive, so waiting for them helps only while their reservations are
+                // what stands in the way. Once the part would not fit even with none, waiting would never end.
+                if (available.Value < bytes + SAFETY_BYTES)
+                {
+                    throw Loc.Message("Install.Disk.Download.NotEnough",
+                            InstallPlanService.FormatBytes(bytes + SAFETY_BYTES), InstallPlanService.FormatBytes(available.Value))
+                        .ToException(message => new InsufficientDiskSpaceException(message, path, bytes + SAFETY_BYTES, available.Value));
+                }
                 await Task.Delay(500, ct);
             }
         }

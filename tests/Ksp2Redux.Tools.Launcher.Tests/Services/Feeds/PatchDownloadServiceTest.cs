@@ -116,6 +116,31 @@ public class PatchDownloadServiceTest
         provider.VerifyAll();
     }
 
+    // Waiting for space that nothing in the download will free used to poll forever.
+    [Test]
+    public async Task EnqueueAll_DriveTooFullForThePart_FailsWithDiskSpaceError()
+    {
+        byte[] whole = [1, 2, 3];
+        var patch = new ReleasePatch
+        {
+            Version = "1.0.0.1",
+            Requires = new PatchRequirement(),
+            Url = "https://custom.test/release.patch",
+            ChecksumSha256 = Hash(whole),
+            Size = whole.Length,
+            ReleasedAt = DateTime.UtcNow
+        };
+        var (service, _, _, diskSpace) = MakeServiceWithDiskSpace();
+        diskSpace.Setup(item => item.GetAvailableFreeSpace(It.IsAny<string>())).Returns(1024);
+
+        var download = service.EnqueueAll(
+            [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
+            PatchDownloadSource.GitHub, 1, _ => { }, (_, _) => { }, CancellationToken.None)[0];
+
+        Assert.That(await Task.WhenAny(download, Task.Delay(TimeSpan.FromSeconds(5))), Is.SameAs(download), "The download hung waiting for space.");
+        await Assert.ThrowsAsync<InsufficientDiskSpaceException>(async () => await download);
+    }
+
     // HttpClient reports its own timeout as a TaskCanceledException, which read as the player cancelling.
     [Test]
     public async Task EnqueueAll_RequestTimesOut_RetriesTheDownload()
@@ -194,13 +219,20 @@ public class PatchDownloadServiceTest
     private static (PatchDownloadService Service, Mock<IManifestReleasesFeedProviderService> Provider,
         MockFileSystem FileSystem) MakeService()
     {
+        var (service, provider, fileSystem, _) = MakeServiceWithDiskSpace();
+        return (service, provider, fileSystem);
+    }
+
+    private static (PatchDownloadService Service, Mock<IManifestReleasesFeedProviderService> Provider,
+        MockFileSystem FileSystem, Mock<IDiskSpaceService> DiskSpace) MakeServiceWithDiskSpace()
+    {
         var fileSystem = new MockFileSystem(options => options.SimulatingOperatingSystem(SimulationMode.Windows));
         fileSystem.Directory.CreateDirectory(STORAGE);
         var provider = new Mock<IManifestReleasesFeedProviderService>();
         var diskSpace = new Mock<IDiskSpaceService>();
         diskSpace.Setup(item => item.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
         return (new PatchDownloadService(
-            fileSystem, provider.Object, new Mock<ILogService>().Object, diskSpace.Object), provider, fileSystem);
+            fileSystem, provider.Object, new Mock<ILogService>().Object, diskSpace.Object), provider, fileSystem, diskSpace);
     }
 
     private static ReleasePatch CreateChunkedPatch(byte[] first, byte[] second, byte[] whole) => new()

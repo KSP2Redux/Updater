@@ -384,8 +384,10 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         var remotePatches = installPlan.DownloadRequests.ToList();
         if (remotePatches.Count > 0)
         {
+            // Every patch is downloaded before the first step and kept until its own, and the patch being rebuilt
+            // from its parts needs room for the parts and the whole at once.
             long largestPatch = remotePatches.Max(request => request.Patch.Size);
-            long stagingRequired = checked(largestPatch * 2 + DISK_SAFETY_BYTES);
+            long stagingRequired = checked(remotePatches.Sum(request => request.Patch.Size) + largestPatch + DISK_SAFETY_BYTES);
             EnsureVolumeSpace(
                 remotePatches[0].StorageDirectory, stagingRequired,
                 "Install.Disk.Download", log);
@@ -453,7 +455,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         return total;
     }
 
-    private static string FormatBytes(long bytes)
+    internal static string FormatBytes(long bytes)
     {
         double mb = bytes / (1024.0 * 1024.0);
         return mb >= 1024 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
