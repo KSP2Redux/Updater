@@ -313,7 +313,8 @@ public sealed class PatchDownloadService(
                 aggregate.Complete(progressKey, expectedSize);
                 return completedPath;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            // HttpClient reports its own timeout as a cancellation too; only the caller's token means the player cancelled.
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 lastFailure = ex;
                 bool retryable = IsRetryable(ex);
@@ -347,7 +348,7 @@ public sealed class PatchDownloadService(
 
     private static bool IsRetryable(Exception exception)
     {
-        if (exception is IOException or InvalidDataException)
+        if (exception is IOException or InvalidDataException or OperationCanceledException)
             return true;
         if (exception is not HttpRequestException requestException)
             return false;

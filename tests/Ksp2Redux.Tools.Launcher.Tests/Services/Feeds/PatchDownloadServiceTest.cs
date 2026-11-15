@@ -116,6 +116,33 @@ public class PatchDownloadServiceTest
         provider.VerifyAll();
     }
 
+    // HttpClient reports its own timeout as a TaskCanceledException, which read as the player cancelling.
+    [Test]
+    public async Task EnqueueAll_RequestTimesOut_RetriesTheDownload()
+    {
+        byte[] whole = [1, 2, 3];
+        var patch = new ReleasePatch
+        {
+            Version = "1.0.0.1",
+            Requires = new PatchRequirement(),
+            Url = "https://custom.test/release.patch",
+            ChecksumSha256 = Hash(whole),
+            Size = whole.Length,
+            ReleasedAt = DateTime.UtcNow
+        };
+        var (service, provider, fileSystem) = MakeService();
+        provider.SetupSequence(item => item.DownloadFileAsync(
+                It.IsAny<FeedInfo>(), patch.Url, 0, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("timed out", new TimeoutException()))
+            .ReturnsAsync(Response(HttpStatusCode.OK, whole));
+
+        string result = await service.EnqueueAll(
+            [new PatchDownloadRequest(new FeedInfo(), patch, STORAGE)],
+            PatchDownloadSource.GitHub, 1, _ => { }, (_, _) => { }, CancellationToken.None)[0];
+
+        Assert.That(fileSystem.File.ReadAllBytes(result), Is.EqualTo(whole));
+    }
+
     [TestCase(PatchDownloadSource.R2)]
     [TestCase(PatchDownloadSource.GitHub)]
     public async Task EnqueueAll_ChunkFailureAllowsSwitchingToOtherMirror(PatchDownloadSource source)
