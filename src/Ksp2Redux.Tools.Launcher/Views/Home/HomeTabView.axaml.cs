@@ -64,9 +64,10 @@ public partial class HomeTabView : UserControl
     {
         // Ctrl+C, or Cmd+C on macOS.
         var isCopy = e.Key == Key.C && (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
-        if (!isCopy || _logList.SelectedItems is not { Count: > 0 } selected) return;
+        if (!isCopy || _model is null || _logList.Selection.SelectedIndexes is not { Count: > 0 } selected) return;
         e.Handled = true;
-        var lines = selected.Cast<InstallLogEntry>().OrderBy(entry => _model?.InstallLogEntries.IndexOf(entry) ?? 0);
+        var entries = _model.InstallLogEntries;
+        var lines = selected.Order().Select(index => entries[index]);
         await CopyToClipboard(string.Join('\n', lines));
     }
 

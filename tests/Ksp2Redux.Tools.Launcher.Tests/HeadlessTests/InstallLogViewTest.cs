@@ -118,6 +118,30 @@ public class InstallLogViewTest
         Assert.That(copied, Does.Match(@"^\d\d:\d\d:\d\d  first\n\d\d:\d\d:\d\d  third$"));
     }
 
+    [AvaloniaTest]
+    public async Task CtrlC_AfterSelectingAWholeLongLog_CopiesItQuickly()
+    {
+        var (window, home) = Start();
+        for (var line = 0; line < 20000; line++) home.Log(LogMessage.Literal($"Applying binary patch to file{line}.bundle"));
+        Pump();
+        var list = LogList(window);
+        list.SelectAll();
+        list.ScrollIntoView(0);
+        Pump();
+        list.ContainerFromIndex(0)!.Focus();
+
+        var stopwatch = Stopwatch.StartNew();
+        window.KeyPressQwerty(PhysicalKey.C, RawInputModifiers.Control);
+        stopwatch.Stop();
+        Pump();
+        TestContext.Out.WriteLine($"Copying 20000 selected lines took {stopwatch.ElapsedMilliseconds}ms");
+
+        var copied = await window.Clipboard!.TryGetTextAsync();
+        Assert.That(copied!.Split('\n'), Has.Length.EqualTo(20000));
+        Assert.That(copied, Does.EndWith("file19999.bundle"));
+        Assert.That(stopwatch.Elapsed, Is.LessThan(TimeSpan.FromSeconds(1)));
+    }
+
     // A list lets its items be as wide as they like unless horizontal scrolling is off, and then long
     // file paths are cut at the edge instead of wrapping.
     [AvaloniaTest]
