@@ -62,7 +62,7 @@
 		<ScrollViewer VerticalScrollBarVisibility="Auto"
 		              HorizontalScrollBarVisibility="Disabled">
 		<Grid Margin="{StaticResource PanelInset}" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-			<TextBlock Grid.Row="0" FontFamily="{StaticResource JetBrainsMonoLight}"
+			<TextBlock Grid.Row="0" FontFamily="{DynamicResource JetBrainsMonoLight}"
 			           FontSize="24" TextAlignment="Left" Margin="0,0,0,16"
 			           Text="{loc:T Settings.Title}" />
 
@@ -291,7 +291,8 @@
 					          SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}">
 						<ComboBox.ItemTemplate>
 							<DataTemplate x:DataType="loc:LanguageOption">
-								<TextBlock Text="{Binding DisplayName}" />
+								<TextBlock Text="{Binding DisplayName}"
+								           FontFamily="{Binding CultureName, Converter={StaticResource LanguageFontConverter}}" />
 							</DataTemplate>
 						</ComboBox.ItemTemplate>
 					</ComboBox>
@@ -340,7 +341,7 @@
 					        Content="{loc:T Settings.SaveBackups.OpenFolder}" />
 				</WrapPanel>
 				<TextBlock Grid.Row="2" Margin="0,2,0,0"
-				           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
+				           FontFamily="{DynamicResource JetBrainsMonoLight}" FontSize="11"
 				           Foreground="{StaticResource TextFaintBrush}"
 				           HorizontalAlignment="Right" VerticalAlignment="Center"
 				           Text="{Binding LauncherVersionText}" />

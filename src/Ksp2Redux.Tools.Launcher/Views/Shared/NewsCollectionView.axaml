@@ -8,7 +8,7 @@
              x:Class="Ksp2Redux.Tools.Launcher.Views.Shared.NewsCollectionView"
              x:DataType="shared:NewsCollectionViewModel">
     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
-        <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="{StaticResource JetBrainsMonoLight}"
+        <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="{DynamicResource JetBrainsMonoLight}"
                    FontSize="24" TextAlignment="Center" Margin="0,16,0,8"
                    Text="{loc:T Sidebar.LatestNews}" />
         <Border x:Name="NewsPanel" Grid.Row="1" Grid.Column="0"

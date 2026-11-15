@@ -18,7 +18,7 @@
                        DataContext="{Binding SelectedNews}" LastChildFill="True">
                 <StackPanel Name="NewsHeader" DockPanel.Dock="Top" Spacing="4">
                     <TextBlock Classes="section-title" Text="{loc:T Community.Label}" />
-                    <TextBlock FontSize="26" FontFamily="{StaticResource JetBrainsMonoBold}" LineHeight="34"
+                    <TextBlock FontSize="26" FontFamily="{DynamicResource JetBrainsMonoBold}" LineHeight="34"
                                Text="{Binding Title}" TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                         <TextBlock Grid.Column="0" FontSize="12" VerticalAlignment="Center"

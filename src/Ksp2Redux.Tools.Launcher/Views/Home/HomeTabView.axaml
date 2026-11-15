@@ -22,11 +22,11 @@
 				</Setter.Value>
 			</Setter>
 			<Setter Property="Background" Value="{StaticResource ScrimSoftBrush}"/>
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"/>
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"/>
 			<Setter Property="FontSize" Value="12"/>
 		</Style>
 		<Style Selector="TextBlock.progress-label">
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"/>
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"/>
 			<Setter Property="VerticalAlignment" Value="Center"/>
 			<Setter Property="TextAlignment" Value="Right"/>
 		</Style>
@@ -47,13 +47,13 @@
 			<Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
 		</Style>
 		<Style Selector="TextBlock.log-time">
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}" />
 			<Setter Property="FontSize" Value="12" />
 			<Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
 			<Setter Property="VerticalAlignment" Value="Center" />
 		</Style>
 		<Style Selector="TextBlock.log-line">
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}" />
 			<Setter Property="FontSize" Value="13" />
 			<Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
 			<Setter Property="TextWrapping" Value="Wrap" />
@@ -64,11 +64,11 @@
 		</Style>
 		<Style Selector="TextBlock.log-line.success">
 			<Setter Property="Foreground" Value="{StaticResource SuccessHoverBrush}" />
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoBold}" />
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoBold}" />
 		</Style>
 		<Style Selector="TextBlock.log-line.notice">
 			<Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
-			<Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoBold}" />
+			<Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoBold}" />
 		</Style>
 	</UserControl.Styles>
 
@@ -134,7 +134,7 @@
 	        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
 		        <TextBlock Grid.Column="0"
 		                   Foreground="{StaticResource BrandRedBrush}"
-		                   FontFamily="{StaticResource JetBrainsMonoRegular}"
+		                   FontFamily="{DynamicResource JetBrainsMonoRegular}"
 		                   FontSize="11"
 		                   VerticalAlignment="Center"
 		                   Text="{loc:T Home.LauncherUpdateNeeded}" />

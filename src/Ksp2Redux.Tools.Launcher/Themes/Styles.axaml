@@ -9,7 +9,7 @@
     <Style Selector="Button">
         <Setter Property="Background" Value="{StaticResource NeutralButtonBrush}"></Setter>
         <Setter Property="BorderThickness" Value="0"></Setter>
-        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
+        <Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"></Setter>
         <Style Selector="^:pointerover">
             <Setter Property="Background" Value="{StaticResource NeutralButtonHoverBrush}"></Setter>
         </Style>
@@ -156,7 +156,7 @@
 
     <!-- A small heading over a group of content, in the light Material 3 tone of the brand red. -->
     <Style Selector="TextBlock.section-title">
-        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}" />
+        <Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="LetterSpacing" Value="0.5" />
         <Setter Property="Foreground" Value="{StaticResource PrimaryToneBrush}" />
@@ -209,6 +209,6 @@
     </Style>
 
     <Style Selector="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoRegular}"></Setter>
+        <Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoRegular}"></Setter>
     </Style>
 </Styles>

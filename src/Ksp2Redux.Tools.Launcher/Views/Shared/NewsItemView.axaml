@@ -33,7 +33,7 @@
         <Grid ColumnDefinitions="3,10,*">
             <Border Grid.Column="0" Classes="news-accent" IsVisible="{Binding IsSelected}" />
             <StackPanel Grid.Column="2" Spacing="2">
-                <TextBlock FontSize="14" FontFamily="{StaticResource JetBrainsMonoBold}"
+                <TextBlock FontSize="14" FontFamily="{DynamicResource JetBrainsMonoBold}"
                            Foreground="{StaticResource TextPrimaryBrush}"
                            Text="{Binding Title}" TextWrapping="Wrap" />
                 <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
