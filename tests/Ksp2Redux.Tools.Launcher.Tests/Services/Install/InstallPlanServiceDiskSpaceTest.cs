@@ -1,3 +1,4 @@
+using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -120,5 +121,47 @@ public class InstallPlanServiceDiskSpaceTest
 
         Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
             Throws.TypeOf<InsufficientDiskSpaceException>().With.Message.Contains("disk space"));
+    }
+
+    // Every patch is downloaded before the first step and kept until its own, and the patch being rebuilt from its
+    // parts briefly needs room for both.
+    [Test]
+    public void ApplyToFolder_SeveralPatches_NeedRoomForAllOfThemPlusTheLargestRebuild()
+    {
+        const long gigabyte = 1024L * 1024 * 1024;
+        const string storage = @"D:\Redux\cache";
+        var (service, diskSpace, _) = MakeService();
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(100 * gigabyte);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(storage)).Returns(3 * gigabyte);
+
+        var plan = new InstallPlan();
+        foreach (var version in new[] { "1.0.0.2", "1.0.0.1" })
+        {
+            var patch = new ReleasePatch
+            {
+                Version = version, Requires = new PatchRequirement(), Url = $"https://test/{version}.patch",
+                ChecksumSha256 = new string('0', 64), Size = gigabyte, ReleasedAt = DateTime.UtcNow
+            };
+            plan.ApplyPatchFile(new PatchDownloadRequest(new FeedInfo(), patch, storage), LogMessage.Literal(version));
+        }
+
+        Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
+            Throws.TypeOf<InsufficientDiskSpaceException>().With.Property(nameof(InsufficientDiskSpaceException.Path)).EqualTo(storage));
+    }
+
+    // uninstall.zip is built in the temp folder, usually on the system drive, before it moves beside the game.
+    [Test]
+    public void ApplyToFolder_FirstPrepatch_ChecksTheTempDriveHoldsTheSnapshot()
+    {
+        var (service, diskSpace, fs) = MakeService();
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "UnityPlayer.dll"), new byte[10 * 1024 * 1024]);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(100L * 1024 * 1024 * 1024);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(fs.Path.GetTempPath())).Returns(1024L * 1024);
+
+        var plan = new InstallPlan();
+        plan.Prepatch();
+
+        Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
+            Throws.TypeOf<InsufficientDiskSpaceException>().With.Property(nameof(InsufficientDiskSpaceException.Path)).EqualTo(fs.Path.GetTempPath()));
     }
 }

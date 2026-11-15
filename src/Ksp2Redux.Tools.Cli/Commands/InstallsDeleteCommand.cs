@@ -33,7 +33,7 @@ public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
             case Ksp2GameRemovalKind.NotAGameFolder:
                 return context.Output.Fail(
                     ExitCode.INSTALL_NOT_FOUND,
-                    $"{removal.Folder} does not look like a KSP2 install folder (there is no {Ksp2Install.KSP2_EXE_NAME} with KSP2_x64_Data beside it), so nothing was deleted. Use 'installs remove' if the profile points at the wrong place.");
+                    $"{removal.Folder} does not look like a folder that holds only KSP2, so nothing was deleted. Deleting removes the whole folder, so it needs {Ksp2Install.KSP2_EXE_NAME} with KSP2_x64_Data beside it, and no other programs or lots of other files. Delete it by hand if you are sure, or use 'installs remove' if the profile points at the wrong place.");
 
             case Ksp2GameRemovalKind.Missing:
                 return Confirmed(context, settings, $"The game folder for '{entry.Name}' is already gone. Remove the profile?") is { } missingRefusal

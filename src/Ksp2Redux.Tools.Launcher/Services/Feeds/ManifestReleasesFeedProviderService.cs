@@ -132,7 +132,7 @@ public class ManifestReleasesFeedProviderService(
             ReleaseManifestValidator.Validate(manifest);
             return manifest;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             log.Error($"Manifest fetch failed for {url}.", ex);
             throw new PatchDownloadException(source, $"Could not load the {source} release manifest.", ex);
@@ -179,7 +179,7 @@ public class ManifestReleasesFeedProviderService(
             log.Info($"Patch download {url} -> HTTP {(int)response.StatusCode} {response.StatusCode}, ContentLength={response.Content.Headers.ContentLength}.");
             return response;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             log.Error($"Patch download failed for {url}.", ex);
             throw;

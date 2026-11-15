@@ -92,6 +92,32 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
 
         using (var zipFile = zipFileService.OpenRead(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
+            // The game folder is emptied before the snapshot is extracted, so a damaged entry found mid-extract would
+            // leave it half restored. Reading every entry through first checks each one's CRC while nothing is touched.
+            foreach (var entry in zipFile.Entries)
+            {
+                using var stream = entry.Open();
+                stream.CopyTo(Stream.Null);
+            }
+
+            // A restore that crashed leaves its UninstallTemp behind. Its copies go back where the install has none;
+            // where the install has its own again, that one is in use and wins.
+            var leftoverTemp = fileSystem.Path.Combine(directory, "UninstallTemp");
+            if (fileSystem.Directory.Exists(leftoverTemp))
+            {
+                foreach (var dir in SavedDirectories)
+                {
+                    var leftover = fileSystem.Path.Combine(leftoverTemp, dir);
+                    var live = fileSystem.Path.Combine(directory, dir);
+                    if (fileSystem.Directory.Exists(leftover) && !fileSystem.Directory.Exists(live))
+                    {
+                        fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(live)!);
+                        fileSystem.Directory.Move(leftover, live);
+                    }
+                }
+                fileSystem.Directory.Delete(leftoverTemp, true);
+            }
+
             if (isForRepatch)
             {
                 fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(directory, "UninstallTemp"));
@@ -160,6 +186,8 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
         foreach (var file in info.GetFiles())
         {
             if (file.Name == "uninstall.zip" && prefix == "") continue;
+            // Windows refuses to delete a read-only file.
+            file.IsReadOnly = false;
             file.Delete();
         }
 

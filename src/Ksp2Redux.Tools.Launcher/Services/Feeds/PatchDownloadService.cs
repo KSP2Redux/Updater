@@ -313,7 +313,8 @@ public sealed class PatchDownloadService(
                 aggregate.Complete(progressKey, expectedSize);
                 return completedPath;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            // HttpClient reports its own timeout as a cancellation too; only the caller's token means the player cancelled.
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 lastFailure = ex;
                 bool retryable = IsRetryable(ex);
@@ -347,7 +348,7 @@ public sealed class PatchDownloadService(
 
     private static bool IsRetryable(Exception exception)
     {
-        if (exception is IOException or InvalidDataException)
+        if (exception is IOException or InvalidDataException or OperationCanceledException)
             return true;
         if (exception is not HttpRequestException requestException)
             return false;
@@ -423,6 +424,15 @@ public sealed class PatchDownloadService(
                     if (Interlocked.CompareExchange(ref _reservedBytes, reserved + bytes, reserved) == reserved)
                         return new Reservation(this, bytes);
                     continue;
+                }
+
+                // Other downloads only fill the drive, so waiting for them helps only while their reservations are
+                // what stands in the way. Once the part would not fit even with none, waiting would never end.
+                if (available.Value < bytes + SAFETY_BYTES)
+                {
+                    throw Loc.Message("Install.Disk.Download.NotEnough",
+                            InstallPlanService.FormatBytes(bytes + SAFETY_BYTES), InstallPlanService.FormatBytes(available.Value))
+                        .ToException(message => new InsufficientDiskSpaceException(message, path, bytes + SAFETY_BYTES, available.Value));
                 }
                 await Task.Delay(500, ct);
             }

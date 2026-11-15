@@ -1,5 +1,23 @@
+/* Reading typography for news posts: open line spacing in a softer white, with headings in
+   full white. */
 body, * {
+    color: #E6E6E6;
+}
+
+/* The HTML renderer does not inherit line-height from body, so text blocks set it themselves. It
+   also wrapped 15px text wider than the panel and clipped it, so the size stays at its default. */
+body, p, li {
+    line-height: 23px;
+}
+
+h1, h2, h3, h4 {
     color: #FFFFFF;
+    line-height: 1.3;
+    margin: 0.9em 0 0.4em 0;
+}
+
+p {
+    margin: 0 0 0.9em 0;
 }
 
 img, iframe, video, table {
@@ -14,7 +32,7 @@ pre, code {
 
 a {
     word-break: break-word;
-    /* Matches Colors.axaml's BrandRedColor. Plain CSS can't reference Avalonia
-       resources, so keep this in sync by hand if that token ever changes. */
-    color: #DC1501;
+    /* Matches Colors.axaml's PrimaryToneColor, the light tone of the brand red that reads on the
+       dark glass. Plain CSS can't reference Avalonia resources, so keep this in sync by hand. */
+    color: #FFB4A8;
 }

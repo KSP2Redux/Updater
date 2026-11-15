@@ -29,7 +29,7 @@ public class NewsHtmlCultureTest
             panel.BaseStylesheet = reader.ReadToEnd();
             panel.Text = "<a href='https://ksp2redux.org'>News link</a>";
 
-            Assert.That(panel.GetHtml().Contains("color: #DC1501", StringComparison.OrdinalIgnoreCase), Is.True);
+            Assert.That(panel.GetHtml().Contains("color: #FFB4A8", StringComparison.OrdinalIgnoreCase), Is.True);
             Assert.That(CultureInfo.CurrentCulture, Is.SameAs(culture));
             Assert.That(CultureInfo.CurrentUICulture, Is.SameAs(originalUiCulture));
         }

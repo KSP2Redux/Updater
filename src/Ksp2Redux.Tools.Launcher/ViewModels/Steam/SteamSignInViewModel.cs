@@ -86,17 +86,18 @@ public partial class SteamSignInViewModel(
 
         // Steam allows one sign-in at a time. The QR session restarts if the password fails.
         _qrCancellation?.Cancel();
-        _credentialsCancellation = new CancellationTokenSource();
+        var cancellation = _credentialsCancellation = new CancellationTokenSource();
         ErrorMessage = null;
         Stage = SteamSignInStage.Working;
 
         try
         {
-            await session.SignInWithCredentialsAsync(AccountName.Trim(), Password, this, _credentialsCancellation.Token);
+            await session.SignInWithCredentialsAsync(AccountName.Trim(), Password, this, cancellation.Token);
             Password = string.Empty;
             Finish(true);
         }
-        catch (OperationCanceledException)
+        // SteamKit cancels a request that timed out or lost its connection, which is a failure, not the player cancelling.
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
         }
         catch (Exception ex)
@@ -175,7 +176,7 @@ public partial class SteamSignInViewModel(
                 await Dispatcher.UIThread.InvokeAsync(() => Finish(true));
                 return;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
             {
                 return;
             }

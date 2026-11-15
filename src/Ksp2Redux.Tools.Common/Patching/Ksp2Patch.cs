@@ -271,38 +271,16 @@ public class Ksp2Patch : IDisposable
         return new Ksp2Patch(fileSystem, zipFileService.OpenRead(path));
     }
 
-    public static async Task CopyFileAsync(IFileSystem fileSystem, string sourceFile, string destinationFile)
-    {
-        const int bufferSize = 1024 * 1024; // 1 MiB
-        await using var source = fileSystem.FileStream.New(
-            sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read,
-            bufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
-
-        await using var dest = fileSystem.FileStream.New(
-            destinationFile, FileMode.Create, FileAccess.Write, FileShare.None,
-            bufferSize, FileOptions.Asynchronous);
-
-        try { dest.SetLength(source.Length); } catch { /* not critical */ }
-
-        await source.CopyToAsync(dest, bufferSize);
-    }
-
     public async Task AsyncApply(
         IEnvironmentProvider environmentProvider,
         string targetDirectory,
-        string? sourceDirectory = null,
         Action<string>? log = null,
         Action<string>? error = null
     )
     {
-        sourceDirectory ??= targetDirectory;
         if (!_fileSystem.Directory.Exists(targetDirectory))
         {
             throw new DirectoryNotFoundException(targetDirectory);
-        }
-        if (!_fileSystem.Directory.Exists(sourceDirectory))
-        {
-            throw new DirectoryNotFoundException(sourceDirectory);
         }
 
         // 1. Extract patch entries to temp folder
@@ -362,8 +340,6 @@ public class Ksp2Patch : IDisposable
                     {
                         string trueName = NormalizeEntryPath(operation.FileName);
                         string targetPath = ResolveContainedPath(targetDirectory, trueName);
-                        string sourcePath = ResolveContainedPath(sourceDirectory, trueName);
-                        string tempPath = $"{targetPath}.temp";
 
                         // Each file write below is already atomic (verify-then-swap), so if a previous
                         // attempt at this same plan got partway through before failing elsewhere, this
@@ -385,16 +361,12 @@ public class Ksp2Patch : IDisposable
                             log?.Invoke($"Applying binary patch to {trueName}");
                             IDirectoryInfo? parent = _fileSystem.FileInfo.New(targetPath).Directory;
                             _fileSystem.Directory.CreateDirectory(parent!.FullName);
-                            if (!_fileSystem.File.Exists(sourcePath))
+                            if (!_fileSystem.File.Exists(targetPath))
                             {
                                 throw new Exception(
                                     $"Failed to apply patch because {trueName} does not exist in target installation directory"
                                 );
                             }
-                            log?.Invoke($"Creating temporary file for {trueName}");
-                            await RetryOnFileLockAsync(
-                                () => CopyFileAsync(_fileSystem, sourcePath, tempPath), trueName, log);
-
                             // Write the patched result to a co-located swap file and verify it fully
                             // before ever touching the real target file, instead of truncating the
                             // target up front - a crash or disk-full mid-write must never leave the
@@ -402,7 +374,14 @@ public class Ksp2Patch : IDisposable
                             string swapPath = $"{targetPath}.newtemp";
                             try
                             {
-                                await using (FileSystemStream originalFile = _fileSystem.File.OpenRead(tempPath))
+                                FileSystemStream? opened = null;
+                                await RetryOnFileLockAsync(
+                                    () => { opened = _fileSystem.File.OpenRead(targetPath); return Task.CompletedTask; },
+                                    trueName, log);
+
+                                // The original stays open read-only only while the patch reads it: the swap
+                                // below replaces it, which Windows refuses while a handle is open.
+                                await using (FileSystemStream originalFile = opened!)
                                 {
                                     if (!await ValidateFileHashAsync(originalFile, operation.OriginalHash!))
                                     {
@@ -416,13 +395,10 @@ public class Ksp2Patch : IDisposable
                                     {
                                         try
                                         {
-                                            string patchPath = _fileSystem.Path.Combine(tempPatchDir,
-                                                $"{trueName}.bsdiff");
-                                            BinaryPatch.Apply(originalFile, () =>
-                                            {
-                                                var memory = new MemoryStream(_fileSystem.File.ReadAllBytes(patchPath));
-                                                return memory;
-                                            }, swapFile);
+                                            byte[] diff = _fileSystem.File.ReadAllBytes(
+                                                _fileSystem.Path.Combine(tempPatchDir, $"{trueName}.bsdiff"));
+                                            // BsDiff asks for a fresh stream for each block it reads.
+                                            BinaryPatch.Apply(originalFile, () => new MemoryStream(diff, false), swapFile);
                                         }
                                         catch (Exception e)
                                         {
@@ -450,9 +426,6 @@ public class Ksp2Patch : IDisposable
                                 try { if (_fileSystem.File.Exists(swapPath)) _fileSystem.File.Delete(swapPath); }
                                 catch { /* best-effort cleanup */ }
                             }
-
-                            // Delete the original file if we are not caching it
-                            _fileSystem.File.Delete(tempPath);
                         }
                         else if (operation.Action == PatchOperation.PatchAction.Remove)
                         {
@@ -587,8 +560,10 @@ public class Ksp2Patch : IDisposable
         string fullBase = _fileSystem.Path.GetFullPath(baseDirectory);
         string fullCombined = _fileSystem.Path.GetFullPath(_fileSystem.Path.Combine(fullBase, relativePath));
 
-        bool isContained = fullCombined.Equals(fullBase, StringComparison.OrdinalIgnoreCase) ||
-                            fullCombined.StartsWith(fullBase + _fileSystem.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        // A drive root such as D:\ already ends in a separator. The base itself is refused too: an entry named
+        // "." or "Data\.." resolves to it, and removing it deletes the whole install along with uninstall.zip.
+        string root = _fileSystem.Path.EndsInDirectorySeparator(fullBase) ? fullBase : fullBase + _fileSystem.Path.DirectorySeparatorChar;
+        bool isContained = fullCombined.Length > root.Length && fullCombined.StartsWith(root, StringComparison.OrdinalIgnoreCase);
         if (!isContained)
         {
             throw new InvalidDataException(

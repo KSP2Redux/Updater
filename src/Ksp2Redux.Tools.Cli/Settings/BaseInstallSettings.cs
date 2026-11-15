@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Ksp2Redux.Tools.Cli.Settings;
@@ -14,4 +15,10 @@ public abstract class BaseInstallSettings : BaseSettings
     [CommandOption("--install <ID_OR_NAME>")]
     [Description("Id or name of the KSP2 install to act on. Defaults to the active install.")]
     public string? Install { get; init; }
+
+    // A blank value would fall back to the active install, so a script with an unset variable would act on it.
+    public override ValidationResult Validate() =>
+        Install is not null && string.IsNullOrWhiteSpace(Install)
+            ? ValidationResult.Error("--install cannot be blank. Leave it out to use the active install.")
+            : ValidationResult.Success();
 }

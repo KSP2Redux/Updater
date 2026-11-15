@@ -3,6 +3,7 @@ using Avalonia.Logging;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using CommandLine;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 namespace Ksp2Redux.Tools.Launcher;
@@ -34,6 +35,7 @@ sealed class Program
     /// </summary>
     public static string RenderingFlags => GetRenderingFlags(_softwareRendering, _noComposition);
 
+    private static bool _isUpdateStep;
     private static bool _softwareRendering;
     private static bool _noComposition;
 
@@ -67,6 +69,7 @@ sealed class Program
 
         Parser.Default.ParseArguments<Options>(args).WithParsed(options =>
         {
+            _isUpdateStep = options.ParentProcessId is not null;
             _softwareRendering = options.SoftwareRendering;
             _noComposition = options.NoComposition;
             if (options.ParentProcessId is { } pid && options.Executable is { } exe)
@@ -116,7 +119,12 @@ sealed class Program
         });
         try
         {
-            LauncherInstance.MarkRunning();
+            // A launcher started by a self-update replaces the one that started it, which may not have exited yet.
+            if (!LauncherInstance.MarkRunning() && !_isUpdateStep)
+            {
+                ReportAlreadyRunning();
+                return;
+            }
             var builder = BuildAvaloniaApp();
             if (CreateWin32Options(_softwareRendering, _noComposition) is { } win32Options)
             {
@@ -160,6 +168,13 @@ sealed class Program
             };
         }
         return null;
+    }
+
+    private static void ReportAlreadyRunning()
+    {
+        var message = LocalizationService.Default["App.AlreadyRunning"];
+        LogService.WriteEarly(message);
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) NativeMessageBox.ShowError(message, "KSP2 Redux");
     }
 
     private static int _crashReported;
