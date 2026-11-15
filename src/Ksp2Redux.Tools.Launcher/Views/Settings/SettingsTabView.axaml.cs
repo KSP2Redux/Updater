@@ -85,6 +85,8 @@ public partial class SettingsTabView : UserControl
         await Model.OpenLogsFolder();
     }
 
+    private void SaveBackupsList_OnDropDownOpened(object? sender, EventArgs e) => Model.RefreshSaveBackups();
+
     private async void CopyDiagnosticInfoClick(object? sender, RoutedEventArgs e)
     {
         var topLevel = TopLevel.GetTopLevel(this);

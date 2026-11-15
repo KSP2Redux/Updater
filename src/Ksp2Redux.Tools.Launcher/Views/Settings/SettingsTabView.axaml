@@ -304,7 +304,7 @@
 				</Grid>
 			</Border>
 
-			<Grid Grid.Row="4" RowDefinitions="Auto,Auto" Margin="0,12,0,0">
+			<Grid Grid.Row="4" RowDefinitions="Auto,Auto,Auto" Margin="0,12,0,0">
 				<WrapPanel Grid.Row="0" Orientation="Horizontal">
 				<Button Margin="0,0,10,6" FontSize="11" Padding="8,4" Click="OpenLogsFolderClick"
 				        Content="{loc:T Settings.OpenLogsFolder}" />
@@ -330,7 +330,28 @@
 				          Content="{loc:T Settings.BackgroundMotion}"
 				          ToolTip.Tip="{loc:T Settings.BackgroundMotion.Tooltip}" />
 				</WrapPanel>
-				<TextBlock Grid.Row="1" Margin="0,2,0,0"
+				<WrapPanel Grid.Row="1" Orientation="Horizontal" ToolTip.Tip="{loc:T Settings.SaveBackups.Tooltip}">
+					<TextBlock Margin="0,0,8,6" FontSize="11" VerticalAlignment="Center"
+					           Text="{loc:T Settings.SaveBackups}" />
+					<ComboBox Name="SaveBackupsList" Margin="0,0,10,6" FontSize="11" MinWidth="220"
+					          ItemsSource="{Binding SaveBackups}"
+					          SelectedItem="{Binding SelectedSaveBackup}"
+					          PlaceholderText="{loc:T Settings.SaveBackups.None}"
+					          DropDownOpened="SaveBackupsList_OnDropDownOpened">
+						<ComboBox.ItemTemplate>
+							<DataTemplate x:DataType="settings:SaveBackupChoice">
+								<TextBlock Text="{Binding DisplayName}" />
+							</DataTemplate>
+						</ComboBox.ItemTemplate>
+					</ComboBox>
+					<Button Margin="0,0,10,6" FontSize="11" Padding="8,4"
+					        Command="{Binding RestoreSaveBackupCommand}"
+					        Content="{loc:T Settings.SaveBackups.Restore}" />
+					<Button Margin="0,0,10,6" FontSize="11" Padding="8,4"
+					        Command="{Binding OpenSaveBackupsFolderCommand}"
+					        Content="{loc:T Settings.SaveBackups.OpenFolder}" />
+				</WrapPanel>
+				<TextBlock Grid.Row="2" Margin="0,2,0,0"
 				           FontFamily="{StaticResource JetBrainsMonoLight}" FontSize="11"
 				           Foreground="{StaticResource TextFaintBrush}"
 				           HorizontalAlignment="Right" VerticalAlignment="Center"

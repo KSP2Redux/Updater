@@ -62,6 +62,7 @@ public static class CliServiceProvider
         services.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         services.AddSingleton<IBundleConversionService, BundleConversionService>();
         services.AddSingleton<IInstallFileLockService, InstallFileLockService>();
+        services.AddSingleton<ISaveBackupService, SaveBackupService>();
         services.AddSingleton<IInstallPlanService, InstallPlanService>();
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IWineRuntimeService, WineRuntimeService>();

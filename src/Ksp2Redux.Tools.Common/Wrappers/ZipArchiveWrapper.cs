@@ -7,6 +7,7 @@ namespace Ksp2Redux.Tools.Common.Wrappers;
 public interface IZipArchive : IDisposable
 {
     ZipArchiveMode Mode { get; }
+    IReadOnlyList<IZipArchiveEntry> Entries { get; }
     IZipArchiveEntry? GetEntry(string entryName);
     IZipArchiveEntry CreateEntry(string entryName);
     void ExtractToDirectory(IFileSystem fileSystem, string destinationDirectoryName, bool overwriteFiles);
@@ -21,6 +22,8 @@ public interface IZipArchive : IDisposable
 public class ZipArchiveWrapper(ZipArchive archive) : IZipArchive
 {
     public ZipArchiveMode Mode => archive.Mode;
+
+    public IReadOnlyList<IZipArchiveEntry> Entries => [.. archive.Entries.Select(entry => new ZipArchiveEntryWrapper(entry))];
 
     public IZipArchiveEntry? GetEntry(string entryName)
     {
@@ -53,6 +56,7 @@ public class ZipArchiveWrapper(ZipArchive archive) : IZipArchive
 
 public interface IZipArchiveEntry
 {
+    string FullName { get; }
     Stream Open();
     void ExtractToFile(IFileSystem fileSystem, string destinationFileName);
 }
@@ -64,6 +68,8 @@ public interface IZipArchiveEntry
 /// <param name="entry">The original entry.</param>
 public class ZipArchiveEntryWrapper(ZipArchiveEntry entry) : IZipArchiveEntry
 {
+    public string FullName => entry.FullName;
+
     public Stream Open()
     => entry.Open();
     
