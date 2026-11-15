@@ -187,6 +187,22 @@ https://ksp2redux.org</value>
     <value>{0}/{3} steps ({1:0}%)</value>
     <comment>Text on the install progress bar. {0} = steps done, {3} = steps in total, {1} = percent done. Keep the placeholders with their formats.</comment>
   </data>
+  <data name="Home.Progress.Rate" xml:space="preserve">
+    <value>{0}/s · {1}</value>
+    <comment>Beside the download progress bar. {0} is a size such as "12.3 MB", {1} is one of the Home.Progress.TimeLeft texts.</comment>
+  </data>
+  <data name="Home.Progress.TimeLeft.Seconds" xml:space="preserve">
+    <value>about {0} s left</value>
+    <comment>Time until the patch downloads finish. {0} is a number of seconds.</comment>
+  </data>
+  <data name="Home.Progress.TimeLeft.Minutes" xml:space="preserve">
+    <value>about {0} min left</value>
+    <comment>Time until the patch downloads finish. {0} is a number of minutes.</comment>
+  </data>
+  <data name="Home.Progress.TimeLeft.Hours" xml:space="preserve">
+    <value>about {0} h {1} min left</value>
+    <comment>Time until the patch downloads finish. {0} is hours, {1} is minutes.</comment>
+  </data>
   <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
     <value>New version of the updater app is necessary to install or update redux</value>
     <comment>Red bar at the bottom of the Home tab when the launcher itself must be updated first.</comment>

@@ -14,6 +14,7 @@ using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Home;
@@ -78,6 +79,10 @@ public partial class HomeTabViewModel : ViewModelBase
     [ObservableProperty]
     public partial float DownloadProgressTotalMb { get; set; } = 450;
 
+    /// <summary>Download speed and time left while patches download, or null before it is measured.</summary>
+    [ObservableProperty]
+    public partial string? DownloadRateText { get; set; }
+
     [ObservableProperty]
     public partial float InstallProgressSteps { get; set; } = 1;
 
@@ -97,6 +102,12 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
+    // Cached and resumed patches count as downloaded the moment downloads start, so measuring starts after that jump.
+    private static readonly TimeSpan DOWNLOAD_RATE_WARM_UP = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan DOWNLOAD_RATE_REFRESH_INTERVAL = TimeSpan.FromSeconds(1);
+    private TransferRateMeter _downloadRate = new();
+    private readonly Stopwatch _downloadClock = new();
+    private TimeSpan? _lastDownloadRateRefresh;
 
     public bool IsOperationRunning => _cancelCurrentOperation is not null;
     private CancellationTokenSource? _gameSession;
@@ -628,13 +639,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        ResetInstallLog();
-        IsInstallLogVisible = true;
-        IsProgressVisible = true;
-        DownloadProgressMb = 0;
-        DownloadProgressTotalMb = 0;
-        InstallProgressSteps = 0;
-        InstallProgressTotalSteps = 1;
+        ResetProgress();
         
         // gather process dependencies.
         
@@ -767,13 +772,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        ResetInstallLog();
-        IsInstallLogVisible = true;
-        IsProgressVisible = true;
-        DownloadProgressMb = 0;
-        DownloadProgressTotalMb = 0;
-        InstallProgressSteps = 0;
-        InstallProgressTotalSteps = 1;
+        ResetProgress();
         
         var plan = new InstallPlan();
         plan.ApplyPatchFile(path);
@@ -848,13 +847,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        ResetInstallLog();
-        IsInstallLogVisible = true;
-        IsProgressVisible = true;
-        DownloadProgressMb = 0;
-        DownloadProgressTotalMb = 0;
-        InstallProgressSteps = 0;
-        InstallProgressTotalSteps = 1;
+        ResetProgress();
 
         MainButtonShown = MainButtonState.Cancel;
         MainButtonEnabled = true;
@@ -983,9 +976,54 @@ public partial class HomeTabViewModel : ViewModelBase
             {
                 DownloadProgressMb = value / 1024f / 1024f;
                 DownloadProgressTotalMb = max / 1024f / 1024f;
+                UpdateDownloadRate(value, max);
             });
         }
     }
+
+    private void ResetProgress()
+    {
+        ResetInstallLog();
+        IsInstallLogVisible = true;
+        IsProgressVisible = true;
+        DownloadProgressMb = 0;
+        DownloadProgressTotalMb = 0;
+        InstallProgressSteps = 0;
+        InstallProgressTotalSteps = 1;
+        DownloadRateText = null;
+        _downloadRate = new TransferRateMeter();
+        _downloadClock.Reset();
+        _lastDownloadRateRefresh = null;
+    }
+
+    internal void UpdateDownloadRate(long downloaded, long total)
+    {
+        if (total <= 0 || downloaded >= total)
+        {
+            DownloadRateText = null;
+            return;
+        }
+
+        if (!_downloadClock.IsRunning) _downloadClock.Start();
+        var now = _downloadClock.Elapsed;
+        if (now < DOWNLOAD_RATE_WARM_UP) return;
+
+        _downloadRate.Sample(downloaded, now);
+        if (_lastDownloadRateRefresh is { } last && now - last < DOWNLOAD_RATE_REFRESH_INTERVAL) return;
+        if (_downloadRate.BytesPerSecond is not { } rate || rate < 1) return;
+
+        _lastDownloadRateRefresh = now;
+        var remaining = TimeSpan.FromSeconds((total - downloaded) / rate);
+        DownloadRateText = _localization.Format("Home.Progress.Rate",
+            SteamDownloadViewModel.FormatBytes((long)rate), FormatTimeLeft(remaining));
+    }
+
+    private string FormatTimeLeft(TimeSpan remaining) => remaining.TotalMinutes switch
+    {
+        < 1 => _localization.Format("Home.Progress.TimeLeft.Seconds", Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds))),
+        < 60 => _localization.Format("Home.Progress.TimeLeft.Minutes", (int)Math.Ceiling(remaining.TotalMinutes)),
+        _ => _localization.Format("Home.Progress.TimeLeft.Hours", (int)remaining.TotalHours, remaining.Minutes),
+    };
 
     // The log file always gets English, and the install log on screen the user's language.
     internal void Log(LogMessage message)

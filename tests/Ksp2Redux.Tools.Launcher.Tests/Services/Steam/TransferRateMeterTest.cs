@@ -55,6 +55,22 @@ public class TransferRateMeterTest
         Assert.That(meter.BytesPerSecond, Is.LessThan(before).And.GreaterThan(0));
     }
 
+    [Test]
+    public void Sample_OlderTotalArrivesLate_IsIgnored()
+    {
+        // Arrange
+        var meter = new TransferRateMeter();
+        meter.Sample(0, TimeSpan.Zero);
+        meter.Sample(50 * MEGABYTE, TimeSpan.FromSeconds(1));
+        var before = meter.BytesPerSecond!.Value;
+
+        // Act
+        meter.Sample(40 * MEGABYTE, TimeSpan.FromSeconds(1.5));
+
+        // Assert
+        Assert.That(meter.BytesPerSecond, Is.EqualTo(before));
+    }
+
     [SetCulture("en-US")]
     [TestCase(null, "1.0 GB of 31.0 GB  ·  measuring...  ·  10/4287 files")]
     [TestCase(104857600.0, "1.0 GB of 31.0 GB  ·  100.0 MB/s  ·  10/4287 files")]
