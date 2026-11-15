@@ -59,13 +59,15 @@ public class LauncherConfigService : ILauncherConfigService
                 BackUpUnreadableConfig(fileSystem, configFilePath);
             }
         }
-        catch (FileNotFoundException)
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             _log.Info($"No launcher config at {configFilePath} yet. A fresh config will be created.");
         }
-        catch (Exception ex)
+        // Only unreadable content counts as corrupt. A file held by an antivirus scan or a sync tool
+        // is still the player's config, and replacing it would lose every install profile.
+        catch (JsonException ex)
         {
-            _log.Warn($"Could not read or deserialize launcher config at {configFilePath} ({ex.GetType().Name}: {ex.Message}). A fresh config will be created.");
+            _log.Warn($"Could not deserialize launcher config at {configFilePath} ({ex.Message}). A fresh config will be created.");
             BackUpUnreadableConfig(fileSystem, configFilePath);
         }
 
