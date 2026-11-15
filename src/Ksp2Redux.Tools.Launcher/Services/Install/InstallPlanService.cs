@@ -198,11 +198,15 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile))
+                    try
                     {
+                        using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);
                         await patch.AsyncApply(environmentProvider, install, patchLog, patchLog);
                     }
-                    fileSystem.File.Delete(patchFile);
+                    finally
+                    {
+                        fileSystem.File.Delete(patchFile);
+                    }
                     break;
                 }
 
