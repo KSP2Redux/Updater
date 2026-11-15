@@ -69,6 +69,21 @@ public class Ksp2PatchBinaryPatchTest
         Assert.That(fs.Directory.EnumerateFiles(InstallDir), Is.EqualTo(new[] { fs.Path.Combine(InstallDir, FileName) }));
     }
 
+    // BsDiff opens the diff once per block it reads, four times per file.
+    [Test]
+    public async Task AsyncApply_StockFile_ReadsTheDiffFromDiskOnce()
+    {
+        // Arrange
+        var (patch, fs) = MakePatch();
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, FileName), Original);
+
+        // Act
+        await patch.AsyncApply(new MockEnvironmentProvider(), InstallDir);
+
+        // Assert
+        Assert.That(fs.Statistics.File.Methods.Count(call => call.Name == nameof(IFile.ReadAllBytes)), Is.EqualTo(1));
+    }
+
     [Test]
     public async Task AsyncApply_FileDoesNotMatchTheOriginalHash_LeavesNoTemporaryFileInTheInstall()
     {

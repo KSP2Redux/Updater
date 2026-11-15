@@ -395,13 +395,10 @@ public class Ksp2Patch : IDisposable
                                     {
                                         try
                                         {
-                                            string patchPath = _fileSystem.Path.Combine(tempPatchDir,
-                                                $"{trueName}.bsdiff");
-                                            BinaryPatch.Apply(originalFile, () =>
-                                            {
-                                                var memory = new MemoryStream(_fileSystem.File.ReadAllBytes(patchPath));
-                                                return memory;
-                                            }, swapFile);
+                                            byte[] diff = _fileSystem.File.ReadAllBytes(
+                                                _fileSystem.Path.Combine(tempPatchDir, $"{trueName}.bsdiff"));
+                                            // BsDiff asks for a fresh stream for each block it reads.
+                                            BinaryPatch.Apply(originalFile, () => new MemoryStream(diff, false), swapFile);
                                         }
                                         catch (Exception e)
                                         {
