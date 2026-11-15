@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -90,5 +91,6 @@ public partial class SettingsTabView : UserControl
         var clipboard = topLevel?.Clipboard;
         if (clipboard is null) return;
         await clipboard.SetTextAsync(Model.BuildDiagnosticInfo());
+        if (sender is Control button) FlyoutBase.ShowAttachedFlyout(button);
     }
 }
