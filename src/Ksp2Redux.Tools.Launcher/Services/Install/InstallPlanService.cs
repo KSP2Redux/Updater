@@ -198,11 +198,15 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile))
+                    try
                     {
-                        await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
+                        using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);
+                        await patch.AsyncApply(environmentProvider, install, patchLog, patchLog);
                     }
-                    fileSystem.File.Delete(patchFile);
+                    finally
+                    {
+                        fileSystem.File.Delete(patchFile);
+                    }
                     break;
                 }
 
@@ -221,7 +225,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     mutationStarted = true;
                     using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath))
                     {
-                        await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
+                        await patch.AsyncApply(environmentProvider, install, patchLog, patchLog);
                     }
                     if (apply.DeleteAfter && fileSystem.File.Exists(patchPath))
                     {
@@ -384,8 +388,10 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         var remotePatches = installPlan.DownloadRequests.ToList();
         if (remotePatches.Count > 0)
         {
+            // Every patch is downloaded before the first step and kept until its own, and the patch being rebuilt
+            // from its parts needs room for the parts and the whole at once.
             long largestPatch = remotePatches.Max(request => request.Patch.Size);
-            long stagingRequired = checked(largestPatch * 2 + DISK_SAFETY_BYTES);
+            long stagingRequired = checked(remotePatches.Sum(request => request.Patch.Size) + largestPatch + DISK_SAFETY_BYTES);
             EnsureVolumeSpace(
                 remotePatches[0].StorageDirectory, stagingRequired,
                 "Install.Disk.Download", log);
@@ -402,7 +408,10 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                                    !fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip"));
         if (needsCacheSnapshot)
         {
-            requiredBytes += GetSnapshotSize(install, "", cacheService.IgnoredDirectories);
+            long snapshotBytes = GetSnapshotSize(install, "", cacheService.IgnoredDirectories);
+            requiredBytes += snapshotBytes;
+            // The snapshot is built in the temp folder, usually on the system drive, before it moves beside the game.
+            EnsureVolumeSpace(fileSystem.Path.GetTempPath(), checked(snapshotBytes + DISK_SAFETY_BYTES), "Install.Disk.Temporary", log);
         }
 
         requiredBytes = (long)(requiredBytes * RequiredSpaceSafetyMargin);
@@ -450,7 +459,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         return total;
     }
 
-    private static string FormatBytes(long bytes)
+    internal static string FormatBytes(long bytes)
     {
         double mb = bytes / (1024.0 * 1024.0);
         return mb >= 1024 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
