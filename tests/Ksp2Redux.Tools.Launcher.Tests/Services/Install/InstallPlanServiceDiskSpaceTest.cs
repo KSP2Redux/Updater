@@ -121,4 +121,20 @@ public class InstallPlanServiceDiskSpaceTest
         Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
             Throws.TypeOf<InsufficientDiskSpaceException>().With.Message.Contains("disk space"));
     }
+
+    // uninstall.zip is built in the temp folder, usually on the system drive, before it moves beside the game.
+    [Test]
+    public void ApplyToFolder_FirstPrepatch_ChecksTheTempDriveHoldsTheSnapshot()
+    {
+        var (service, diskSpace, fs) = MakeService();
+        fs.File.WriteAllBytes(fs.Path.Combine(InstallDir, "UnityPlayer.dll"), new byte[10 * 1024 * 1024]);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(InstallDir)).Returns(100L * 1024 * 1024 * 1024);
+        diskSpace.Setup(d => d.GetAvailableFreeSpace(fs.Path.GetTempPath())).Returns(1024L * 1024);
+
+        var plan = new InstallPlan();
+        plan.Prepatch();
+
+        Assert.That(async () => await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None),
+            Throws.TypeOf<InsufficientDiskSpaceException>().With.Property(nameof(InsufficientDiskSpaceException.Path)).EqualTo(fs.Path.GetTempPath()));
+    }
 }

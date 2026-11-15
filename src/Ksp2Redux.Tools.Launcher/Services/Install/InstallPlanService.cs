@@ -402,7 +402,10 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                                    !fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip"));
         if (needsCacheSnapshot)
         {
-            requiredBytes += GetSnapshotSize(install, "", cacheService.IgnoredDirectories);
+            long snapshotBytes = GetSnapshotSize(install, "", cacheService.IgnoredDirectories);
+            requiredBytes += snapshotBytes;
+            // The snapshot is built in the temp folder, usually on the system drive, before it moves beside the game.
+            EnsureVolumeSpace(fileSystem.Path.GetTempPath(), checked(snapshotBytes + DISK_SAFETY_BYTES), "Install.Disk.Temporary", log);
         }
 
         requiredBytes = (long)(requiredBytes * RequiredSpaceSafetyMargin);
