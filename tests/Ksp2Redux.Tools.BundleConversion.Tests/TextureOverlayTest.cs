@@ -1,3 +1,4 @@
+using AssetsTools.NET;
 using Ksp2Redux.Tools.BundleConversion.Bundles;
 using Ksp2Redux.Tools.BundleConversion.Textures;
 
@@ -161,6 +162,23 @@ public class TextureOverlayTest
     }
 
     [Test]
+    public void Revert_OverlayFolderDeleted_StillDeletesTheJournal()
+    {
+        // Arrange
+        TestGame game = new();
+        game.Write(BODY, CloudBundle(compress: false));
+        game.Converter().Apply(NO_SHADERS);
+        game.FileSystem.Directory.Delete(game.Layout.OverlayDirectory, recursive: true);
+
+        // Act
+        var result = game.Converter().Revert();
+
+        // Assert
+        Assert.That(result.Failures, Is.Empty);
+        Assert.That(result.JournalDeleted, Is.True);
+    }
+
+    [Test]
     public void Apply_CompressedBundle_LeavesTheCloudCubemapsAndSaysWhy()
     {
         // Arrange
@@ -175,6 +193,33 @@ public class TextureOverlayTest
         Assert.That(result.Plan.SkippedTextures.Select(skip => skip.Name), Is.EquivalentTo(new[] { NORMAL, COLOR, READABLE }));
         Assert.That(result.Plan.SkippedTextures.Select(skip => skip.Reason), Has.All.Contains("compressed blocks"));
         Assert.That(game.Journal()!.Overlaid, Is.Empty);
+    }
+
+    [Test]
+    public void PlanTextures_StockPixelsRunIntoACompressedBlockPastTheConvertedSize_SkipsTheTexture()
+    {
+        // Arrange: the 16-bit normal map's converted size fits in the first, uncompressed block, but the stock
+        // pixels the conversion reads run on into a compressed one.
+        TestGame game = new();
+        game.Write(BODY, CloudBundle(compress: false));
+        var bundle = BundleScanner.Scan(game.FileSystem, game.Layout.BundlePath(BODY), []);
+        var normalStart = bundle.Entries.Single(entry => entry.Name.EndsWith(".resS", StringComparison.Ordinal)).DataOffset + NORMAL_OFFSET;
+        var split = (uint)(normalStart + HALF_FACE * 6 / 2 + 8);
+        var layout = bundle.Layout!;
+        var rest = (uint)(layout.DataLength - split);
+        bundle.Layout = BlockLayout.Create(layout.FileStarts[0],
+        [
+            new AssetBundleBlockInfo { DecompressedSize = split, CompressedSize = split, Flags = 0 },
+            new AssetBundleBlockInfo { DecompressedSize = rest, CompressedSize = rest / 2, Flags = 3 },
+        ]);
+        List<SkippedTexture> skipped = [];
+
+        // Act
+        var planned = ConversionPlanner.PlanTextures([bundle], [], skipped);
+
+        // Assert
+        Assert.That(planned.SelectMany(plan => plan.Textures).Select(texture => texture.Name), Does.Not.Contain(NORMAL));
+        Assert.That(skipped.Single(skip => skip.Name == NORMAL).Reason, Does.Contain("compressed blocks"));
     }
 
     [Test]

@@ -105,7 +105,7 @@ public partial class SteamDownloadViewModel : ViewModelBase
 
             Completed?.Invoke(this, exePath);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested)
         {
             Completed?.Invoke(this, null);
         }

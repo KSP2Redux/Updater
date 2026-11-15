@@ -87,4 +87,25 @@ public class BackgroundMotionSettingTest
         Assert.That(config.ParallaxMotion, Is.False);
         Assert.That(TestAppBuilder.FileSystem.File.ReadAllText(config.StoragePath), Does.Contain("\"ParallaxMotion\": false"));
     }
+
+    [AvaloniaTest]
+    public void MotionSetting_TurnsInterfaceAnimationsOnAndOff()
+    {
+        MainWindow.AnimationsSupported = true;
+        try
+        {
+            var (window, viewModel, _) = Start();
+            Assert.That(window.Classes, Does.Contain("motion"));
+
+            viewModel.SettingsTab.ParallaxMotion = false;
+            Assert.That(window.Classes, Does.Not.Contain("motion"));
+
+            viewModel.SettingsTab.ParallaxMotion = true;
+            Assert.That(window.Classes, Does.Contain("motion"));
+        }
+        finally
+        {
+            MainWindow.AnimationsSupported = false;
+        }
+    }
 }

@@ -55,6 +55,80 @@ public class Ksp2GameUninstallServiceTest
         Assert.That(removal.Kind, Is.EqualTo(Ksp2GameRemovalKind.NotAGameFolder));
     }
 
+    // A portable copy unpacked loose into a shared folder passes the exe and data checks, and deleting the folder
+    // would take everything else in it.
+    [Test]
+    public void Inspect_GameUnpackedBesideAnotherProgram_IsNotDeletable()
+    {
+        // Arrange
+        const string downloads = @"C:\Users\Eivind\Downloads";
+        CreateGame(downloads);
+        _fileSystem.File.WriteAllText(_fileSystem.Path.Combine(downloads, "SteamSetup.exe"), "installer");
+
+        // Act
+        var removal = _service.Inspect(_fileSystem.Path.Combine(downloads, "KSP2_x64.exe"));
+
+        // Assert
+        Assert.That(removal.Kind, Is.EqualTo(Ksp2GameRemovalKind.NotAGameFolder));
+    }
+
+    [Test]
+    public void Inspect_GameUnpackedAmongManyUnrelatedFiles_IsNotDeletable()
+    {
+        // Arrange
+        const string downloads = @"C:\Users\Eivind\Downloads";
+        CreateGame(downloads);
+        for (var i = 0; i < 11; i++)
+        {
+            _fileSystem.File.WriteAllText(_fileSystem.Path.Combine(downloads, $"document{i}.pdf"), "important");
+        }
+
+        // Act
+        var removal = _service.Inspect(_fileSystem.Path.Combine(downloads, "KSP2_x64.exe"));
+
+        // Assert
+        Assert.That(removal.Kind, Is.EqualTo(Ksp2GameRemovalKind.NotAGameFolder));
+    }
+
+    [Test]
+    public void Inspect_GameAtTheRootOfADrive_IsNotDeletable()
+    {
+        // Arrange
+        CreateGame(@"D:\");
+
+        // Act
+        var removal = _service.Inspect(@"D:\KSP2_x64.exe");
+
+        // Assert
+        Assert.That(removal.Kind, Is.EqualTo(Ksp2GameRemovalKind.NotAGameFolder));
+    }
+
+    [Test]
+    public void Inspect_ModdedReduxInstall_CanBeDeleted()
+    {
+        // Arrange
+        CreateGame(GAME);
+        foreach (var folder in new[] { "MonoBleedingEdge", "PDLauncher", "Redux", "BepInEx", "mods", ".egstore" })
+        {
+            _fileSystem.Directory.CreateDirectory(_fileSystem.Path.Combine(GAME, folder));
+        }
+        foreach (var file in new[]
+                 {
+                     "UnityPlayer.dll", "UnityCrashHandler64.exe", "uninstall.zip", "prepatched.nodelete", "redux.log",
+                     "redux.log.old", "Ksp2.log", "winhttp.dll", "doorstop_config.ini", ".doorstop_version", "changelog.txt",
+                     "ReShade.ini", "dxgi.dll", "notes.txt"
+                 })
+        {
+            _fileSystem.File.WriteAllText(_fileSystem.Path.Combine(GAME, file), "x");
+        }
+
+        // Act
+        var removal = _service.Inspect(_fileSystem.Path.Combine(GAME, "KSP2_x64.exe"));
+
+        // Assert
+        Assert.That(removal.Kind, Is.EqualTo(Ksp2GameRemovalKind.DeleteFolder));
+    }
+
     [Test]
     public void Inspect_FolderGone_IsMissing()
     {

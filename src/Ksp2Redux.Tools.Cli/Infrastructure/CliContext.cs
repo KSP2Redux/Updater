@@ -337,13 +337,19 @@ public sealed class CliContext
     /// Turns a path to a KSP2 folder or executable into the executable path the launcher stores.
     /// </summary>
     /// <param name="path">A path to the KSP2 folder or to KSP2_x64.exe.</param>
-    /// <returns>The path to the executable, which may not exist.</returns>
+    /// <returns>The full path to the executable, which may not exist, or an empty string for a blank path.</returns>
     public string ResolveExePath(string path)
     {
         var trimmed = path.Trim().Trim('"');
-        return _fileSystem.Directory.Exists(trimmed)
-            ? _fileSystem.Path.Combine(trimmed, Ksp2Install.KSP2_EXE_NAME)
-            : trimmed;
+        if (trimmed.Length == 0)
+        {
+            return trimmed;
+        }
+
+        var full = _fileSystem.Path.GetFullPath(trimmed);
+        return _fileSystem.Directory.Exists(full)
+            ? _fileSystem.Path.Combine(full, Ksp2Install.KSP2_EXE_NAME)
+            : full;
     }
 
     /// <summary>
@@ -396,11 +402,11 @@ public sealed class CliContext
             ? "No active KSP2 install is configured. Add one with 'installs add' or 'steam download', or name one explicitly."
             : $"No KSP2 install matched '{selector}'.";
 
-        Output.Error(message);
+        var exitCode = Output.Fail(ExitCode.INSTALL_NOT_FOUND, message);
         if (InstallService.Entries.Count == 0)
         {
             Output.ErrorDetail("  (the launcher config lists no installs at all)");
-            return ExitCode.INSTALL_NOT_FOUND;
+            return exitCode;
         }
 
         Output.ErrorDetail("Configured installs:");
@@ -409,18 +415,27 @@ public sealed class CliContext
             Output.ErrorDetail($"  {entry.Id}  {entry.Name}  [{ReleaseChannels.DisplayName(entry.ReleaseChannel)}]  {entry.ExePath}");
         }
 
-        return ExitCode.INSTALL_NOT_FOUND;
+        return exitCode;
     }
 
     /// <summary>
-    /// Reports that a channel has no feed, naming the channels that did load.
+    /// Reports that a channel has no loaded feed, naming the channels that did load.
     /// </summary>
     /// <param name="channel">The channel that has no feed.</param>
     /// <param name="loaded">The results returned by <see cref="LoadFeedsAsync" />.</param>
-    /// <returns>The feed not configured exit code.</returns>
+    /// <returns>The feed unavailable exit code when any feed failed to load, otherwise feed not configured.</returns>
+    // A feed that failed to load never declared its channel, so any failure may be the one serving
+    // this channel. Offline every feed fails, and that is not a setup problem.
     public int FailFeedNotConfigured(string channel, IReadOnlyList<FeedLoadResult> loaded)
     {
-        Output.Error($"No feed for channel '{ReleaseChannels.DisplayName(channel)}' in the launcher config.");
+        var failed = loaded.Count(r => !r.IsOk);
+        var exitCode = failed > 0
+            ? Output.Fail(
+                ExitCode.FEED_UNAVAILABLE,
+                $"No feed for channel '{ReleaseChannels.DisplayName(channel)}' loaded: {failed} feed(s) in the launcher config could not be loaded.")
+            : Output.Fail(
+                ExitCode.FEED_NOT_CONFIGURED,
+                $"No feed for channel '{ReleaseChannels.DisplayName(channel)}' in the launcher config.");
 
         var available = loaded.Where(r => r.IsOk).Select(r => ReleaseChannels.DisplayName(r.Channel)).ToList();
         if (available.Count > 0)
@@ -441,7 +456,7 @@ public sealed class CliContext
             Output.ErrorDetail("launcher settings using the internal testing instructions, then re-run.");
         }
 
-        return ExitCode.FEED_NOT_CONFIGURED;
+        return exitCode;
     }
 
     /// <summary>
@@ -470,7 +485,9 @@ public sealed class CliContext
     /// <returns>The version not found exit code.</returns>
     public int FailVersionNotFound(string selector, string channel)
     {
-        Output.Error($"Version '{selector}' is not published to channel '{ReleaseChannels.DisplayName(channel)}'.");
+        var exitCode = Output.Fail(
+            ExitCode.VERSION_NOT_FOUND,
+            $"Version '{selector}' is not published to channel '{ReleaseChannels.DisplayName(channel)}'.");
 
         foreach (var (otherChannel, feed) in FeedService.ReleasesFeed)
         {
@@ -490,7 +507,7 @@ public sealed class CliContext
             break;
         }
 
-        return ExitCode.VERSION_NOT_FOUND;
+        return exitCode;
     }
 
     /// <summary>

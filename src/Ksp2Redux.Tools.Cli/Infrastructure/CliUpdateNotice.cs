@@ -59,13 +59,25 @@ public static class CliUpdateNotice
             return state;
         }
 
-        var release = await context.CreateReleaseService(TimeSpan.FromSeconds(TIMEOUT_SECONDS))
-            .FindLatestAsync(cancellationToken);
+        string? latest;
+        try
+        {
+            var release = await context.CreateReleaseService(TimeSpan.FromSeconds(TIMEOUT_SECONDS))
+                .FindLatestAsync(cancellationToken);
+            latest = release?.Version.ToString();
+        }
+        // A failed check is recorded like a successful one, or an offline machine would wait out
+        // the timeout on every command. HttpClient reports its own timeout as a cancellation.
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+        {
+            context.LogService.Warn($"The update check could not reach GitHub: {e.Message}");
+            latest = state?.LatestVersion;
+        }
 
         CheckState refreshed = new()
         {
             CheckedAt = DateTimeOffset.UtcNow,
-            LatestVersion = release?.Version.ToString(),
+            LatestVersion = latest,
         };
 
         Write(context, refreshed);

@@ -195,6 +195,46 @@ public class WineRuntimeServiceTest
         Assert.That(fileSystem.File.ReadAllText(copied), Is.EqualTo("dxmt"));
     }
 
+    [Test]
+    public async Task PrepareAsync_FirstSetupFailedHalfway_RepairsThePrefixOnTheNextLaunchOnly()
+    {
+        var fileSystem = NewMacFileSystem();
+        AddBundledRuntime(fileSystem);
+        var winebootExitCode = 1;
+        var runner = new Mock<IProcessRunner>();
+        runner.Setup(r => r.RunAsync(It.IsAny<System.Diagnostics.ProcessStartInfo>(), It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()))
+            .Callback<System.Diagnostics.ProcessStartInfo, Action<LogMessage>, CancellationToken>((info, _, _) =>
+                fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(info.Environment["WINEPREFIX"]!, "drive_c")))
+            .ReturnsAsync(() => winebootExitCode);
+        var service = Build(fileSystem, runner);
+        var runtime = service.Detect()!;
+        Assert.That(() => service.PrepareAsync(runtime, _ => { }, CancellationToken.None), Throws.InvalidOperationException);
+
+        winebootExitCode = 0;
+        await service.PrepareAsync(runtime, _ => { }, CancellationToken.None);
+        await service.PrepareAsync(runtime, _ => { }, CancellationToken.None);
+
+        runner.Verify(r => r.RunAsync(
+            It.Is<System.Diagnostics.ProcessStartInfo>(i => i.ArgumentList.SequenceEqual(new[] { "wineboot", "--update" })),
+            It.IsAny<Action<LogMessage>>(), It.IsAny<CancellationToken>()), Times.Once,
+            "A prefix that never finished setting up is updated in place, and left alone once it has.");
+    }
+
+    [Test]
+    public async Task PrepareAsync_ExistingCrossOverBottle_IsUsedAsItIs()
+    {
+        var fileSystem = NewMacFileSystem();
+        AddCrossOver(fileSystem);
+        var runner = new Mock<IProcessRunner>();
+        var service = Build(fileSystem, runner);
+        var runtime = service.Detect()!;
+        fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(runtime.PrefixPath, "drive_c"));
+
+        await service.PrepareAsync(runtime, _ => { }, CancellationToken.None);
+
+        runner.VerifyNoOtherCalls();
+    }
+
     // Disabling mscoree stops Wine's Mono installer dialog from blocking the first run.
     [Test]
     public void CreateLaunchInfo_Bundled_AppliesTheRuntimesEnvironment()

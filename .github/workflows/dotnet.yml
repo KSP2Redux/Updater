@@ -10,10 +10,18 @@ concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
+permissions:
+    contents: read
+
 jobs:
     build-and-test:
         runs-on: ubuntu-latest
-        
+        # The test reporter publishes its results as a check run.
+        permissions:
+            contents: read
+            actions: read
+            checks: write
+
         steps:
             -   uses: actions/checkout@v7
             -   name: Setup .NET
@@ -33,7 +41,7 @@ jobs:
                     name: test-results
                     path: TestResults/
             -   name: Report Test Results
-                uses: dorny/test-reporter@v3
+                uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
                 if: always()
                 with:
                     name: Tests
@@ -51,6 +59,9 @@ jobs:
                     ./publish/cli/redux-launcher-cli --version
                     ./publish/cli/redux-launcher-cli --help
                     ./publish/cli/redux-launcher-cli complete -- "word:inst"
+                    # Builds the service container, which --version and --help never do. It reads the
+                    # configured channels without going online.
+                    ./publish/cli/redux-launcher-cli channels --json
                     # No command means usage, which is exit code 1 rather than a crash.
                     ./publish/cli/redux-launcher-cli && exit 1 || test $? -eq 1
 

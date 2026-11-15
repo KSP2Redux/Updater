@@ -6,6 +6,12 @@ on:
     # Rebuilds the macOS assets for a release that already exists, when the macOS job failed after publishing.
     workflow_dispatch:
 
+# One run at a time, so two quick pushes cannot both find no tag and both publish. The group must differ from the
+# called macOS runtime workflow's, which is named after this workflow and the ref.
+concurrency:
+    group: release
+    cancel-in-progress: false
+
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -41,6 +47,9 @@ jobs:
                     if git show-ref --tags --verify --quiet "refs/tags/${{ env.TAG }}"; then
                       echo "Tag ${{ env.TAG }} already exists. Skipping build and release."
                       echo "exists=true" >> $GITHUB_OUTPUT
+                    elif [ "$GITHUB_EVENT_NAME" != "push" ]; then
+                      echo "::error::Tag ${{ env.TAG }} does not exist. A manual run only rebuilds the macOS assets of an existing release; a push to main publishes a new one."
+                      exit 1
                     else
                       echo "New version detected: ${{ env.TAG }}. Proceeding..."
                       echo "exists=false" >> $GITHUB_OUTPUT
@@ -94,7 +103,10 @@ jobs:
                     # 10 minutes, and a release that becomes visible before its binaries finish
                     # uploading gets offered as an update that can't actually be downloaded.
                     # Drafts are invisible to the API, so only flip it public once everything is up.
+                    # A draft has no tag until it is published, and without --target the tag would then go on
+                    # whatever main's head is at that moment rather than the commit built here.
                     gh release create "$TAG" \
+                      --target "$GITHUB_SHA" \
                       ./publish/Ksp2Redux-win-x64.exe \
                       ./publish/Ksp2Redux-linux-x64 \
                       ./publish/redux-cli-x64.exe \
@@ -122,7 +134,10 @@ jobs:
             contents: write
 
         steps:
+            # The release's commit, not the branch head, which a manual run may have moved past it.
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ needs.build.outputs.tag }}
 
             -   name: Setup .NET
                 uses: actions/setup-dotnet@v6

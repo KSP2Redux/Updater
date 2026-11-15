@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -20,6 +21,7 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        ProgressFill.Register();
     }
 
     public override void OnFrameworkInitializationCompleted()

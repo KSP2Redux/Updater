@@ -30,6 +30,8 @@ internal sealed class TransferRateMeter
 
         var interval = elapsed - _lastSampleTime;
         if (interval < SAMPLE_INTERVAL) return;
+        // Progress reports from parallel downloads can reach the UI thread out of order.
+        if (totalBytes < _lastSampleBytes) return;
 
         var instant = (totalBytes - _lastSampleBytes) / interval.TotalSeconds;
         BytesPerSecond = BytesPerSecond is { } previous

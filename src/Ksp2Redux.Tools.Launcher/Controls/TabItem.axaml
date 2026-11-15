@@ -36,7 +36,9 @@
                 Padding="{TemplateBinding Padding}">
 
           <Grid ColumnDefinitions="Auto">
-            <StackPanel Grid.Column="0">
+            <!-- The underline overlays the space under the text instead of stacking below it, so it
+                 adds no height and the header lays out the same whether it is selected or not. -->
+            <Grid Grid.Column="0">
               <ContentPresenter Name="PART_ContentPresenter"
                                 Content="{TemplateBinding Header, Converter={StaticResource CaseConverter}, ConverterParameter=Upper}"
                                 ContentTemplate="{TemplateBinding HeaderTemplate}"
@@ -47,8 +49,8 @@
                     StrokeThickness="{DynamicResource TabItemPipeThickness}"
                     StrokeDashArray="1,1"
                     Stretch="Fill"
-                    IsVisible="False" />
-            </StackPanel>
+                    Opacity="0" />
+            </Grid>
           </Grid>
 
         </Border>
@@ -60,7 +62,7 @@
       <Setter Property="Foreground" Value="{DynamicResource TabItemHeaderForegroundSelected}" />
     </Style>
     <Style Selector="^:selected /template/ Path#PART_SelectedPipe">
-      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Opacity" Value="1" />
     </Style>
 
     <Style Selector="^:pointerover /template/ Border#PART_LayoutRoot">
@@ -101,7 +103,7 @@
 
     <Style Selector="^[TabStripPlacement=Top] /template/ Path#PART_SelectedPipe, ^[TabStripPlacement=Bottom] /template/ Path#PART_SelectedPipe">
       <Setter Property="Data" Value="M 0,0 L 1,0" /> <Setter Property="Height" Value="{DynamicResource TabItemPipeThickness}" />
-      <Setter Property="Margin" Value="0,0,0,2" />
+      <Setter Property="Margin" Value="0,0,0,-3" />
       <Setter Property="VerticalAlignment" Value="Bottom" />
     </Style>
 

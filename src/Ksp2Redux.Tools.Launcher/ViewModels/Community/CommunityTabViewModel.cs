@@ -11,10 +11,11 @@ public partial class CommunityTabViewModel(INewsService newsService, IMessageBox
     public Task LaunchExternalLinkAsync(TopLevel? topLevel, string? url)
         => ExternalLinkLauncher.LaunchAsync(topLevel, url, messageBoxService, log);
 
-    private string? SelectedNewsId
+    /// <summary>The id of the post the Community tab shows, or null when none is open.</summary>
+    public string? SelectedNewsId
     {
         get;
-        set
+        private set
         {
             if (field != value)
             {

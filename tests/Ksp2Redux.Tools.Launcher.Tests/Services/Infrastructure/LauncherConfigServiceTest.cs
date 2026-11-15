@@ -2,6 +2,7 @@
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Moq;
+using Testably.Abstractions.Testing;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Services.Infrastructure;
 
@@ -140,8 +141,9 @@ public class LauncherConfigServiceTest
             "Tried to read a file when appdata didn't exist");
     }
 
-    [Test]
-    public void Constructor_FailToReadAllText_WritesNewFile()
+    [TestCase(typeof(IOException))]
+    [TestCase(typeof(UnauthorizedAccessException))]
+    public void Constructor_ConfigTemporarilyUnreadable_ThrowsAndLeavesTheConfigAlone(Type failure)
     {
         // Arrange
         Mock<IEnvironmentProvider> environmentProvider  = new();
@@ -157,7 +159,7 @@ public class LauncherConfigServiceTest
         path.Setup(p => p.Combine("/appdata/Ksp2Redux", "redux-launcher-config.json"))
             .Returns("/appdata/Ksp2Redux/redux-launcher-config.json");
         file.Setup(f => f.ReadAllText("/appdata/Ksp2Redux/redux-launcher-config.json"))
-            .Throws<IOException>();
+            .Throws((Exception)Activator.CreateInstance(failure)!);
         path.Setup(p => p.GetDirectoryName("/appdata/Ksp2Redux/redux-launcher-config.json"))
             .Returns("/appdata/Ksp2Redux");
         
@@ -165,13 +167,24 @@ public class LauncherConfigServiceTest
         fileSystem.SetupGet(fs => fs.Directory).Returns(directory.Object);
         fileSystem.SetupGet(fs => fs.File).Returns(file.Object);
         
-        // Act
-        LauncherConfigService launcherConfigService = new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<IMessageBoxService>().Object, new Mock<ILogService>().Object);
-        
-        // Assert
-        file.Verify(f => f.Move("/appdata/Ksp2Redux/redux-launcher-config.json.tmp", "/appdata/Ksp2Redux/redux-launcher-config.json", true), Times.Once);
-        file.Verify(f => f.Copy("/appdata/Ksp2Redux/redux-launcher-config.json", "/appdata/Ksp2Redux/redux-launcher-config.json.bak", true), Times.Once);
-        Assert.That(launcherConfigService.Config, Is.Not.Null);
+        Assert.That(() => new LauncherConfigService(fileSystem.Object, environmentProvider.Object, new Mock<IMessageBoxService>().Object, new Mock<ILogService>().Object),
+            Throws.TypeOf(failure));
+        file.Verify(f => f.Move(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+        file.Verify(f => f.WriteAllText(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public void Constructor_FirstRunWithoutAConfigFolder_WritesAFreshConfig()
+    {
+        var fileSystem = new MockFileSystem();
+        var environmentProvider = new Mock<IEnvironmentProvider>();
+        environmentProvider.Setup(ep => ep.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
+            .Returns(fileSystem.Path.GetFullPath("appdata"));
+
+        var service = new LauncherConfigService(fileSystem, environmentProvider.Object, new Mock<IMessageBoxService>().Object, new Mock<ILogService>().Object);
+
+        Assert.That(service.Config.Ksp2Installs, Is.Empty);
+        Assert.That(fileSystem.File.Exists(service.Config.StoragePath), Is.True);
     }
 
     [Test]
