@@ -27,7 +27,7 @@
         <PackageReference Include="Avalonia.HtmlRenderer" />
         <PackageReference Include="Avalonia.Themes.Fluent" />
         <PackageReference Include="Avalonia.Fonts.Inter" />
-        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Condition="'$(Configuration)' == 'Debug'" />
         <PackageReference Include="CodeHollow.FeedReader" />
         <PackageReference Include="CommandLineParser" />
         <PackageReference Include="CommunityToolkit.Mvvm" />
