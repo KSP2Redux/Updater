@@ -18,6 +18,23 @@ public class CliParsingTest
         Assert.That(exit, Is.Not.Zero);
     }
 
+    [TestCase("")]
+    [TestCase("  ")]
+    public void InstallOption_Blank_IsRejected(string install)
+    {
+        BaseInstallSettings[] settings =
+        [
+            new UninstallSettings { Install = install }, new UpdateSettings { Install = install },
+            new InstallSettings { Install = install }, new LaunchSettings { Install = install },
+        ];
+
+        Assert.That(settings.Select(s => s.Validate().Successful), Is.All.False);
+    }
+
+    [Test]
+    public void InstallOption_LeftOut_UsesTheActiveInstall() =>
+        Assert.That(new UninstallSettings().Validate().Successful, Is.True);
+
     [Test]
     public void InstallsDelete_NamedInstall_Parses()
     {
