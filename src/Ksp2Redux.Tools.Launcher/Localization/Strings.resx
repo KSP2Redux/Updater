@@ -715,8 +715,8 @@ If some of your saves were already replaced, the saves you had before are in the
   <data name="Settings.UninstallKsp2.NotAGameFolder.Message" xml:space="preserve">
     <value>{0}
 
-doesn't look like a KSP2 install folder (there is no {1} with KSP2_x64_Data beside it), so nothing was deleted. Remove the profile instead if it points at the wrong place.</value>
-    <comment>Message box text. {0} = the folder path, shown on its own first line. {1} = the game executable file name. KSP2_x64_Data is a folder name.</comment>
+doesn't look like a folder that holds only KSP2, so nothing was deleted. Deleting removes the whole folder, so it needs {1} with KSP2_x64_Data beside it, and no other programs or lots of other files. Delete it by hand if you are sure, or remove the profile if it points at the wrong place.</value>
+    <comment>Message box text. {0} = the folder path, shown on its own first line. {1} = the game executable file name. KSP2_x64_Data is a folder name. Shown when the game is missing, or when the folder is a drive root or holds other programs or files.</comment>
   </data>
   <data name="Settings.UninstallKsp2.Missing.Title" xml:space="preserve">
     <value>KSP2 Already Gone</value>
