@@ -12,6 +12,8 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
 {
     private const int CHOICE_COUNT = 15;
 
+    protected override bool ChangesConfig => true;
+
     /// <inheritdoc />
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the plan outcome is not recognized</exception>
     protected override async Task<int> RunAsync(

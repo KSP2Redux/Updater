@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Linq.Expressions;
 using Ksp2Redux.Tools.Cli.Commands;
 using Ksp2Redux.Tools.Cli.Infrastructure;
@@ -34,6 +35,21 @@ public class InstallCommandTest
 
     private static Task<int> InstallPatch(CliCommandHarness harness, bool dryRun = false) =>
         new InstallCommand().RunWithContextAsync(harness.Context, new InstallSettings { PatchFile = PATCH, IsDryRun = dryRun });
+
+    // Both record the installed version in the launcher config, which an open launcher would
+    // overwrite with its own copy. The guard itself reads a machine wide mutex, so only the opt in
+    // is checked here.
+    [TestCase(typeof(InstallCommand))]
+    [TestCase(typeof(UpdateCommand))]
+    public void RecordsTheInstalledVersion_RefusesWhileTheLauncherIsOpen(Type command)
+    {
+        // Act
+        var changesConfig = command.GetProperty("ChangesConfig", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(Activator.CreateInstance(command));
+
+        // Assert
+        Assert.That(changesConfig, Is.True);
+    }
 
     [Test]
     public async Task PatchFile_Missing_FailsBeforeTouchingTheInstall()
