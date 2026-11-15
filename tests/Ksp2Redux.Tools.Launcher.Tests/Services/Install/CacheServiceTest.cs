@@ -62,7 +62,7 @@ public class CacheServiceTest
         fs.File.WriteAllText(stockBundle, "stock");
         fs.File.WriteAllText(fs.Path.Combine(InstallDir, "uninstall.zip"), "zip");
         zipFileService.Setup(z => z.OpenRead(It.IsAny<string>()))
-            .Returns(new Mock<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>().Object);
+            .Returns(Mock.Of<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>(a => a.Entries == Array.Empty<Ksp2Redux.Tools.Common.Wrappers.IZipArchiveEntry>()));
 
         service.RecursivelyRestoreCache(InstallDir);
 
@@ -84,12 +84,44 @@ public class CacheServiceTest
         fs.File.SetAttributes(readOnlyFile, FileAttributes.ReadOnly);
         fs.File.WriteAllText(fs.Path.Combine(InstallDir, "uninstall.zip"), "zip");
         zipFileService.Setup(z => z.OpenRead(It.IsAny<string>()))
-            .Returns(new Mock<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>().Object);
+            .Returns(Mock.Of<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>(a => a.Entries == Array.Empty<Ksp2Redux.Tools.Common.Wrappers.IZipArchiveEntry>()));
 
         service.RecursivelyRestoreCache(InstallDir);
 
         Assert.That(fs.File.Exists(readOnlyFile), Is.False);
         zipFileService.Verify(z => z.ExtractToDirectory(It.IsAny<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>(), InstallDir, true), Times.Once);
+    }
+
+    [Test]
+    public void RecursivelyRestoreCache_DamagedSnapshot_LeavesTheInstallUntouched()
+    {
+        var (service, fs, zipFileService) = MakeService();
+        string exe = fs.Path.Combine(InstallDir, "KSP2_x64.exe");
+        string config = fs.Path.Combine(InstallDir, "Redux", "Config", "settings.json");
+        fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(config)!);
+        fs.File.WriteAllText(exe, "redux");
+        fs.File.WriteAllText(config, "{}");
+        fs.File.WriteAllText(fs.Path.Combine(InstallDir, "uninstall.zip"), "zip");
+        var damaged = new Mock<Stream> { CallBase = true };
+        damaged.SetupGet(s => s.CanRead).Returns(true);
+        damaged.Setup(s => s.Read(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Throws(new InvalidDataException("CRC mismatch"));
+        var entry = new Mock<Ksp2Redux.Tools.Common.Wrappers.IZipArchiveEntry>();
+        entry.Setup(e => e.Open()).Returns(damaged.Object);
+        var archive = new Mock<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>();
+        archive.SetupGet(a => a.Entries).Returns([entry.Object]);
+        zipFileService.Setup(z => z.OpenRead(It.IsAny<string>())).Returns(archive.Object);
+        zipFileService.Setup(z => z.ExtractToDirectory(archive.Object, InstallDir, true))
+            .Throws(new InvalidDataException("CRC mismatch"));
+
+        Assert.Throws<InvalidDataException>(() => service.RecursivelyRestoreCache(InstallDir, true));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fs.File.ReadAllText(exe), Is.EqualTo("redux"));
+            Assert.That(fs.File.Exists(config), Is.True);
+            Assert.That(fs.Directory.Exists(fs.Path.Combine(InstallDir, "UninstallTemp")), Is.False);
+        });
     }
 
     [Test]

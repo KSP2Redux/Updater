@@ -92,6 +92,14 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
 
         using (var zipFile = zipFileService.OpenRead(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
+            // The game folder is emptied before the snapshot is extracted, so a damaged entry found mid-extract would
+            // leave it half restored. Reading every entry through first checks each one's CRC while nothing is touched.
+            foreach (var entry in zipFile.Entries)
+            {
+                using var stream = entry.Open();
+                stream.CopyTo(Stream.Null);
+            }
+
             if (isForRepatch)
             {
                 fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(directory, "UninstallTemp"));
