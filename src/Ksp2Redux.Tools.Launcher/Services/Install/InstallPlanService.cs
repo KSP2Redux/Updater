@@ -200,7 +200,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
                     using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile))
                     {
-                        await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
+                        await patch.AsyncApply(environmentProvider, install, patchLog, patchLog);
                     }
                     fileSystem.File.Delete(patchFile);
                     break;
@@ -221,7 +221,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     mutationStarted = true;
                     using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath))
                     {
-                        await patch.AsyncApply(environmentProvider, install, install, patchLog, patchLog);
+                        await patch.AsyncApply(environmentProvider, install, patchLog, patchLog);
                     }
                     if (apply.DeleteAfter && fileSystem.File.Exists(patchPath))
                     {

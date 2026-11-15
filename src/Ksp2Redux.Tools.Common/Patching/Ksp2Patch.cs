@@ -290,19 +290,13 @@ public class Ksp2Patch : IDisposable
     public async Task AsyncApply(
         IEnvironmentProvider environmentProvider,
         string targetDirectory,
-        string? sourceDirectory = null,
         Action<string>? log = null,
         Action<string>? error = null
     )
     {
-        sourceDirectory ??= targetDirectory;
         if (!_fileSystem.Directory.Exists(targetDirectory))
         {
             throw new DirectoryNotFoundException(targetDirectory);
-        }
-        if (!_fileSystem.Directory.Exists(sourceDirectory))
-        {
-            throw new DirectoryNotFoundException(sourceDirectory);
         }
 
         // 1. Extract patch entries to temp folder
@@ -362,7 +356,6 @@ public class Ksp2Patch : IDisposable
                     {
                         string trueName = NormalizeEntryPath(operation.FileName);
                         string targetPath = ResolveContainedPath(targetDirectory, trueName);
-                        string sourcePath = ResolveContainedPath(sourceDirectory, trueName);
                         string tempPath = $"{targetPath}.temp";
 
                         // Each file write below is already atomic (verify-then-swap), so if a previous
@@ -385,7 +378,7 @@ public class Ksp2Patch : IDisposable
                             log?.Invoke($"Applying binary patch to {trueName}");
                             IDirectoryInfo? parent = _fileSystem.FileInfo.New(targetPath).Directory;
                             _fileSystem.Directory.CreateDirectory(parent!.FullName);
-                            if (!_fileSystem.File.Exists(sourcePath))
+                            if (!_fileSystem.File.Exists(targetPath))
                             {
                                 throw new Exception(
                                     $"Failed to apply patch because {trueName} does not exist in target installation directory"
@@ -393,7 +386,7 @@ public class Ksp2Patch : IDisposable
                             }
                             log?.Invoke($"Creating temporary file for {trueName}");
                             await RetryOnFileLockAsync(
-                                () => CopyFileAsync(_fileSystem, sourcePath, tempPath), trueName, log);
+                                () => CopyFileAsync(_fileSystem, targetPath, tempPath), trueName, log);
 
                             // Write the patched result to a co-located swap file and verify it fully
                             // before ever touching the real target file, instead of truncating the
