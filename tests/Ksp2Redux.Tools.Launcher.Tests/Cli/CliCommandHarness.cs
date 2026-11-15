@@ -29,6 +29,7 @@ internal sealed class CliCommandHarness
         FileSystem.Directory.CreateDirectory(STORAGE);
         FileSystem.Directory.CreateDirectory(HOME);
         DiskSpace.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
+        Output = new CliOutput(Results, isJson: true);
     }
 
     public MockFileSystem FileSystem { get; } = new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
@@ -49,7 +50,16 @@ internal sealed class CliCommandHarness
 
     public Mock<IGameDataFolderService> GameDataFolder { get; } = new();
 
+    public Mock<IInstallPlanService> InstallPlan { get; } = new();
+
+    public Mock<IModuleDefinitionService> Modules { get; } = new();
+
+    public Mock<IManifestReleasesFeedProviderService> FeedProvider { get; } = new();
+
     public StringWriter Results { get; } = new();
+
+    /// <summary>The output the context reports through, JSON over <see cref="Results" /> unless a test replaces it before first use.</summary>
+    public CliOutput Output { get; set; }
 
     /// <summary>The context, built on first use so a test can arrange files and mocks before the config loads.</summary>
     public CliContext Context => _context ??= Build();
@@ -67,6 +77,11 @@ internal sealed class CliCommandHarness
         return exe;
     }
 
+    /// <summary>Makes every install read as the given stock version.</summary>
+    public void SetGameVersion(string version) =>
+        Modules.Setup(m => m.ReadModule(It.IsAny<string>()))
+            .Returns(() => TestHelpers.GenerateMockVersionID(("VERSION_TEXT", version), ("DEBUG_INFO", "BUILD_INFO")).module);
+
     private CliContext Build()
     {
         ServiceCollection services = new();
@@ -76,22 +91,22 @@ internal sealed class CliCommandHarness
         services.AddSingleton(Mock.Of<ILogService>());
         services.AddSingleton(Mock.Of<IMessageBoxService>());
         services.AddSingleton<ILauncherConfigService, LauncherConfigService>();
-        services.AddSingleton(Mock.Of<IModuleDefinitionService>());
+        services.AddSingleton(Modules.Object);
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         services.AddSingleton<IKsp2GameUninstallService, Ksp2GameUninstallService>();
-        services.AddSingleton(Mock.Of<IReleasesFeedService>());
-        services.AddSingleton(Mock.Of<IInstallPlanService>());
+        services.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
+        services.AddSingleton(InstallPlan.Object);
         services.AddSingleton(Mock.Of<IKsp2DetectorService>());
         services.AddSingleton(Mock.Of<IAssemblyService>());
         services.AddSingleton(GameDataFolder.Object);
         services.AddSingleton(News.Object);
-        services.AddSingleton(Mock.Of<IManifestReleasesFeedProviderService>());
+        services.AddSingleton(FeedProvider.Object);
         services.AddSingleton(OperatingSystem.Object);
         services.AddSingleton(DiskSpace.Object);
         services.AddSingleton(Wine.Object);
         services.AddSingleton(Steam.Object);
         services.AddSingleton(Downloader.Object);
 
-        return new CliContext(services.BuildServiceProvider(), new CliOutput(Results, isJson: true));
+        return new CliContext(services.BuildServiceProvider(), Output);
     }
 }
