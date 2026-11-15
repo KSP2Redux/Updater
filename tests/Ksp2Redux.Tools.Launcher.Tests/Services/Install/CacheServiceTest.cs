@@ -124,6 +124,31 @@ public class CacheServiceTest
         });
     }
 
+    // A restore that crashed left its UninstallTemp behind. Once the install had a Redux/Config again, moving it
+    // aside hit the leftover copy and every later update failed.
+    [Test]
+    public void RecursivelyRestoreCache_LeftoverUninstallTemp_KeepsTheLiveConfigAndRestores()
+    {
+        var (service, fs, zipFileService) = MakeService();
+        string liveConfig = fs.Path.Combine(InstallDir, "Redux", "Config", "settings.json");
+        string leftoverConfig = fs.Path.Combine(InstallDir, "UninstallTemp", "Redux", "Config", "settings.json");
+        fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(liveConfig)!);
+        fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(leftoverConfig)!);
+        fs.File.WriteAllText(liveConfig, "live");
+        fs.File.WriteAllText(leftoverConfig, "leftover");
+        fs.File.WriteAllText(fs.Path.Combine(InstallDir, "uninstall.zip"), "zip");
+        zipFileService.Setup(z => z.OpenRead(It.IsAny<string>()))
+            .Returns(Mock.Of<Ksp2Redux.Tools.Common.Wrappers.IZipArchive>(a => a.Entries == Array.Empty<Ksp2Redux.Tools.Common.Wrappers.IZipArchiveEntry>()));
+
+        service.RecursivelyRestoreCache(InstallDir, true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fs.File.ReadAllText(liveConfig), Is.EqualTo("live"));
+            Assert.That(fs.Directory.Exists(fs.Path.Combine(InstallDir, "UninstallTemp")), Is.False);
+        });
+    }
+
     [Test]
     public void AddFolder_ManagedShapesRuntime_IsIncludedInUninstallSnapshot()
     {

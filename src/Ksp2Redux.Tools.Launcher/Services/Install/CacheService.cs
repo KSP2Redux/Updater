@@ -100,6 +100,24 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
                 stream.CopyTo(Stream.Null);
             }
 
+            // A restore that crashed leaves its UninstallTemp behind. Its copies go back where the install has none;
+            // where the install has its own again, that one is in use and wins.
+            var leftoverTemp = fileSystem.Path.Combine(directory, "UninstallTemp");
+            if (fileSystem.Directory.Exists(leftoverTemp))
+            {
+                foreach (var dir in SavedDirectories)
+                {
+                    var leftover = fileSystem.Path.Combine(leftoverTemp, dir);
+                    var live = fileSystem.Path.Combine(directory, dir);
+                    if (fileSystem.Directory.Exists(leftover) && !fileSystem.Directory.Exists(live))
+                    {
+                        fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(live)!);
+                        fileSystem.Directory.Move(leftover, live);
+                    }
+                }
+                fileSystem.Directory.Delete(leftoverTemp, true);
+            }
+
             if (isForRepatch)
             {
                 fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(directory, "UninstallTemp"));
