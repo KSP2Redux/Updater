@@ -38,6 +38,13 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
                 "Name exactly one of a version to install or a local patch file to apply.");
         }
 
+        // The plan reverts the install to stock before it opens the patch file, so a typo would
+        // otherwise strip Redux and only then fail.
+        if (hasPatchFile && !context.FileSystem.File.Exists(settings.PatchFile))
+        {
+            return context.Output.Fail(ExitCode.USAGE_ERROR, $"Patch file not found: {settings.PatchFile}");
+        }
+
         var entry = context.ResolveInstallEntry(settings.Install);
         if (entry is null)
         {

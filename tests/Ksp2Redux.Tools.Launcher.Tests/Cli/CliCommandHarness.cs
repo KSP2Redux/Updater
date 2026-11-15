@@ -49,6 +49,8 @@ internal sealed class CliCommandHarness
 
     public Mock<IGameDataFolderService> GameDataFolder { get; } = new();
 
+    public Mock<IInstallPlanService> InstallPlan { get; } = new();
+
     public StringWriter Results { get; } = new();
 
     /// <summary>The context, built on first use so a test can arrange files and mocks before the config loads.</summary>
@@ -80,7 +82,7 @@ internal sealed class CliCommandHarness
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         services.AddSingleton<IKsp2GameUninstallService, Ksp2GameUninstallService>();
         services.AddSingleton(Mock.Of<IReleasesFeedService>());
-        services.AddSingleton(Mock.Of<IInstallPlanService>());
+        services.AddSingleton(InstallPlan.Object);
         services.AddSingleton(Mock.Of<IKsp2DetectorService>());
         services.AddSingleton(Mock.Of<IAssemblyService>());
         services.AddSingleton(GameDataFolder.Object);
