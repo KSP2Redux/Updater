@@ -207,7 +207,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             Interval = TimeSpan.FromMinutes(5)
         };
-        feedRefreshTimer.Tick += (_, _) => RefreshFeedsCommand.Execute(null);
+        feedRefreshTimer.Tick += async (_, _) => await RefreshFeedsInBackgroundAsync();
         feedRefreshTimer.Start();
 
         // The tooltip is computed text that is kept between updates, so it is worded again here.
@@ -247,12 +247,12 @@ public partial class HomeTabViewModel : ViewModelBase
         RebuildVersionsCollectionPreservingSelection();
         UpdateMainButtonState();
     }
-    private async Task UpdateAsync()
+    private async Task UpdateAsync(bool offerMirrorSwitch = true)
     {
         var allSucceeded = true;
         foreach (var feed in _releasesFeedService.Feeds)
         {
-            bool succeeded = await feed.UpdateManifest() || await OfferManifestMirrorSwitchAsync(feed);
+            bool succeeded = await feed.UpdateManifest() || (offerMirrorSwitch && await OfferManifestMirrorSwitchAsync(feed));
             if (!succeeded) allSucceeded = false;
         }
         FeedRefreshFailed = !allSucceeded;
@@ -283,19 +283,30 @@ public partial class HomeTabViewModel : ViewModelBase
         return await feed.UpdateManifest();
     }
 
-    // Single refresh entry point shared by the periodic timer and, later, a manual button / F5.
-    // The generated RefreshFeedsCommand is an AsyncRelayCommand, so a tick that lands while a
-    // refresh is already running is ignored, and a UI control can bind its IsRunning flag.
+    private bool _refreshingFeeds;
+
     [RelayCommand]
-    public async Task RefreshFeeds()
+    public Task RefreshFeeds() => RefreshFeedsAsync(offerMirrorSwitch: true);
+
+    // Never asks to switch mirrors: when offline, every tick would otherwise stack another question.
+    internal Task RefreshFeedsInBackgroundAsync() => RefreshFeedsAsync(offerMirrorSwitch: false);
+
+    private async Task RefreshFeedsAsync(bool offerMirrorSwitch)
     {
         // Leave the versions list and main button alone while an install or update is running,
         // otherwise a background refresh would clobber the Cancel button mid operation.
-        if (_cancelCurrentOperation is not null) return;
-
-        await UpdateAsync();
-        RebuildVersionsCollectionPreservingSelection();
-        UpdateMainButtonState();
+        if (_cancelCurrentOperation is not null || _refreshingFeeds) return;
+        _refreshingFeeds = true;
+        try
+        {
+            await UpdateAsync(offerMirrorSwitch);
+            RebuildVersionsCollectionPreservingSelection();
+            UpdateMainButtonState();
+        }
+        finally
+        {
+            _refreshingFeeds = false;
+        }
     }
 
     // RebuildVersionsCollection resets SelectedVersion to a default, which would pull the user's
