@@ -240,7 +240,13 @@ public class ProtonLaunchOptionsTest
         Assert.That(launching.IsCompleted, Is.False);
         cleanupFinished.SetResult();
         await launching;
-        Pump();
+        // The deferred Close() is queued after the preparation unwinds and can land a few dispatcher passes later on a busy machine.
+        var closing = Stopwatch.StartNew();
+        while (_window.IsVisible && closing.Elapsed < TimeSpan.FromSeconds(5))
+        {
+            await Task.Delay(10);
+            Pump();
+        }
 
         Assert.That(_window.IsVisible, Is.False);
         TestAppBuilder.GameProcessService.Verify(g => g.Start(It.IsAny<ProcessStartInfo>()), Times.Never);
