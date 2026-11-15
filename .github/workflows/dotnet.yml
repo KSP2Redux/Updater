@@ -51,6 +51,9 @@ jobs:
                     ./publish/cli/redux-launcher-cli --version
                     ./publish/cli/redux-launcher-cli --help
                     ./publish/cli/redux-launcher-cli complete -- "word:inst"
+                    # Builds the service container, which --version and --help never do. It reads the
+                    # configured channels without going online.
+                    ./publish/cli/redux-launcher-cli channels --json
                     # No command means usage, which is exit code 1 rather than a crash.
                     ./publish/cli/redux-launcher-cli && exit 1 || test $? -eq 1
 
