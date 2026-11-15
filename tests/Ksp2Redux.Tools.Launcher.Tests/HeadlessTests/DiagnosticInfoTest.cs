@@ -1,5 +1,8 @@
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -105,5 +108,28 @@ public class DiagnosticInfoTest
         Assert.That(diagnosticInfo, Does.Contain("NullReferenceException in the flight scene"));
         Assert.That(diagnosticInfo, Does.Contain(@"Game data folder: ~\AppData\LocalLow"));
         Assert.That(diagnosticInfo, Does.Not.Contain("Jebediah"));
+    }
+
+    [AvaloniaTest]
+    public void CopyDiagnosticInfoButton_ReportFails_KeepsTheLauncherRunning()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestHelpers.MockKsp2StockSteamInstall();
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
+        var main = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>();
+        var window = new MainWindow { DataContext = main };
+        window.Show();
+        main.CurrentTab = MainWindowViewModel.SettingsTabId;
+        for (var i = 0; i < 5; i++) Dispatcher.UIThread.RunJobs();
+        TestAppBuilder.DiskSpaceService.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>()))
+            .Throws(new IOException("drive went away"));
+        var copy = window.GetVisualDescendants().OfType<Button>()
+            .Single(b => Equals(b.Content, "Copy Diagnostic Info"));
+
+        copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.That(() => { for (var i = 0; i < 5; i++) Dispatcher.UIThread.RunJobs(); }, Throws.Nothing);
     }
 }

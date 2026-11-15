@@ -199,6 +199,10 @@ https://ksp2redux.org</value>
     <value>Log copied to the clipboard</value>
     <comment>Short confirmation at the bottom of the window after the install log was copied.</comment>
   </data>
+  <data name="Clipboard.CopyFailed" xml:space="preserve">
+    <value>Could not copy to the clipboard. Try again.</value>
+    <comment>Short message at the bottom of the window when copying the install log or the diagnostic info failed.</comment>
+  </data>
   <data name="Home.InstallLog.Title" xml:space="preserve">
     <value>INSTALL LOG</value>
     <comment>Small heading over the install log on the Home tab, written in capitals like the Settings section headings.</comment>
