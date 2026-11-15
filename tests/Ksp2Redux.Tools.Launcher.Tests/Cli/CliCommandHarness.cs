@@ -29,6 +29,7 @@ internal sealed class CliCommandHarness
         FileSystem.Directory.CreateDirectory(STORAGE);
         FileSystem.Directory.CreateDirectory(HOME);
         DiskSpace.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
+        Output = new CliOutput(Results, isJson: true);
     }
 
     public MockFileSystem FileSystem { get; } = new(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
@@ -56,6 +57,9 @@ internal sealed class CliCommandHarness
     public Mock<IManifestReleasesFeedProviderService> FeedProvider { get; } = new();
 
     public StringWriter Results { get; } = new();
+
+    /// <summary>The output the context reports through, JSON over <see cref="Results" /> unless a test replaces it before first use.</summary>
+    public CliOutput Output { get; set; }
 
     /// <summary>The context, built on first use so a test can arrange files and mocks before the config loads.</summary>
     public CliContext Context => _context ??= Build();
@@ -103,6 +107,6 @@ internal sealed class CliCommandHarness
         services.AddSingleton(Steam.Object);
         services.AddSingleton(Downloader.Object);
 
-        return new CliContext(services.BuildServiceProvider(), new CliOutput(Results, isJson: true));
+        return new CliContext(services.BuildServiceProvider(), Output);
     }
 }
