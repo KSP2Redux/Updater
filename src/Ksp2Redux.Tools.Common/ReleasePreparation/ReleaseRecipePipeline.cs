@@ -131,10 +131,12 @@ public partial class ReleaseRecipePipeline
     /// <param name="baselines">The independently described stock variants.</param>
     /// <param name="outputRoot">An absent output directory with an existing parent.</param>
     /// <param name="ct">The publication cancellation token.</param>
+    /// <param name="canonicalPaths">Already normalized UnityFS paths, or null for raw targets.</param>
     /// <returns>The local artifact and target digests and byte measurements.</returns>
     public ReleaseRecipePublication PublishHosted(string targetRoot, StockBaselineManifest target,
-        IReadOnlyList<ReleaseRecipeSourceTree> baselines, string outputRoot, CancellationToken ct = default)
-        => Publish(targetRoot, target, baselines, outputRoot, null, HOSTED_PACK_PROFILE, ct);
+        IReadOnlyList<ReleaseRecipeSourceTree> baselines, string outputRoot, CancellationToken ct = default,
+        IReadOnlySet<string>? canonicalPaths = null)
+        => Publish(targetRoot, target, baselines, outputRoot, canonicalPaths, HOSTED_PACK_PROFILE, ct);
 
     private ReleaseRecipePublication Publish(string targetRoot, StockBaselineManifest target,
         IReadOnlyList<ReleaseRecipeSourceTree> baselines, string outputRoot,
@@ -153,7 +155,7 @@ public partial class ReleaseRecipePipeline
         }
         RequireSeparate(outputRoot, inputRoots);
         var exactCopiesByVariant = packProfile == HOSTED_PACK_PROFILE
-            ? baselines.Select(baseline => FindExactCopies(target, baseline, canonicalPaths)).ToArray()
+            ? baselines.Select(baseline => FindExactCopies(target, baseline)).ToArray()
             : null;
         var copiedTargetPaths = exactCopiesByVariant?.SelectMany(copies => copies.Keys).ToHashSet(StringComparer.Ordinal);
         // Hosted generation hashes its own inputs against the frozen target before writing recipe data.
@@ -224,6 +226,9 @@ public partial class ReleaseRecipePipeline
                     ct.ThrowIfCancellationRequested();
                     if (variant.ExactCopies?.ContainsKey(file.Path) == true)
                     {
+                        // An exact source copy must still satisfy an explicitly requested canonical profile.
+                        if (canonicalPaths?.Contains(file.Path) == true)
+                            VerifyCanonicalTarget(targetRoot, file, outputRoot, ct);
                         reused = checked(reused + file.Length);
                         continue;
                     }
@@ -321,8 +326,25 @@ public partial class ReleaseRecipePipeline
             unique, manifest.Packs.Sum(pack => (long)pack.Length), deduplicated);
     }
 
+    private void VerifyCanonicalTarget(string targetRoot, StockBaselineFile file, string outputRoot, CancellationToken ct)
+    {
+        string temporary = Child(outputRoot, "canonical.tmp");
+        try
+        {
+            using Stream input = OpenRead(Child(targetRoot, file.Path));
+            using Stream normalized = _fileSystem.File.Open(temporary, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+            BundleRecipe.Canonicalize(input, normalized);
+            Verify(normalized, file.Length, file.Sha256, ct);
+        }
+        finally
+        {
+            if (_fileSystem.File.Exists(temporary))
+                _fileSystem.File.Delete(temporary);
+        }
+    }
+
     private static Dictionary<string, string> FindExactCopies(StockBaselineManifest target,
-        ReleaseRecipeSourceTree baseline, IReadOnlySet<string>? canonicalPaths)
+        ReleaseRecipeSourceTree baseline)
     {
         var byPath = baseline.Manifest.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
         var byContent = new Dictionary<(long Length, string Sha256), string>();
@@ -334,7 +356,7 @@ public partial class ReleaseRecipePipeline
         var copies = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var file in target.Files)
         {
-            if (canonicalPaths?.Contains(file.Path) == true || baseline.RangeHints?.ContainsKey(file.Path) == true)
+            if (baseline.RangeHints?.ContainsKey(file.Path) == true)
                 continue;
             if (byPath.TryGetValue(file.Path, out var samePath) &&
                 samePath.Length == file.Length && EqualHash(samePath.Sha256, file.Sha256))
@@ -508,10 +530,15 @@ public partial class ReleaseRecipePipeline
         bool stageCreated = false;
         try
         {
+            var verifiedNativeSources = new Dictionary<Stream, string>();
+            var sourceFiles = sourceContract.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
             foreach (var binding in selected.Sources)
             {
                 Stream input = OpenRead(Child(sourceRoot, binding.Path));
                 sources.Add(input);
+                var expected = sourceFiles[binding.Path];
+                Verify(input, expected.Length, expected.Sha256, ct);
+                verifiedNativeSources.Add(input, expected.Sha256);
                 if (binding.Kind == BundleRecipeSourceKind.UnityFsData)
                     BundleRecipe.ValidateReleaseInputBounds(input);
             }
@@ -542,12 +569,19 @@ public partial class ReleaseRecipePipeline
                 {
                     var file = recipes[expected.Path];
                     using var payload = new ReleasePayloadStream(packReader, manifest, file.PayloadChunks, ct);
-                    file.Recipe.Reconstruct(sources, payload, output);
+                    file.Recipe.ReconstructPinned(sources, payload, output, verifiedNativeSources);
                 }
                 output.Flush();
                 if (expected.UnixMode is not null)
                     StockArchive.ApplyUnixPermissions(_fileSystem, destination, expected.UnixMode.Value);
                 StockArchive.FlushLinuxDirectory(_fileSystem, _fileSystem.Path.GetDirectoryName(destination)!);
+            }
+            // The same read-only handles remain open for the whole operation. Recheck them before
+            // publishing the stage instead of hashing multi-GiB sources again for every target file.
+            for (int index = 0; index < sources.Count; index++)
+            {
+                var expected = sourceFiles[selected.Sources[index].Path];
+                Verify(sources[index], expected.Length, expected.Sha256, ct);
             }
             ValidateTree(stageRoot, staged, ct);
             ct.ThrowIfCancellationRequested();

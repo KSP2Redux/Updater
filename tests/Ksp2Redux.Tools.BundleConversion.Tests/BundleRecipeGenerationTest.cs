@@ -853,7 +853,7 @@ public class BundleRecipeGenerationTest
 
         BundleRecipeGenerationResult result = BundleRecipe.Generate([descriptor], [source], target, pack, canonical);
 
-        Assert.That(Hex.Sha256(JsonCodec.Write(result.Recipe)), Is.EqualTo("ba8b3713b36fc83ec35e93d85b7d52176281989170af6792789fe38dcd51464a"));
+        Assert.That(Hex.Sha256(JsonCodec.Write(result.Recipe)), Is.EqualTo("377e2229dd239c5ff4b432b2ea770f1c7819ebe7b94787bce05a88e94302a762"));
     }
 
     /// <summary>
@@ -1083,7 +1083,7 @@ public class BundleRecipeGenerationTest
 
         BundleRecipeGenerationResult result = BundleRecipe.Generate([descriptor], [source], target, pack, canonical, rangeHints: []);
 
-        Assert.That(Hex.Sha256(JsonCodec.Write(result.Recipe)), Is.EqualTo("ba8b3713b36fc83ec35e93d85b7d52176281989170af6792789fe38dcd51464a"));
+        Assert.That(Hex.Sha256(JsonCodec.Write(result.Recipe)), Is.EqualTo("377e2229dd239c5ff4b432b2ea770f1c7819ebe7b94787bce05a88e94302a762"));
         Assert.That(result.Metrics.HintedReusedBytes, Is.Zero);
         Assert.That(result.Metrics.CdcReusedBytes, Is.EqualTo(result.Metrics.ReusedBytes));
     }

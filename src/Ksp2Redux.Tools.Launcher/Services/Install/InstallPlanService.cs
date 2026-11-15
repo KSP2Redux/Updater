@@ -332,6 +332,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             }
         }
 
+        // Full-source apply and uninstall return through the coordinator above. Only legacy
+        // overlay patches need stock StreamingAssets conversion and its reversible journal.
         bool patched = installPlan.Patches;
         if (patched && bundleConversionService is not null)
         {

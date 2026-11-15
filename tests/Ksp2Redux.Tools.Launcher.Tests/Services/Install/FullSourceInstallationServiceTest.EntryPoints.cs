@@ -16,6 +16,38 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 
 public partial class FullSourceInstallationServiceTest
 {
+    /// <summary>
+    /// Source installation and uninstall need neither shader manifests nor conversion journals.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task SourcePlanInstallsAndUninstallsWithoutLegacyConversion()
+    {
+        Fixture fixture = Create();
+        using var output = new StringWriter();
+        IInstallPlanService service = Context(fixture, output).InstallPlanService;
+        var plan = new InstallPlan
+        {
+            FullSourceInstallationId = fixture.Entry.Id,
+            FullSourceTarget = fixture.Target2,
+            FullSourceStock = fixture.Stock
+        };
+        await service.ApplyToFolder(plan, fixture.Install, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None);
+        Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, fixture.Install, "Redux/BundleConversion/journal.json")), Is.False);
+        string journal = At(fixture.Fs, fixture.Install, "Redux/BundleConversion/journal.json");
+        fixture.Fs.Directory.CreateDirectory(fixture.Fs.Path.GetDirectoryName(journal)!);
+        fixture.Fs.File.WriteAllText(journal, "stale unowned journal");
+        await service.ApplyToFolder(new InstallPlan
+        {
+            FullSourceInstallationId = fixture.Entry.Id,
+            FullSourceTarget = fixture.Target3
+        }, fixture.Install, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None);
+        var uninstall = new InstallPlan { Steps = [new InstallPlan.UninstallStep()] };
+        await service.ApplyToFolder(uninstall, fixture.Install, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None);
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT));
+        Assert.That(fixture.Fs.File.ReadAllText(journal), Is.EqualTo("stale unowned journal"));
+    }
+
     private static CliContext Context(Fixture fixture, StringWriter output)
     {
         var services = new ServiceCollection();
@@ -30,6 +62,7 @@ public partial class FullSourceInstallationServiceTest
         services.AddSingleton<IInstallationStateService, InstallationStateService>();
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         services.AddSingleton<IInstallPlanService, InstallPlanService>();
+        services.AddSingleton(new Mock<IBundleConversionService>(MockBehavior.Strict).Object);
         services.AddSingleton(Mock.Of<ILogService>());
         services.AddSingleton(Mock.Of<IModuleDefinitionService>());
         services.AddSingleton(new Mock<ICacheService>(MockBehavior.Strict).Object);

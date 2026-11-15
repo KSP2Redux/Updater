@@ -39,7 +39,38 @@ public partial class BundleRecipe
     /// at the front, followed by 16-byte alignment. The block-list hash is zero. Header format and
     /// Unity version strings come from TargetHeader. Any change to these bytes requires a new profile.
     /// </remarks>
-    public const string CANONICAL_PACKING_PROFILE = "unityfs-128k-lz4hc-assetstools-3.0.5-v1";
+    public const string LEGACY_PACKING_PROFILE = "unityfs-128k-lz4hc-assetstools-3.0.5-v1";
+
+    /// <summary>
+    /// 128 KiB independent K4os 1.3.8 HC6 blocks with the canonical front directory.
+    /// </summary>
+    public const string CANONICAL_PACKING_PROFILE = "unityfs-128k-lz4hc6-k4os-1.3.8-v1";
+
+    /// <summary>
+    /// Repack a native UnityFS stream into the standalone publication profile.
+    /// </summary>
+    /// <param name="input">The readable seekable bundle. It remains open.</param>
+    /// <param name="output">An empty writable seekable destination.</param>
+    /// <param name="workers">The block encoder parallelism, or zero for the bounded automatic choice.</param>
+    public static void Canonicalize(Stream input, Stream output, int workers = 0)
+    {
+        RequireInput(input, nameof(input));
+        RequireGenerationOutput(output, nameof(output));
+        ValidateReleaseInputBounds(input);
+        long position = input.Position;
+        try
+        {
+            using var bundle = OpenSource(input);
+            var entries = bundle.Directory.Select(entry =>
+                new KeyValuePair<AssetBundleDirectoryInfo, Stream>(entry,
+                    new SegmentStream(bundle.Data, entry.Offset, entry.DecompressedSize))).ToList();
+            BundleRewriter.WriteBundle(output, bundle.Header, entries, true, true, workers);
+        }
+        finally
+        {
+            input.Position = position;
+        }
+    }
 
     /// <summary>
     /// The header flags emitted by the canonical packing profile.
@@ -130,6 +161,25 @@ public partial class BundleRecipe
     /// Thrown when a source or payload read ends before the declared range ends.
     /// </exception>
     public void Reconstruct(IReadOnlyList<Stream?> sources, Stream payload, Stream output)
+        => ReconstructCore(sources, payload, output, null);
+
+    /// <summary>
+    /// Reconstruct using native source handles pinned for the complete release operation.
+    /// </summary>
+    /// <remarks>
+    /// The release owner must exclude writers and reverify the held handles before publishing the stage.
+    /// Target verification and all source metadata and range checks remain mandatory.
+    /// </remarks>
+    /// <param name="sources">The held source handles in descriptor order.</param>
+    /// <param name="payload">The verified literal payload.</param>
+    /// <param name="output">An empty readable, writable and seekable output.</param>
+    /// <param name="verifiedNativeSources">Native SHA-256 pins verified on these same handles before reconstruction.</param>
+    internal void ReconstructPinned(IReadOnlyList<Stream?> sources, Stream payload, Stream output,
+        IReadOnlyDictionary<Stream, string> verifiedNativeSources)
+        => ReconstructCore(sources, payload, output, verifiedNativeSources);
+
+    private void ReconstructCore(IReadOnlyList<Stream?> sources, Stream payload, Stream output,
+        IReadOnlyDictionary<Stream, string>? verifiedNativeSources)
     {
         if (sources is null)
             throw new ArgumentNullException(nameof(sources));
@@ -169,7 +219,16 @@ public partial class BundleRecipe
                     continue;
                 Stream source = sources[index]!;
                 var descriptor = Sources[index];
-                if (!string.Equals(HashFile(source, descriptor.Length), descriptor.Sha256, StringComparison.OrdinalIgnoreCase))
+                string nativeHash;
+                if (verifiedNativeSources is null)
+                {
+                    nativeHash = HashFile(source, descriptor.Length);
+                }
+                else if (!verifiedNativeSources.TryGetValue(source, out nativeHash!))
+                {
+                    throw new InvalidDataException($"Source {index} has no held native verification pin.");
+                }
+                if (!string.Equals(nativeHash, descriptor.Sha256, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException($"Source {index} file SHA-256 does not match its descriptor.");
 
                 if (descriptor.Kind == BundleRecipeSourceKind.RawFile)
@@ -239,7 +298,7 @@ public partial class BundleRecipe
                 Flags = (AssetBundleFSHeaderFlags)target.Flags,
             },
         };
-        BundleRewriter.WriteBundle(output, header, entries, compress: true);
+        BundleRewriter.WriteBundle(output, header, entries, compress: true, useK4os: PackingProfile != LEGACY_PACKING_PROFILE);
     }
 
     private bool[] Validate(int sourceCount, long payloadLength)
@@ -247,7 +306,8 @@ public partial class BundleRecipe
         if (Version is not (CURRENT_VERSION or RAW_TARGET_VERSION))
             throw new InvalidDataException($"Unsupported bundle recipe version {Version}.");
         bool isRaw = Version == RAW_TARGET_VERSION;
-        if (PackingProfile != (isRaw ? RAW_PACKING_PROFILE : CANONICAL_PACKING_PROFILE))
+        if (isRaw ? PackingProfile != RAW_PACKING_PROFILE :
+            PackingProfile != CANONICAL_PACKING_PROFILE && PackingProfile != LEGACY_PACKING_PROFILE)
             throw new InvalidDataException($"Unsupported bundle packing profile '{PackingProfile}'.");
         ValidateHash(TargetSha256);
         if (Sources is null || Sources.Count != sourceCount)

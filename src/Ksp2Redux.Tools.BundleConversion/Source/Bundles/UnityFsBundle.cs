@@ -80,6 +80,7 @@ internal sealed class UnityFsBundle : IDisposable
             var infoBytes = (flags & COMPRESSION_MASK) switch
             {
                 0 => raw,
+                1 => DecodeLzma(raw, decompressedSize),
                 2 or 3 => DecodeLz4(raw, decompressedSize),
                 var other => throw new InvalidDataException($"Unsupported block info compression {other}."),
             };
@@ -90,7 +91,7 @@ internal sealed class UnityFsBundle : IDisposable
             foreach (var block in info.BlockInfos)
             {
                 var compression = block.Flags & COMPRESSION_MASK;
-                if (compression is not (0 or 2 or 3))
+                if (compression is not (0 or 1 or 2 or 3))
                 {
                     throw new InvalidDataException($"Unsupported block compression {compression}.");
                 }
@@ -130,6 +131,24 @@ internal sealed class UnityFsBundle : IDisposable
                 $"An LZ4 block of {compressed.Length} bytes did not decompress to {decompressedSize} bytes ({e.GetType().Name}: {e.Message})",
                 e);
         }
+    }
+
+    internal static byte[] DecodeLzma(byte[] compressed, int decompressedSize)
+    {
+        if (compressed.Length < 5 || decompressedSize > 512 * 1024 * 1024)
+            throw new InvalidDataException("LZMA block exceeds the bounded decoder profile.");
+        uint dictionary = (uint)(compressed[1] | compressed[2] << 8 | compressed[3] << 16 | compressed[4] << 24);
+        if (dictionary > 64 * 1024 * 1024)
+            throw new InvalidDataException("LZMA dictionary exceeds 64 MiB.");
+        var decoder = new SevenZip.Compression.LZMA.Decoder();
+        decoder.SetDecoderProperties(compressed.Take(5).ToArray());
+        using var input = new MemoryStream(compressed, 5, compressed.Length - 5, false);
+        var result = new byte[decompressedSize];
+        using var output = new MemoryStream(result, 0, result.Length, true, true);
+        decoder.Code(input, output, compressed.Length - 5, decompressedSize, null);
+        if (output.Position != decompressedSize)
+            throw new InvalidDataException("LZMA output length differs from its block contract.");
+        return result;
     }
 
     internal static byte[] ReadExactly(Stream stream, int count)
@@ -368,7 +387,15 @@ internal sealed class BlockDataStream : Stream
         var block = _layout.Blocks[index];
         _file.Position = _layout.FileStarts[index];
         var compressed = UnityFsBundle.ReadExactly(_file, (int)block.CompressedSize);
-        var data = UnityFsBundle.DecodeLz4(compressed, (int)block.DecompressedSize);
+        var data = (block.Flags & 0x3F) == 1
+            ? UnityFsBundle.DecodeLzma(compressed, (int)block.DecompressedSize)
+            : UnityFsBundle.DecodeLz4(compressed, (int)block.DecompressedSize);
+
+        if (data.Length > 8 * 1024 * 1024 || _cache.Values.Sum(value => (long)value.Length) > 64 * 1024 * 1024 - data.Length)
+        {
+            _cache.Clear();
+            _cacheOrder.Clear();
+        }
 
         if (_cache.Count >= CACHE_SIZE)
         {

@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <PackageReference Include="AssetsTools.NET" />
+        <PackageReference Include="K4os.Compression.LZ4" />
         <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

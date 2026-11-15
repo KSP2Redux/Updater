@@ -17,9 +17,10 @@ public partial class BundleRecipe
     /// </summary>
     /// <remarks>
     /// This release preparation profile accepts at most eight MiB of block metadata, one MiB per
-    /// compressed storage block, 65536 blocks and directory entries, 4096 bytes per entry name and eight GiB of
+    /// LZ4 storage block, 512 MiB per LZMA block, 65536 blocks and directory entries, 4096 bytes per entry name and eight GiB of
     /// decompressed data. Raw blocks stream directly and may contain up to int.MaxValue bytes with equal
-    /// stored and decompressed sizes. At most eight compressed blocks are cached by each existing reader. Raw files need
+    /// stored and decompressed sizes. LZMA dictionaries are capped at 64 MiB. Readers cache at most eight
+    /// decoded blocks within 64 MiB, except a single larger block. Raw files need
     /// no preflight. The input remains open and its position is restored. This does not hash data.
     /// </remarks>
     /// <param name="input">The stable readable, seekable native UnityFS stream.</param>
@@ -57,6 +58,7 @@ public partial class BundleRecipe
             byte[] metadata = compression switch
             {
                 0 when storedSize == dataSize => stored,
+                1 => UnityFsBundle.DecodeLzma(stored, dataSize),
                 2 or 3 => UnityFsBundle.DecodeLz4(stored, dataSize),
                 _ => throw new InvalidDataException("Unsupported UnityFS metadata compression."),
             };
@@ -75,9 +77,10 @@ public partial class BundleRecipe
                 ushort flags = info.ReadUInt16();
                 int blockCompression = flags & 63;
                 if (length is 0 or > int.MaxValue || compressed is 0 or > int.MaxValue ||
-                    blockCompression is not (0 or 2 or 3) ||
+                    blockCompression is not (0 or 1 or 2 or 3) ||
                     (blockCompression == 0 && length != compressed) ||
-                    (blockCompression != 0 && (length > 1024 * 1024 || compressed > 1024 * 1024)))
+                    (blockCompression == 1 && (length > 512 * 1024 * 1024 || compressed > 512 * 1024 * 1024)) ||
+                    (blockCompression is 2 or 3 && (length > 1024 * 1024 || compressed > 1024 * 1024)))
                     throw new InvalidDataException("UnityFS storage block exceeds release preparation bounds.");
                 total += length;
                 storedTotal += compressed;

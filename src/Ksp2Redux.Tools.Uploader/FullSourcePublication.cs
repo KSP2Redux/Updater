@@ -310,7 +310,7 @@ internal static class FullSourcePublication
             var draft = new FullSourceUpdateArtifact(digest, digest, 1, 1,
                 new Uri(new Uri(options.R2ArtifactUrl), markerName).AbsoluteUri,
                 new Uri(new Uri(options.GitHubArtifactUrl), markerName).AbsoluteUri);
-            updateRecipes.Add((new ReleaseRecipeSourceTree(update.Root, contract, []), draft));
+            updateRecipes.Add((new ReleaseRecipeSourceTree(update.Root, contract, SelectUpdateSources(paths, update.Root, contract)), draft));
         }
         // The existing validator also checks canonical contracts, version and HTTPS URLs before any packs are written.
         string targetHash = Convert.ToHexString(SHA256.HashData(targetBytes));
@@ -352,9 +352,44 @@ internal static class FullSourcePublication
         using var owner = File.Open(Path.Combine(output, "publication.lock"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
         string artifact = Path.Combine(output, "artifact");
         var pipeline = new ReleaseRecipePipeline(new RealFileSystem());
+        // Admission above verifies the original Unity output and its receipt. Freeze a separate
+        // canonical tree afterwards, so both the feed and the applier bind the normalized bytes.
+        string canonicalRoot = Path.Combine(output, "canonical-player");
+        Directory.CreateDirectory(canonicalRoot);
+        foreach (string directory in target.Directories)
+        {
+            Directory.CreateDirectory(Path.Combine(canonicalRoot, directory));
+        }
+        var canonicalPaths = new HashSet<string>(StringComparer.Ordinal);
+        var canonicalFiles = new List<StockBaselineFile>();
+        foreach (var file in target.Files)
+        {
+            using Stream input = OpenTargetFile(paths, player, target, file.Path);
+            using Stream normalized = File.Open(Path.Combine(canonicalRoot, file.Path), FileMode.CreateNew, FileAccess.ReadWrite);
+            byte[] magic = new byte[8];
+            int read = input.Read(magic, 0, magic.Length);
+            input.Position = 0;
+            if (read == 8 && System.Text.Encoding.ASCII.GetString(magic) == "UnityFS\0")
+            {
+                BundleConversion.Bundles.BundleRecipe.Canonicalize(input, normalized);
+                canonicalPaths.Add(file.Path);
+            }
+            else
+            {
+                input.CopyTo(normalized);
+            }
+            normalized.Position = 0;
+            canonicalFiles.Add(new StockBaselineFile(file.Path, normalized.Length, Convert.ToHexString(SHA256.HashData(normalized))));
+        }
+        target = new StockBaselineManifest(target.BaselineIdentity, target.Provenance, canonicalFiles, target.Directories);
+        targetBytes = target.ToJson(MAX_CONTRACT_BYTES);
+        targetHash = Convert.ToHexString(SHA256.HashData(targetBytes));
+        File.WriteAllBytes(Path.Combine(output, "canonical-target.json"), targetBytes);
+        player = canonicalRoot;
+        Console.WriteLine($"Canonicalized {canonicalPaths.Count} UnityFS files before recipe publication.");
         long stockStarted = Stopwatch.GetTimestamp();
         ReleaseRecipePublication publication = pipeline.PublishHosted(player, target,
-            [new ReleaseRecipeSourceTree(stockRoot, recipeContract, options.Sources ?? [])], artifact);
+            [new ReleaseRecipeSourceTree(stockRoot, recipeContract, options.Sources ?? [])], artifact, canonicalPaths: canonicalPaths);
         long stockPreparationMilliseconds = (long)Stopwatch.GetElapsedTime(stockStarted).TotalMilliseconds;
         int assetCount = Directory.EnumerateFiles(artifact).Count();
         var updateArtifacts = new List<FullSourceUpdateArtifact>();
@@ -365,7 +400,7 @@ internal static class FullSourcePublication
             string updateRoot = Path.Combine(output, "updates", draft.SourceDigest.ToLowerInvariant());
             Directory.CreateDirectory(updateRoot);
             string updateArtifactRoot = Path.Combine(updateRoot, "artifact");
-            var published = pipeline.PublishHosted(player, target, [source], updateArtifactRoot);
+            var published = pipeline.PublishHosted(player, target, [source], updateArtifactRoot, canonicalPaths: canonicalPaths);
             long markerSize = new FileInfo(Path.Combine(updateArtifactRoot, "release.json")).Length;
             var updateArtifact = draft with { MarkerSize = markerSize, MarkerSha256 = published.ArtifactSha256,
                 DownloadBytes = checked(markerSize + published.StoredPackBytes) };
@@ -536,6 +571,33 @@ internal static class FullSourcePublication
             return text.ReadUTF16(text.Length);
         }
         throw new InvalidDataException($"VersionID has no string constant {name}.");
+    }
+
+    private static List<ReleaseRecipeSource> SelectUpdateSources(InstallTransactionEngine paths,
+        string root, StockBaselineManifest contract)
+    {
+        const int MAX_SOURCES = 16;
+        const long MAX_NATIVE_BYTES = 4L * 1024 * 1024 * 1024;
+        long selectedBytes = 0;
+        var selected = new List<ReleaseRecipeSource>();
+        foreach (var file in contract.Files.Where(file => file.Path.EndsWith(".bundle", StringComparison.Ordinal))
+                     .OrderByDescending(file => file.Length).ThenBy(file => file.Path, StringComparer.Ordinal))
+        {
+            if (selected.Count == MAX_SOURCES)
+                break;
+            if (file.Length > MAX_NATIVE_BYTES - selectedBytes)
+                continue;
+            using Stream input = OpenTargetFile(paths, root, contract, file.Path);
+            var magic = new byte[8];
+            if (file.Length >= magic.Length)
+                input.ReadExactly(magic);
+            var kind = System.Text.Encoding.ASCII.GetString(magic) == "UnityFS\0"
+                ? BundleConversion.Bundles.BundleRecipeSourceKind.UnityFsData
+                : BundleConversion.Bundles.BundleRecipeSourceKind.RawFile;
+            selected.Add(new ReleaseRecipeSource(file.Path, kind));
+            selectedBytes += file.Length;
+        }
+        return selected;
     }
 
     private sealed record PublicationOptions(string PlayerRoot, string TargetManifest, string StockRoot,

@@ -271,7 +271,12 @@ public partial class BundleRecipe
             var recipe = new BundleRecipe
             {
                 Version = isRaw ? RAW_TARGET_VERSION : CURRENT_VERSION,
-                PackingProfile = isRaw ? RAW_PACKING_PROFILE : CANONICAL_PACKING_PROFILE,
+                PackingProfile = isRaw ? RAW_PACKING_PROFILE :
+#if UNITY_EDITOR
+                    LEGACY_PACKING_PROFILE,
+#else
+                    CANONICAL_PACKING_PROFILE,
+#endif
                 MatchingProfile = CDC_MATCHING_PROFILE,
                 TargetHeader = isRaw ? null : DescribeHeader(targetBundle!.Header),
                 TargetLength = isRaw ? 0 : 1,
@@ -329,7 +334,8 @@ public partial class BundleRecipe
                     entries.Add(new KeyValuePair<AssetBundleDirectoryInfo, Stream>(entry,
                         new SegmentStream(targetData, entry.Offset, entry.DecompressedSize)));
                 }
-                BundleRewriter.WriteBundle(canonicalTarget!, targetBundle!.Header, entries, compress: true);
+                BundleRewriter.WriteBundle(canonicalTarget!, targetBundle!.Header, entries, compress: true,
+                    useK4os: recipe.PackingProfile != LEGACY_PACKING_PROFILE);
                 recipe.TargetLength = canonicalTarget!.Length;
                 recipe.TargetSha256 = HashFile(canonicalTarget, recipe.TargetLength, cancellationToken);
 

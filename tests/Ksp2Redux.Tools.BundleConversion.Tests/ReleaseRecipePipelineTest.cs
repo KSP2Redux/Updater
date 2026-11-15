@@ -298,10 +298,12 @@ public class ReleaseRecipePipelineTest
     }
 
     /// <summary>
-    /// Preserve canonical UnityFS reconstruction without changing the pinned packing profile.
+    /// Preserve canonical UnityFS reconstruction with local and hosted packs.
     /// </summary>
-    [Test]
-    public void CanonicalUnityFsRecipeReconstructsExactFrozenTarget()
+    /// <param name="hosted">True to use the hosted pack layout.</param>
+    [TestCase(false)]
+    [TestCase(true)]
+    public void CanonicalUnityFsRecipeReconstructsExactFrozenTarget(bool hosted)
     {
         byte[] data = RandomBytes(500000);
         using var input = new MemoryStream(SyntheticBundles.Bundle(false, ("data", data, false)));
@@ -311,13 +313,83 @@ public class ReleaseRecipePipelineTest
         var baseline = WriteContract(BASELINE, ("old.bin", data));
         var target = WriteContract(TARGET, ("native.bundle", canonical.ToArray()));
 
-        var result = _pipeline.Publish(TARGET, target, Sources(baseline), ARTIFACT,
-            new HashSet<string>(StringComparer.Ordinal) { "native.bundle" });
+        var canonicalPaths = new HashSet<string>(StringComparer.Ordinal) { "native.bundle" };
+        var result = hosted
+            ? _pipeline.PublishHosted(TARGET, target, Sources(baseline), ARTIFACT, canonicalPaths: canonicalPaths)
+            : _pipeline.Publish(TARGET, target, Sources(baseline), ARTIFACT, canonicalPaths);
         Prepare(result, baseline);
 
+        Assert.That(result.SourceReusedBytes, Is.EqualTo(data.Length));
         Assert.That(ReadManifest().Variants[0].Files[0].Recipe.PackingProfile,
             Is.EqualTo(BundleRecipe.CANONICAL_PACKING_PROFILE));
         Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\native.bundle"), Is.EqualTo(canonical.ToArray()));
+    }
+
+    /// <summary>
+    /// Changed canonical updates reuse decompressed ranges from the previous Redux bundle.
+    /// </summary>
+    [Test]
+    public void HostedCanonicalUpdatesReuseChangedBundleData()
+    {
+        byte[] original = RandomBytes(500000);
+        byte[] changed = (byte[])original.Clone();
+        Array.Fill(changed, (byte)71, changed.Length - 32, 32);
+        byte[] Canonical(byte[] data)
+        {
+            using var native = new MemoryStream(SyntheticBundles.Bundle(false, ("data", data, false)));
+            using var output = new MemoryStream();
+            BundleRecipe.Canonicalize(native, output);
+            return output.ToArray();
+        }
+        byte[] oldBytes = Canonical(original);
+        byte[] expected = Canonical(changed);
+        var baseline = WriteContract(BASELINE, ("old.bundle", oldBytes));
+        var target = WriteContract(TARGET, ("new.bundle", expected));
+        var result = _pipeline.PublishHosted(TARGET, target,
+            [new ReleaseRecipeSourceTree(BASELINE, baseline,
+                [new ReleaseRecipeSource("old.bundle", BundleRecipeSourceKind.UnityFsData)])], ARTIFACT,
+            canonicalPaths: new HashSet<string> { "new.bundle" });
+        Assert.That(result.SourceReusedBytes, Is.GreaterThan(350000));
+        Prepare(result, baseline);
+        Assert.That(_fileSystem.File.ReadAllBytes(_fileSystem.Path.Combine(STAGE, "new.bundle")), Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Previous canonical builds reuse identical bundles without payloads, including renamed bundles.
+    /// </summary>
+    [Test]
+    public void HostedCanonicalUpdatesCopyUnchangedBundlesExactly()
+    {
+        byte[] data = Enumerable.Repeat((byte)37, 500000).ToArray();
+        using var native = new MemoryStream(SyntheticBundles.Bundle(false, ("data", data, false)));
+        using var canonical = new MemoryStream();
+        BundleRecipe.Canonicalize(native, canonical);
+        byte[] expected = canonical.ToArray();
+        var baseline = WriteContract(BASELINE, ("old.bundle", expected));
+        var target = WriteContract(TARGET, ("renamed.bundle", expected));
+        var result = _pipeline.PublishHosted(TARGET, target,
+            [new ReleaseRecipeSourceTree(BASELINE, baseline, [])], ARTIFACT,
+            canonicalPaths: new HashSet<string> { "renamed.bundle" });
+        Assert.That(result.StoredPackBytes, Is.Zero);
+        Assert.That(result.SourceReusedBytes, Is.EqualTo(expected.Length));
+        Assert.That(ReadManifest().Variants[0].ExactCopies!["renamed.bundle"], Is.EqualTo("old.bundle"));
+        Prepare(result, baseline);
+        Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\renamed.bundle"), Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// Exact source copies cannot bypass verification of a requested canonical packing profile.
+    /// </summary>
+    [Test]
+    public void HostedExactCopyCannotBypassCanonicalProfileVerification()
+    {
+        byte[] bytes = SyntheticBundles.Bundle(false, ("data", Enumerable.Repeat((byte)37, 500000).ToArray(), false));
+        var baseline = WriteContract(BASELINE, ("old.bundle", bytes));
+        var target = WriteContract(TARGET, ("new.bundle", bytes));
+        Assert.Throws<InvalidDataException>(() => _pipeline.PublishHosted(TARGET, target,
+            [new ReleaseRecipeSourceTree(BASELINE, baseline, [])], ARTIFACT,
+            canonicalPaths: new HashSet<string> { "new.bundle" }));
+        Assert.That(_fileSystem.File.Exists(ARTIFACT + @"\release.json"), Is.False);
     }
 
     /// <summary>

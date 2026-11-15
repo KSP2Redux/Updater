@@ -12,6 +12,89 @@ public class BundleRecipeTest
     private const int BLOCK_SIZE = 128 * 1024;
 
     /// <summary>
+    /// Held release pins bind the exact native handle and digest while preserving exact output.
+    /// </summary>
+    /// <param name="fault">The pin fault, or none for successful reconstruction.</param>
+    [TestCase("none")]
+    [TestCase("digest")]
+    [TestCase("handle")]
+    public void HeldSourcePinsBindHandlesAndDigests(string fault)
+    {
+        var fixture = CrossSourceFixture();
+        using var first = new MemoryStream(fixture.Sources[0]);
+        using var second = new MemoryStream(fixture.Sources[1]);
+        using var third = new MemoryStream(fixture.Sources[2]);
+        using var differentHandle = new MemoryStream(fixture.Sources[0]);
+        using var payload = new MemoryStream(fixture.Payload);
+        using var output = new MemoryStream();
+        var pins = new Dictionary<Stream, string>
+        {
+            [fault == "handle" ? differentHandle : first] = fault == "digest" ? new string('0', 64) : fixture.Recipe.Sources[0].Sha256,
+            [second] = fixture.Recipe.Sources[1].Sha256,
+            [third] = fixture.Recipe.Sources[2].Sha256
+        };
+        if (fault != "none")
+        {
+            Assert.Throws<InvalidDataException>(() => fixture.Recipe.ReconstructPinned([first, second, third], payload, output, pins));
+            Assert.That(output.Length, Is.Zero);
+            return;
+        }
+        fixture.Recipe.ReconstructPinned([first, second, third], payload, output, pins);
+        Assert.That(output.ToArray(), Is.EqualTo(fixture.Expected));
+    }
+
+
+    /// <summary>
+    /// Decode an independently encoded raw UnityFS LZMA block and reject oversized dictionaries.
+    /// </summary>
+    [Test]
+    public void LzmaInputUsesBoundedOutputAndDictionary()
+    {
+        byte[] packed = Convert.FromBase64String("XQAAgAAAAABSUAqE+ZuygCGpadYn4D4GWl8EjVPUBLo5VwUJwVUk3p24cVkxYKGf+W9Jc/LI6oy6GospaSGA/jODZq9GbeyeiYoLg/A8DomOP+1f556Q2Rz/MvSy4DlRstIUFbTFcbrbBuN5mp+7OMGwAKyTC6oGGQMSCBVbm8hI8DIu/i2gh8jwpODSUeuNZ1aSsk2ExfGGMd9qYlvCeS3Z9zxzunR0B9g8qVYiJKFm+FqEXzBn0vZLSS5/IOvb+BAOlHh3xz9r77TNleJv9kRuBs8LghrL23rwV42Y/5DAPubBEkF17gMolusT+6cozK8yu6QOJfJYsN7YVhxm8OIbOXb5l/+Po8gv9K3y2zgxMHrAdyIkheoCBAKhPETlITPreLz+YpVWangtg/9LJkhSBzHXP3W9ldOi6QKUWJs2JXQtYBq9Ll+qDz5LZkKQEw7/EJP4cXhZ+AvN/5UoRg+p/Hze+5owLlbAj4Xzg4HAZcQlU/j1kRtLVAUVH//8SeVg");
+        byte[] expected = Enumerable.Range(0, 524288).Select(index => (byte)index).ToArray();
+        Assert.That(UnityFsBundle.DecodeLzma(packed, expected.Length), Is.EqualTo(expected));
+        packed[4] = 127;
+        Assert.Throws<InvalidDataException>(() => UnityFsBundle.DecodeLzma(packed, expected.Length));
+    }
+
+
+    /// <summary>
+    /// Recompression is independent of worker count, idempotent, and survives persisted recipes.
+    /// </summary>
+    [Test]
+    public void Hc6CanonicalizationIsDeterministicAndRoundTrips()
+    {
+        var fixture = CrossSourceFixture();
+        using var input = new MemoryStream(fixture.Expected);
+        using var single = new MemoryStream();
+        BundleRecipe.Canonicalize(input, single, 1);
+        foreach (int workers in new[] { 1, 2, 14, 20 })
+        {
+            using var output = new MemoryStream();
+            BundleRecipe.Canonicalize(input, output, workers);
+            Assert.That(output.ToArray(), Is.EqualTo(single.ToArray()));
+        }
+        using var second = new MemoryStream();
+        BundleRecipe.Canonicalize(single, second, 2);
+        Assert.That(second.ToArray(), Is.EqualTo(single.ToArray()));
+        using var literals = new MemoryStream();
+        using var canonical = new MemoryStream();
+        var generated = BundleRecipe.Generate([], [], single, literals, canonical);
+        var persisted = JsonCodec.Read<BundleRecipe>(JsonCodec.Write(generated.Recipe))!;
+        using var restored = new MemoryStream();
+        persisted.Reconstruct([], literals, restored);
+        Assert.That(restored.ToArray(), Is.EqualTo(single.ToArray()));
+        using var before = UnityFsBundle.Open(new MemoryStream(fixture.Expected));
+        using var after = UnityFsBundle.Open(new MemoryStream(restored.ToArray()));
+        using var beforeData = new MemoryStream();
+        using var afterData = new MemoryStream();
+        before.Data.CopyTo(beforeData);
+        after.Data.CopyTo(afterData);
+        Assert.That(afterData.ToArray(), Is.EqualTo(beforeData.ToArray()));
+    }
+
+
+    /// <summary>
     /// Reuses two bundles and native resource bytes in one target after deterministic JSON persistence.
     /// </summary>
     [Test]
@@ -469,7 +552,7 @@ public class BundleRecipeTest
                 case "empty-block": bundle.Blocks[0].DecompressedSize = 0; break;
                 case "oversized-block": bundle.Blocks[0].DecompressedSize = uint.MaxValue; break;
                 case "raw-block-size": bundle.Blocks[0].CompressedSize--; break;
-                case "unsupported-compression": bundle.Blocks[0].Flags = 1; break;
+                case "unsupported-compression": bundle.Blocks[0].Flags = 4; break;
                 case "truncated-block":
                     bundle.Header.FileStreamHeader.TotalFileSize--;
                     break;
@@ -792,7 +875,7 @@ public class BundleRecipeTest
         return new BundleRecipe
         {
             Version = BundleRecipe.CURRENT_VERSION,
-            PackingProfile = BundleRecipe.CANONICAL_PACKING_PROFILE,
+            PackingProfile = BundleRecipe.LEGACY_PACKING_PROFILE,
             Sources = source is null ? [] : [BundleSource(source)],
             PayloadLength = payload.Length,
             TargetLength = target.Length,
