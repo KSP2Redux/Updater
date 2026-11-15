@@ -1,5 +1,8 @@
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
@@ -105,5 +108,51 @@ public class DiagnosticInfoTest
         Assert.That(diagnosticInfo, Does.Contain("NullReferenceException in the flight scene"));
         Assert.That(diagnosticInfo, Does.Contain(@"Game data folder: ~\AppData\LocalLow"));
         Assert.That(diagnosticInfo, Does.Not.Contain("Jebediah"));
+    }
+
+    [AvaloniaTest]
+    public void BuildDiagnosticInfo_HugePlayerLog_ReportsOnlyWholeLinesFromItsEnd()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsMacOS()).Returns(false);
+        TestAppBuilder.EnvironmentProvider.SetFolderPath(Environment.SpecialFolder.UserProfile, @"C:\Users\Val");
+        var fileSystem = TestAppBuilder.FileSystem;
+        var gameData = @"C:\Users\Val\AppData\LocalLow\Intercept Games\Kerbal Space Program 2";
+        fileSystem.Directory.CreateDirectory(gameData);
+        var padding = new string('x', 10_000);
+        fileSystem.File.WriteAllLines(fileSystem.Path.Combine(gameData, "Player.log"),
+            Enumerable.Range(0, 40).Select(i => $"frame {i:00} {padding}"));
+
+        var diagnosticInfo = TestAppBuilder.ServiceProvider.GetRequiredService<SettingsTabViewModel>().BuildDiagnosticInfo();
+
+        var playerLog = diagnosticInfo[diagnosticInfo.IndexOf("--- KSP2 Player.log ---", StringComparison.Ordinal)..]
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Skip(1).ToList();
+        Assert.That(playerLog, Is.Not.Empty);
+        Assert.That(playerLog, Has.All.Match(@"^frame \d\d x{10000}$"), "A line cut by the seek should be left out.");
+        Assert.That(playerLog[^1], Does.StartWith("frame 39 "));
+        Assert.That(playerLog[0], Does.Not.StartWith("frame 00 "), "Only the end of a large log should be read.");
+    }
+
+    [AvaloniaTest]
+    public void CopyDiagnosticInfoButton_ReportFails_KeepsTheLauncherRunning()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestHelpers.MockKsp2StockSteamInstall();
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
+        var main = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>();
+        var window = new MainWindow { DataContext = main };
+        window.Show();
+        main.CurrentTab = MainWindowViewModel.SettingsTabId;
+        for (var i = 0; i < 5; i++) Dispatcher.UIThread.RunJobs();
+        TestAppBuilder.DiskSpaceService.Setup(d => d.GetAvailableFreeSpace(It.IsAny<string>()))
+            .Throws(new IOException("drive went away"));
+        var copy = window.GetVisualDescendants().OfType<Button>()
+            .Single(b => Equals(b.Content, "Copy Diagnostic Info"));
+
+        copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.That(() => { for (var i = 0; i < 5; i++) Dispatcher.UIThread.RunJobs(); }, Throws.Nothing);
     }
 }

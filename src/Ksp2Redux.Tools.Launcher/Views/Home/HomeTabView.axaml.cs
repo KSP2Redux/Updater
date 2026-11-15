@@ -7,6 +7,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ksp2Redux.Tools.Launcher.Localization;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 
 namespace Ksp2Redux.Tools.Launcher.Views.Home;
@@ -63,9 +64,10 @@ public partial class HomeTabView : UserControl
     {
         // Ctrl+C, or Cmd+C on macOS.
         var isCopy = e.Key == Key.C && (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
-        if (!isCopy || _logList.SelectedItems is not { Count: > 0 } selected) return;
+        if (!isCopy || _model is null || _logList.Selection.SelectedIndexes is not { Count: > 0 } selected) return;
         e.Handled = true;
-        var lines = selected.Cast<InstallLogEntry>().OrderBy(entry => _model?.InstallLogEntries.IndexOf(entry) ?? 0);
+        var entries = _model.InstallLogEntries;
+        var lines = selected.Order().Select(index => entries[index]);
         await CopyToClipboard(string.Join('\n', lines));
     }
 
@@ -78,7 +80,15 @@ public partial class HomeTabView : UserControl
     private async Task CopyToClipboard(string text)
     {
         if (TopLevel.GetTopLevel(this) is not { Clipboard: { } clipboard } topLevel) return;
-        await clipboard.SetTextAsync(text);
-        (topLevel as MainWindow)?.ShowSnackbar(TExtension.Service["Home.InstallLog.Copied"]);
+        try
+        {
+            await clipboard.SetTextAsync(text);
+            (topLevel as MainWindow)?.ShowSnackbar(TExtension.Service["Home.InstallLog.Copied"]);
+        }
+        catch (Exception ex)
+        {
+            AvaloniaLogSink.Target?.Error("Could not copy the install log to the clipboard.", ex);
+            (topLevel as MainWindow)?.ShowSnackbar(TExtension.Service["Clipboard.CopyFailed"]);
+        }
     }
 }

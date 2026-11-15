@@ -83,6 +83,10 @@ https://ksp2redux.org</value>
     <value>unknown</value>
     <comment>Shown in the about box in place of the version number when it cannot be read.</comment>
   </data>
+  <data name="App.AlreadyRunning" xml:space="preserve">
+    <value>KSP2 Redux is already running. Switch to its window, or close it before starting it again.</value>
+    <comment>Shown when the launcher is started while another copy of it is still open, before its window appears.</comment>
+  </data>
   <!-- Main window -->
   <data name="Tab.Home" xml:space="preserve">
     <value>Home</value>
@@ -194,6 +198,10 @@ https://ksp2redux.org</value>
   <data name="Home.InstallLog.Copied" xml:space="preserve">
     <value>Log copied to the clipboard</value>
     <comment>Short confirmation at the bottom of the window after the install log was copied.</comment>
+  </data>
+  <data name="Clipboard.CopyFailed" xml:space="preserve">
+    <value>Could not copy to the clipboard. Try again.</value>
+    <comment>Short message at the bottom of the window when copying the install log or the diagnostic info failed.</comment>
   </data>
   <data name="Home.InstallLog.Title" xml:space="preserve">
     <value>INSTALL LOG</value>
