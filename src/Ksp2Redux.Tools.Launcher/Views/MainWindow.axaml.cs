@@ -2,7 +2,11 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
+using Avalonia.Controls.Notifications;
 using Avalonia.Controls.Primitives;
+using Avalonia.Styling;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -40,6 +44,8 @@ public partial class MainWindow : Window
             UpdateMaximizedState();
             RefreshBackdropClips();
             (DataContext as MainWindowViewModel)?.OnMainWindowOpened();
+            // Created up front: a notification shown before the manager's template is applied is lost.
+            _snackbars = new WindowNotificationManager(this) { Position = NotificationPosition.BottomCenter, MaxItems = 2 };
         };
         PositionChanged += (_, e) =>
         {
@@ -53,6 +59,10 @@ public partial class MainWindow : Window
         // we can hook. Recomputing on every layout pass keeps it in sync regardless of
         // what caused the layout change.
         LayoutUpdated += (_, _) => RefreshBackdropClips();
+        MainTabControl.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == SelectingItemsControl.SelectedIndexProperty) Dispatcher.UIThread.Post(FadeInSelectedTab);
+        };
 
         AddHandler(PointerMovedEvent, OnParallaxPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
         PointerExited += (_, _) => SetParallaxTarget(default);
@@ -71,10 +81,59 @@ public partial class MainWindow : Window
 
     private bool ParallaxEnabled => _motionSource?.ParallaxMotion ?? true;
 
+    /// <summary>
+    /// Whether interface animations may run at all. Headless tests turn this off: their clock does
+    /// not advance animations, so a transition there would never finish.
+    /// </summary>
+    internal static bool AnimationsSupported { get; set; } = true;
+
     private void OnMotionSettingChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsTabViewModel.ParallaxMotion) && !ParallaxEnabled) SetParallaxTarget(default);
+        if (e.PropertyName != nameof(SettingsTabViewModel.ParallaxMotion)) return;
+        if (!ParallaxEnabled) SetParallaxTarget(default);
+        UpdateMotion();
     }
+
+    // Material 3's standard curve. The emphasized decelerate curve was tried first, but it puts most of
+    // a fade into the first frame, so measured in the running app the tab only dipped to 84% opacity.
+    internal static readonly Easing StandardEasing = new SplineEasing(0.2, 0, 0, 1);
+
+    private static readonly Animation TabFadeIn = new()
+    {
+        Duration = TimeSpan.FromMilliseconds(250),
+        Easing = StandardEasing,
+        Children =
+        {
+            new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0d) } },
+            new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1d) } },
+        },
+    };
+
+    // A fade only, with no slide: the frosted blur is a window-level layer clipped to the panel, so it
+    // fades with the content but could not slide with it. Only the new tab exists while it runs, so
+    // nothing ever sees two tabs at once.
+    private void FadeInSelectedTab()
+    {
+        if (!Classes.Contains("motion") || MainTabControl.SelectedContent is not Animatable content) return;
+        _ = TabFadeIn.RunAsync(content);
+        _ = TabFadeIn.RunAsync(ContentBackdropBlur);
+    }
+
+    private WindowNotificationManager? _snackbars;
+
+    /// <summary>
+    /// Shows a short confirmation at the bottom of the window that goes away by itself: Material 3's
+    /// snackbar. Only for things that already happened; anything needing a decision stays a dialog.
+    /// </summary>
+    public void ShowSnackbar(string message) =>
+        _snackbars?.Show(new TextBlock { Text = message, Classes = { "snackbar" } }, NotificationType.Information, SNACKBAR_TIME);
+
+    // Material 3 keeps a snackbar up for 4 to 10 seconds; these are a single short line.
+    private static readonly TimeSpan SNACKBAR_TIME = TimeSpan.FromSeconds(4);
+
+    // Avalonia does not expose the system's reduce-motion preference, so the Motion setting is the one
+    // switch. Every interface animation is styled under Window.motion and goes when it is off.
+    private void UpdateMotion() => Classes.Set("motion", AnimationsSupported && ParallaxEnabled);
 
     private void OnParallaxPointerMoved(object? sender, PointerEventArgs e)
     {
@@ -147,6 +206,7 @@ public partial class MainWindow : Window
         if (_motionSource is not null) _motionSource.PropertyChanged -= OnMotionSettingChanged;
         _motionSource = (DataContext as MainWindowViewModel)?.SettingsTab;
         if (_motionSource is not null) _motionSource.PropertyChanged += OnMotionSettingChanged;
+        UpdateMotion();
     }
 
     private void OnGameLaunched(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>

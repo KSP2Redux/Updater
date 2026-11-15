@@ -308,13 +308,7 @@
 				        ToolTip.Tip="{loc:T Settings.OpenGameDataFolder.Tooltip}" />
 				<Button Margin="0,0,10,6" Classes="tonal" FontSize="11" Padding="12,4" Click="CopyDiagnosticInfoClick"
 				        Content="{loc:T Settings.CopyDiagnosticInfo}"
-				        ToolTip.Tip="{loc:T Settings.CopyDiagnosticInfo.Tooltip}">
-					<FlyoutBase.AttachedFlyout>
-						<Flyout>
-							<TextBlock Text="{loc:T Settings.CopyDiagnosticInfo.Copied}" />
-						</Flyout>
-					</FlyoutBase.AttachedFlyout>
-				</Button>
+				        ToolTip.Tip="{loc:T Settings.CopyDiagnosticInfo.Tooltip}" />
 				<CheckBox Margin="0,0,0,6" FontSize="11" VerticalAlignment="Center"
 				          IsChecked="{Binding VerboseLogging, Mode=TwoWay}"
 				          Content="{loc:T Settings.VerboseLogging}"

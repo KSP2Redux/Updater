@@ -99,6 +99,10 @@ public partial class HomeTabViewModel : ViewModelBase
     public partial bool InstallationDisabled { get; set; }
 
     private readonly StringBuilder _installLogBuilder = new();
+    private readonly List<InstallLogEntry> _pendingLogEntries = [];
+
+    /// <summary>The install log as timestamped lines, for showing each kind of line in its own colour.</summary>
+    public ObservableCollection<InstallLogEntry> InstallLogEntries { get; } = [];
     private readonly Lock _installLogLock = new();
     private bool _installLogUpdateQueued;
     private CancellationTokenSource? _cancelCurrentOperation;
@@ -677,7 +681,7 @@ public partial class HomeTabViewModel : ViewModelBase
                 if (plan.Steps.Count == 0)
                 {
                     LogError(_localization.Message("Home.Log.NoRoute", SelectedVersion.Version));
-                    Log(_localization.Message("Home.Log.NothingChanged"));
+                    LogOutcome(_localization.Message("Home.Log.NothingChanged"), InstallLogKind.Notice);
                     return;
                 }
 
@@ -709,11 +713,11 @@ public partial class HomeTabViewModel : ViewModelBase
                 }
             }
             RecordInstalledVersion();
-            Log(_localization.Message("Home.Log.Installed"));
+            LogOutcome(_localization.Message("Home.Log.Installed"), InstallLogKind.Success);
         }
         catch (OperationCanceledException)
         {
-            Log(_localization.Message("Home.Log.Cancelled"));
+            LogOutcome(_localization.Message("Home.Log.Cancelled"), InstallLogKind.Notice);
         }
         catch (InsufficientDiskSpaceException e)
         {
@@ -730,7 +734,7 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception e)
         {
             LogError(_localization.Message("Home.Log.UpdateError", e.ToLogMessage()), e);
-            Log(_localization.Message("Home.Log.InvalidState"));
+            LogOutcome(_localization.Message("Home.Log.InvalidState"), InstallLogKind.Error);
         }
         finally
         {
@@ -796,11 +800,11 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             await RunPlanOnInstall(plan, ksp2);
             RecordInstalledVersion();
-            Log(_localization.Message("Home.Log.Installed"));
+            LogOutcome(_localization.Message("Home.Log.Installed"), InstallLogKind.Success);
         }
         catch (OperationCanceledException)
         {
-            Log(_localization.Message("Home.Log.Cancelled"));
+            LogOutcome(_localization.Message("Home.Log.Cancelled"), InstallLogKind.Notice);
         }
         catch (InsufficientDiskSpaceException e)
         {
@@ -817,7 +821,7 @@ public partial class HomeTabViewModel : ViewModelBase
         catch (Exception e)
         {
             LogError(_localization.Message("Home.Log.UpdateError", e.ToLogMessage()), e);
-            Log(_localization.Message("Home.Log.InvalidState"));
+            LogOutcome(_localization.Message("Home.Log.InvalidState"), InstallLogKind.Error);
         }
         finally
         {
@@ -861,12 +865,12 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             await RunPlanOnInstall(plan, ksp2);
-            Log(_localization.Message("Settings.UninstallRedux.Done"));
+            LogOutcome(_localization.Message("Settings.UninstallRedux.Done"), InstallLogKind.Success);
             uninstalled = true;
         }
         catch (OperationCanceledException)
         {
-            Log(_localization.Message("Home.Log.Cancelled"));
+            LogOutcome(_localization.Message("Home.Log.Cancelled"), InstallLogKind.Notice);
         }
         catch (FilesInUseException e)
         {
@@ -888,11 +892,7 @@ public partial class HomeTabViewModel : ViewModelBase
             await UpdateVersionsList();
         }
 
-        if (uninstalled)
-        {
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
-                _localization["Settings.UninstallRedux.Done"], windowStartupLocation: WindowStartupLocation.CenterOwner);
-        }
+        if (uninstalled) _messageBoxService.ShowSnackbar(_localization["Settings.UninstallRedux.Done"]);
     }
 
     // Certain install plans replace or delete the launcher's own files. If the launcher is running
@@ -913,7 +913,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private async Task ShowNotEnoughDiskSpace(InsufficientDiskSpaceException e)
     {
         LogError(e.ToLogMessage(), e);
-        Log(_localization.Message("Home.Log.NothingChanged"));
+        LogOutcome(_localization.Message("Home.Log.NothingChanged"), InstallLogKind.Notice);
         await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Home.DiskSpace.Title"],
             _localization.Format("Home.DiskSpace.Message", e.UserMessage(), e.Path),
             ButtonEnum.Ok, Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
@@ -1038,15 +1038,24 @@ public partial class HomeTabViewModel : ViewModelBase
     internal void LogError(LogMessage message, Exception? exception = null)
     {
         _log.Error(message.English, exception);
-        AppendToInstallLog(message.Localized);
+        AppendToInstallLog(message.Localized, InstallLogKind.Error);
     }
 
-    private void AppendToInstallLog(string message)
+    // The line that says how an operation ended, so the log can show it as the result.
+    internal void LogOutcome(LogMessage message, InstallLogKind kind)
+    {
+        if (kind == InstallLogKind.Error) _log.Error(message.English);
+        else _log.Info(message.English);
+        AppendToInstallLog(message.Localized, kind);
+    }
+
+    private void AppendToInstallLog(string message, InstallLogKind kind = InstallLogKind.Info)
     {
         bool queueUpdate;
         lock (_installLogLock)
         {
             _installLogBuilder.AppendLine(message);
+            _pendingLogEntries.Add(new InstallLogEntry(DateTime.Now, message, kind));
             queueUpdate = !_installLogUpdateQueued;
             if (queueUpdate) _installLogUpdateQueued = true;
         }
@@ -1059,12 +1068,16 @@ public partial class HomeTabViewModel : ViewModelBase
     private void FlushInstallLogToUi()
     {
         string text;
+        InstallLogEntry[] entries;
         lock (_installLogLock)
         {
             text = _installLogBuilder.ToString();
+            entries = [.. _pendingLogEntries];
+            _pendingLogEntries.Clear();
             _installLogUpdateQueued = false;
         }
         InstallLogText = text;
+        foreach (var entry in entries) InstallLogEntries.Add(entry);
     }
 
     private Task FlushPendingLogWrites() =>
@@ -1075,9 +1088,11 @@ public partial class HomeTabViewModel : ViewModelBase
         lock (_installLogLock)
         {
             _installLogBuilder.Clear();
+            _pendingLogEntries.Clear();
             _installLogUpdateQueued = false;
         }
         InstallLogText = string.Empty;
+        InstallLogEntries.Clear();
     }
     
     public void DisableInstallation()
@@ -1099,4 +1114,28 @@ public partial class HomeTabViewModel : ViewModelBase
                 _localization.Format("Home.UpdateFailed.Message", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
         }
     }
+}
+
+/// <summary>What a line in the install log reports.</summary>
+public enum InstallLogKind
+{
+    Info,
+    Error,
+    /// <summary>The operation finished and changed what it set out to.</summary>
+    Success,
+    /// <summary>The operation ended without changing anything: cancelled, or nothing to do.</summary>
+    Notice,
+}
+
+/// <summary>A line of the install log, in the user's language.</summary>
+public sealed record InstallLogEntry(DateTime Time, string Text, InstallLogKind Kind)
+{
+    public string TimeText => Time.ToString("HH:mm:ss");
+    public string DisplayText => Kind == InstallLogKind.Success ? $"✓ {Text}" : Text;
+    public bool IsError => Kind == InstallLogKind.Error;
+    public bool IsSuccess => Kind == InstallLogKind.Success;
+    public bool IsNotice => Kind == InstallLogKind.Notice;
+
+    /// <summary>The line as it is copied to the clipboard.</summary>
+    public override string ToString() => $"{TimeText}  {Text}";
 }

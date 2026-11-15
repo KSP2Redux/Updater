@@ -757,9 +757,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             IsUninstallingKsp2 = false;
         }
 
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
-            _localization["Settings.UninstallKsp2.Done"],
-            windowStartupLocation: WindowStartupLocation.CenterOwner);
+        _messageBoxService.ShowSnackbar(_localization["Settings.UninstallKsp2.Done"]);
     }
 
     private async Task<bool> ConfirmAsync(string title, string text) =>
@@ -872,8 +870,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         {
             await Task.Run(() => _saveBackups.Restore(choice.Backup));
             _log.Info($"Restored the saves from {choice.Backup.Path}.");
-            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Settings.SaveBackups.Restored.Title"],
-                _localization["Settings.SaveBackups.Restored"], windowStartupLocation: WindowStartupLocation.CenterOwner);
+            _messageBoxService.ShowSnackbar(_localization["Settings.SaveBackups.Restored"]);
         }
         catch (Exception ex)
         {

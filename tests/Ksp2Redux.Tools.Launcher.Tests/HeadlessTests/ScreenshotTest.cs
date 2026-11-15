@@ -8,7 +8,9 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Common.Models;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,14 +27,18 @@ namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 [Explicit("Writes screenshots for design review; set LAUNCHER_SCREENSHOT_DIR.")]
 public class ScreenshotTest
 {
-    private const int HOME = 0, COMMUNITY = 1, SETTINGS = 3;
+    private const int HOME = 0, COMMUNITY = 1, MODS = 2, SETTINGS = 3;
 
     [AvaloniaTest]
     [TestCase("home")]
     [TestCase("home-installing")]
     [TestCase("home-installing-measuring")]
     [TestCase("home-installing@min")]
+    [TestCase("home-installed")]
+    [TestCase("home-failed")]
     [TestCase("community")]
+    [TestCase("mods")]
+    [TestCase("settings-keyboard")]
     [TestCase("settings")]
     [TestCase("settings@min")]
     [TestCase("settings-bottom")]
@@ -56,18 +62,50 @@ public class ScreenshotTest
                 var home = viewModel.HomeTab;
                 home.IsInstallLogVisible = true;
                 home.IsProgressVisible = true;
-                home.InstallLogText = "Creating an install plan\nDownloading 3 patches (2.1 GB)\nVerifying patch 1 of 3";
+                home.Log(LogMessage.Literal("Creating an install plan"));
+                home.Log(LogMessage.Literal("Downloading 3 patches (2.1 GB)"));
+                home.Log(LogMessage.Literal("Verifying patch 1 of 3"));
                 home.DownloadProgressTotalMb = 2150;
                 home.DownloadProgressMb = 830;
                 home.InstallProgressTotalSteps = 4;
                 home.InstallProgressSteps = 1;
                 home.DownloadRateText = scenario == "home-installing" ? "12.3 MB/s · about 2 min left" : null;
                 break;
+            case "home-installed":
+            case "home-failed":
+                var done = viewModel.HomeTab;
+                done.IsInstallLogVisible = true;
+                done.Log(LogMessage.Literal("Creating an install plan"));
+                done.Log(LogMessage.Literal("Downloading 3 patches (2.1 GB)"));
+                done.Log(LogMessage.Literal("Applying patch 1 of 3"));
+                if (scenario == "home-installed")
+                {
+                    done.Log(LogMessage.Literal("Applying patch 2 of 3"));
+                    done.Log(LogMessage.Literal("Applying patch 3 of 3"));
+                    done.LogOutcome(LogMessage.Literal("KSP2 Redux Successfully Installed"), InstallLogKind.Success);
+                }
+                else
+                {
+                    done.LogError(LogMessage.Literal("Patch 1 failed: the archive is damaged. Your install was rolled back."));
+                    done.LogOutcome(LogMessage.Literal("Nothing was changed."), InstallLogKind.Notice);
+                }
+                break;
             case "community":
+                viewModel.CommunityTab.SetSelectedNewsId("https://ksp2redux.org/news/0-6-4");
                 viewModel.CurrentTab = COMMUNITY;
                 break;
             case "settings":
                 viewModel.CurrentTab = SETTINGS;
+                break;
+            case "mods":
+                viewModel.CurrentTab = MODS;
+                break;
+            case "settings-keyboard":
+                viewModel.CurrentTab = SETTINGS;
+                Pump();
+                for (var press = 0; press < 3; press++) window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+                Pump();
+                window.GetVisualDescendants().OfType<Button>().First(button => button.Content is "Add").Focus(NavigationMethod.Tab);
                 break;
             case "settings-bottom":
                 viewModel.CurrentTab = SETTINGS;
@@ -114,8 +152,8 @@ public class ScreenshotTest
         {
             Items =
             [
-                new FeedItem { Title = "Redux 0.6.4 is out", Description = "<p>Faster loading, the new launcher and a pile of fixes.</p>", PublishingDate = new DateTime(2026, 11, 14) },
-                new FeedItem { Title = "Community spotlight: Duna landings", Description = "<p>Our favourite landings from the last month.</p>", PublishingDate = new DateTime(2026, 11, 2) },
+                new FeedItem { Link = "https://ksp2redux.org/news/0-6-4", Title = "Redux 0.6.4 is out", Content = "<h2>What is new</h2><p>Faster loading, the new launcher and a pile of fixes. This release brings the .NET 11 launcher, save backups before every install, and a download speed readout while patches download.</p><p>Read the full notes on the <a href=\"https://ksp2redux.org\">website</a>.</p>", PublishingDate = new DateTime(2026, 11, 14) },
+                new FeedItem { Link = "https://ksp2redux.org/news/duna", Title = "Community spotlight: Duna landings", Content = "<p>Our favourite landings from the last month.</p>", PublishingDate = new DateTime(2026, 11, 2) },
             ]
         });
         TestHelpers.MockMessageBoxAcceptAll();

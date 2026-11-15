@@ -1,13 +1,13 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
 namespace Ksp2Redux.Tools.Launcher.Views.Settings;
@@ -93,6 +93,6 @@ public partial class SettingsTabView : UserControl
         var clipboard = topLevel?.Clipboard;
         if (clipboard is null) return;
         await clipboard.SetTextAsync(Model.BuildDiagnosticInfo());
-        if (sender is Control button) FlyoutBase.ShowAttachedFlyout(button);
+        (topLevel as MainWindow)?.ShowSnackbar(TExtension.Service["Settings.CopyDiagnosticInfo.Copied"]);
     }
 }

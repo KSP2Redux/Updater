@@ -44,6 +44,7 @@ public static class TestAppBuilder
 
     public static AppBuilder BuildAvaloniaApp()
     {
+        Ksp2Redux.Tools.Launcher.Views.MainWindow.AnimationsSupported = false;
         return AppBuilder.Configure(() =>
             {
                 InitServiceProvider();  // Resets all services

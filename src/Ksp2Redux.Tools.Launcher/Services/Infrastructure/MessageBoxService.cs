@@ -6,6 +6,8 @@ using MsBox.Avalonia.Base;
 using MsBox.Avalonia.Dto;
 using MsBox.Avalonia.Enums;
 
+using Ksp2Redux.Tools.Launcher.Views;
+
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
 public interface IMessageBoxService
@@ -24,6 +26,12 @@ public interface IMessageBoxService
         double maxHeight,
         ButtonEnum @enum = ButtonEnum.Ok,
         WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen);
+
+    /// <summary>
+    /// Confirms something that already happened with a short message at the bottom of the main window,
+    /// instead of a dialog the player has to dismiss.
+    /// </summary>
+    void ShowSnackbar(string message);
 }
 
 public class MessageBoxService : IMessageBoxService
@@ -31,6 +39,8 @@ public class MessageBoxService : IMessageBoxService
 #pragma warning disable RS0030
     private static Window? OwnerWindow =>
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+
+    public void ShowSnackbar(string message) => (OwnerWindow as MainWindow)?.ShowSnackbar(message);
 
     public async Task<ButtonResult> ShowMessageBoxAsOwnedAsync(
         string title,

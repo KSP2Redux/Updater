@@ -32,18 +32,27 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
     <!-- Material 3 motion: state changes ease in over a short duration instead of
-         switching instantly. 0.2,0,0,1 is the standard easing curve. -->
-    <Style Selector="Button.tonal /template/ ContentPresenter#PART_ContentPresenter, Button.danger /template/ ContentPresenter#PART_ContentPresenter">
+         switching instantly. 0.2,0,0,1 is the standard easing curve. Every animation sits
+         under :is(Window).motion, which the Motion setting turns off. -->
+    <Style Selector=":is(Window).motion Button.tonal /template/ ContentPresenter#PART_ContentPresenter, :is(Window).motion Button.danger /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="ContentPresenter.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
             </Transitions>
         </Setter>
     </Style>
-    <Style Selector="TabItem /template/ Border#PART_LayoutRoot">
+    <Style Selector=":is(Window).motion TabItem /template/ Border#PART_LayoutRoot">
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Border.Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- A progress bar's fill eases toward each new value; ProgressFill marks drops as instant. -->
+    <Style Selector=":is(Window).motion ProgressBar:not(.instant) /template/ Border#PART_Indicator">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Width" Duration="0:0:0.3" Easing="0.2,0,0,1" />
             </Transitions>
         </Setter>
     </Style>
@@ -151,6 +160,52 @@
         <Setter Property="FontSize" Value="12" />
         <Setter Property="LetterSpacing" Value="0.5" />
         <Setter Property="Foreground" Value="{StaticResource PrimaryToneBrush}" />
+    </Style>
+
+    <!-- Snackbars (MainWindow.ShowSnackbar): Material 3's short confirmations at the bottom of the window. -->
+    <Style Selector="NotificationCard">
+        <Setter Property="Background" Value="{StaticResource SnackbarBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource GlassSurfaceBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+    <!-- Fluent's card is a fixed 350 x 150 with a colour strip for the notification type. A snackbar is
+         one line sized to its text, so the width, the minimum height and the strip go. -->
+    <Style Selector="NotificationCard">
+        <Setter Property="Width" Value="NaN" />
+        <Setter Property="MinWidth" Value="240" />
+    </Style>
+    <Style Selector="NotificationCard /template/ Panel#PART_HeaderBar">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="NotificationCard /template/ ContentControl#PART_Content">
+        <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <!-- The card keeps a minimum height taller than one line, so the text centres itself in it. -->
+    <Style Selector="TextBlock.snackbar">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MaxWidth" Value="440" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="16,12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- Keyboard focus: a 2px ring in the light brand tone, rounded to match the controls, instead of
+         Fluent's square black-and-white outline. It shows for keyboard focus only, not for clicks. -->
+    <Style Selector=":is(Control)">
+        <Setter Property="FocusAdorner">
+            <FocusAdornerTemplate>
+                <Border BorderThickness="2" BorderBrush="{DynamicResource PrimaryToneBrush}" CornerRadius="10" Margin="-3" />
+            </FocusAdornerTemplate>
+        </Setter>
+    </Style>
+
+    <!-- A focused ComboBox also draws Fluent's own highlight, an accent fill that is a heavy red block
+         here, inside the shared focus ring. The ring is enough. -->
+    <Style Selector="ComboBox:focus-visible /template/ Border#HighlightBackground">
+        <Setter Property="IsVisible" Value="False" />
     </Style>
 
     <Style Selector="TextBlock">
