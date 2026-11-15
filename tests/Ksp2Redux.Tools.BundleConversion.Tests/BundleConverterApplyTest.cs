@@ -332,6 +332,33 @@ public class BundleConverterApplyTest
     }
 
     [Test]
+    public void Revert_AfterAManifestMoveWasCancelledWhileWritingCopies_RestoresStock()
+    {
+        // Arrange
+        TestGame game = new();
+        var stock = TestGame.ContentBundle(compress: false, ShaderBundleIds.SHARED_SHADERS_CAB, ShaderBundleIds.BUILTIN_SHADERS_CAB);
+        game.Write(CONTENT, stock);
+        game.Write(OTHER, TestGame.ReferencingBundle(compress: true, ShaderBundleIds.SHARED_SHADERS_CAB));
+        game.Converter().Apply(TestGame.Manifest((TestGame.EMBEDDED_SHADER, ShaderBundleIds.SHARED_SHADERS_CAB)));
+        using CancellationTokenSource cancel = new();
+        BundleConverter cancelling = new(game.FileSystem, TestGame.ROOT, new BundleConversionOptions
+        {
+            MaxParallelism = 1,
+            Progress = new CancelOn("Wrote", cancel),
+        });
+        Assert.Catch<OperationCanceledException>(() =>
+            cancelling.Apply(TestGame.Manifest((TestGame.EMBEDDED_SHADER, ShaderBundleIds.BUILTIN_SHADERS_CAB)), cancellationToken: cancel.Token));
+
+        // Act
+        var result = game.Converter().Revert();
+
+        // Assert
+        Assert.That(result.Unreverted, Is.Empty);
+        Assert.That(result.JournalDeleted, Is.True);
+        Assert.That(game.Read(CONTENT), Is.EqualTo(stock));
+    }
+
+    [Test]
     public void Apply_MonoBehaviourShaderField_IsRetargetedAndReportedWithItsScript()
     {
         // Arrange
@@ -431,6 +458,17 @@ public class BundleConverterApplyTest
             foreach (var preload in file.Preloads.Where(entry => entry.PathId != 2 && entry.PathId != TestGame.MATERIAL_PATH_ID && entry.PathId != TestGame.BEHAVIOUR_PATH_ID))
             {
                 yield return (preload.FileId, preload.PathId);
+            }
+        }
+    }
+
+    private sealed class CancelOn(string prefix, CancellationTokenSource source) : IProgress<string>
+    {
+        public void Report(string value)
+        {
+            if (value.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                source.Cancel();
             }
         }
     }

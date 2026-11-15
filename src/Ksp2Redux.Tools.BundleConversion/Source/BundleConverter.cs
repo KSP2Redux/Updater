@@ -426,8 +426,10 @@ public sealed class BundleConverter
         }
     }
 
-    // Journal edits for bundles the new plan does not edit in place, or at offsets it does not
-    // touch, are put back to stock. Returns the edits that could not be, per bundle.
+    // Journal edits for bundles the new plan does not edit in place, or that it edits to other bytes,
+    // are put back to stock. Returns the edits that could not be, per bundle.
+    // An edit moving to a new target goes through stock rather than straight from old target to new: the journal
+    // holds one edit per offset, and only this way are the bytes on disk always either stock or what it records.
     private Dictionary<string, List<JournalEdit>> RetireInPlaceEdits(
         Dictionary<string, JournalInPlaceFile> previous,
         Dictionary<string, BundleEditPlan> planned,
@@ -436,13 +438,15 @@ public sealed class BundleConverter
         Dictionary<string, List<JournalEdit>> leftovers = new(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in previous.Values)
         {
-            HashSet<long> kept = [];
+            Dictionary<long, PlannedEdit> next = [];
             if (planned.TryGetValue(entry.File, out var plan) && plan.Mode == BundleEditMode.InPlace)
             {
-                kept.UnionWith(plan.Edits.Select(edit => edit.FileOffset));
+                next = plan.Edits.ToDictionary(edit => edit.FileOffset);
             }
 
-            var retiring = entry.Edits.Where(edit => !kept.Contains(edit.Offset)).ToList();
+            var retiring = entry.Edits
+                .Where(edit => !(next.TryGetValue(edit.Offset, out var same) && edit.Old == Hex.Encode(same.Old) && edit.New == Hex.Encode(same.New)))
+                .ToList();
             if (retiring.Count == 0)
             {
                 continue;
@@ -468,12 +472,18 @@ public sealed class BundleConverter
                     {
                         case EditState.Applied:
                             InPlaceEditor.WriteIfMatches(stream, edit.Offset, newBytes, oldBytes);
-                            result.EditsReverted++;
+                            if (!next.ContainsKey(edit.Offset))
+                            {
+                                result.EditsReverted++;
+                            }
+
                             break;
-                        case EditState.Foreign:
+                        // The plan's own edit at this offset is journaled, and reported if foreign, by the apply.
+                        case EditState.Foreign when !next.ContainsKey(edit.Offset):
                             result.ForeignEdits.Add(new EditStatus(entry.File, edit.Offset, EditState.Foreign));
                             AddLeftover(leftovers, entry.File, edit);
                             break;
+                        case EditState.Foreign:
                         case EditState.Stock:
                         case EditState.FileChanged:
                             break;
@@ -850,22 +860,19 @@ public sealed class BundleConverter
                             break;
                         case EditState.Stock:
                             InPlaceEditor.WriteIfMatches(stream, edit.FileOffset, edit.Old, edit.New);
-                            written++;
-                            break;
-                        default:
-                            // An earlier run's edit to the same stock bytes, pointing at an older target.
-                            if (earlierEdits.TryGetValue(edit.FileOffset, out var previousEdit) &&
-                                previousEdit.Old == Hex.Encode(edit.Old) &&
-                                TryDecode(previousEdit, out _, out var previousNew) &&
-                                InPlaceEditor.WriteIfMatches(stream, edit.FileOffset, previousNew, edit.New))
+                            // An earlier run's edit pointing at an older target, which the retire put back to stock.
+                            if (earlierEdits.TryGetValue(edit.FileOffset, out var previousEdit) && previousEdit.New != Hex.Encode(edit.New))
                             {
                                 updated++;
                             }
                             else
                             {
-                                foreign.Add(new EditStatus(bundle.File, edit.FileOffset, EditState.Foreign));
+                                written++;
                             }
 
+                            break;
+                        default:
+                            foreign.Add(new EditStatus(bundle.File, edit.FileOffset, EditState.Foreign));
                             break;
                     }
                 }
