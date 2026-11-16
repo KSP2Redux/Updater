@@ -85,7 +85,8 @@ public class GameProcessService(IOperatingSystemService operatingSystem, IWineRu
     public async Task<bool> WaitForStartAsync(TimeSpan timeout, CancellationToken cancellationToken)
     {
         var waited = Stopwatch.StartNew();
-        while (!IsRunning())
+        // Called from the UI thread, and on macOS each check runs ps, which takes tens of milliseconds.
+        while (!await Task.Run(IsRunning, cancellationToken))
         {
             if (waited.Elapsed >= timeout) return false;
             await Task.Delay(StartPollInterval, cancellationToken);
@@ -95,7 +96,7 @@ public class GameProcessService(IOperatingSystemService operatingSystem, IWineRu
 
     public async Task WaitForExitAsync(CancellationToken cancellationToken)
     {
-        while (IsRunning())
+        while (await Task.Run(IsRunning, cancellationToken))
         {
             await Task.Delay(ExitPollInterval, cancellationToken);
         }

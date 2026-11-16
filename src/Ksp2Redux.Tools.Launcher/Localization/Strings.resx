@@ -83,6 +83,10 @@ https://ksp2redux.org</value>
     <value>unknown</value>
     <comment>Shown in the about box in place of the version number when it cannot be read.</comment>
   </data>
+  <data name="App.AlreadyRunning" xml:space="preserve">
+    <value>KSP2 Redux is already running. Switch to its window, or close it before starting it again.</value>
+    <comment>Shown when the launcher is started while another copy of it is still open, before its window appears.</comment>
+  </data>
   <!-- Main window -->
   <data name="Tab.Home" xml:space="preserve">
     <value>Home</value>
@@ -158,6 +162,14 @@ https://ksp2redux.org</value>
     <comment>Tooltip of the link icon that opens the forum thread.</comment>
   </data>
   <!-- Community and Mods tabs -->
+  <data name="Community.Label" xml:space="preserve">
+    <value>NEWS</value>
+    <comment>Small heading over a news post on the Community tab, in capitals like the other section headings.</comment>
+  </data>
+  <data name="Community.ViewOnBlog" xml:space="preserve">
+    <value>Open on the blog</value>
+    <comment>Button beside a news post's date that opens the post on the website.</comment>
+  </data>
   <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
     <value>View On Blog</value>
     <comment>Tooltip of the button next to a news post title that opens the post in the browser.</comment>
@@ -167,10 +179,34 @@ https://ksp2redux.org</value>
     <comment>Large heading on the Mods tab, which has no content yet.</comment>
   </data>
   <data name="Mods.Roadmap" xml:space="preserve">
-    <value>Mod support is on the roadmap :3</value>
-    <comment>Line under the heading on the Mods tab. The ":3" is a smiley.</comment>
+    <value>Mod support is on the roadmap. Until then, the news has what is coming next.</value>
+    <comment>Line under the heading on the Mods tab, which has no content yet.</comment>
+  </data>
+  <data name="Mods.ReadNews" xml:space="preserve">
+    <value>Read the latest news</value>
+    <comment>Button on the empty Mods tab that opens the Community tab.</comment>
   </data>
   <!-- Home tab -->
+  <data name="Home.InstallLog.Copy" xml:space="preserve">
+    <value>Copy</value>
+    <comment>Small button beside the install log heading that copies the whole log.</comment>
+  </data>
+  <data name="Home.InstallLog.Copy.Tooltip" xml:space="preserve">
+    <value>Copy the whole log. To copy some lines, select them and press Ctrl+C.</value>
+    <comment>Tooltip on the install log's Copy button. On macOS the shortcut is Cmd+C.</comment>
+  </data>
+  <data name="Home.InstallLog.Copied" xml:space="preserve">
+    <value>Log copied to the clipboard</value>
+    <comment>Short confirmation at the bottom of the window after the install log was copied.</comment>
+  </data>
+  <data name="Clipboard.CopyFailed" xml:space="preserve">
+    <value>Could not copy to the clipboard. Try again.</value>
+    <comment>Short message at the bottom of the window when copying the install log or the diagnostic info failed.</comment>
+  </data>
+  <data name="Home.InstallLog.Title" xml:space="preserve">
+    <value>INSTALL LOG</value>
+    <comment>Small heading over the install log on the Home tab, written in capitals like the Settings section headings.</comment>
+  </data>
   <data name="Home.Progress.Downloaded" xml:space="preserve">
     <value>Downloaded:</value>
     <comment>Label in front of the download progress bar on the Home tab.</comment>
@@ -186,6 +222,22 @@ https://ksp2redux.org</value>
   <data name="Home.Progress.InstallFormat" xml:space="preserve">
     <value>{0}/{3} steps ({1:0}%)</value>
     <comment>Text on the install progress bar. {0} = steps done, {3} = steps in total, {1} = percent done. Keep the placeholders with their formats.</comment>
+  </data>
+  <data name="Home.Progress.Rate" xml:space="preserve">
+    <value>{0}/s · {1}</value>
+    <comment>Beside the download progress bar. {0} is a size such as "12.3 MB", {1} is one of the Home.Progress.TimeLeft texts.</comment>
+  </data>
+  <data name="Home.Progress.TimeLeft.Seconds" xml:space="preserve">
+    <value>about {0} s left</value>
+    <comment>Time until the patch downloads finish. {0} is a number of seconds.</comment>
+  </data>
+  <data name="Home.Progress.TimeLeft.Minutes" xml:space="preserve">
+    <value>about {0} min left</value>
+    <comment>Time until the patch downloads finish. {0} is a number of minutes.</comment>
+  </data>
+  <data name="Home.Progress.TimeLeft.Hours" xml:space="preserve">
+    <value>about {0} h {1} min left</value>
+    <comment>Time until the patch downloads finish. {0} is hours, {1} is minutes.</comment>
   </data>
   <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
     <value>New version of the updater app is necessary to install or update redux</value>
@@ -368,6 +420,14 @@ https://ksp2redux.org</value>
     <value>Copy Diagnostic Info</value>
     <comment>Button that copies version, system and log information to the clipboard for bug reports.</comment>
   </data>
+  <data name="Settings.CopyDiagnosticInfo.Tooltip" xml:space="preserve">
+    <value>Copies your launcher version, system, install and recent logs, ready to paste into a bug report. Your user folder is shown as ~.</value>
+    <comment>Tooltip on the Copy Diagnostic Info button. "~" stands for the user's home folder and must stay as is.</comment>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo.Copied" xml:space="preserve">
+    <value>Copied to the clipboard</value>
+    <comment>Shown briefly under the Copy Diagnostic Info button after it copied the report.</comment>
+  </data>
   <data name="Settings.VerboseLogging" xml:space="preserve">
     <value>Verbose logging</value>
     <comment>Label of a check box.</comment>
@@ -377,11 +437,11 @@ https://ksp2redux.org</value>
     <comment>Tooltip of the Verbose logging check box.</comment>
   </data>
   <data name="Settings.BackgroundMotion" xml:space="preserve">
-    <value>Background motion</value>
+    <value>Motion</value>
     <comment>Label of a check box.</comment>
   </data>
   <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
-    <value>Shift the background slightly as the mouse moves. Turn this off if the motion is distracting or uncomfortable.</value>
+    <value>Shift the background slightly as the mouse moves, and animate the interface. Turn this off if the motion is distracting or uncomfortable.</value>
     <comment>Tooltip of the Background motion check box.</comment>
   </data>
   <data name="Settings.LauncherVersion" xml:space="preserve">
@@ -544,10 +604,6 @@ https://ksp2redux.org</value>
     <value>Confirm</value>
     <comment>Title of a message box that asks Yes or No.</comment>
   </data>
-  <data name="Dialog.Done.Title" xml:space="preserve">
-    <value>Done!</value>
-    <comment>Title of a message box that reports success.</comment>
-  </data>
   <!-- Settings tab dialogs and messages -->
   <data name="Settings.FilePicker.Failed" xml:space="preserve">
     <value>Couldn't open the file picker: {0}</value>
@@ -604,6 +660,50 @@ https://ksp2redux.org</value>
 {0}</value>
     <comment>Message box text when the game data folder could not be opened. Two lines. {0} = the reason, in English.</comment>
   </data>
+  <data name="Settings.SaveBackups" xml:space="preserve">
+    <value>Save backups:</value>
+    <comment>Label in Settings in front of the list of save backups.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Tooltip" xml:space="preserve">
+    <value>Your saves and crafts are backed up before every install, update or uninstall. The five newest backups are kept.</value>
+    <comment>Tooltip on the save backups list in Settings.</comment>
+  </data>
+  <data name="Settings.SaveBackups.None" xml:space="preserve">
+    <value>None yet</value>
+    <comment>Shown in the save backups list before the first backup exists.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Restore" xml:space="preserve">
+    <value>Restore</value>
+    <comment>Button that puts back the saves from the selected backup.</comment>
+  </data>
+  <data name="Settings.SaveBackups.OpenFolder" xml:space="preserve">
+    <value>Open Backups Folder</value>
+    <comment>Button that opens the folder the save backups are kept in.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Confirm" xml:space="preserve">
+    <value>Replace your saves and crafts with the backup from {0}?
+
+Your current saves are backed up first, so you can go back to them from this list.</value>
+    <comment>Confirmation before restoring a save backup. {0} is the backup's date and size.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Busy" xml:space="preserve">
+    <value>Close KSP2 and wait for the launcher to finish what it is doing, then restore the backup.</value>
+    <comment>Shown when a backup restore is refused because the game or an install is running.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Restored" xml:space="preserve">
+    <value>Your saves and crafts are back as they were in the backup. The saves you had before are in the newest backup.</value>
+    <comment>Message after a save backup was restored.</comment>
+  </data>
+  <data name="Settings.SaveBackups.Failed" xml:space="preserve">
+    <value>The backup could not be restored: {0}
+
+If some of your saves were already replaced, the saves you had before are in the newest backup.</value>
+    <comment>Message when restoring a save backup failed. {0} = the reason.</comment>
+  </data>
+  <data name="Settings.SaveBackups.FolderFailed" xml:space="preserve">
+    <value>Couldn't open the save backups folder: {0}</value>
+    <comment>Message box text when the save backups folder could not be opened. {0} = the reason, in English.</comment>
+  </data>
   <data name="Settings.LogsFolder.Failed" xml:space="preserve">
     <value>Couldn't open the logs folder: {0}</value>
     <comment>Message box text when the logs folder could not be opened. {0} = the reason, in English.</comment>
@@ -615,8 +715,8 @@ https://ksp2redux.org</value>
   <data name="Settings.UninstallKsp2.NotAGameFolder.Message" xml:space="preserve">
     <value>{0}
 
-doesn't look like a KSP2 install folder (there is no {1} with KSP2_x64_Data beside it), so nothing was deleted. Remove the profile instead if it points at the wrong place.</value>
-    <comment>Message box text. {0} = the folder path, shown on its own first line. {1} = the game executable file name. KSP2_x64_Data is a folder name.</comment>
+doesn't look like a folder that holds only KSP2, so nothing was deleted. Deleting removes the whole folder, so it needs {1} with KSP2_x64_Data beside it, and no other programs or lots of other files. Delete it by hand if you are sure, or remove the profile if it points at the wrong place.</value>
+    <comment>Message box text. {0} = the folder path, shown on its own first line. {1} = the game executable file name. KSP2_x64_Data is a folder name. Shown when the game is missing, or when the folder is a drive root or holds other programs or files.</comment>
   </data>
   <data name="Settings.UninstallKsp2.Missing.Title" xml:space="preserve">
     <value>KSP2 Already Gone</value>
@@ -667,6 +767,18 @@ Make sure the game isn't running, then try again.</value>
   <data name="Settings.UninstallRedux.NotInstalled" xml:space="preserve">
     <value>Redux is not installed...</value>
     <comment>Message box text when Uninstall Redux is used on a game without Redux.</comment>
+  </data>
+  <data name="Settings.Busy" xml:space="preserve">
+    <value>Close KSP2 and wait for the launcher to finish what it is doing, then try again.</value>
+    <comment>Shown when uninstalling, deleting the game or installing a patch file is refused because the game or another install is running.</comment>
+  </data>
+  <data name="Home.CloseWhileBusy.Title" xml:space="preserve">
+    <value>Still working</value>
+    <comment>Title of the message shown when the window is closed while an install is running.</comment>
+  </data>
+  <data name="Home.CloseWhileBusy.Message" xml:space="preserve">
+    <value>The launcher is changing your game files. Closing now would leave KSP2 half updated. Cancel the install on the Home tab, or wait for it to finish, then close the launcher.</value>
+    <comment>Shown when the window is closed while an install, uninstall or restore is running.</comment>
   </data>
   <data name="Settings.UninstallRedux.Confirm" xml:space="preserve">
     <value>Are you sure you want to uninstall Redux?</value>
@@ -1235,6 +1347,14 @@ They may be lost if you close the launcher. Check that {1} is writable and try a
   <data name="Install.CheckingFiles" xml:space="preserve">
     <value>Checking that no other program is using the game files...</value>
     <comment>Line in the install log.</comment>
+  </data>
+  <data name="Install.SavesBackedUp" xml:space="preserve">
+    <value>Backed up your saves and crafts to {0}</value>
+    <comment>Line in the install log, written before the game files change. {0} is the backup's file name.</comment>
+  </data>
+  <data name="Install.SavesBackupFailed" xml:space="preserve">
+    <value>Could not back up your saves, continuing without a backup: {0}</value>
+    <comment>Line in the install log. The install goes on, since it does not touch saves. {0} is the error.</comment>
   </data>
   <data name="Install.Uninstalling" xml:space="preserve">
     <value>Uninstalling KSP2 Redux</value>

@@ -386,7 +386,7 @@ public partial class FullSourcePreparationServiceTest
         await home.InstallRedux();
         Dispatcher.UIThread.RunJobs();
         Assert.That(fixture.Coordinator().GetPublishedIdentity(fixture.Entry.Id)!.ReleaseId,
-            Is.EqualTo("fixture-same-version-transition"), home.InstallLogText);
+            Is.EqualTo("fixture-same-version-transition"), string.Join("\n", home.InstallLogEntries.Select(entry => entry.Text)));
         AssertTree(fixture.Fs, fixture.Install, fixture.Target);
     }
 
@@ -414,7 +414,7 @@ public partial class FullSourcePreparationServiceTest
         home.SelectedVersion = new GameVersionViewModel(feed.GetAllVersions().Single());
         await home.InstallRedux();
         Dispatcher.UIThread.RunJobs();
-        Assert.That(fixture.Coordinator().GetPublishedIdentity(fixture.Entry.Id)!.Version, Is.EqualTo(VERSION), home.InstallLogText);
+        Assert.That(fixture.Coordinator().GetPublishedIdentity(fixture.Entry.Id)!.Version, Is.EqualTo(VERSION), string.Join("\n", home.InstallLogEntries.Select(entry => entry.Text)));
         AssertTree(fixture.Fs, fixture.Install, fixture.Target);
     }
 

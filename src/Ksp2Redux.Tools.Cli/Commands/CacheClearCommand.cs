@@ -78,6 +78,13 @@ public sealed class CacheClearCommand : ReduxCommand<CacheClearSettings>
             }
         }
 
+        if (deleted < candidates.Count)
+        {
+            return Task.FromResult(context.Output.Fail(
+                ExitCode.INSTALL_FAILED,
+                $"Could not delete {candidates.Count - deleted} of {candidates.Count} cached files in {directory}. Close the launcher and try again."));
+        }
+
         context.Output.Payload(
             new { ok = true, directory, deleted, bytes = deletedBytes },
             () =>
@@ -86,6 +93,6 @@ public sealed class CacheClearCommand : ReduxCommand<CacheClearSettings>
                 context.Output.Detail($"  freed {CliFormat.Bytes(deletedBytes)} from {directory}");
             });
 
-        return Task.FromResult(deleted == candidates.Count ? ExitCode.SUCCESS : ExitCode.USAGE_ERROR);
+        return Task.FromResult(ExitCode.SUCCESS);
     }
 }

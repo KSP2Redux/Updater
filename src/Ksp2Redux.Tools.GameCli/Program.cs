@@ -2309,10 +2309,19 @@ static async Task<JsonNode> Watch(Dictionary<string, string?> options)
 
                 if (pid != null)
                 {
-                    Console.Error.WriteLine($"watch: killing editor process {pid}.");
                     try
                     {
-                        Process.GetProcessById(pid.Value).Kill(true);
+                        using Process process = Process.GetProcessById(pid.Value);
+
+                        // A pid file left behind by an editor that has since exited can name a pid
+                        // the OS has handed to an unrelated process.
+                        if (!string.Equals(process.ProcessName, "Unity", StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidOperationException($"process {pid} is '{process.ProcessName}', not the Unity editor.");
+                        }
+
+                        Console.Error.WriteLine($"watch: killing editor process {pid}.");
+                        process.Kill(true);
                     }
                     catch (Exception ex)
                     {

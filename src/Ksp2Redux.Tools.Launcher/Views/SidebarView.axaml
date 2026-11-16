@@ -44,7 +44,7 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="FontSize" Value="32" />
-            <Setter Property="FontFamily" Value="{StaticResource LedCounter7}" />
+            <Setter Property="FontFamily" Value="{DynamicResource LedCounter7}" />
             <Setter Property="HorizontalAlignment" Value="Center" />
 
             <Style Selector="^ Border.main-button-tint">
@@ -95,32 +95,74 @@
                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                 <Setter Property="Background" Value="Black" />
                 <Setter Property="FontSize" Value="12" />
-                <Setter Property="FontFamily" Value="{StaticResource JetBrainsMonoLight}" />
+                <Setter Property="FontFamily" Value="{DynamicResource JetBrainsMonoLight}" />
                 <Setter Property="Padding" Value="8,4" />
                 <Setter Property="MaxWidth" Value="320" />
             </Style>
         </Style>
 
+        <!-- Main button motion, all under the Motion setting. The tint eases instead of snapping, a press
+             sinks the LED art slightly, and the Update art glows three times when an update appears and
+             then stops, so nothing keeps the window redrawing while it waits. -->
+        <Style Selector=":is(Window).motion Button.main-button">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="0.2,0,0,1" />
+                </Transitions>
+            </Setter>
+            <Style Selector="^:pressed">
+                <Setter Property="RenderTransform" Value="scale(0.98)" />
+            </Style>
+            <Style Selector="^ Border.main-button-tint">
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.2,0,0,1" />
+                    </Transitions>
+                </Setter>
+            </Style>
+        </Style>
+        <Style Selector="Border.main-button-glow">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector=":is(Window).motion Border.main-button-glow[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:1.6" IterationCount="3" Easing="0.4,0,0.6,1">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- A tonal icon button, matching the version dropdown beside it. -->
         <Style Selector="Button.refresh-button">
-            <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
+            <Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="FontSize" Value="16" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style Selector="^ PathIcon">
+                <Setter Property="Width" Value="16" />
+                <Setter Property="Height" Value="16" />
+            </Style>
             <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SuccessHoverBrush}" />
-                <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="{StaticResource TonalContainerHoverBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             </Style>
             <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SuccessPressedBrush}" />
-                <Setter Property="TextElement.Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="{StaticResource TonalContainerPressedBrush}" />
             </Style>
             <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource DisabledSurfaceBrush}" />
-                <Setter Property="Opacity" Value="0.6" />
+                <Setter Property="Background" Value="{StaticResource DisabledContainerBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource DisabledContentBrush}" />
             </Style>
         </Style>
 
@@ -143,12 +185,12 @@
 
         <shared:NewsCollectionView x:Name="NewsCollection" Grid.Row="1" DataContext="{Binding NewsCollectionViewModel}"/>
 
-        <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,10,0,6"
+        <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,8,0,8"
                     DataContext="{Binding HomeTab}">
           <StackPanel x:DataType="home:HomeTabViewModel">
             <ComboBox Name="InstallSelector"
-                      FontFamily="{StaticResource JetBrainsMonoRegular}"
-                      HorizontalAlignment="Stretch" Margin="0,0,0,6"
+                      FontFamily="{DynamicResource JetBrainsMonoRegular}"
+                      HorizontalAlignment="Stretch" Margin="0,0,0,8"
                       Background="{StaticResource InputSurfaceBrush}" CornerRadius="{StaticResource RadiusMedium}" BorderBrush="Transparent" FontSize="11"
                       IsEnabled="{Binding IsInstallSwitcherEnabled}"
                       ItemsSource="{Binding Installs}"
@@ -163,7 +205,7 @@
                 <controls:GroupedComboBox
                     Grid.Column="0"
                     Name="VersionSelector"
-                    FontFamily="{StaticResource JetBrainsMonoRegular}"
+                    FontFamily="{DynamicResource JetBrainsMonoRegular}"
                     HorizontalAlignment="Stretch"
                     Background="{StaticResource InputSurfaceBrush}" CornerRadius="{StaticResource RadiusMedium}" BorderBrush="Transparent" FontSize="11"
                     ItemsSource="{Binding Versions}"
@@ -182,11 +224,13 @@
                     Classes="refresh-button"
                     Name="RefreshVersionsButton"
                     Command="{Binding RefreshFeedsCommand}"
-                    Content="⟳"
                     ToolTip.Tip="{loc:T Sidebar.RefreshVersions.Tooltip}"
                     Width="32"
                     VerticalAlignment="Stretch"
-                    Margin="6,0,0,0" />
+                    Margin="8,0,0,0">
+                    <!-- Material Symbols "refresh" (Apache License 2.0). -->
+                    <PathIcon Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                </Button>
             </Grid>
             <TextBlock Name="FeedRefreshWarning"
                        IsVisible="{Binding FeedRefreshFailed}"
@@ -199,6 +243,11 @@
 
         <StackPanel Grid.Row="3" DataContext="{Binding HomeTab}">
           <Panel x:DataType="home:HomeTabViewModel">
+            <!-- Behind the Update button rather than inside it: the button clips its content, which cut
+                 the halo off. Glows in the art's own yellow; see the motion styles above. -->
+            <Border Classes="main-button-glow" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}"
+                    Background="#FFD000" BoxShadow="0 0 16 0 #FFD000"
+                    IsVisible="{Binding #UpdateButton.IsVisible}" IsHitTestVisible="False" />
             <Button Classes="main-button" IsVisible="True" Name="InstallButton" Command="{Binding InstallRedux}"
                     IsEnabled="{Binding MainButtonEnabled}"
                     ToolTip.Tip="{Binding MainButtonTooltip}" ToolTip.ShowOnDisabled="True">
@@ -207,7 +256,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.InstallButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.InstallButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
@@ -220,7 +269,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.UpdateButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.UpdateButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
@@ -233,7 +282,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.CancelButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.CancelButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
@@ -246,7 +295,7 @@
                     <Border Classes="main-button-tint" Width="260" Height="76" CornerRadius="{StaticResource RadiusMedium}" />
                     <Grid Classes="main-button-label">
                         <Viewbox>
-                            <TextBlock FontFamily="{StaticResource LedCounter7}" Text="{loc:T Sidebar.LaunchButton}" />
+                            <TextBlock FontFamily="{DynamicResource LedCounter7}" Text="{loc:T Sidebar.LaunchButton}" />
                         </Viewbox>
                     </Grid>
                 </Canvas>
@@ -257,7 +306,7 @@
         </StackPanel>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom" Margin="0,14,0,0">
+                    VerticalAlignment="Bottom" Margin="0,3,0,0">
             <Button Classes="link-button sidebar-link" ToolTip.Tip="{loc:T Sidebar.Link.Website.Tooltip}" Click="WebsiteLink_OnClick">
                 <Canvas>
                     <Image Source="avares://Ksp2Redux.Tools.Launcher/Assets/links-website.webp" Canvas.Left="0" Canvas.Top="0" RenderOptions.BitmapInterpolationMode="HighQuality" />

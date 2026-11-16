@@ -5,7 +5,9 @@ using Ksp2Redux.Tools.Common.Transactions;
 using System.Diagnostics;
 using Avalonia.Headless.NUnit;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
@@ -559,7 +561,9 @@ public partial class FullSourceInstallationServiceTest
             fixture.Configuration, installs, Mock.Of<ITabNavigatorService>(), home, Mock.Of<IAssemblyService>(),
             messages.Object, Mock.Of<IEnvironmentProvider>(), Mock.Of<ILogService>(), Mock.Of<IGameDataFolderService>(),
             Mock.Of<ISteamSessionService>(), Mock.Of<ISteamDialogService>(), fixture.Os,
-            Mock.Of<IKsp2GameUninstallService>(), state, coordinator);
+            Mock.Of<IKsp2GameUninstallService>(), state, LocalizationService.Default, feeds.Object,
+            Mock.Of<IWineRuntimeService>(), Mock.Of<IDiskSpaceService>(), Mock.Of<ISaveBackupService>(backups => backups.List() == Array.Empty<SaveBackup>()),
+            Mock.Of<IGameProcessService>(), coordinator);
         Dictionary<string, string> before = LiveUseSnapshot(fixture);
         using var held = running ? null : fixture.Fs.File.Open(At(fixture.Fs, fixture.Install, BUNDLE),
             FileMode.Open, FileAccess.Read, FileShare.Read);

@@ -21,7 +21,9 @@
 
     <Application.Resources>
         <ResourceDictionary>
-            <!-- LED Counter 7 has no Cyrillic, Greek or most accented Latin glyphs, so those fall back to Handjet, a dot matrix font that has them. -->
+            <!-- The English fonts. LanguageFonts replaces these four for languages they do not cover, so refer to
+                 them with DynamicResource. LED Counter 7 has no Greek or most accented Latin glyphs, so those fall
+                 back to Handjet, a dot matrix font that has them. -->
             <FontFamily x:Key="LedCounter7">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#LED Counter 7, Handjet</FontFamily>
             <FontFamily x:Key="JetBrainsMonoLight">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Light</FontFamily>
             <FontFamily x:Key="JetBrainsMonoRegular">avares://Ksp2Redux.Tools.Launcher/Assets/Fonts#JetBrains Mono Regular</FontFamily>
@@ -41,6 +43,7 @@
                                              ItemBrush="Black" />
             <converters:SelectableConverter x:Key="SelectableConverter" />
             <converters:IsSettingsTabConverter x:Key="IsSettingsTabConverter" />
+            <converters:LanguageFontConverter x:Key="LanguageFontConverter" />
         </ResourceDictionary>
     </Application.Resources>
 

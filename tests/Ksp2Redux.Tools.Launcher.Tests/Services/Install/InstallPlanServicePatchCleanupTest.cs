@@ -90,4 +90,39 @@ public class InstallPlanServicePatchCleanupTest
         Assert.That(patchDeleted, Is.True);
         Assert.That(innerFileSystem.File.Exists(PATCH_PATH), Is.False);
     }
+
+    [Test]
+    public async Task ApplyToFolder_PrepatchFailsToApply_DeletesItsTemporaryPatchFile()
+    {
+        var fileSystem = new MockFileSystem(options => options.SimulatingOperatingSystem(SimulationMode.Windows));
+        fileSystem.Directory.CreateDirectory(fileSystem.Path.Combine(INSTALL_DIR, "KSP2_x64_Data", "Plugins"));
+        fileSystem.Directory.CreateDirectory(fileSystem.Path.GetTempPath());
+        fileSystem.File.WriteAllText(fileSystem.Path.Combine(INSTALL_DIR, "KSP2_x64.exe"), "exe");
+        fileSystem.File.WriteAllText(fileSystem.Path.Combine(INSTALL_DIR, "KSP2_x64_Data", "Plugins", "Steamworks.NET.txt"), "steam");
+        var assemblyService = new Mock<IAssemblyService>();
+        assemblyService.Setup(instance => instance.GetManifestResourceStream(It.IsAny<string>()))
+            .Returns(() => new MemoryStream([0x01]));
+        var zipFileService = new Mock<IZipFileService>();
+        zipFileService.Setup(instance => instance.OpenRead(It.IsAny<string>())).Throws(new IOException("corrupt prepatch"));
+        var diskSpace = new Mock<IDiskSpaceService>();
+        diskSpace.Setup(instance => instance.GetAvailableFreeSpace(It.IsAny<string>())).Returns(long.MaxValue);
+        var configService = new Mock<ILauncherConfigService>();
+        configService.SetupGet(instance => instance.Config).Returns(new LauncherConfig("config.json"));
+        var patchDownloadService = new Mock<IPatchDownloadService>();
+        patchDownloadService.Setup(instance => instance.EnqueueAll(
+                It.IsAny<IReadOnlyList<PatchDownloadRequest>>(), It.IsAny<PatchDownloadSource>(),
+                It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns([]);
+        var service = new InstallPlanService(fileSystem, Mock.Of<ICacheService>(c => c.IgnoredDirectories == new List<string>()), new MockEnvironmentProvider(),
+            assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object, diskSpace.Object,
+            patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>());
+        var plan = new InstallPlan();
+        plan.Prepatch();
+
+        await Assert.ThrowsAsync<IOException>(() => service.ApplyToFolder(
+            plan, INSTALL_DIR, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
+
+        Assert.That(fileSystem.Directory.EnumerateFiles(fileSystem.Path.GetTempPath()), Is.Empty);
+    }
 }

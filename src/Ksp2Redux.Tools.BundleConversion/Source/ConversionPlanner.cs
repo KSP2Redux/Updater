@@ -178,7 +178,7 @@ internal static class ConversionPlanner
 
         var targetFaceSize = CubemapRecompression.FaceSize(target, width, height, mipCount);
         var dataOffset = entry.DataOffset + texture.Value(ScannedTexture.STREAM_OFFSET);
-        if (!bundle.Layout!.TryMapUncompressed(dataOffset, (int)(targetFaceSize * CubemapRecompression.FACES), out var fileOffset))
+        if (!bundle.Layout!.TryMapUncompressed(dataOffset, (int)(faceSize * CubemapRecompression.FACES), out var fileOffset))
         {
             reason = "its pixels are stored in compressed blocks";
             return null;

@@ -7,6 +7,8 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Ksp2Redux.Tools.Launcher.Localization;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 
 namespace Ksp2Redux.Tools.Launcher.Views.Settings;
@@ -84,11 +86,22 @@ public partial class SettingsTabView : UserControl
         await Model.OpenLogsFolder();
     }
 
+    private void SaveBackupsList_OnDropDownOpened(object? sender, EventArgs e) => Model.RefreshSaveBackups();
+
     private async void CopyDiagnosticInfoClick(object? sender, RoutedEventArgs e)
     {
         var topLevel = TopLevel.GetTopLevel(this);
         var clipboard = topLevel?.Clipboard;
         if (clipboard is null) return;
-        await clipboard.SetTextAsync(Model.BuildDiagnosticInfo());
+        try
+        {
+            await clipboard.SetTextAsync(Model.BuildDiagnosticInfo());
+            (topLevel as MainWindow)?.ShowSnackbar(TExtension.Service["Settings.CopyDiagnosticInfo.Copied"]);
+        }
+        catch (Exception ex)
+        {
+            AvaloniaLogSink.Target?.Error("Could not copy the diagnostic info to the clipboard.", ex);
+            (topLevel as MainWindow)?.ShowSnackbar(TExtension.Service["Clipboard.CopyFailed"]);
+        }
     }
 }

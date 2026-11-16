@@ -164,7 +164,7 @@ public partial class FullSourcePreparationServiceTest
             Assert.That(home.MainButtonShown, Is.EqualTo(HomeTabViewModel.MainButtonState.Update));
             await home.UpdateReduxCommand.ExecuteAsync(null);
             Dispatcher.UIThread.RunJobs();
-            Assert.That(fixture.Coordinator().GetPublishedIdentity(fixture.Entry.Id)!.ReleaseId, Is.EqualTo("owned-gui-beta"), home.InstallLogText);
+            Assert.That(fixture.Coordinator().GetPublishedIdentity(fixture.Entry.Id)!.ReleaseId, Is.EqualTo("owned-gui-beta"), string.Join("\n", home.InstallLogEntries.Select(entry => entry.Text)));
             AssertTreeStreaming(fs, fixture.Install, target);
 
             var media = target.Files.First(file => file.Path.EndsWith(".wem", StringComparison.Ordinal));

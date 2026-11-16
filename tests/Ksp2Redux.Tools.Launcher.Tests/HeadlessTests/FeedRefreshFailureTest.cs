@@ -181,6 +181,50 @@ public class FeedRefreshFailureTest
             Is.EquivalentTo(new[] { DefaultChannel }));
     }
 
+    [AvaloniaTest]
+    public async Task TimerRefresh_WhileTheMirrorIsDown_NeverAsksAndNeverOverlaps()
+    {
+        TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);
+        TestHelpers.MockKsp2StockSteamInstall();
+        TestAppBuilder.UpdateService.Setup(u => u.CheckAndPerformUpdateAsync()).Returns(Task.FromResult(true));
+        TestAppBuilder.NewsProviderService.Setup(n => n.GetSyndicationFeed()).ReturnsAsync(new Feed { Items = [] });
+        TestHelpers.MockMessageBoxAcceptAll();
+
+        MainWindow window = new()
+        {
+            DataContext = TestAppBuilder.ServiceProvider.GetRequiredService<MainWindowViewModel>()
+        };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var configService = TestAppBuilder.ServiceProvider.GetRequiredService<ILauncherConfigService>();
+        var source = configService.Config.PatchDownloadSource;
+        var manifestFetch = new TaskCompletionSource<ReleaseManifest?>();
+        var fetches = 0;
+        TestAppBuilder.ManifestReleasesFeedProviderService
+            .Setup(m => m.GetManifest(It.IsAny<FeedInfo>()))
+            .Returns(() =>
+            {
+                fetches++;
+                return manifestFetch.Task;
+            });
+        TestAppBuilder.MessageBoxService.Invocations.Clear();
+
+        var homeTabViewModel = TestAppBuilder.ServiceProvider.GetRequiredService<HomeTabViewModel>();
+        var firstTick = homeTabViewModel.RefreshFeedsInBackgroundAsync();
+        var secondTick = homeTabViewModel.RefreshFeedsInBackgroundAsync();
+        Assert.That(fetches, Is.EqualTo(1), "A tick landing while a refresh still runs must not start a second one.");
+
+        manifestFetch.SetException(new PatchDownloadException(source, "offline"));
+        await Task.WhenAll(firstTick, secondTick);
+
+        TestAppBuilder.MessageBoxService.Verify(m => m.ShowMessageBoxAsOwnedAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<MsBox.Avalonia.Enums.ButtonEnum>(), It.IsAny<MsBox.Avalonia.Enums.Icon>(), It.IsAny<object>(),
+            It.IsAny<Avalonia.Controls.WindowStartupLocation>()), Times.Never);
+        Assert.That(configService.Config.PatchDownloadSource, Is.EqualTo(source));
+        Assert.That(homeTabViewModel.FeedRefreshFailed, Is.True);
+    }
+
     private static async Task VerifyManifestFailureOffersAlternateMirror(PatchDownloadSource failedSource)
     {
         TestAppBuilder.OperatingSystemService.Setup(o => o.IsLinux()).Returns(false);

@@ -17,16 +17,11 @@ IZipFileService zipFileService = new ZipFileService(fileSystem);
 
 using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);
 
-var hadError = false;
 await patch.AsyncApply(
     SystemEnvironmentProvider.Instance,
     targetDir,
     log: Console.WriteLine,
-    error: msg =>
-    {
-        hadError = true;
-        Console.Error.WriteLine(msg);
-    }
+    error: Console.Error.WriteLine
 );
 
-return hadError ? 1 : 0;
+return 0;

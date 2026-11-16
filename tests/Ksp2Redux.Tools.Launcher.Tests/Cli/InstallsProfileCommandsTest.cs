@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Ksp2Redux.Tools.Cli.Commands;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
@@ -235,6 +236,9 @@ public class InstallsProfileCommandsTest
 
         // Assert
         Assert.That(exit, Is.EqualTo(ExitCode.LAUNCH_FAILED));
-        Assert.That(harness.Json.GetProperty("error").GetString(), Does.Contain("--steam-launch on"));
+        var hint = Regex.Match(harness.Json.GetProperty("error").GetString()!, "'redux-launcher-cli ([^']*)'").Groups[1].Value;
+        string[] args = [.. Regex.Matches(hint, "\"([^\"]*)\"|(\\S+)").Select(m => m.Groups[1].Success ? m.Groups[1].Value : m.Value)];
+        Assert.That(CliParsingTest.Parse<InstallsSetSettings>(args), Is.Zero);
+        Assert.That(args, Is.EqualTo(new[] { "installs", "set", "Testing", "--steam-launch", "on" }));
     }
 }

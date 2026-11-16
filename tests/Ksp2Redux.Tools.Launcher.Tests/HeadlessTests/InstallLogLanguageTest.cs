@@ -60,7 +60,7 @@ public class InstallLogLanguageTest
         // Assert
         log.Verify(l => l.Info("Installed.", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         log.Verify(l => l.Error("Update failed: disk full", failure, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-        Assert.That(viewModel.InstallLogText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
+        Assert.That(viewModel.InstallLogEntries.Select(entry => entry.Text),
             Is.EqualTo(new[] { "Installiert.", "Update fehlgeschlagen: Platte voll" }));
     }
 }

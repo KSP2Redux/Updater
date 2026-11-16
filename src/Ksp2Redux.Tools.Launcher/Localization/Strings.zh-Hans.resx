@@ -370,9 +370,6 @@ https://ksp2redux.org</value>
   <data name="Dialog.Confirm.Title" xml:space="preserve">
     <value>确认</value>
   </data>
-  <data name="Dialog.Done.Title" xml:space="preserve">
-    <value>完成！</value>
-  </data>
   <data name="Settings.FilePicker.Failed" xml:space="preserve">
     <value>无法打开文件选择器：{0}</value>
   </data>

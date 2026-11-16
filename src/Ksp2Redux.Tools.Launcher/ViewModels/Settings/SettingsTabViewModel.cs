@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Abstractions;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -15,7 +16,11 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
+using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Mac;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
+using Ksp2Redux.Tools.Launcher.ViewModels.Steam;
 using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.ViewModels.Settings;
@@ -38,6 +43,12 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly ISteamSessionService _steamSession;
     private readonly ISteamDialogService _steamDialogs;
     private readonly IFullSourceInstallationService? _fullSource;
+    private readonly IReleasesFeedService _releasesFeedService;
+    private readonly IWineRuntimeService _wineRuntimeService;
+    private readonly IDiskSpaceService _diskSpaceService;
+    private readonly IOperatingSystemService _operatingSystemService;
+    private readonly ISaveBackupService _saveBackups;
+    private readonly IGameProcessService _gameProcessService;
 
     public ObservableCollection<Ksp2InstallRowViewModel> Installs { get; } = [];
     public bool ChannelsLoaded = false;
@@ -212,19 +223,33 @@ public partial class SettingsTabViewModel : ViewModelBase
     /// <param name="operatingSystemService">The host platform service.</param>
     /// <param name="gameUninstallService">The legacy game uninstall service.</param>
     /// <param name="installationStateService">The installation ownership boundary.</param>
+    /// <param name="localization">The localized message source.</param>
+    /// <param name="releasesFeedService">The release feeds.</param>
+    /// <param name="wineRuntimeService">The Wine runtime service.</param>
+    /// <param name="diskSpaceService">The disk space service.</param>
+    /// <param name="saveBackups">The save backup service.</param>
+    /// <param name="gameProcessService">The game process service.</param>
     /// <param name="fullSource">The optional full-source coordinator.</param>
-    /// <param name="localization">The localized message source, or the shared service when omitted.</param>
     public SettingsTabViewModel(IFileSystem fileSystem, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
         IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
         IGameDataFolderService gameDataFolderService, ISteamSessionService steamSession, ISteamDialogService steamDialogs,
         IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService,
-        IInstallationStateService installationStateService, IFullSourceInstallationService? fullSource = null, ILocalizationService? localization = null)
+        IInstallationStateService installationStateService,
+        ILocalizationService localization, IReleasesFeedService releasesFeedService, IWineRuntimeService wineRuntimeService,
+        IDiskSpaceService diskSpaceService, ISaveBackupService saveBackups, IGameProcessService gameProcessService,
+        IFullSourceInstallationService? fullSource = null)
     {
         _fullSource = fullSource;
         _installationStateService = installationStateService;
-        _localization = localization ?? LocalizationService.Default;
+        _localization = localization;
+        _releasesFeedService = releasesFeedService;
+        _wineRuntimeService = wineRuntimeService;
+        _diskSpaceService = diskSpaceService;
+        _operatingSystemService = operatingSystemService;
+        _saveBackups = saveBackups;
+        _gameProcessService = gameProcessService;
         _gameUninstallService = gameUninstallService;
         IsSteamLaunchSupported = !operatingSystemService.IsMacOS();
         _steamSession = steamSession;
@@ -244,8 +269,13 @@ public partial class SettingsTabViewModel : ViewModelBase
         _launcherConfigService.ConfigSaved += () => Dispatcher.UIThread.Post(SyncDownloadSettings);
 
         _ksp2InstallService.InstallsChanged += (_, _) => RebuildInstalls();
-        _ksp2InstallService.ActiveInstallChanged += (_, _) => SyncSelectedInstall();
+        _ksp2InstallService.ActiveInstallChanged += (_, _) =>
+        {
+            SyncSelectedInstall();
+            RefreshSaveBackups();
+        };
         RebuildInstalls();
+        RefreshSaveBackups();
 
         _suppressSettingsSave = true;
         try
@@ -692,7 +722,7 @@ public partial class SettingsTabViewModel : ViewModelBase
     [RelayCommand]
     public async Task UninstallKsp2()
     {
-        if (IsUninstallingKsp2 || SelectedInstall is not { } row) return;
+        if (IsUninstallingKsp2 || SelectedInstall is not { } row || await RefuseWhileBusyAsync()) return;
 
         var removal = _gameUninstallService.Inspect(row.ExePath);
         switch (removal.Kind)
@@ -763,9 +793,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             IsUninstallingKsp2 = false;
         }
 
-        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Done.Title"],
-            _localization["Settings.UninstallKsp2.Done"],
-            windowStartupLocation: WindowStartupLocation.CenterOwner);
+        _messageBoxService.ShowSnackbar(_localization["Settings.UninstallKsp2.Done"]);
     }
 
     private async Task<bool> ConfirmAsync(string title, string text) =>
@@ -774,6 +802,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public async Task UninstallRedux()
     {
+        if (await RefuseWhileBusyAsync()) return;
         var active = _ksp2InstallService.ActiveEntry;
         var activeId = active?.Id;
         var activeExe = active?.ExePath;
@@ -795,7 +824,7 @@ public partial class SettingsTabViewModel : ViewModelBase
         var result = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Confirm.Title"],
             _localization["Settings.UninstallRedux.Confirm"],
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
-        if (result != ButtonResult.Yes) return;
+        if (result != ButtonResult.Yes || await RefuseWhileBusyAsync()) return;
         if (_ksp2InstallService.ActiveEntry is not { } selected || selected.Id != activeId || selected.ExePath != activeExe)
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
@@ -811,6 +840,7 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     public async Task InstallFromPatchFile()
     {
+        if (await RefuseWhileBusyAsync()) return;
         IStorageFile? chosenPath;
         try
         {
@@ -824,7 +854,7 @@ public partial class SettingsTabViewModel : ViewModelBase
             return;
         }
 
-        if (chosenPath is null) return;
+        if (chosenPath is null || await RefuseWhileBusyAsync()) return;
 
         _tabNavigatorService.GoToHome();
 
@@ -850,6 +880,83 @@ public partial class SettingsTabViewModel : ViewModelBase
         return files?.Count >= 1 ? files[0] : null;
     }
 
+    /// <summary>The save backups, newest first, as the Settings list shows them.</summary>
+    public ObservableCollection<SaveBackupChoice> SaveBackups { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RestoreSaveBackupCommand))]
+    public partial SaveBackupChoice? SelectedSaveBackup { get; set; }
+
+    /// <summary>Reads the backups from disk again, keeping the selection when that backup still exists.</summary>
+    public void RefreshSaveBackups()
+    {
+        var selected = SelectedSaveBackup?.Backup.Path;
+        SaveBackups.Clear();
+        foreach (var backup in _saveBackups.List())
+        {
+            SaveBackups.Add(new SaveBackupChoice(backup, $"{backup.Created:g}  ·  {SteamDownloadViewModel.FormatBytes(backup.SizeBytes)}"));
+        }
+
+        SelectedSaveBackup = SaveBackups.FirstOrDefault(choice => choice.Backup.Path == selected) ?? SaveBackups.FirstOrDefault();
+    }
+
+    private bool CanRestoreSaveBackup() => SelectedSaveBackup is not null;
+
+    [RelayCommand(CanExecute = nameof(CanRestoreSaveBackup))]
+    public async Task RestoreSaveBackup()
+    {
+        if (SelectedSaveBackup is not { } choice || await RefuseWhileBusyAsync("Settings.SaveBackups.Busy")) return;
+
+        var answer = await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Confirm.Title"],
+            _localization.Format("Settings.SaveBackups.Confirm", choice.DisplayName),
+            ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
+        // KSP2 can be started while the question is open.
+        if (answer != ButtonResult.Yes || await RefuseWhileBusyAsync("Settings.SaveBackups.Busy")) return;
+
+        try
+        {
+            await _homeTabViewModel.RunBlockingOperationAsync(() => Task.Run(() => _saveBackups.Restore(choice.Backup)));
+            _log.Info($"Restored the saves from {choice.Backup.Path}.");
+            _messageBoxService.ShowSnackbar(_localization["Settings.SaveBackups.Restored"]);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"Failed to restore the saves from {choice.Backup.Path}.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.SaveBackups.Failed", ex.UserMessage()), windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+
+        RefreshSaveBackups();
+    }
+
+    // Every action here that changes the game's folders refuses while KSP2 runs or the launcher is busy with
+    // another one, since two of them writing the same folder leave it half of each.
+    private async Task<bool> RefuseWhileBusyAsync(string messageKey = "Settings.Busy")
+    {
+        if (!_homeTabViewModel.IsOperationRunning && !_gameProcessService.IsRunning()) return false;
+        await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+            _localization[messageKey], windowStartupLocation: WindowStartupLocation.CenterOwner);
+        return true;
+    }
+
+    [RelayCommand]
+    public async Task OpenSaveBackupsFolder()
+    {
+        try
+        {
+            var directory = _saveBackups.BackupDirectory
+                            ?? throw new InvalidOperationException(_localization["Settings.GameData.Unknown"]);
+            _fileSystem.Directory.CreateDirectory(directory);
+            Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Failed to open the save backups folder.", ex);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.SaveBackups.FolderFailed", ex.Message), windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+    }
+
     public async Task OpenLogsFolder()
     {
         try
@@ -868,23 +975,44 @@ public partial class SettingsTabViewModel : ViewModelBase
 
     /// <summary>
     /// Everything a bug report needs in one paste-ready block: launcher version, active install
-    /// details, OS, and the tail of the current log file - so a support conversation doesn't have to
-    /// start with four separate questions before diagnosis can even begin.
+    /// details, OS, game data folder, and the tails of the launcher log and KSP2's Player.log - so a
+    /// support conversation doesn't have to start with four separate questions before diagnosis can even begin.
+    /// The user's home folder is shown as <c>~</c>.
     /// </summary>
     public string BuildDiagnosticInfo()
     {
         var sb = new StringBuilder();
         sb.AppendLine($"KSP2 Redux Launcher v{LauncherVersion}");
-        sb.AppendLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+        // A launcher process that differs from the OS architecture is an x64 build running under Rosetta or emulation.
+        sb.AppendLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture}), launcher process {RuntimeInformation.ProcessArchitecture}");
+        sb.AppendLine($"Culture: {CultureInfo.CurrentCulture.Name}, launcher language {_localization.Culture.Name}");
         sb.AppendLine($"Patch downloads: source={PatchDownloadSource}, concurrency={MaxConcurrentChunkDownloads}");
+        var downloadCache = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "download-cache");
+        sb.AppendLine($"Download cache: {downloadCache} ({SteamDownloadViewModel.FormatBytes(DirectorySize(downloadCache))})");
+        // Only whether a login is saved: the account name is half of the credentials.
+        sb.AppendLine($"Steam: {(_steamSession.HasSavedLogin ? "signed in" : "not signed in")}");
+        AppendFeeds(sb);
+        if (_operatingSystemService.IsMacOS()) AppendMacRuntime(sb);
+
+        sb.AppendLine("Installs:");
+        foreach (var install in _ksp2InstallService.Entries)
+        {
+            var active = install.Id == _ksp2InstallService.ActiveEntry?.Id;
+            var launch = install.LaunchThroughSteam ? "steam" : "direct";
+            var free = _diskSpaceService.GetAvailableFreeSpace(install.ExePath) is { } bytes ? SteamDownloadViewModel.FormatBytes(bytes) : "unknown";
+            var arguments = string.IsNullOrWhiteSpace(install.LaunchArguments) ? "none" : "set";
+            sb.AppendLine($"{(active ? "*" : " ")} {install.Name} [{install.ReleaseChannel}] launch={launch}, graphicsJobs={(install.DisableGraphicsJobs ? "off" : "on")}, launchArguments={arguments}, free={free}");
+            sb.AppendLine($"    {install.ExePath}");
+        }
 
         if (_ksp2InstallService.ActiveEntry is { } entry)
         {
-            sb.AppendLine($"Active install: {entry.Name} (channel={entry.ReleaseChannel}, launchThroughSteam={entry.LaunchThroughSteam})");
-            sb.AppendLine($"Exe path: {entry.ExePath}");
+            sb.AppendLine($"Active install: {entry.Name}");
             var ksp2 = _ksp2InstallService.Ksp2;
+            var installDir = _fileSystem.Path.GetDirectoryName(entry.ExePath);
+            var reduxInstalled = installDir is not null && _fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip"));
             sb.AppendLine(ksp2 is { IsValid: true }
-                ? $"Detected: {ksp2.Distribution}, version {ksp2.GameVersion}"
+                ? $"Detected: {ksp2.Distribution}, version {ksp2.GameVersion}, Redux stock snapshot {(reduxInstalled ? "present" : "missing")}"
                 : "Detected: (not currently detected as valid)");
         }
         else
@@ -892,25 +1020,94 @@ public partial class SettingsTabViewModel : ViewModelBase
             sb.AppendLine("Active install: (none configured)");
         }
 
-        sb.AppendLine();
-        sb.AppendLine("--- Recent log ---");
+        var gameDataFolder = _gameDataFolderService.Resolve(_ksp2InstallService.ActiveEntry);
+        sb.AppendLine($"Game data folder: {gameDataFolder ?? "(unknown)"}");
+
+        AppendLogTail(sb, "Recent log", _log.CurrentLogFilePath, 100);
+        AppendLogTail(sb, "KSP2 Player.log", gameDataFolder is null ? null : _fileSystem.Path.Combine(gameDataFolder, "Player.log"), 50);
+
+        // The report gets pasted into public support threads, and the home folder name is often the player's real name.
+        // Unity and Wine write paths with either separator, so both spellings of the home folder are replaced.
+        var home = _environmentProvider.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var report = sb.ToString();
+        if (string.IsNullOrEmpty(home)) return report;
+        foreach (var spelling in new[] { home, home.Replace('\\', '/'), home.Replace('/', '\\') }.Distinct())
+        {
+            report = report.Replace(spelling, "~", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return report;
+    }
+
+    private void AppendFeeds(StringBuilder sb)
+    {
+        sb.AppendLine(_releasesFeedService.Feeds.Count == 0 ? "Feeds: (none loaded)" : "Feeds:");
+        foreach (var feed in _releasesFeedService.Feeds)
+        {
+            var status = feed.LastUpdateException is { } failure ? $"FAILED: {failure.Message}" : "ok";
+            sb.AppendLine($"  {feed.Info.Filename} [{feed.CurrentChannel}] {status}");
+        }
+    }
+
+    private void AppendMacRuntime(StringBuilder sb)
+    {
+        var runtime = _wineRuntimeService.Detect();
+        sb.AppendLine(runtime is null
+            ? "Wine runtime: none found"
+            : $"Wine runtime: {runtime.Kind} ({runtime.DisplayName}), wine={runtime.WineBinary}, prefix={runtime.PrefixPath}");
+        sb.AppendLine($"Rosetta: {(_wineRuntimeService.IsRosettaInstalled() ? "installed" : "missing")}");
+    }
+
+    private long DirectorySize(string directory)
+    {
         try
         {
-            if (_log.CurrentLogFilePath is { } logPath && _fileSystem.File.Exists(logPath))
+            return _fileSystem.Directory.Exists(directory)
+                ? _fileSystem.Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Sum(file => _fileSystem.FileInfo.New(file).Length)
+                : 0;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
+
+    private const int LOG_TAIL_BYTES = 256 * 1024;
+
+    private void AppendLogTail(StringBuilder sb, string title, string? path, int lineCount)
+    {
+        sb.AppendLine();
+        sb.AppendLine($"--- {title} ---");
+        if (path is null || !_fileSystem.File.Exists(path))
+        {
+            sb.AppendLine("(no log file available)");
+            return;
+        }
+
+        try
+        {
+            // The launcher and KSP2 keep their logs open for writing, which a plain read is refused on Windows.
+            using var stream = _fileSystem.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            // A long game session can write a Player.log of hundreds of MB, and this runs on the UI thread.
+            var startsMidLine = stream.Length > LOG_TAIL_BYTES;
+            if (startsMidLine) stream.Seek(-LOG_TAIL_BYTES, SeekOrigin.End);
+            using var reader = new StreamReader(stream);
+            if (startsMidLine) reader.ReadLine();
+            Queue<string> tail = new(lineCount);
+            while (reader.ReadLine() is { } line)
             {
-                var lines = _fileSystem.File.ReadAllLines(logPath);
-                sb.AppendLine(string.Join(_environmentProvider.NewLine, lines.TakeLast(100)));
+                if (tail.Count == lineCount) tail.Dequeue();
+                tail.Enqueue(line);
             }
-            else
-            {
-                sb.AppendLine("(no log file available)");
-            }
+
+            sb.AppendLine(string.Join(_environmentProvider.NewLine, tail));
         }
         catch (Exception ex)
         {
             sb.AppendLine($"(could not read log file: {ex.Message})");
         }
-
-        return sb.ToString();
     }
 }
+
+/// <summary>A save backup with the text the Settings list shows for it.</summary>
+public sealed record SaveBackupChoice(SaveBackup Backup, string DisplayName);

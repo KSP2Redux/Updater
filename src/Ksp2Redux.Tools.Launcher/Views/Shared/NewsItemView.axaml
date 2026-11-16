@@ -1,28 +1,47 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:shared="clr-namespace:Ksp2Redux.Tools.Launcher.ViewModels.Shared"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="90"
              x:Class="Ksp2Redux.Tools.Launcher.Views.Shared.NewsItemView"
              x:DataType="shared:NewsItemViewModel">
     <UserControl.Styles>
-        <Style Selector="Border">
+        <!-- A real button, so a post can be reached and opened from the keyboard. -->
+        <Style Selector="Button.news-row">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,10,12,10" />
             <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
-            <Setter Property="Cursor" Value="Hand"/>
-            <Style Selector="^:pointerover">
-                <Setter Property="Background" Value="{StaticResource BrandRedHoverBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource TonalContainerBrush}" />
+            </Style>
+            <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource TonalContainerHoverBrush}" />
             </Style>
         </Style>
+        <Style Selector="Border.news-accent">
+            <Setter Property="Background" Value="{StaticResource BrandRedBrush}" />
+            <Setter Property="CornerRadius" Value="2" />
+        </Style>
     </UserControl.Styles>
-    
-    <Border Padding="4" Margin="0,0,0,8" PointerPressed="NewsPanel_OnPointerPressed">
-        <StackPanel Spacing="2">
-            <TextBlock FontSize="14" FontFamily="{StaticResource JetBrainsMonoBold}"
-                       Text="{Binding Title}" TextWrapping="WrapWithOverflow" />
-            <TextBlock FontSize="11" FontFamily="{StaticResource JetBrainsMonoRegular}"
-                       Text="{Binding Subtitle}" TextWrapping="WrapWithOverflow" />
-        </StackPanel>
-    </Border>
+    <Button Classes="news-row" Click="NewsRow_OnClick">
+        <!-- The accent column is always there, so selecting a post moves nothing. -->
+        <Grid ColumnDefinitions="3,10,*">
+            <Border Grid.Column="0" Classes="news-accent" IsVisible="{Binding IsSelected}" />
+            <StackPanel Grid.Column="2" Spacing="2">
+                <TextBlock FontSize="14" FontFamily="{DynamicResource JetBrainsMonoBold}"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Text="{Binding Title}" TextWrapping="Wrap" />
+                <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                           Text="{Binding Subtitle}" />
+                <TextBlock FontSize="12" Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}"
+                           Text="{Binding Excerpt}" IsVisible="{Binding Excerpt, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Grid>
+    </Button>
 </UserControl>

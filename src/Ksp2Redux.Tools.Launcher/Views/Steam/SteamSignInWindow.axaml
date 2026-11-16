@@ -10,7 +10,7 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Background="#181818"
-        FontFamily="{StaticResource JetBrainsMonoRegular}">
+        FontFamily="{DynamicResource JetBrainsMonoRegular}">
 	<Window.Styles>
 		<Style Selector="TextBox">
 			<Setter Property="Background" Value="{StaticResource InputSurfaceBrush}" />
@@ -42,7 +42,7 @@
 
 	<Grid RowDefinitions="Auto,Auto,Auto" Margin="32,28,32,24">
 		<StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,22">
-			<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="22" Foreground="White"
+			<TextBlock FontFamily="{DynamicResource JetBrainsMonoBold}" FontSize="22" Foreground="White"
 			           Text="{loc:T Steam.SignIn.Heading}" />
 			<TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
 			           Text="{loc:T Steam.SignIn.Intro}" />
@@ -61,7 +61,7 @@
 						           IsVisible="{Binding QrCode, Converter={x:Static conv:ObjectConverters.IsNull}}" />
 					</Grid>
 				</Border>
-				<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
+				<TextBlock FontFamily="{DynamicResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
 				           HorizontalAlignment="Center" Text="{loc:T Steam.SignIn.ScanTitle}" />
 				<TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center"
 				           TextWrapping="Wrap" Text="{loc:T Steam.SignIn.ScanHint}" />
@@ -98,11 +98,11 @@
 				</StackPanel>
 
 				<StackPanel Spacing="12" IsVisible="{Binding IsEnteringGuardCode}">
-					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
+					<TextBlock FontFamily="{DynamicResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
 					           Text="{loc:T Steam.SignIn.SteamGuard}" />
 					<TextBlock Text="{Binding GuardPrompt}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
 					<TextBox Name="GuardCodeBox" Text="{Binding GuardCodeInput}" FontSize="22"
-					         FontFamily="{StaticResource JetBrainsMonoBold}" HorizontalContentAlignment="Center"
+					         FontFamily="{DynamicResource JetBrainsMonoBold}" HorizontalContentAlignment="Center"
 					         MaxLength="8">
 						<TextBox.KeyBindings>
 							<KeyBinding Gesture="Enter" Command="{Binding SubmitGuardCodeCommand}" />
@@ -113,7 +113,7 @@
 				</StackPanel>
 
 				<StackPanel Spacing="14" IsVisible="{Binding IsAwaitingApproval}">
-					<TextBlock FontFamily="{StaticResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
+					<TextBlock FontFamily="{DynamicResource JetBrainsMonoBold}" FontSize="13" Foreground="White"
 					           Text="{loc:T Steam.SignIn.SteamGuard}" />
 					<TextBlock Text="{Binding GuardPrompt}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
 					<ProgressBar IsIndeterminate="True" Foreground="{StaticResource BrandOrangeBrush}" />

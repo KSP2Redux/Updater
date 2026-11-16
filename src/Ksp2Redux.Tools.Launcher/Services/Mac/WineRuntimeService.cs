@@ -85,6 +85,7 @@ public class WineRuntimeService(
     public const string RUNTIME_FOLDER = "wine-runtime";
     public const string RUNTIME_MANIFEST = "runtime.json";
     public const string PREFIX_FOLDER = "wine-prefix";
+    private const string PREFIX_READY_MARKER = ".ksp2redux-prefix-ready";
     public const string CROSSOVER_BOTTLE = "KSP2Redux";
     public const string CROSSOVER_APP = "/Applications/CrossOver.app";
     public const string LAUNCHER_APP = "KSP2 Redux.app";
@@ -120,7 +121,11 @@ public class WineRuntimeService(
 
     public async Task PrepareAsync(WineRuntime runtime, Action<LogMessage> logLine, CancellationToken cancellationToken)
     {
-        if (fileSystem.Directory.Exists(fileSystem.Path.Combine(runtime.PrefixPath, "drive_c")))
+        var prefixCreated = fileSystem.Directory.Exists(fileSystem.Path.Combine(runtime.PrefixPath, "drive_c"));
+        // Wine creates drive_c before it has finished setting up the prefix, so a bundled prefix counts as
+        // ready only once the marker is written. cxbottle cannot set up an existing bottle again.
+        var readyMarker = fileSystem.Path.Combine(runtime.PrefixPath, PREFIX_READY_MARKER);
+        if (runtime.Kind == WineRuntimeKind.CrossOver ? prefixCreated : fileSystem.File.Exists(readyMarker))
         {
             if (runtime.Kind == WineRuntimeKind.Bundled) CopyPrefixFiles(runtime);
             return;
@@ -150,11 +155,16 @@ public class WineRuntimeService(
             fileSystem.Directory.CreateDirectory(runtime.PrefixPath);
             var startInfo = new ProcessStartInfo(runtime.WineBinary);
             startInfo.ArgumentList.Add("wineboot");
-            startInfo.ArgumentList.Add("--init");
+            // --init skips the registry setup once Wine has stamped the prefix, which it does before that setup.
+            startInfo.ArgumentList.Add(prefixCreated ? "--update" : "--init");
             ApplyBundledEnvironment(startInfo, runtime);
             exitCode = await processRunner.RunAsync(startInfo, logLine, cancellationToken);
             await processRunner.RunAsync(WineServerWait(runtime), logLine, cancellationToken);
-            if (exitCode == 0) CopyPrefixFiles(runtime);
+            if (exitCode == 0)
+            {
+                CopyPrefixFiles(runtime);
+                fileSystem.File.WriteAllText(readyMarker, string.Empty);
+            }
         }
 
         if (exitCode != 0)

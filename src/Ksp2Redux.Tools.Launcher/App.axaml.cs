@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using Avalonia.Threading;
+using Ksp2Redux.Tools.Launcher.Controls;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -19,6 +21,7 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        ProgressFill.Register();
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -52,11 +55,18 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
 
         LoadGlobalStylesheet(log);
 
+        var localization = _serviceProvider.GetRequiredService<ILocalizationService>();
+        LanguageFonts.Apply(Resources, localization.Culture);
+        localization.LanguageChanged += (_, _) =>
+        {
+            if (Dispatcher.UIThread.CheckAccess()) LanguageFonts.Apply(Resources, localization.Culture);
+            else Dispatcher.UIThread.Post(() => LanguageFonts.Apply(Resources, localization.Culture));
+        };
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Before the window, so it is created in the language the player chose.
-            _serviceProvider.GetRequiredService<ILocalizationService>()
-                .SetLanguage(_serviceProvider.GetRequiredService<ILauncherConfigService>().Config.Language);
+            localization.SetLanguage(_serviceProvider.GetRequiredService<ILauncherConfigService>().Config.Language);
 
             var mainWindow = new MainWindow
             {

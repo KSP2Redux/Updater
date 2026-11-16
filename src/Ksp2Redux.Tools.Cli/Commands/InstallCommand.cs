@@ -12,6 +12,8 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
 {
     private const int CHOICE_COUNT = 15;
 
+    protected override bool ChangesConfig => true;
+
     /// <inheritdoc />
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the plan outcome is not recognized</exception>
     protected override async Task<int> RunAsync(
@@ -36,6 +38,13 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
             return context.Output.Fail(
                 ExitCode.USAGE_ERROR,
                 "Name exactly one of a version to install or a local patch file to apply.");
+        }
+
+        // The plan reverts the install to stock before it opens the patch file, so a typo would
+        // otherwise strip Redux and only then fail.
+        if (hasPatchFile && !context.FileSystem.File.Exists(settings.PatchFile))
+        {
+            return context.Output.Fail(ExitCode.USAGE_ERROR, $"Patch file not found: {settings.PatchFile}");
         }
 
         var entry = context.ResolveInstallEntry(settings.Install);

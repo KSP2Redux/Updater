@@ -34,7 +34,7 @@ public class UninstallRevertsBundlesTest
         TestAppBuilder.ZipFileService
             .Setup(z => z.OpenRead(It.IsAny<string>()))
             .Callback(() => order.Add("restore files"))
-            .Returns(Mock.Of<IZipArchive>());
+            .Returns(Mock.Of<IZipArchive>(a => a.Entries == Array.Empty<IZipArchiveEntry>()));
 
         // Act
         await settings.UninstallRedux();
