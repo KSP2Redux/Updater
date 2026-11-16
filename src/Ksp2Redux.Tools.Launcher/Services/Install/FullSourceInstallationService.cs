@@ -180,6 +180,53 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         EnsureSupported();
         Ksp2InstallEntry entry = Entry(installationId, expectedInstallRoot);
         using FileSystemStream lease = Lock(entry);
+        return await ApplyLockedAsync(entry, target, stock, repair, log, ct);
+    }
+
+    /// <summary>Run legacy removal and fresh preparation under the same lease as generation application.</summary>
+    public async Task<FullSourceInstallationStatus> UpgradeLegacyAsync(Guid installationId,
+        Func<Task> uninstall, Func<Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation? Stock)>> prepare,
+        Action<string> log, CancellationToken ct, string expectedInstallRoot)
+    {
+        EnsureSupported();
+        Ksp2InstallEntry entry = Entry(installationId, expectedInstallRoot);
+        using FileSystemStream lease = Lock(entry);
+        EnsureMutationAllowed(entry);
+        if (ReadCatalog(entry) is not null)
+            throw new InvalidDataException(Localization.LocalizationService.Default["Install.LegacyCatalogChanged"]);
+        ct.ThrowIfCancellationRequested();
+        await uninstall();
+        ct.ThrowIfCancellationRequested();
+        foreach (string relative in new[] { "Redux", "pm_cache", "prepatched.nodelete", "pm_summary.log" })
+        {
+            string path = At(Root(entry), relative);
+            _engine.ValidateControlledPath(path);
+            if (_fs.Directory.Exists(path))
+            {
+                foreach (string child in _fs.Directory.EnumerateFileSystemEntries(path, "*", SearchOption.AllDirectories))
+                    _engine.ValidateControlledPath(child);
+                _fs.Directory.Delete(path, true);
+            }
+            else if (_fs.File.Exists(path))
+                _fs.File.Delete(path);
+        }
+        var (target, stock) = await prepare();
+        if (stock is null || stock.ExistingArchive is not null || stock.SourceRoot != Root(entry))
+            throw new InvalidDataException(Localization.LocalizationService.Default["Install.LegacyStockVerificationFailed"]);
+        try
+        {
+            VerifyTree(Root(entry), stock.Stock, ct);
+        }
+        catch (InvalidDataException failure)
+        {
+            throw new InvalidDataException(Localization.LocalizationService.Default["Install.LegacyStockVerificationFailed"], failure);
+        }
+        return await ApplyLockedAsync(entry, target, stock, false, log, ct);
+    }
+
+    private async Task<FullSourceInstallationStatus> ApplyLockedAsync(Ksp2InstallEntry entry,
+        FullSourcePreparedTarget target, FullSourceStockPreparation? stock, bool repair, Action<string> log, CancellationToken ct)
+    {
         EnsureMutationAllowed(entry);
         FullSourceInstallationStatus? reconciled = ReconcileLocked(entry);
         if (reconciled?.ArchiveFailure is { } backupFailure && ReadCatalog(entry)?.Archive is not null)
@@ -208,11 +255,8 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         if (retention is not null)
         {
             string? previous = retention.PreviousManifestSha256;
-            bool matchesGeneration = retention.LegacyOwnershipSha256 is { } legacy
-                ? catalog is null && !repair && previous is null && stock?.ExistingArchive is not null &&
-                    stock.Release == target.Identity && legacy == Digest(stock.CurrentOwned.ToJson())
-                : catalog is not null && repair == (previous is null) &&
-                    (repair || string.Equals(catalog.Release?.ManifestSha256, previous, StringComparison.OrdinalIgnoreCase));
+            bool matchesGeneration = catalog is not null && repair == (previous is null) &&
+                (repair || string.Equals(catalog.Release?.ManifestSha256, previous, StringComparison.OrdinalIgnoreCase));
             if (!_os.IsWindows() || target.AllowsDerivedBootConfig || retention.InstallationId != entry.Id ||
                 target.InstalledBaseline is not null || !matchesGeneration)
                 throw new InvalidDataException("Prepared target retention does not belong to this installation and generation.");
@@ -616,12 +660,8 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
                 throw new InvalidDataException("Existing-backup preparation requires the Windows archive source path.");
             ValidateArchiveReference(entry, backup);
             RequireBackupPin(backup, ct);
-            ValidateRecoveryInputPaths(entry, stock.Stock);
-            StockArchiveSources sources = await _archive.InspectAvailableSourcesAsync(backup.Path, Root(entry), stock.Stock,
-                ct, stock.RecoverySources).ConfigureAwait(false);
-            if (sources.Journal is not null && stock.RecoverySources is null)
-                throw new InvalidDataException("Journal recovery requires source pins saved by preparation.");
-            return sources.CanonicalArchive;
+            await _archive.VerifyAsync(backup.Path, stock.Stock, ct).ConfigureAwait(false);
+            return true;
         }
         bool installedSource = _os.IsWindows() && stock.InstallationId == entry.Id && stock.SourceRoot == Root(entry);
         if (!installedSource)

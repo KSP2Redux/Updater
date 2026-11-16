@@ -66,7 +66,7 @@ public partial class FullSourcePreparationServiceTest
             Size = 1, ChecksumSha256 = Digest([0]),
             FullSource = new FullSourceReleaseDescriptor(RELEASE_ID, CHANNEL, VERSION, target.ToJson(), Digest(target.ToJson()),
                 "https://fixture.test/unavailable-stock/release.json", "https://fixture-backup.test/unavailable-stock/release.json",
-                [new FullSourceBaselineDefinition(stock.ToJson(), [], [target.ToJson()])], false, 1)
+                [new FullSourceBaselineDefinition(stock.ToJson(), [])], false, 1)
         };
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = CHANNEL, GeneratedAt = DateTime.UtcNow, Patches = [patch] };
         var fixture = new Fixture(fs, root, At(fs, workspace, "RTX1/game"), stock, target, At(fs, delta, "artifact"), null!,

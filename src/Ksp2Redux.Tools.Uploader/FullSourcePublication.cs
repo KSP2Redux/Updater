@@ -247,20 +247,21 @@ internal static class FullSourcePublication
             throw new InvalidDataException("Development or relocated receipts cannot publish to stable or beta.");
         if (options.AllowRelocatedReceipt && !options.AllowDevelopment)
             throw new InvalidDataException("Relocated receipts require explicit internal development admission.");
+        if (options.LegacyOwnershipManifests is { Count: > 0 })
+            throw new InvalidDataException("Legacy ownership publication is no longer supported.");
         string player = Resolve(options.PlayerRoot);
         string stockRoot = Resolve(options.RecipeRoot ?? options.StockRoot);
         string output = Resolve(options.OutputRoot);
         string targetPath = Resolve(options.TargetManifest);
         string stockPath = Resolve(options.StockManifest);
         string? prepatchPath = options.PrepatchManifest is null ? null : Resolve(options.PrepatchManifest);
-        string[] legacyPaths = (options.LegacyOwnershipManifests ?? []).Select(Resolve).ToArray();
         var updates = (options.UpdateSources ?? [])
             .Select(source => (Root: Resolve(source.Root), ManifestPath: Resolve(source.Manifest))).ToArray();
         if (updates.Length > 15)
             throw new InvalidDataException("A hosted release supports at most fifteen prior Redux source contracts.");
         var paths = new InstallTransactionEngine(new RealFileSystem());
         foreach (string input in new[] { player, stockRoot, targetPath, stockPath, optionsPath }
-                     .Concat(prepatchPath is null ? [] : new[] { prepatchPath }).Concat(legacyPaths)
+                     .Concat(prepatchPath is null ? [] : new[] { prepatchPath })
                      .Concat(updates.SelectMany(source => new[] { source.Root, source.ManifestPath })))
         {
             if (paths.PathsOverlap(output, input))
@@ -294,8 +295,7 @@ internal static class FullSourcePublication
             throw new InvalidDataException("Windows publication requires Windows target and stock contracts.");
         ReleaseManifestValidator.ValidateHostedGameContract(stock);
 
-        List<byte[]>? legacy = legacyPaths.Length == 0 ? null : legacyPaths.Select(ReadContract).ToList();
-        var baseline = new FullSourceBaselineDefinition(stockBytes, options.SteamDepots ?? [], legacy);
+        var baseline = new FullSourceBaselineDefinition(stockBytes, options.SteamDepots ?? []);
         byte[]? prepatchBytes = prepatchPath is null ? null : ReadContract(prepatchPath);
         if (prepatchBytes is not null && (!IsSha256(options.ExpectedPrepatchManifestSha256) ||
             !Convert.ToHexString(SHA256.HashData(prepatchBytes)).Equals(options.ExpectedPrepatchManifestSha256, StringComparison.OrdinalIgnoreCase)))
@@ -539,12 +539,15 @@ internal static class FullSourcePublication
     }
 
     private static Stream OpenTargetFile(InstallTransactionEngine paths, string player, StockBaselineManifest target, string name,
-        long maxLength = long.MaxValue)
+        long maxLength = long.MaxValue, Dictionary<string, string[]>? pathListings = null)
     {
         var entry = target.Files.SingleOrDefault(file => file.Path == name)
             ?? throw new InvalidDataException($"The target contract omits {name}.");
         string path = Path.GetFullPath(Path.Combine(player, name));
-        paths.ValidateControlledPath(path);
+        if (pathListings is null)
+            paths.ValidateControlledPath(path);
+        else
+            paths.ValidateStableControlledPath(path, pathListings);
         var stream = File.OpenRead(path);
         try
         {
@@ -581,10 +584,11 @@ internal static class FullSourcePublication
         string root, StockBaselineManifest contract)
     {
         var selected = new List<ReleaseRecipeSource>();
+        var pathListings = new Dictionary<string, string[]>(StringComparer.Ordinal);
         foreach (var file in contract.Files
                      .OrderByDescending(file => file.Length).ThenBy(file => file.Path, StringComparer.Ordinal))
         {
-            using Stream input = OpenTargetFile(paths, root, contract, file.Path);
+            using Stream input = OpenTargetFile(paths, root, contract, file.Path, pathListings: pathListings);
             var magic = new byte[8];
             if (file.Length >= magic.Length)
                 input.ReadExactly(magic);

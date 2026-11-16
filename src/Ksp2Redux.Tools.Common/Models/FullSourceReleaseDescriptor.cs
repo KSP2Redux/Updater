@@ -80,10 +80,8 @@ public record FullSourceUpdateArtifact(string SourceDigest, string MarkerSha256,
 /// </remarks>
 /// <param name="Manifest">The canonical complete stock file and directory contract.</param>
 /// <param name="SteamDepots">The exact Windows depot selectors, or an empty list for local-only acquisition.</param>
-/// <param name="LegacyOwnershipManifests">The optional publisher-authenticated installed legacy file contracts, including installer additions.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public record FullSourceBaselineDefinition(byte[] Manifest, List<FullSourceSteamDepot> SteamDepots,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<byte[]>? LegacyOwnershipManifests = null);
+public record FullSourceBaselineDefinition(byte[] Manifest, List<FullSourceSteamDepot> SteamDepots);
 
 /// <summary>
 /// A publisher-pinned Steam depot and manifest selector.

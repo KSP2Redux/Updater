@@ -131,11 +131,7 @@ public partial class FullSourcePreparationService
         var stock = new StockBaselineManifest(OriginalBaselineIdentity(descriptor, distribution),
             $"Original Windows {distribution} bytes derived from pinned prepatch {descriptor.PrepatchManifestSha256}",
             files.Values, prepatch.Directories);
-        var legacy = descriptor.Baselines.SelectMany(definition => definition.LegacyOwnershipManifests ?? [])
-            .DistinctBy(bytes => Digest(bytes)).ToList();
-        if (legacy.Count > 32)
-            throw new InvalidDataException("Derived original ownership exceeds the existing contract budget.");
-        return new FullSourceBaselineDefinition(stock.ToJson(), [], legacy.Count == 0 ? null : legacy);
+        return new FullSourceBaselineDefinition(stock.ToJson(), []);
     }
 
     private async Task<RecipeSource> PreparePrepatchSourceAsync(FullSourceReleaseDescriptor descriptor,

@@ -38,6 +38,14 @@ public class FullSourceCommand : ReduxCommand<FullSourceSettings>
                 string channel = settings.Channel ?? entry.ReleaseChannel;
                 bool repair = settings.Operation == "repair";
                 bool hasCatalog = coordinator.HasCatalog(installRoot);
+                if (!hasCatalog && !repair && context.FileSystem.File.Exists(context.FileSystem.Path.Combine(installRoot, "uninstall.zip")))
+                {
+                    var selected = await context.FullSourcePreparationService.ResolveInstallPlanAsync(settings.Release, channel, cancellationToken);
+                    await context.InstallPlanService.ApplyToFolder(selected, installRoot,
+                        line => context.Output.Progress(line.English), (_, _) => { }, (_, _) => { }, cancellationToken);
+                    status = coordinator.Reconcile(entry.Id, installRoot);
+                    break;
+                }
                 FullSourcePreparedTarget target;
                 FullSourceStockPreparation? stock = null;
                 if (!hasCatalog)

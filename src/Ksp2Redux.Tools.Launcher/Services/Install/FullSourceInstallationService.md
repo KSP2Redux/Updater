@@ -31,14 +31,11 @@ limitations are in `Documentation/Omnipatching/LAUNCHER-PREPARATION.md` in the g
 Local JSON, arbitrary ZIPs and catalog digests never supply release authority. Coordinator fixtures
 remain separate from production authentication evidence.
 
-Initial conversion accepts separately verified pristine stock input and independently
-known current ownership. They can differ, allowing preparation from a separately restored
-stock tree. Windows existing-backup adoption now accepts an independently verified
-canonical archive or recovers a complete candidate from exact legacy ZIP/current-file
-sources. The original legacy ZIP remains independently preserved. See
-[the backup contract](FullSourceInstallationService.Backup.md). A partial ZIP is
-never qualified as a complete archive. The trusted stock contract must include all
-original files, StreamingAssets, boot.config and empty directories.
+Initial conversion requires verified pristine stock and independently known ownership.
+Legacy Redux upgrades run the existing uninstall followed by stock verification and
+a fresh install under one coordinator reservation. Complete canonical archives remain
+eligible for adoption. See [the backup contract](FullSourceInstallationService.Backup.md).
+The trusted stock contract includes StreamingAssets, boot.config and empty directories.
 
 ## Authority, storage and bounds
 

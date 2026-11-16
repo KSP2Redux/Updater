@@ -183,7 +183,7 @@ public partial class FullSourcePreparationServiceTest
         var baseDescriptor = latest.Patch.FullSource! with
         {
             ReleaseId = "private-skip-r7", Version = "2.0.0.1.199", TargetManifest = r7.ToJson(), TargetManifestSha256 = Digest(r7.ToJson()),
-            Baselines = [new FullSourceBaselineDefinition(stock.ToJson(), [], [r7.ToJson()])], UpdateArtifacts = null
+            Baselines = [new FullSourceBaselineDefinition(stock.ToJson(), [])], UpdateArtifacts = null
         };
         var installedPatch = latest.Patch with
             { Version = baseDescriptor.Version, ReleasedAt = releaseTime.AddMinutes(-2), FullSource = baseDescriptor };

@@ -198,20 +198,7 @@ public static class ReleaseManifestValidator
             if (hosted)
                 ValidateHostedGameContract(stock, requireUnixMetadata);
             sourceDigests.Add(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(baseline.Manifest)));
-            if (baseline.LegacyOwnershipManifests is { } legacy)
-            {
-                if (legacy.Count is < 1 or > 32)
-                    throw new InvalidDataException("Legacy ownership contracts exceed their count budget.");
-                foreach (byte[] bytes in legacy)
-                {
-                    if (bytes is null)
-                        throw new InvalidDataException("A legacy ownership contract is null.");
-                    var owned = Restoration.StockBaselineManifest.FromJson(bytes);
-                    new Restoration.StockArchiveLimits().Validate(owned);
-                    if (!owned.ToJson().AsSpan().SequenceEqual(bytes))
-                        throw new InvalidDataException("A legacy ownership contract is noncanonical.");
-                }
-            }
+
         }
         if (descriptor.UpdateSourceDigests is { } updates &&
             (updates.Count == 0 || updates.Count > 16 - descriptor.Baselines.Count ||

@@ -116,12 +116,6 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     }
 
     /// <inheritdoc />
-    public Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation Stock)> FetchLegacyMigrationAsync(
-        string releaseId, string channel, FeedInfo? feed, Guid installationId, CancellationToken ct,
-        Action<long, long>? downloadProgress = null) =>
-        FetchInitialInstallAsync(releaseId, channel, feed, installationId, ct, downloadProgress);
-
-    /// <inheritdoc />
     public async Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation Stock)> FetchInitialInstallAsync(
         string releaseId, string channel, FeedInfo? feed, Guid installationId, CancellationToken ct,
         Action<long, long>? downloadProgress = null)
@@ -129,6 +123,21 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         EnsureSupported();
         AuthorityRelease release = await ResolveAsync(releaseId, channel, ct, feed);
         return await PrepareInitialInstallAsync(release, installationId, ct, downloadProgress);
+    }
+
+    /// <inheritdoc />
+    public async Task<InstallPlan> ResolveInstallPlanAsync(string releaseId, string channel, CancellationToken ct)
+    {
+        EnsureSupported();
+        var release = await ResolveAsync(releaseId, channel, ct);
+        return new InstallPlan
+        {
+            FullSourceReleaseId = releaseId, FullSourceChannel = channel,
+            FullSourceVersion = release.Descriptor.Version,
+            FullSourceManifestSha256 = release.Descriptor.TargetManifestSha256,
+            FullSourceAllowsDerivedBootConfig = release.Descriptor.AllowsDerivedBootConfig,
+            FullSourceFeed = release.Feed.SnapshotAuthority()
+        };
     }
 
     /// <inheritdoc />
@@ -154,44 +163,18 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         AuthorityRelease release, Guid installationId, CancellationToken ct, Action<long, long>? downloadProgress)
     {
         var stock = await PrepareStockAsync(installationId, [release], ct);
-        FullSourceTargetRetention? retention = null;
-        if (_os.IsWindows() && stock.ExistingArchive is not null && !release.Descriptor.AllowsDerivedBootConfig)
-        {
-            var owned = stock.CurrentOwned.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
-            var target = StockBaselineManifest.FromJson(release.Descriptor.TargetManifest);
-            var paths = target.Files.Where(file => owned.GetValueOrDefault(file.Path) == file)
-                .Select(file => file.Path).ToFrozenSet(StringComparer.Ordinal);
-            retention = new FullSourceTargetRetention(installationId, paths, null, Digest(stock.CurrentOwned.ToJson()));
-        }
-        return (await PrepareTargetAsync(release, ct, downloadProgress, legacyRetention: retention), stock);
+        return (await PrepareTargetAsync(release, ct, downloadProgress), stock);
     }
 
     private async Task<FullSourcePreparedTarget> PrepareTargetAsync(AuthorityRelease release, CancellationToken ct,
         Action<long, long>? downloadProgress,
-        Guid? installationId = null, string? installedDigest = null, Guid? repairInstallationId = null,
-        FullSourceTargetRetention? legacyRetention = null)
+        Guid? installationId = null, string? installedDigest = null, Guid? repairInstallationId = null)
     {
         await _gate.WaitAsync(ct);
         try
         {
             using FileSystemStream lease = Lease();
             FullSourceReleaseDescriptor descriptor = release.Descriptor;
-            if (legacyRetention is not null)
-            {
-                var target = StockBaselineManifest.FromJson(descriptor.TargetManifest);
-                if (legacyRetention.Paths.Count == target.Files.Count)
-                {
-                    var staged = ReleaseRecipePipeline.RetainedStageContract(target, legacyRetention.Paths);
-                    string stages = At(CacheRoot(), "stages");
-                    CreateDirectory(stages);
-                    string stage = At(stages, Guid.NewGuid().ToString("N"));
-                    CreateDirectory(stage);
-                    CreateBaselineDirectories(stage, staged);
-                    downloadProgress?.Invoke(0, 0);
-                    return new FullSourcePreparedTarget(Identity(release), target, stage, descriptor.AllowsDerivedBootConfig,
-                        release.Feed.SnapshotAuthority()) { TargetRetention = legacyRetention };
-                }
-            }
             var update = descriptor.UpdateArtifacts?.SingleOrDefault(candidate =>
                 candidate.SourceDigest.Equals(installedDigest, StringComparison.OrdinalIgnoreCase));
             long markerBytes = 0;
@@ -214,7 +197,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             bool hasDirectSource = update is not null || (installedDigest is not null &&
                 descriptor.UpdateSourceDigests?.Contains(installedDigest, StringComparer.OrdinalIgnoreCase) == true);
             Guid? retentionId = repairInstallationId ?? (!hasDirectSource && installedDigest is not null ? installationId : null);
-            FullSourceTargetRetention? retention = legacyRetention;
+            FullSourceTargetRetention? retention = null;
             if (retentionId is { } retainingId && _os.IsWindows() && !descriptor.AllowsDerivedBootConfig)
             {
                 string root = InstallRoot(Entry(retainingId));
@@ -399,7 +382,6 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         FullSourceBaselineDefinition? selected = null;
         AuthorityRelease? authority = null;
         StockBaselineManifest? selectedOwnership = null;
-        StockArchiveSources? selectedSources = null;
         InvalidDataException? coverageFailure = null;
         foreach (var candidate in candidates)
         {
@@ -408,21 +390,22 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             if (entry.FullSourceBaselineIdentity is { } identity && stock.BaselineIdentity != identity)
                 continue;
             StockBaselineManifest owned;
-            StockArchiveSources? sources = null;
             if (existingArchive)
             {
                 ValidateStockInputPaths(root, stock);
                 _paths.ValidateControlledPath(archivePath);
                 try
                 {
-                    sources = await _archive.InspectAvailableSourcesAsync(archivePath, root, stock, ct);
+                    await _archive.VerifyAsync(archivePath, stock, ct);
                 }
                 catch (InvalidDataException failure)
                 {
                     coverageFailure = failure;
                     continue;
                 }
-                owned = await InitialArchiveOwnershipAsync(root, stock, baseline, entry, ct);
+                owned = await CanonicalArchiveOwnershipAsync(root, stock, candidate.Release.Descriptor, entry, ct);
+                if (!await TreeMatchesAsync(root, owned, ct))
+                    continue;
             }
             else
             {
@@ -435,13 +418,14 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             selected = baseline;
             authority = candidate.Release;
             selectedOwnership = owned;
-            selectedSources = sources;
         }
         if (selected is null)
         {
             if (coverageFailure is not null)
                 ExceptionDispatchInfo.Capture(coverageFailure).Throw();
-            throw new InvalidDataException("The configured installation does not match a complete trusted original stock ownership contract. Legacy conversion needs reviewed preparation.");
+            var failure = new InvalidDataException("The configured installation does not match a complete trusted original stock ownership contract. Legacy conversion needs reviewed preparation.");
+            failure.Data["FullSourceStockMismatch"] = true;
+            throw failure;
         }
         StockBaselineManifest selectedStock = StockBaselineManifest.FromJson(selected.Manifest);
         if (existingArchive)
@@ -449,7 +433,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             StockBaselineFile pin = await ObserveArchiveAsync(archivePath, ct);
             return new FullSourceStockPreparation(selectedStock, "", selectedOwnership!,
                 entry.FullSourceRetainedUnownedFiles.ToArray(), entry.FullSourceUnownedDirectories.ToArray(), entry.Id,
-                Identity(authority!), authority!.Feed.SnapshotAuthority(), pin, selectedSources);
+                Identity(authority!), authority!.Feed.SnapshotAuthority(), pin);
         }
         if (_os.IsWindows() && (selectedOwnership!.ToJson().AsSpan().SequenceEqual(selected.Manifest) ||
             await TreeMatchesAsync(root, selectedStock, ct)))
@@ -531,11 +515,8 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 await ObserveArchiveAsync(existing.Path, ct) != existing || definition is null)
                 throw new InvalidDataException("Existing backup differs from its configured preparation pin.");
             ValidateStockInputPaths(InstallRoot(entry), preparation.Stock);
-            StockArchiveSources sources = await _archive.InspectAvailableSourcesAsync(existing.Path, InstallRoot(entry), preparation.Stock,
-                ct, preparation.RecoverySources);
-            if (sources.Journal is not null && preparation.RecoverySources is null)
-                throw new InvalidDataException("Journal recovery requires source pins saved by preparation.");
-            StockBaselineManifest owned = await InitialArchiveOwnershipAsync(InstallRoot(entry), preparation.Stock, definition, entry, ct);
+            await _archive.VerifyAsync(existing.Path, preparation.Stock, ct);
+            StockBaselineManifest owned = await CanonicalArchiveOwnershipAsync(InstallRoot(entry), preparation.Stock, release.Descriptor, entry, ct);
             if (!owned.ToJson().AsSpan().SequenceEqual(preparation.CurrentOwned.ToJson()))
                 throw new InvalidDataException("Legacy owned-file observation changed after preparation.");
             return;
@@ -823,46 +804,13 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         return new StockBaselineFile(path, input.Length, Convert.ToHexString(await SHA256.HashDataAsync(input, ct)));
     }
 
-    private async Task<StockBaselineManifest> InitialArchiveOwnershipAsync(string root, StockBaselineManifest stock,
-        FullSourceBaselineDefinition definition, Ksp2InstallEntry entry, CancellationToken ct)
+    private async Task<StockBaselineManifest> CanonicalArchiveOwnershipAsync(string root, StockBaselineManifest stock,
+        FullSourceReleaseDescriptor descriptor, Ksp2InstallEntry entry, CancellationToken ct)
     {
-        if (definition.LegacyOwnershipManifests is { } contracts)
-        {
-            StockBaselineManifest? selected = null;
-            foreach (byte[] bytes in contracts)
-            {
-                StockBaselineManifest candidate = Ownership(StockBaselineManifest.FromJson(bytes), entry);
-                if (!await TreeMatchesAsync(root, candidate, ct))
-                    continue;
-                if (selected is not null)
-                    throw new InvalidDataException("Multiple authenticated legacy ownership contracts match this installation.");
-                selected = candidate;
-            }
-            return selected ?? throw new InvalidDataException("Installed files do not match a publisher-authenticated legacy ownership contract. Preserve the backup and resolve the current legacy file changes.");
-        }
-        StockBaselineManifest known = Ownership(stock, entry);
-        if (await TreeMatchesAsync(root, known, ct))
-            return known;
-        // Only trusted original stock paths acquire ownership here. Added legacy paths need a publisher contract.
-        var observed = new List<StockBaselineFile>();
-        long total = 0;
-        foreach (StockBaselineFile file in known.Files)
-        {
-            ct.ThrowIfCancellationRequested();
-            string path = At(root, file.Path);
-            _paths.ValidateControlledPath(path);
-            if (!_fs.File.Exists(path))
-                continue;
-            await using FileSystemStream input = _fs.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            total = checked(total + input.Length);
-            if (input.Length > 64L * 1024 * 1024 * 1024 || total > 128L * 1024 * 1024 * 1024)
-                throw new InvalidDataException("Observed legacy ownership exceeds the transaction byte budget.");
-            observed.Add(new StockBaselineFile(file.Path, input.Length, Convert.ToHexString(await SHA256.HashDataAsync(input, ct)), file.UnixMode));
-        }
-        string[] directories = known.Directories.Where(path => _fs.Directory.Exists(At(root, path))).ToArray();
-        return new StockBaselineManifest(stock.BaselineIdentity + ":legacy-observation",
-            "exact current observation at independently known original stock-owned paths", observed, directories,
-            known.HasUnixMetadata ? directories.ToDictionary(path => path, path => known.UnixDirectoryModes[path]) : null);
+        var published = Ownership(StockBaselineManifest.FromJson(descriptor.TargetManifest), entry);
+        if (await TreeMatchesAsync(root, published, ct))
+            return published;
+        return Ownership(stock, entry);
     }
 
     private static StockBaselineManifest Ownership(StockBaselineManifest stock, Ksp2InstallEntry entry)

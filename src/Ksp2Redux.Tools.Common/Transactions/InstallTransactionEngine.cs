@@ -68,9 +68,12 @@ public partial class InstallTransactionEngine
         Safe(path);
     }
 
-    // Release readers exclude concurrent writers. Reuse directory listings only within that
-    // stable read phase, while retaining leaf attributes, native identity and stream checks.
-    internal void ValidateStableControlledPath(string path, Dictionary<string, string[]> listings)
+    /// <summary>Validate a path in a release source tree whose directory entries remain stable.</summary>
+    /// <remarks>Callers must exclude writers and discard the listing cache after the read phase.
+    /// Leaf attributes, native identity and stream checks remain active. This grants no ownership.</remarks>
+    /// <param name="path">The canonical absolute local path.</param>
+    /// <param name="listings">Directory listings scoped to this stable read phase.</param>
+    public void ValidateStableControlledPath(string path, Dictionary<string, string[]> listings)
     {
         DiskPath(path);
         Safe(path, listings);

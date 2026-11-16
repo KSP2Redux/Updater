@@ -53,9 +53,7 @@ public record FullSourceInstalledBaseline(Guid InstallationId, StockBaselineMani
 /// <param name="InstallationId">The configured installation supplying the retained target files.</param>
 /// <param name="Paths">The authenticated target paths currently matching in the installation.</param>
 /// <param name="PreviousManifestSha256">The installed published generation for an update, or null for repair or migration.</param>
-/// <param name="LegacyOwnershipSha256">The verified initial owned generation for legacy migration, if applicable.</param>
-public record FullSourceTargetRetention(Guid InstallationId, IReadOnlySet<string> Paths, string? PreviousManifestSha256,
-    string? LegacyOwnershipSha256 = null);
+public record FullSourceTargetRetention(Guid InstallationId, IReadOnlySet<string> Paths, string? PreviousManifestSha256);
 
 /// <summary>
 /// Independently verified stock preparation and known initial ownership for a conversion.
@@ -85,6 +83,9 @@ public record FullSourceStockPreparation(StockBaselineManifest Stock, string Sou
 /// </remarks>
 public interface IFullSourcePreparationService
 {
+    /// <summary>Authenticate a release selector without preparing installation bytes.</summary>
+    Task<InstallPlan> ResolveInstallPlanAsync(string releaseId, string channel, CancellationToken ct);
+
     /// <summary>
     /// Prepare original storefront input and independently established initial ownership for a configured identity.
     /// </summary>
@@ -166,10 +167,14 @@ public interface IFullSourcePreparationService
     /// <param name="ct">The cancellation token.</param>
     /// <param name="downloadProgress">Bytes received or reused and the planned byte total.</param>
     /// <returns>The prepared target and original stock requiring operation-boundary verification.</returns>
-    Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation Stock)> FetchInitialInstallAsync(
+    async Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation Stock)> FetchInitialInstallAsync(
         string releaseId, string channel, FeedInfo? feed, Guid installationId, CancellationToken ct,
-        Action<long, long>? downloadProgress = null) =>
-        FetchLegacyMigrationAsync(releaseId, channel, feed, installationId, ct, downloadProgress);
+        Action<long, long>? downloadProgress = null)
+    {
+        var target = feed is null ? await FetchTargetAsync(releaseId, channel, ct, downloadProgress)
+            : await FetchTargetAsync(releaseId, channel, feed, ct, downloadProgress);
+        return (target, await FetchStockAsync(installationId, target, ct));
+    }
 
     /// <summary>
     /// Prepare a feed-selected install, update or repair using the plan's pinned release identity.
@@ -199,25 +204,6 @@ public interface IFullSourcePreparationService
     }
 
     /// <summary>
-    /// Prepare the selected release and original stock ownership for an existing backup migration.
-    /// </summary>
-    /// <param name="releaseId">The published target release selector.</param>
-    /// <param name="channel">The requested target channel.</param>
-    /// <param name="feed">The selected authority snapshot, or null to resolve configured authority.</param>
-    /// <param name="installationId">The intended configured installation.</param>
-    /// <param name="ct">The cancellation token.</param>
-    /// <param name="downloadProgress">Bytes received or reused and the planned byte total.</param>
-    /// <returns>The prepared target and original stock requiring operation-boundary verification.</returns>
-    async Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation Stock)> FetchLegacyMigrationAsync(
-        string releaseId, string channel, FeedInfo? feed, Guid installationId, CancellationToken ct,
-        Action<long, long>? downloadProgress = null)
-    {
-        var target = feed is null ? await FetchTargetAsync(releaseId, channel, ct, downloadProgress)
-            : await FetchTargetAsync(releaseId, channel, feed, ct, downloadProgress);
-        return (target, await FetchStockAsync(installationId, target, ct));
-    }
-
-    /// <summary>
     /// Verify authentication and source preparation without accepting local manifest claims as authority.
     /// </summary>
     /// <param name="target">The release contract and prepared tree.</param>
@@ -239,6 +225,10 @@ public interface IFullSourcePreparationService
 /// </summary>
 public class UnavailableFullSourcePreparationService : IFullSourcePreparationService
 {
+    /// <inheritdoc />
+    public Task<InstallPlan> ResolveInstallPlanAsync(string releaseId, string channel, CancellationToken ct) =>
+        throw new NotSupportedException("Authenticated full-source release fetching is not configured.");
+
     /// <inheritdoc />
     public Task<FullSourceStockPreparation> FetchStockAsync(Guid installationId, CancellationToken ct) =>
         throw new NotSupportedException("Independent original stock preparation is not configured.");
@@ -333,6 +323,11 @@ public interface IFullSourceInstallationService
     /// <exception cref="IOException">Thrown when another coordinator holds the root or pending recovery is blocked.</exception>
     /// <exception cref="OperationCanceledException">Thrown when cancellation is observed before handoff.</exception>
     IDisposable? AcquireLaunchLease(string root, CancellationToken ct = default);
+
+    /// <summary>Hold the coordinator reservation across legacy uninstall, pristine-stock preparation and fresh installation.</summary>
+    Task<FullSourceInstallationStatus> UpgradeLegacyAsync(Guid installationId, Func<Task> uninstall,
+        Func<Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation? Stock)>> prepare,
+        Action<string> log, CancellationToken ct, string expectedInstallRoot);
 
     /// <summary>
     /// Install, update, downgrade or switch channel through one verified target-generation operation.

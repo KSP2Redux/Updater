@@ -77,6 +77,16 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         }
     }
 
+    private bool IsLegacyBackup(string install)
+    {
+        string path = fileSystem.Path.Combine(install, "uninstall.zip");
+        if (!fileSystem.File.Exists(path))
+            return false;
+        using var input = fileSystem.File.OpenRead(path);
+        using var archive = zipFileService.NewArchive(input, System.IO.Compression.ZipArchiveMode.Read, false);
+        return !archive.Entries.Any(entry => entry.FullName == ".redux-stock/manifest.json");
+    }
+
     public async Task ApplyToFolder(InstallPlan installPlan, string install, Action<LogMessage> log,
         Action<long, long> downloadProgress, Action<int, int> stepsProgress, CancellationToken ct)
     {
@@ -97,6 +107,31 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             FullSourceReleaseIdentity? installedRelease = hasCatalog && !installPlan.IsFullSourceRepair
                 ? fullSource.GetPublishedIdentity(entry.Id)
                 : null;
+            if (!hasCatalog && IsLegacyBackup(install))
+            {
+                await fullSource.UpgradeLegacyAsync(entry.Id,
+                    () =>
+                    {
+                        var uninstall = new InstallPlan();
+                        uninstall.Uninstall();
+                        return ApplyToFolder(uninstall, install, log, downloadProgress, (_, _) => { }, ct);
+                    },
+                    async () =>
+                    {
+                        try
+                        {
+                            var result = await preparation.FetchSelectedPlanAsync(installPlan, entry.Id, false, null, ct, downloadProgress);
+                            installPlan.RequireFullSourceMatch(result.Target.Identity, result.Target.AllowsDerivedBootConfig);
+                            return (result.Target with { MayConsumeSource = true }, result.Stock);
+                        }
+                        catch (InvalidDataException failure) when (failure.Data.Contains("FullSourceStockMismatch"))
+                        {
+                            throw new InvalidDataException(Loc["Install.LegacyStockVerificationFailed"], failure);
+                        }
+                    }, patchLog, ct, install);
+                stepsProgress(1, 1);
+                return;
+            }
             var (prepared, stock) = await preparation.FetchSelectedPlanAsync(installPlan, entry.Id, hasCatalog, installedRelease, ct, downloadProgress);
             installPlan.RequireFullSourceMatch(prepared.Identity, prepared.AllowsDerivedBootConfig);
             if (stock is null && !fullSource.HasCatalog(install))
@@ -114,6 +149,21 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             var entry = launcherConfigService.Config.Ksp2Installs.Single(item => item.Id == id);
             if (fileSystem.Path.GetDirectoryName(entry.ExePath) != install)
                 throw new InvalidDataException("The full-source plan root differs from its configured installation.");
+            if (!fullSource.HasCatalog(install) && IsLegacyBackup(install))
+            {
+                if (preparation is null)
+                    throw new InvalidDataException(Loc["Install.LegacyStockVerificationFailed"]);
+                await fullSource.UpgradeLegacyAsync(id,
+                    () =>
+                    {
+                        var uninstall = new InstallPlan();
+                        uninstall.Uninstall();
+                        return ApplyToFolder(uninstall, install, log, downloadProgress, (_, _) => { }, ct);
+                    },
+                    async () => (target, await preparation.FetchStockAsync(id, target, ct)), patchLog, ct, install);
+                stepsProgress(1, 1);
+                return;
+            }
             await Task.Run(() => fullSource.ApplyAsync(id, target, installPlan.FullSourceStock,
                 installPlan.IsFullSourceRepair, patchLog, ct, install), ct);
             stepsProgress(1, 1);
