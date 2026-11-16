@@ -31,6 +31,9 @@ https://ksp2redux.org</value>
   <data name="App.About.UnknownVersion" xml:space="preserve">
     <value>不明</value>
   </data>
+  <data name="App.AlreadyRunning" xml:space="preserve">
+    <value>KSP2 Reduxはすでに実行中です。ウィンドウに切り替えるか、そのインスタンスを閉じてから再度起動してください。</value>
+  </data>
   <data name="Tab.Home" xml:space="preserve">
     <value>ホーム</value>
   </data>
@@ -85,6 +88,12 @@ https://ksp2redux.org</value>
   <data name="Sidebar.Link.Forums.Tooltip" xml:space="preserve">
     <value>KSPフォーラム</value>
   </data>
+  <data name="Community.Label" xml:space="preserve">
+    <value>ニュース</value>
+  </data>
+  <data name="Community.ViewOnBlog" xml:space="preserve">
+    <value>ブログで開く</value>
+  </data>
   <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
     <value>ブラウザーで見る</value>
   </data>
@@ -92,7 +101,25 @@ https://ksp2redux.org</value>
     <value>近日公開予定</value>
   </data>
   <data name="Mods.Roadmap" xml:space="preserve">
-    <value>MOD対応はロードマップに含まれています :3</value>
+    <value>MOD対応はロードマップに含まれています。それまでの間、今後予定されている内容についてはニュースをご確認ください。</value>
+  </data>
+  <data name="Mods.ReadNews" xml:space="preserve">
+    <value>最初ニュースを読む</value>
+  </data>
+  <data name="Home.InstallLog.Copy" xml:space="preserve">
+    <value>コピー</value>
+  </data>
+  <data name="Home.InstallLog.Copy.Tooltip" xml:space="preserve">
+    <value>ログ全体をコピーします。一部の行をコピーする場合は、それらを選択してCtrl+Cを押してください。</value>
+  </data>
+  <data name="Home.InstallLog.Copied" xml:space="preserve">
+    <value>ログをクリップボードにコピーしました</value>
+  </data>
+  <data name="Clipboard.CopyFailed" xml:space="preserve">
+    <value>クリップボードにコピーできませんでした。もう一度試してください。</value>
+  </data>
+  <data name="Home.InstallLog.Title" xml:space="preserve">
+    <value>インストールログ</value>
   </data>
   <data name="Home.Progress.Downloaded" xml:space="preserve">
     <value>ダウンロード済み:</value>
@@ -105,6 +132,18 @@ https://ksp2redux.org</value>
   </data>
   <data name="Home.Progress.InstallFormat" xml:space="preserve">
     <value>{0}/{3} ステップ ({1:0}%)</value>
+  </data>
+  <data name="Home.Progress.Rate" xml:space="preserve">
+    <value>{0}/s · {1}</value>
+  </data>
+  <data name="Home.Progress.TimeLeft.Seconds" xml:space="preserve">
+    <value>残り約{0}秒</value>
+  </data>
+  <data name="Home.Progress.TimeLeft.Minutes" xml:space="preserve">
+    <value>残り約{0}分</value>
+  </data>
+  <data name="Home.Progress.TimeLeft.Hours" xml:space="preserve">
+    <value>残り約{0}時間{1}分</value>
   </data>
   <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
     <value>Reduxをインストールまたはアップデートするには、アップデーターアプリの新しいバージョンが必要です</value>
@@ -241,6 +280,12 @@ https://ksp2redux.org</value>
   <data name="Settings.CopyDiagnosticInfo" xml:space="preserve">
     <value>アプリの診断情報をコピーする</value>
   </data>
+  <data name="Settings.CopyDiagnosticInfo.Tooltip" xml:space="preserve">
+    <value>ランチャーのバージョン、システム情報、インストールログ、および最近のログをコピーします。バグレポートにそのまま貼り付け可能です。ユーザーフォルダーは「~」と表示されます。</value>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo.Copied" xml:space="preserve">
+    <value>クリップボードにコピーしました</value>
+  </data>
   <data name="Settings.VerboseLogging" xml:space="preserve">
     <value>冗長なログを出力</value>
   </data>
@@ -248,10 +293,10 @@ https://ksp2redux.org</value>
     <value>ログファイルにより詳細な情報を書き込みます。トラブルシューティングを行う場合に役立ちます。</value>
   </data>
   <data name="Settings.BackgroundMotion" xml:space="preserve">
-    <value>背景写真の動き</value>
+    <value>モーション</value>
   </data>
   <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
-    <value>マウスの動きに合わせて、背景写真をわずかに動かします。この動きが気になったり、不快に感じられたりする場合は、チェックを外してください。</value>
+    <value>マウスの動きに合わせて、背景写真をわずかに動かし、インターフェースに動きを加えます。この動きが気になったり、不快に感じられたりする場合は、チェックを外してください。</value>
   </data>
   <data name="Settings.LauncherVersion" xml:space="preserve">
     <value>ランチャー v{0}</value>
@@ -411,6 +456,32 @@ https://ksp2redux.org</value>
   <data name="Settings.GameData.OpenFailed" xml:space="preserve">
     <value>ゲームデータフォルダーを開けませんでした。
 {0}</value>
+  </data>
+  <data name="Settings.SaveBackups" xml:space="preserve">
+    <value>セーブバックアップ：</value>
+  </data>
+  <data name="Settings.SaveBackups.Tooltip" xml:space="preserve">
+    <value>インストール、アップデート、またはアンインストールを行うたびに、セーブデータやクラフトデータがバックアップされます。バックアップは、新しいものから順に5つまで保存されます。</value>
+  </data>
+  <data name="Settings.SaveBackups.None" xml:space="preserve">
+    <value>まだありません</value>
+  </data>
+  <data name="Settings.SaveBackups.Restore" xml:space="preserve">
+    <value>復元する</value>
+  </data>
+  <data name="Settings.SaveBackups.OpenFolder" xml:space="preserve">
+    <value>バックアップフォルダーを開く</value>
+  </data>
+  <data name="Settings.SaveBackups.Confirm" xml:space="preserve">
+    <value>現在のセーブデータやクラフトデータを、{0}のバックアップと置き換えますか？ 
+
+現在のセーブデータはあらかじめバックアップされるため、このリストからいつでも元の状態に戻すことができます。</value>
+  </data>
+  <data name="Settings.SaveBackups.Busy" xml:space="preserve">
+    <value>KSP2を終了し、ランチャーの処理が完了するのを待ってから、バックアップを復元してください。</value>
+  </data>
+  <data name="Settings.SaveBackups.Restored" xml:space="preserve">
+    <value>セーブデータやクラフトデータは、バックアップ時の状態に戻りました。それ以前のセーブデータは、最新のバックアップに含まれています。</value>
   </data>
   <data name="Settings.LogsFolder.Failed" xml:space="preserve">
     <value>ログフォルダーを開けませんでした: {0}</value>
