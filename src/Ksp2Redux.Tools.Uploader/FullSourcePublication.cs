@@ -202,7 +202,11 @@ internal static class FullSourcePublication
         File.WriteAllBytes(stageRoot + ".verified.json", JsonSerializer.SerializeToUtf8Bytes(new
         {
             Success = true, ArtifactSha256 = marker, TargetManifestSha256 = target,
-            Files = restored.Files.Count, Bytes = restored.TotalBytes
+            Files = restored.Files.Count, Bytes = restored.TotalBytes,
+            Profile = BundleConversion.Bundles.RecipePerformance.Snapshot(),
+            SourceHandlePeak = BundleConversion.Bundles.RecipePerformance.SourceHandlePeak,
+            PackHandlePeak = BundleConversion.Bundles.RecipePerformance.PackHandlePeak,
+            BlockWorkerLimit = Math.Min(Environment.ProcessorCount, 32)
         }));
         Console.WriteLine($"Reconstructed and hash-verified {restored.Files.Count} files, {restored.TotalBytes} bytes.");
         return 0;
@@ -576,17 +580,10 @@ internal static class FullSourcePublication
     private static List<ReleaseRecipeSource> SelectUpdateSources(InstallTransactionEngine paths,
         string root, StockBaselineManifest contract)
     {
-        const int MAX_SOURCES = 16;
-        const long MAX_NATIVE_BYTES = 4L * 1024 * 1024 * 1024;
-        long selectedBytes = 0;
         var selected = new List<ReleaseRecipeSource>();
-        foreach (var file in contract.Files.Where(file => file.Path.EndsWith(".bundle", StringComparison.Ordinal))
+        foreach (var file in contract.Files
                      .OrderByDescending(file => file.Length).ThenBy(file => file.Path, StringComparer.Ordinal))
         {
-            if (selected.Count == MAX_SOURCES)
-                break;
-            if (file.Length > MAX_NATIVE_BYTES - selectedBytes)
-                continue;
             using Stream input = OpenTargetFile(paths, root, contract, file.Path);
             var magic = new byte[8];
             if (file.Length >= magic.Length)
@@ -595,7 +592,6 @@ internal static class FullSourcePublication
                 ? BundleConversion.Bundles.BundleRecipeSourceKind.UnityFsData
                 : BundleConversion.Bundles.BundleRecipeSourceKind.RawFile;
             selected.Add(new ReleaseRecipeSource(file.Path, kind));
-            selectedBytes += file.Length;
         }
         return selected;
     }

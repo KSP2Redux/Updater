@@ -385,11 +385,16 @@ internal sealed class BlockDataStream : Stream
         }
 
         var block = _layout.Blocks[index];
+        using var decodeTime = RecipePerformance.Measure("block-read-decode-inclusive");
         _file.Position = _layout.FileStarts[index];
         var compressed = UnityFsBundle.ReadExactly(_file, (int)block.CompressedSize);
-        var data = (block.Flags & 0x3F) == 1
-            ? UnityFsBundle.DecodeLzma(compressed, (int)block.DecompressedSize)
-            : UnityFsBundle.DecodeLz4(compressed, (int)block.DecompressedSize);
+        byte[] data;
+        using (RecipePerformance.Measure("block-decode"))
+        {
+            data = (block.Flags & 0x3F) == 1
+                ? UnityFsBundle.DecodeLzma(compressed, (int)block.DecompressedSize)
+                : UnityFsBundle.DecodeLz4(compressed, (int)block.DecompressedSize);
+        }
 
         if (data.Length > 8 * 1024 * 1024 || _cache.Values.Sum(value => (long)value.Length) > 64 * 1024 * 1024 - data.Length)
         {

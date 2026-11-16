@@ -89,6 +89,21 @@ public class ReleaseRecipePipelineTest
     }
 
     /// <summary>
+    /// Revisit evicted literal packs when another file shares a multi-pack payload.
+    /// </summary>
+    [Test]
+    public void SharedPayloadReconstructsAfterPackHandleEviction()
+    {
+        var baseline = WriteContract(BASELINE, ("old.bin", new byte[] { 17 }));
+        byte[] bytes = RandomBytes(65 * 1024 * 1024 + 63);
+        var target = WriteContract(TARGET, ("a.bin", bytes), ("b.bin", bytes));
+        var result = Publish(target, baseline);
+        Assert.That(ReadManifest().Packs.Count, Is.GreaterThan(8));
+        Prepare(result, baseline);
+        Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\b.bin"), Is.EqualTo(bytes));
+    }
+
+    /// <summary>
     /// Publish deterministic bytes when inputs and variant order are unchanged.
     /// </summary>
     [Test]
@@ -676,8 +691,64 @@ public class ReleaseRecipePipelineTest
     private static List<ReleaseRecipeSourceTree> Sources(StockBaselineManifest baseline) =>
         [new(BASELINE, baseline, [new ReleaseRecipeSource("old.bin", BundleRecipeSourceKind.RawFile)])];
 
+    /// <summary>Reuse sources beyond the old cap across handle eviction and local index remapping.</summary>
+    [TestCase(false, false)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    [TestCase(true, true)]
+    public void AllSourcesRemainReusableAfterEviction(bool corruptMapping, bool unitySources)
+    {
+        var random = new Random(29348);
+        var entries = Enumerable.Range(0, 40).Select(index =>
+        {
+            var bytes = new byte[160000];
+            random.NextBytes(bytes);
+            return (Path: $"source-{index:D3}.bin", Bytes: bytes);
+        }).ToArray();
+        var baseline = WriteContract(BASELINE, entries.Select(entry => (entry.Path,
+            unitySources ? SyntheticBundles.Bundle(false, ("data", entry.Bytes, false)) : entry.Bytes)).ToArray());
+        byte[] combined = entries.Reverse().SelectMany(entry => entry.Bytes).ToArray();
+        var target = WriteContract(TARGET, ("combined.bin", combined), ("repeat.bin", combined));
+        var result = _pipeline.Publish(TARGET, target,
+            [new ReleaseRecipeSourceTree(BASELINE, baseline, entries.Select(entry =>
+                new ReleaseRecipeSource(entry.Path, unitySources ? BundleRecipeSourceKind.UnityFsData : BundleRecipeSourceKind.RawFile)).ToArray())], ARTIFACT);
+        var manifest = ReadManifest();
+        Assert.That(manifest.Variants[0].Files[0].SourceIndices!.Length, Is.GreaterThan(16));
+        Assert.That(result.SourceReusedBytes, Is.GreaterThan(combined.Length));
+        if (corruptMapping)
+        {
+            manifest.Variants[0].Files[0].SourceIndices![0] = 100000;
+            byte[] json = JsonSerializer.SerializeToUtf8Bytes(manifest);
+            _fileSystem.File.WriteAllBytes(ARTIFACT + @"\release.json", json);
+            Assert.Throws<InvalidDataException>(() => _pipeline.Prepare(ARTIFACT,
+                Convert.ToHexString(SHA256.HashData(json)), result.TargetManifestSha256, BASELINE, baseline, STAGE));
+            Assert.That(_fileSystem.Directory.Exists(STAGE), Is.False);
+            return;
+        }
+        Prepare(result, baseline);
+        Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\combined.bin"), Is.EqualTo(combined));
+        Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\repeat.bin"), Is.EqualTo(combined));
+    }
+
     private ReleaseRecipeManifest ReadManifest() => JsonSerializer.Deserialize<ReleaseRecipeManifest>(
         _fileSystem.File.ReadAllBytes(ARTIFACT + @"\release.json"))!;
+
+    /// <summary>Continue applying the original implicit source mapping.</summary>
+    [Test]
+    public void LegacyRecipesWithoutLocalSourceMappingStillApply()
+    {
+        byte[] bytes = RandomBytes(200000);
+        var baseline = WriteContract(BASELINE, ("old.bin", bytes));
+        var target = WriteContract(TARGET, ("new.bin", bytes.Concat(new byte[] { 42 }).ToArray()));
+        var result = Publish(target, baseline);
+        var manifest = ReadManifest();
+        manifest = manifest with { Version = 1 };
+        manifest.Variants[0].Files[0] = manifest.Variants[0].Files[0] with { SourceIndices = null };
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(manifest);
+        _fileSystem.File.WriteAllBytes(ARTIFACT + @"\release.json", json);
+        Prepare(result with { ArtifactSha256 = Convert.ToHexString(SHA256.HashData(json)) }, baseline);
+        Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\new.bin"), Is.EqualTo(bytes.Concat(new byte[] { 42 }).ToArray()));
+    }
 
     private StockBaselineManifest WriteContract(string root, params (string Path, byte[] Bytes)[] entries)
     {

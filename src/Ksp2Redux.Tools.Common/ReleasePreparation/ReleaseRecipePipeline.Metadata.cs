@@ -6,7 +6,7 @@ namespace Ksp2Redux.Tools.Common.ReleasePreparation;
 public partial class ReleaseRecipePipeline
 {
     private static void WriteManifest(Stream output, ReleaseRecipeManifest manifest) =>
-        JsonSerializer.Serialize(output, manifest, manifest.Version >= COMPACT_METADATA_VERSION ? COMPACT_JSON_OPTIONS : JSON_OPTIONS);
+        JsonSerializer.Serialize(output, manifest, manifest.PackProfile == HOSTED_PACK_PROFILE ? COMPACT_JSON_OPTIONS : JSON_OPTIONS);
 
     private sealed class ChunkRecordConverter : JsonConverter<ReleaseRecipeChunk>
     {

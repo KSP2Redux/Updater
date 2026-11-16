@@ -68,6 +68,14 @@ public partial class InstallTransactionEngine
         Safe(path);
     }
 
+    // Release readers exclude concurrent writers. Reuse directory listings only within that
+    // stable read phase, while retaining leaf attributes, native identity and stream checks.
+    internal void ValidateStableControlledPath(string path, Dictionary<string, string[]> listings)
+    {
+        DiskPath(path);
+        Safe(path, listings);
+    }
+
     /// <summary>
     /// Compare controlled roots using their native physical identities for containment.
     /// </summary>
@@ -1202,7 +1210,7 @@ public partial class InstallTransactionEngine
         return full;
     }
 
-    private void Safe(string path)
+    private void Safe(string path, Dictionary<string, string[]>? listings = null)
     {
         string root = _fileSystem.Path.GetPathRoot(path)!;
         string current = root;
@@ -1212,8 +1220,43 @@ public partial class InstallTransactionEngine
         {
             if (!_fileSystem.Directory.Exists(current))
                 throw new InvalidDataException($"A path ancestor is a file: '{current}'.");
-            string[] matches = _fileSystem.Directory.EnumerateFileSystemEntries(current)
-                .Where(entry => _fileSystem.Path.GetFileName(entry).Equals(segment, StringComparison.OrdinalIgnoreCase)).ToArray();
+            IEnumerable<string> entries;
+            if (listings is null)
+            {
+                entries = _fileSystem.Directory.EnumerateFileSystemEntries(current);
+            }
+            else if (listings.TryGetValue(current, out var cached))
+            {
+                entries = cached;
+            }
+            else
+            {
+                long remaining = 16 * 1024 * 1024 - listings.Values.Sum(names => names.Sum(entry => 40L + entry.Length * 2L));
+                var snapshot = new List<string>();
+                bool fits = true;
+                foreach (string entry in _fileSystem.Directory.EnumerateFileSystemEntries(current))
+                {
+                    remaining -= 40L + entry.Length * 2L;
+                    if (remaining < 0)
+                    {
+                        fits = false;
+                        break;
+                    }
+                    snapshot.Add(entry);
+                }
+                if (fits)
+                {
+                    string[] names = snapshot.ToArray();
+                    listings.Add(current, names);
+                    entries = names;
+                }
+                else
+                {
+                    entries = _fileSystem.Directory.EnumerateFileSystemEntries(current);
+                }
+            }
+            string[] matches = entries
+                .Where(entry => _fileSystem.Path.GetFileName(entry).Equals(segment, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
             string next = _fileSystem.Path.Combine(current, segment);
             if (matches.Length > 1 || (matches.Length == 1 && matches[0] != next))
                 throw new InvalidDataException($"Case alias or collision at '{next}'.");

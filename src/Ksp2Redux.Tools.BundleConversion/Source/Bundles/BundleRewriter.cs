@@ -204,6 +204,7 @@ internal static class BundleRewriter
         {
             var batch = pending.ToArray();
             var encoded = new byte[batch.Length][];
+            using (RecipePerformance.Measure("hc6-batch-encode-wall"))
             Parallel.For(0, batch.Length, new ParallelOptions { MaxDegreeOfParallelism = concurrency },
                 index => encoded[index] = Encode(batch[index].Bytes, batch[index].Bytes.Length, useK4os));
             for (int index = 0; index < batch.Length; index++)
@@ -300,6 +301,7 @@ internal static class BundleRewriter
 
     private static void WriteEncoded(Stream output, byte[] buffer, int length, AssetBundleBlockInfo block, byte[] compressed)
     {
+        using var writeTime = RecipePerformance.Measure("bundle-output-write-io");
         if (compressed.Length > 0 && compressed.Length < length)
         {
             output.Write(compressed, 0, compressed.Length);

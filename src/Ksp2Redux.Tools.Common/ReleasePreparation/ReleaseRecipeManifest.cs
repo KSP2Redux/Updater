@@ -45,7 +45,12 @@ public record ReleaseRecipeSource(string Path, BundleRecipeSourceKind Kind);
 /// <param name="Path">The normalized path in the target tree.</param>
 /// <param name="Recipe">The existing versioned exact-file recipe.</param>
 /// <param name="PayloadChunks">Chunk indices concatenated into the recipe's original literal stream.</param>
-public record ReleaseFileRecipe(string Path, BundleRecipe Recipe, List<int> PayloadChunks);
+public record ReleaseFileRecipe(string Path, BundleRecipe Recipe, List<int> PayloadChunks)
+{
+    /// <summary>Gets the variant source indices in this recipe's local descriptor order.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? SourceIndices { get; init; }
+}
 
 /// <summary>
 /// The independent identity of a pack stored as pack-NNNNNN.bin.

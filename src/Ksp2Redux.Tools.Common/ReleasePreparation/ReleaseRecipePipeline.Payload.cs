@@ -4,24 +4,43 @@ public partial class ReleaseRecipePipeline
 {
     private sealed class PackReader(ReleaseRecipePipeline owner, ReleaseRecipeManifest manifest, Func<int, string> path) : IDisposable
     {
-        private Stream? _stream;
-        private int _index = -1;
+        private readonly Dictionary<int, Stream> _streams = new();
+        private readonly LinkedList<int> _recent = new();
 
         public byte[] Read(int chunkIndex)
         {
+            using var literalTime = BundleConversion.Bundles.RecipePerformance.Measure("literal-read-decode-hash-inclusive");
             var chunk = manifest.Chunks[chunkIndex];
-            if (_index != chunk.PackIndex)
+            if (_streams.TryGetValue(chunk.PackIndex, out Stream? input))
             {
-                _stream?.Dispose();
-                _stream = owner.OpenRead(path(chunk.PackIndex));
-                _index = chunk.PackIndex;
-                if (_stream.Length != manifest.Packs[_index].Length)
-                    throw new InvalidDataException("Release pack length changed during preparation.");
+                _recent.Remove(chunk.PackIndex);
             }
-            return ReadChunk(_stream!, chunk);
+            else
+            {
+                if (_streams.Count == 8)
+                {
+                    int victim = _recent.First!.Value;
+                    _recent.RemoveFirst();
+                    _streams[victim].Dispose();
+                    _streams.Remove(victim);
+                }
+                input = owner.OpenRead(path(chunk.PackIndex));
+                _streams.Add(chunk.PackIndex, input);
+                BundleConversion.Bundles.RecipePerformance.ObservePackHandles(_streams.Count);
+            }
+            _recent.AddLast(chunk.PackIndex);
+            if (input.Length != manifest.Packs[chunk.PackIndex].Length)
+                throw new InvalidDataException("Release pack length changed during preparation.");
+            return ReadChunk(input, chunk);
         }
 
-        public void Dispose() => _stream?.Dispose();
+        public void Dispose()
+        {
+            foreach (Stream input in _streams.Values)
+                input.Dispose();
+            _streams.Clear();
+            _recent.Clear();
+        }
     }
 
     // A virtual literal stream retains only one decoded chunk. Recipes can seek across pack boundaries.

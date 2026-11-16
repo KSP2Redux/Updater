@@ -54,6 +54,7 @@ public partial class ReleaseRecipePipeline
     private const int MAX_FILE_RECORDS = 262144;
     private const int COMPACT_METADATA_VERSION = 2;
     private const int EXACT_COPY_VERSION = 3;
+    private const int LOCAL_SOURCES_VERSION = 4;
     private readonly IFileSystem _fileSystem;
     private readonly InstallTransactionEngine _pathValidator;
     private static readonly JsonSerializerOptions JSON_OPTIONS = new()
@@ -204,18 +205,19 @@ public partial class ReleaseRecipePipeline
             metadataBytes = checked(metadataBytes + sourceContract.Length * 2L);
             manifest.Variants.Add(variant);
             ValidateSources(variant, baseline.Manifest);
+            using var nativePool = new NativeSourcePool(this);
             var sources = new List<Stream>();
             try
             {
                 var descriptors = new List<BundleRecipeSource>();
                 foreach (var binding in baseline.Sources)
                 {
-                    Stream stream = OpenRead(Child(baseline.Root, binding.Path));
+                    var expected = baseline.Manifest.Files.Single(file => file.Path == binding.Path);
+                    Stream stream = nativePool.Create(Child(baseline.Root, binding.Path), expected.Length);
                     sources.Add(stream);
                     if (binding.Kind == BundleRecipeSourceKind.UnityFsData)
                         BundleRecipe.ValidateReleaseInputBounds(stream);
                     var descriptor = BundleRecipe.DescribeSource(stream, binding.Kind);
-                    var expected = baseline.Manifest.Files.Single(file => file.Path == binding.Path);
                     if (descriptor.Length != expected.Length || !EqualHash(descriptor.Sha256, expected.Sha256))
                         throw new InvalidDataException("Recipe source differs from its baseline contract.");
                     descriptors.Add(descriptor);
@@ -232,7 +234,7 @@ public partial class ReleaseRecipePipeline
                         reused = checked(reused + file.Length);
                         continue;
                     }
-                    using Stream input = OpenRead(Child(targetRoot, file.Path));
+                    using Stream input = OpenChildRead(targetRoot, file.Path);
                     string temporary = Child(outputRoot, "literal.tmp");
                     string canonical = Child(outputRoot, "canonical.tmp");
                     using (Stream literals = _fileSystem.File.Open(temporary, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
@@ -279,7 +281,17 @@ public partial class ReleaseRecipePipeline
                             payload.Add(index);
                             unique += bytes.Length;
                         }
-                        var fileRecipe = new ReleaseFileRecipe(file.Path, generated.Recipe, payload);
+                        var referenced = generated.Recipe.Entries.SelectMany(entry => entry.Segments)
+                            .Where(segment => segment.Kind == BundleRecipeSegmentKind.Source)
+                            .Select(segment => segment.SourceIndex).Distinct().Order().ToArray();
+                        var remap = referenced.Select((source, index) => (source, index)).ToDictionary(pair => pair.source, pair => pair.index);
+                        generated.Recipe.Sources = referenced.Select(index => generated.Recipe.Sources[index]).ToList();
+                        foreach (var segment in generated.Recipe.Entries.SelectMany(entry => entry.Segments))
+                        {
+                            if (segment.Kind == BundleRecipeSegmentKind.Source)
+                                segment.SourceIndex = remap[segment.SourceIndex];
+                        }
+                        var fileRecipe = new ReleaseFileRecipe(file.Path, generated.Recipe, payload) { SourceIndices = referenced };
                         using var fileMetadata = new BoundedMetadataStream();
                         JsonSerializer.Serialize(fileMetadata, fileRecipe, JSON_OPTIONS);
                         metadataBytes = checked(metadataBytes + fileMetadata.Length);
@@ -305,6 +317,8 @@ public partial class ReleaseRecipePipeline
         }
         if (manifest.Variants.Any(variant => variant.ExactCopies is not null))
             manifest = manifest with { Version = EXACT_COPY_VERSION };
+        if (manifest.Variants.Any(variant => variant.Files.Any(file => file.SourceIndices is not null)))
+            manifest = manifest with { Version = LOCAL_SOURCES_VERSION };
         packWriter.Dispose();
         for (int index = 0; index < manifest.Packs.Count; index++)
         {
@@ -331,7 +345,7 @@ public partial class ReleaseRecipePipeline
         string temporary = Child(outputRoot, "canonical.tmp");
         try
         {
-            using Stream input = OpenRead(Child(targetRoot, file.Path));
+            using Stream input = OpenChildRead(targetRoot, file.Path);
             using Stream normalized = _fileSystem.File.Open(temporary, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
             BundleRecipe.Canonicalize(input, normalized);
             Verify(normalized, file.Length, file.Sha256, ct);
@@ -502,6 +516,7 @@ public partial class ReleaseRecipePipeline
         string? artifactRoot, string?[]? packFiles, bool stageChangesOnly, CancellationToken ct, bool recipeInputsOnly = false,
         IReadOnlySet<string>? retainedTargetPaths = null)
     {
+        using var preparationTime = RecipePerformance.Measure("prepare-inclusive");
         sourceRoot = Root(sourceRoot);
         stageRoot = Root(stageRoot);
         RequireSeparate(stageRoot, [artifactRoot ?? releaseFile, sourceRoot]);
@@ -518,14 +533,21 @@ public partial class ReleaseRecipePipeline
         }
         string GetPackPath(int index) => packFiles is null ? PackPath(artifactRoot!, index) :
             packFiles[index] ?? throw new InvalidDataException("Required release pack was not downloaded.");
-        ValidateTree(sourceRoot, recipeInputsOnly ? RecipeInputContract(selected, sourceContract, retainedTargetPaths) : sourceContract, ct);
+        var matchingPaths = selected.Sources.Select(binding => binding.Path).ToHashSet(StringComparer.Ordinal);
+        var sourceListings = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        var otherPaths = sourceContract.Files.Where(file => !matchingPaths.Contains(file.Path))
+            .Select(file => file.Path).ToHashSet(StringComparer.Ordinal);
+        using (RecipePerformance.Measure("source-tree-path-validation"))
+            ValidateTree(sourceRoot, recipeInputsOnly ? RecipeInputContract(selected, sourceContract, retainedTargetPaths) : sourceContract, ct, otherPaths, sourceListings);
         for (int index = 0; index < manifest.Packs.Count; index++)
         {
+            using var packTime = RecipePerformance.Measure("pack-verification");
             if (packFiles is not null && packFiles[index] is null)
                 continue;
             using Stream pack = OpenRead(GetPackPath(index));
             Verify(pack, manifest.Packs[index].Length, manifest.Packs[index].Sha256, ct);
         }
+        using var nativePool = new NativeSourcePool(this, sourceListings);
         var sources = new List<Stream>();
         bool stageCreated = false;
         try
@@ -534,14 +556,26 @@ public partial class ReleaseRecipePipeline
             var sourceFiles = sourceContract.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
             foreach (var binding in selected.Sources)
             {
-                Stream input = OpenRead(Child(sourceRoot, binding.Path));
-                sources.Add(input);
+                using var sourceTime = RecipePerformance.Measure("source-verification-before");
                 var expected = sourceFiles[binding.Path];
+                Stream input = nativePool.Create(Child(sourceRoot, binding.Path, sourceListings), expected.Length);
+                sources.Add(input);
                 Verify(input, expected.Length, expected.Sha256, ct);
                 verifiedNativeSources.Add(input, expected.Sha256);
                 if (binding.Kind == BundleRecipeSourceKind.UnityFsData)
                     BundleRecipe.ValidateReleaseInputBounds(input);
             }
+            var descriptors = selected.Sources.Select(binding => new BundleRecipeSource
+            {
+                Kind = BundleRecipeSourceKind.RawFile, Length = sourceFiles[binding.Path].Length,
+                DataLength = sourceFiles[binding.Path].Length, Sha256 = sourceFiles[binding.Path].Sha256,
+            }).ToArray();
+            foreach (var file in selected.Files)
+            {
+                for (int index = 0; index < file.Recipe.Sources.Count; index++)
+                    descriptors[file.SourceIndices?[index] ?? index] = file.Recipe.Sources[index];
+            }
+            using var decoded = new BundleRecipe.SourcePool(sources, descriptors);
             ct.ThrowIfCancellationRequested();
             StockArchive.CreateDirectory(_fileSystem, stageRoot);
             stageCreated = true;
@@ -562,28 +596,32 @@ public partial class ReleaseRecipePipeline
                 using Stream output = _fileSystem.File.Open(destination, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
                 if (selected.ExactCopies?.TryGetValue(expected.Path, out string? sourcePath) == true)
                 {
-                    using Stream input = OpenRead(Child(sourceRoot, sourcePath));
+                    using Stream input = OpenChildRead(sourceRoot, sourcePath);
                     CopyExactFile(input, output, expected.Length, ct);
                 }
                 else
                 {
                     var file = recipes[expected.Path];
                     using var payload = new ReleasePayloadStream(packReader, manifest, file.PayloadChunks, ct);
-                    file.Recipe.ReconstructPinned(sources, payload, output, verifiedNativeSources);
+                    int[] indices = file.SourceIndices ?? Enumerable.Range(0, sources.Count).ToArray();
+                    file.Recipe.ReconstructPinned(indices.Select(index => sources[index]).ToArray(), payload, output,
+                        verifiedNativeSources, indices.Select(index => decoded.Data[index]).ToArray());
                 }
                 output.Flush();
                 if (expected.UnixMode is not null)
                     StockArchive.ApplyUnixPermissions(_fileSystem, destination, expected.UnixMode.Value);
                 StockArchive.FlushLinuxDirectory(_fileSystem, _fileSystem.Path.GetDirectoryName(destination)!);
             }
-            // The same read-only handles remain open for the whole operation. Recheck them before
-            // publishing the stage instead of hashing multi-GiB sources again for every target file.
+            // Recheck complete native identities after reconstruction. Reopened ranges never replace
+            // source contract authentication or the independent output and complete stage hashes.
             for (int index = 0; index < sources.Count; index++)
             {
+                using var sourceTime = RecipePerformance.Measure("source-verification-after");
                 var expected = sourceFiles[selected.Sources[index].Path];
                 Verify(sources[index], expected.Length, expected.Sha256, ct);
             }
-            ValidateTree(stageRoot, staged, ct);
+            using (RecipePerformance.Measure("final-stage-verification"))
+                ValidateTree(stageRoot, staged, ct, pathListings: new Dictionary<string, string[]>(StringComparer.Ordinal));
             ct.ThrowIfCancellationRequested();
             return target;
         }
@@ -671,7 +709,7 @@ public partial class ReleaseRecipePipeline
 
     private static BundleRecipeGenerationOptions GenerationBounds() => new()
     {
-        MaxIndexedChunks = MAX_FILE_RECORDS,
+        MaxIndexedChunks = 4 * 1024 * 1024,
         MaxRecipeSegments = MAX_FILE_RECORDS,
     };
 
@@ -737,10 +775,13 @@ public partial class ReleaseRecipePipeline
     private static byte[] ReadChunk(Stream pack, ReleaseRecipeChunk chunk)
     {
         pack.Position = chunk.Offset;
-        byte[] stored = ReadExactly(pack, chunk.StoredLength);
+        byte[] stored;
+        using (RecipePerformance.Measure("literal-pack-read-io"))
+            stored = ReadExactly(pack, chunk.StoredLength);
         byte[] bytes;
         try
         {
+            using var decodeTime = RecipePerformance.Measure("literal-block-decode");
             bytes = chunk.IsCompressed ? LZ4Codec.Decode32(stored, 0, stored.Length, chunk.Length) : stored;
         }
         catch (ArgumentException error)
@@ -753,7 +794,7 @@ public partial class ReleaseRecipePipeline
     }
 
     private void ValidateTree(string root, StockBaselineManifest contract, CancellationToken ct,
-        IReadOnlySet<string>? hashPaths = null)
+        IReadOnlySet<string>? hashPaths = null, Dictionary<string, string[]>? pathListings = null)
     {
         new StockArchiveLimits().Validate(contract);
         _pathValidator.ValidateControlledPath(Root(root));
@@ -768,7 +809,7 @@ public partial class ReleaseRecipePipeline
         foreach (var file in contract.Files)
         {
             ct.ThrowIfCancellationRequested();
-            using Stream input = OpenRead(Child(root, file.Path));
+            using Stream input = OpenChildRead(root, file.Path, pathListings);
             if (hashPaths is null || hashPaths.Contains(file.Path))
                 Verify(input, file.Length, file.Sha256, ct);
             else if (input.Length != file.Length)
@@ -780,8 +821,8 @@ public partial class ReleaseRecipePipeline
 
     private static void ValidateSources(ReleaseRecipeVariant variant, StockBaselineManifest contract)
     {
-        if (variant.Sources is null || variant.Sources.Count > 16)
-            throw new InvalidDataException("A recipe variant supports at most sixteen matching source files.");
+        if (variant.Sources is null || variant.Sources.Count > 100000)
+            throw new InvalidDataException("A recipe variant supports at most 100000 matching source files.");
         var paths = new HashSet<string>(StringComparer.Ordinal);
         foreach (var source in variant.Sources)
         {
@@ -796,8 +837,8 @@ public partial class ReleaseRecipePipeline
     {
         new StockArchiveLimits().Validate(target);
         var limits = PackLimits(manifest.PackProfile);
-        if ((manifest.Version != 1 && (manifest.Version is not (COMPACT_METADATA_VERSION or EXACT_COPY_VERSION) ||
-                manifest.PackProfile != HOSTED_PACK_PROFILE)) ||
+        if ((manifest.Version != 1 && (manifest.Version is not (COMPACT_METADATA_VERSION or EXACT_COPY_VERSION or LOCAL_SOURCES_VERSION) ||
+                (manifest.Version != LOCAL_SOURCES_VERSION && manifest.PackProfile != HOSTED_PACK_PROFILE))) ||
             manifest.Variants is null ||
             manifest.Variants.Count is < 1 or > 16 || manifest.Packs is null || manifest.Chunks is null ||
             manifest.Chunks.Count > MAX_RELEASE_CHUNKS || manifest.Packs.Count > limits.Count)
@@ -831,7 +872,7 @@ public partial class ReleaseRecipePipeline
             var baseline = StockBaselineManifest.FromJson(variant.SourceManifest);
             ValidateSources(variant, baseline);
             var exactCopies = variant.ExactCopies;
-            if (exactCopies is not null && manifest.Version != EXACT_COPY_VERSION)
+            if (exactCopies is not null && manifest.Version < EXACT_COPY_VERSION)
                 throw new InvalidDataException("Exact copies require release format three.");
             var baselineFiles = baseline.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
             if (variant.Files is null || variant.Files.Count + (long)(exactCopies?.Count ?? 0) != target.Files.Count)
@@ -853,11 +894,14 @@ public partial class ReleaseRecipePipeline
                 if (file is null || file.Path != expected.Path || recipe is null ||
                     recipe.TargetLength != expected.Length || !EqualHash(recipe.TargetSha256, expected.Sha256) ||
                     file.PayloadChunks is null || file.PayloadChunks.Count > MAX_FILE_RECORDS ||
-                    recipe.Sources is null || recipe.Sources.Count != variant.Sources.Count ||
+                    recipe.Sources is null || recipe.Sources.Count != (file.SourceIndices?.Length ?? variant.Sources.Count) ||
                     recipe.Entries is null || recipe.Entries.Count > 65536 ||
                     recipe.Entries.Any(entry => entry is null || entry.Segments is null) ||
                     recipe.Entries.Sum(entry => (long)entry.Segments.Count) > MAX_FILE_RECORDS)
                     throw new InvalidDataException("Invalid target recipe identity or metadata bound.");
+                if (file.SourceIndices is { } indices && (manifest.Version != LOCAL_SOURCES_VERSION ||
+                    indices.Any(index => index < 0 || index >= variant.Sources.Count) || indices.Distinct().Count() != indices.Length))
+                    throw new InvalidDataException("Invalid local source mapping.");
                 long payloadLength = 0;
                 foreach (int chunk in file.PayloadChunks)
                 {
@@ -872,7 +916,7 @@ public partial class ReleaseRecipePipeline
                     throw new InvalidDataException("Canonical target data exceeds the eight GiB preparation bound.");
                 for (int sourceIndex = 0; sourceIndex < recipe.Sources.Count; sourceIndex++)
                 {
-                    var binding = variant.Sources[sourceIndex];
+                    var binding = variant.Sources[file.SourceIndices?[sourceIndex] ?? sourceIndex];
                     var source = recipe.Sources[sourceIndex];
                     var identity = baselineFiles[binding.Path];
                     if (source is null || source.Kind != binding.Kind || source.Length != identity.Length ||
@@ -892,11 +936,17 @@ public partial class ReleaseRecipePipeline
         return full;
     }
 
-    private string Child(string root, string relative)
+    private string Child(string root, string relative, Dictionary<string, string[]>? pathListings = null)
     {
         string normalized = StockBaselineManifest.NormalizePath(relative);
         string full = _fileSystem.Path.Combine(root, normalized.Replace('/', _fileSystem.Path.DirectorySeparatorChar));
-        _pathValidator.ValidateControlledPath(full);
+        using (RecipePerformance.Measure("controlled-path-validation"))
+        {
+            if (pathListings is null)
+                _pathValidator.ValidateControlledPath(full);
+            else
+                _pathValidator.ValidateStableControlledPath(full, pathListings);
+        }
         return full;
     }
 
@@ -922,9 +972,23 @@ public partial class ReleaseRecipePipeline
         }
     }
 
-    private Stream OpenRead(string path)
+    private Stream OpenRead(string path, Dictionary<string, string[]>? pathListings = null)
     {
-        _pathValidator.ValidateControlledPath(path);
+        using (RecipePerformance.Measure("controlled-path-validation"))
+        {
+            if (pathListings is null)
+                _pathValidator.ValidateControlledPath(path);
+            else
+                _pathValidator.ValidateStableControlledPath(path, pathListings);
+        }
+        return _fileSystem.File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+    }
+
+    private Stream OpenChildRead(string root, string relative, Dictionary<string, string[]>? pathListings = null)
+    {
+        // Child performs the complete native path validation immediately before opening.
+        // Calling OpenRead here would repeat every leaf identity and stream check.
+        string path = Child(root, relative, pathListings);
         return _fileSystem.File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
     }
 
@@ -946,6 +1010,7 @@ public partial class ReleaseRecipePipeline
 
     private static string HashStream(Stream stream, CancellationToken ct)
     {
+        using var hashTime = RecipePerformance.Measure("tree-pack-source-hash-io-inclusive");
         stream.Position = 0;
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buffer = new byte[MAX_CHUNK_BYTES];

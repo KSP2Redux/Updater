@@ -218,14 +218,8 @@ public partial class BundleRecipe
         {
             distinct.Add(canonicalTarget);
         }
-        for (int index = 0; index < distinct.Count; index++)
-        {
-            for (int previous = 0; previous < index; previous++)
-            {
-                if (ReferenceEquals(distinct[index], distinct[previous]))
-                    throw new ArgumentException("Generation streams must be distinct objects.");
-            }
-        }
+        if (distinct.Distinct(new StreamIdentityComparer()).Count() != distinct.Count)
+            throw new ArgumentException("Generation streams must be distinct objects.");
 
         var positions = new long[inputs.Count];
         for (int index = 0; index < inputs.Count; index++)
@@ -438,8 +432,8 @@ public partial class BundleRecipe
     /// The verified source streams and lazily built chunk index for one release baseline.
     /// </summary>
     /// <remarks>
-    /// The publisher must hold its read-only native handles until generation and final verification
-    /// are complete. Use serially and dispose before closing the native handles.
+    /// The publisher must keep its source views stable and exclude writers until generation and final
+    /// verification are complete. Use serially and dispose before closing the native views.
     /// </remarks>
     internal sealed class ReleaseSourceIndex : IDisposable
     {
@@ -448,7 +442,7 @@ public partial class BundleRecipe
         private readonly long[] _positions;
         private readonly BundleRecipeGenerationOptions _options;
         private readonly CancellationToken _cancellationToken;
-        private readonly List<UnityFsBundle> _opened = new();
+        private SourcePool? _pool;
         private Dictionary<string, (int SourceIndex, long Offset, int Length)>? _chunks;
 
         /// <summary>
@@ -468,7 +462,9 @@ public partial class BundleRecipe
             _cancellationToken = cancellationToken;
             try
             {
-                (Data, Directories) = OpenGenerationSources(descriptors, sources, _opened);
+                _pool = new SourcePool(sources, descriptors);
+                Data = _pool.Data;
+                Directories = _pool.Directories;
             }
             catch
             {
@@ -522,15 +518,19 @@ public partial class BundleRecipe
         /// <inheritdoc />
         public void Dispose()
         {
-            foreach (var bundle in _opened)
-            {
-                bundle.Dispose();
-            }
+            _pool?.Dispose();
             for (int index = 0; index < _sources.Count; index++)
             {
                 _sources[index].Position = _positions[index];
             }
         }
+    }
+
+    // Stream subclasses may override value equality. Aliasing checks require object identity.
+    private readonly struct StreamIdentityComparer : IEqualityComparer<Stream>
+    {
+        public bool Equals(Stream? first, Stream? second) => ReferenceEquals(first, second);
+        public int GetHashCode(Stream stream) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(stream);
     }
 
     private static void RequireGenerationOutput(Stream output, string name)

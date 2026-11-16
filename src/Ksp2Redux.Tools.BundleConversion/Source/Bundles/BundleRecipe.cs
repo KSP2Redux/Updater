@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Security.Cryptography;
 using AssetsTools.NET;
 
 namespace Ksp2Redux.Tools.BundleConversion.Bundles;
@@ -164,23 +166,25 @@ public partial class BundleRecipe
         => ReconstructCore(sources, payload, output, null);
 
     /// <summary>
-    /// Reconstruct using native source handles pinned for the complete release operation.
+    /// Reconstruct using native source views authenticated for the complete release operation.
     /// </summary>
     /// <remarks>
-    /// The release owner must exclude writers and reverify the held handles before publishing the stage.
+    /// The release owner must exclude writers and reverify source identities before publishing the stage.
     /// Target verification and all source metadata and range checks remain mandatory.
     /// </remarks>
-    /// <param name="sources">The held source handles in descriptor order.</param>
+    /// <param name="sources">The stable source views in descriptor order.</param>
     /// <param name="payload">The verified literal payload.</param>
     /// <param name="output">An empty readable, writable and seekable output.</param>
-    /// <param name="verifiedNativeSources">Native SHA-256 pins verified on these same handles before reconstruction.</param>
+    /// <param name="verifiedNativeSources">Native SHA-256 pins verified through these views before reconstruction.</param>
+    /// <param name="decodedSources">The release-owned decoded coordinate views, or null for per-call readers.</param>
     internal void ReconstructPinned(IReadOnlyList<Stream?> sources, Stream payload, Stream output,
-        IReadOnlyDictionary<Stream, string> verifiedNativeSources)
-        => ReconstructCore(sources, payload, output, verifiedNativeSources);
+        IReadOnlyDictionary<Stream, string> verifiedNativeSources, IReadOnlyList<Stream>? decodedSources = null)
+        => ReconstructCore(sources, payload, output, verifiedNativeSources, decodedSources);
 
     private void ReconstructCore(IReadOnlyList<Stream?> sources, Stream payload, Stream output,
-        IReadOnlyDictionary<Stream, string>? verifiedNativeSources)
+        IReadOnlyDictionary<Stream, string>? verifiedNativeSources, IReadOnlyList<Stream>? decodedSources = null)
     {
+        using var reconstructionTime = RecipePerformance.Measure("reconstruction-inclusive");
         if (sources is null)
             throw new ArgumentNullException(nameof(sources));
         RequireInput(payload, nameof(payload));
@@ -231,6 +235,14 @@ public partial class BundleRecipe
                 if (!string.Equals(nativeHash, descriptor.Sha256, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException($"Source {index} file SHA-256 does not match its descriptor.");
 
+                if (decodedSources is not null)
+                {
+                    SourcePool.ValidateCoordinates(decodedSources[index], descriptor);
+                    if (decodedSources[index].Length != descriptor.DataLength)
+                        throw new InvalidDataException("Decoded source length mismatch.");
+                    sourceData[index] = decodedSources[index];
+                    continue;
+                }
                 if (descriptor.Kind == BundleRecipeSourceKind.RawFile)
                 {
                     sourceData[index] = new BoundedInputStream(source);
@@ -476,12 +488,25 @@ public partial class BundleRecipe
 
     private static string HashFile(Stream stream, long length, CancellationToken cancellationToken = default)
     {
+        using var hashTime = RecipePerformance.Measure("recipe-hash-io-inclusive");
         stream.Position = 0;
         using var view = new BoundedInputStream(stream, cancellationToken);
-        string hash = Hex.Sha256(view);
-        if (stream.Position != length)
-            throw new EndOfStreamException("The stream ended before its declared file length.");
-        return hash;
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        const int HASH_READ_SIZE = 32 * 1024;
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(HASH_READ_SIZE);
+        try
+        {
+            int read;
+            while ((read = view.Read(buffer, 0, HASH_READ_SIZE)) > 0)
+                hash.AppendData(buffer, 0, read);
+            if (stream.Position != length)
+                throw new EndOfStreamException("The stream ended before its declared file length.");
+            return Hex.Encode(hash.GetHashAndReset());
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     // This view caps requests made by hashing and the bundle reader and never owns the input.
