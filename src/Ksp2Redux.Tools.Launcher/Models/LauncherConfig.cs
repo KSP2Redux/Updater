@@ -8,6 +8,13 @@ public class LauncherConfig(string storagePath)
     public const string R2_MANIFEST_BASE_URL = "https://download.ksp2redux.org";
     public const string GITHUB_MANIFEST_BASE_URL = "https://raw.githubusercontent.com/KSP2Redux/Redux/main";
 
+    /// <summary>
+    /// Where the translation pipeline commits the launcher's Strings.resx files. The launcher reads newer
+    /// translations from here between releases.
+    /// </summary>
+    public const string TRANSLATIONS_BASE_URL =
+        "https://raw.githubusercontent.com/KSP2Redux/Updater/main/src/Ksp2Redux.Tools.Launcher/Localization";
+
     public string Ksp2InstallPath { get; set; } = "";
     public string ReleaseChannel { get; set; } = "beta";
     public bool AutoSwitchedToStable { get; set; } = false;
@@ -43,6 +50,15 @@ public class LauncherConfig(string storagePath)
     /// Culture name of the language the launcher shows, for example "de". Empty follows the operating system.
     /// </summary>
     public string Language { get; set; } = "";
+
+    /// <summary>
+    /// When enabled, the launcher downloads translations that were finished after its release, so they show
+    /// without waiting for the next launcher version.
+    /// </summary>
+    public bool DownloadTranslationUpdates { get; set; } = true;
+
+    /// <summary>The folder the translation updates are read from. See <see cref="TRANSLATIONS_BASE_URL"/>.</summary>
+    public string TranslationsUrl { get; set; } = TRANSLATIONS_BASE_URL;
 
     /// <summary>
     /// When enabled, lowers the log file's minimum level to Debug for more detailed troubleshooting output.
