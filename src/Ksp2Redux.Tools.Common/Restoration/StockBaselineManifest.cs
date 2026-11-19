@@ -9,9 +9,13 @@ namespace Ksp2Redux.Tools.Common.Restoration;
 /// <remarks>
 /// Identity and provenance describe the caller's source. They do not authenticate it.
 /// Storefront or release authentication belongs above the archive primitive.
+/// The player's boot.config is never part of a contract. Construction drops any entry for it, so a contract
+/// that still lists it (older releases, pinned manifests) reads as if it did not.
 /// </remarks>
 public class StockBaselineManifest
 {
+    private readonly StockBaselineFile? _excludedBootConfig;
+
     /// <summary>
     /// The supported manifest and archive format version.
     /// </summary>
@@ -63,6 +67,15 @@ public class StockBaselineManifest
     public long TotalBytes { get; }
 
     /// <summary>
+    /// Gets the boot.config entry that parsing dropped, or null when the parsed contract did not list one.
+    /// </summary>
+    /// <remarks>
+    /// Only data written before boot.config left every contract lists it. Migration code reads this to recognise
+    /// such data. Nothing verifies or restores the entry.
+    /// </remarks>
+    public StockBaselineFile? DroppedBootConfig => _excludedBootConfig;
+
+    /// <summary>
     /// Construct and validate an expected baseline without reading an installed tree.
     /// </summary>
     /// <param name="baselineIdentity">The caller-supplied baseline identity.</param>
@@ -103,6 +116,11 @@ public class StockBaselineManifest
             AddPath(paths, path, false);
             if (file.UnixMode is { } mode && (mode < 0 || mode > 511 || (mode & 256) == 0))
                 throw new InvalidDataException($"Unsupported Unix file permissions for '{path}'.");
+            if (BootConfigFile.IsExcluded(path))
+            {
+                _excludedBootConfig ??= new StockBaselineFile(path, file.Length, file.Sha256.ToUpperInvariant(), file.UnixMode);
+                continue;
+            }
             normalizedFiles.Add(new StockBaselineFile(path, file.Length, file.Sha256.ToUpperInvariant(), file.UnixMode));
             TotalBytes = checked(TotalBytes + file.Length);
         }
@@ -131,7 +149,49 @@ public class StockBaselineManifest
     /// </summary>
     /// <param name="maxBytes">The maximum serialized metadata bytes.</param>
     /// <returns>The UTF-8 manifest bytes.</returns>
-    public byte[] ToJson(int maxBytes = 16 * 1024 * 1024)
+    public byte[] ToJson(int maxBytes = 16 * 1024 * 1024) => Serialize(Files, maxBytes);
+
+    /// <summary>
+    /// Get whether JSON bytes are this contract's canonical form, or that form plus the boot.config entry parsing dropped.
+    /// </summary>
+    /// <remarks>
+    /// Feed validation and the migration of data written by earlier builds use this, so one older entry that still
+    /// lists boot.config cannot invalidate a whole feed or lock an existing installation out.
+    /// Digests of such bytes no longer match the contract's own serialization.
+    /// </remarks>
+    /// <param name="json">The UTF-8 manifest bytes.</param>
+    /// <returns>True when the bytes are canonical.</returns>
+    public bool IsCanonical(ReadOnlySpan<byte> json) => ToJson().AsSpan().SequenceEqual(json) || IsLegacyForm(json);
+
+    /// <summary>
+    /// Get whether JSON bytes are this contract's canonical form plus the boot.config entry parsing dropped.
+    /// </summary>
+    /// <param name="json">The UTF-8 manifest bytes.</param>
+    /// <returns>True when the bytes are the older canonical form that lists boot.config.</returns>
+    public bool IsLegacyForm(ReadOnlySpan<byte> json) =>
+        _excludedBootConfig is not null &&
+        Serialize(Files.Append(_excludedBootConfig).OrderBy(file => file.Path, StringComparer.Ordinal).ToList(),
+            16 * 1024 * 1024).AsSpan().SequenceEqual(json);
+
+    /// <summary>
+    /// Serialize this contract the way builds that listed boot.config did, given that file's length and hash.
+    /// </summary>
+    /// <remarks>
+    /// Caches written by those builds are named by the digest of these bytes. Only contracts without Unix metadata
+    /// have such a form.
+    /// </remarks>
+    /// <param name="bootConfigLength">The length of the boot.config the older contract listed.</param>
+    /// <param name="bootConfigSha256">The SHA-256 of that boot.config.</param>
+    /// <returns>The UTF-8 manifest bytes of the older form.</returns>
+    public byte[] ToJsonWithBootConfig(long bootConfigLength, string bootConfigSha256)
+    {
+        if (HasUnixMetadata)
+            throw new InvalidOperationException("Contracts with Unix metadata have no older boot.config form.");
+        var bootConfig = new StockBaselineFile(BootConfigFile.RELATIVE_PATH, bootConfigLength, bootConfigSha256.ToUpperInvariant());
+        return Serialize(Files.Append(bootConfig).OrderBy(file => file.Path, StringComparer.Ordinal).ToList(), 16 * 1024 * 1024);
+    }
+
+    private byte[] Serialize(IReadOnlyList<StockBaselineFile> files, int maxBytes)
     {
         if (maxBytes <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxBytes));
@@ -144,7 +204,7 @@ public class StockBaselineManifest
             writer.WriteString("baselineIdentity", BaselineIdentity);
             writer.WriteString("provenance", Provenance);
             writer.WriteStartArray("files");
-            foreach (StockBaselineFile file in Files)
+            foreach (StockBaselineFile file in files)
             {
                 writer.WriteStartObject();
                 writer.WriteString("path", file.Path);

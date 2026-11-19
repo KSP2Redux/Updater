@@ -48,7 +48,30 @@ public partial class FullSourceInstallationServiceTest
         Assert.That(fixture.Fs.File.ReadAllText(journal), Is.EqualTo("stale unowned journal"));
     }
 
-    private static CliContext Context(Fixture fixture, StringWriter output)
+    /// <summary>
+    /// Without a full-source catalog the command fails before any uninstall runs, rather than uninstalling a legacy install.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task CliUninstallWithoutCatalog_FailsBeforeAnyUninstallRuns()
+    {
+        Fixture fixture = Create();
+        using var output = new StringWriter();
+        CliContext context = Context(fixture, output);
+        Put(fixture.Fs, fixture.Install, "Redux/legacy-marker.txt", "legacy redux bytes");
+
+        int result = await new FullSourceCommand().RunWithContextAsync(context, new FullSourceSettings
+        {
+            Operation = "uninstall", AssumeYes = true, Install = fixture.Entry.Id.ToString()
+        });
+
+        Assert.That(result, Is.EqualTo((int)ExitCode.INSTALL_NOT_FOUND));
+        Assert.That(output.ToString(), Does.Contain("no full-source catalog"));
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, "Redux/legacy-marker.txt")), Is.EqualTo("legacy redux bytes"));
+        Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, fixture.Install, "uninstall.zip")), Is.False);
+    }
+
+    private static CliContext Context(Fixture fixture, StringWriter output, bool bootSettings = false)
     {
         var services = new ServiceCollection();
         services.AddSingleton(fixture.Configuration);
@@ -61,6 +84,8 @@ public partial class FullSourceInstallationServiceTest
         services.AddSingleton<IFullSourceInstallationService>(fixture.Service());
         services.AddSingleton<IInstallationStateService, InstallationStateService>();
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
+        if (bootSettings)
+            services.AddSingleton<IBootConfigSettingsService, BootConfigSettingsService>();
         services.AddSingleton<IInstallPlanService, InstallPlanService>();
         services.AddSingleton(new Mock<IBundleConversionService>(MockBehavior.Strict).Object);
         services.AddSingleton(Mock.Of<ILogService>());
@@ -100,13 +125,16 @@ public partial class FullSourceInstallationServiceTest
                 fixture.Entry.Id, It.IsAny<CancellationToken>(), It.IsAny<Action<long, long>?>()))
             .ReturnsAsync(fixture.Target3);
         using var output = new StringWriter();
-        CliContext context = Context(fixture, output);
+        CliContext context = Context(fixture, output, bootSettings: true);
         Assert.That(await new FullSourceCommand().RunWithContextAsync(context, new FullSourceSettings
         {
             Operation = "apply", Release = "release-two", Channel = "beta", Install = fixture.Entry.Id.ToString()
         }), Is.Zero);
         byte[] archive = fixture.Fs.File.ReadAllBytes(fixture.Archive);
         Assert.That(context.ReadInstall(fixture.Entry.ExePath)!.GameVersion!.BuildNumber, Is.EqualTo("200"));
+        // The settings step ran: the file carries the launcher's line, and the original of that line is on record.
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT + "gfx-enable-gfx-jobs=0\r\n"));
+        Assert.That(fixture.Entry.BootConfigOriginals, Is.EquivalentTo(new Dictionary<string, string?> { ["gfx-enable-gfx-jobs"] = null }));
         Assert.That(await new FullSourceCommand().RunWithContextAsync(context, new FullSourceSettings
         {
             Operation = "apply", Release = "release-three", Channel = "internal"
@@ -123,6 +151,7 @@ public partial class FullSourceInstallationServiceTest
         Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.Null);
         Preserved(fixture, archive);
         Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT));
+        Assert.That(fixture.Entry.BootConfigOriginals, Is.Empty);
     }
 
     /// <summary>
@@ -141,14 +170,16 @@ public partial class FullSourceInstallationServiceTest
         var coordinator = fixture.Service();
         var guard = new InstallationStateService(fixture.Fs, new ZipFileService(fixture.Fs), coordinator);
         var installs = new Ksp2InstallService(fixture.Configuration, fixture.Fs, Mock.Of<IModuleDefinitionService>(),
-            Mock.Of<ILogService>(), guard, coordinator);
+            Mock.Of<ILogService>(), guard, coordinator,
+            new BootConfigSettingsService(fixture.Configuration, fixture.Fs, Mock.Of<ILogService>()));
         installs.TryLoadKsp2Install();
         Assert.That(installs.Ksp2!.GameVersion!.BuildNumber, Is.EqualTo("200"));
         Assert.That(installs.Ksp2.VersionDetectionException, Is.Null);
-        byte[] boot = fixture.Fs.File.ReadAllBytes(At(fixture.Fs, fixture.Install, BOOT));
         installs.ApplyActiveInstallBootConfig();
         guard.EnsureLaunchAllowed(fixture.Install);
-        Assert.That(fixture.Fs.File.ReadAllBytes(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(boot));
+        // The settings step edits the file outside the recovered generation, which still verifies below.
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)),
+            Is.EqualTo(STOCK_BOOT + "gfx-enable-gfx-jobs=0\r\n"));
         Assert.Throws<IOException>(() => guard.EnsureLegacyMutationAllowed(fixture.Install));
         Generation(fixture, coordinator.Reconcile(fixture.Entry.Id)!);
     }

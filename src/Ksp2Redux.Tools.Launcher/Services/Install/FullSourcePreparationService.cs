@@ -44,7 +44,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     }
 
     private record RecipeArtifact(string Url, string Marker, string Sha256, string PackPrefix, ReleaseRecipeManifest Manifest);
-    private record RecipeSource(StockBaselineManifest Contract, string Root, Guid? InstalledId = null, bool Projected = false);
+    internal record RecipeSource(StockBaselineManifest Contract, string Root, Guid? InstalledId = null, bool Projected = false);
 
     /// <summary>
     /// Construct preparation using the launcher's existing authority, download, storefront and cache systems.
@@ -134,8 +134,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         {
             FullSourceReleaseId = releaseId, FullSourceChannel = channel,
             FullSourceVersion = release.Descriptor.Version,
-            FullSourceManifestSha256 = release.Descriptor.TargetManifestSha256,
-            FullSourceAllowsDerivedBootConfig = release.Descriptor.AllowsDerivedBootConfig,
+            FullSourceManifestSha256 = release.Descriptor.GetNormalizedTargetManifestSha256(),
             FullSourceFeed = release.Feed.SnapshotAuthority()
         };
     }
@@ -149,7 +148,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         string releaseId = plan.FullSourceReleaseId ?? throw new InvalidDataException("The plan has no release selector.");
         string channel = plan.FullSourceChannel ?? throw new InvalidDataException("The plan has no release channel.");
         AuthorityRelease release = await ResolveAsync(releaseId, channel, ct, plan.FullSourceFeed);
-        plan.RequireFullSourceMatch(Identity(release), release.Descriptor.AllowsDerivedBootConfig);
+        plan.RequireFullSourceMatch(Identity(release));
         if (!hasCatalog)
             return await PrepareInitialInstallAsync(release, installationId, ct, downloadProgress);
         if (plan.IsFullSourceRepair)
@@ -198,7 +197,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 descriptor.UpdateSourceDigests?.Contains(installedDigest, StringComparer.OrdinalIgnoreCase) == true);
             Guid? retentionId = repairInstallationId ?? (!hasDirectSource && installedDigest is not null ? installationId : null);
             FullSourceTargetRetention? retention = null;
-            if (retentionId is { } retainingId && _os.IsWindows() && !descriptor.AllowsDerivedBootConfig)
+            if (retentionId is { } retainingId && _os.IsWindows())
             {
                 string root = InstallRoot(Entry(retainingId));
                 var paths = new HashSet<string>(StringComparer.Ordinal);
@@ -243,8 +242,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         string stages = At(CacheRoot(), "stages");
         CreateDirectory(stages);
         var targetContract = StockBaselineManifest.FromJson(descriptor.TargetManifest);
-        // A derived boot file may differ from the publisher's installed contract.
-        var installed = installedId is { } id && _os.IsWindows() && !descriptor.AllowsDerivedBootConfig
+        var installed = installedId is { } id && _os.IsWindows()
             ? new FullSourceInstalledBaseline(id, contract)
             : null;
         var staged = installed is not null ? ReleaseRecipePipeline.UpdateStageContract(targetContract, contract)
@@ -295,8 +293,10 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             return _pipeline.PrepareDownloaded(artifact.Marker, artifact.Sha256,
                 descriptor.TargetManifestSha256, downloadedPacks, source, contract, stage, ct, retention?.Paths);
         }, ct);
-        return new FullSourcePreparedTarget(Identity(release), target, stage, descriptor.AllowsDerivedBootConfig,
-            release.Feed.SnapshotAuthority()) { InstalledBaseline = installed, TargetRetention = retention };
+        return new FullSourcePreparedTarget(Identity(release), target, stage, release.Feed.SnapshotAuthority())
+        {
+            InstalledBaseline = installed, TargetRetention = retention, BootConfigSettings = descriptor.BootConfigSettings
+        };
     }
 
     private long EstimatePackCacheGrowth(ReleaseRecipeManifest manifest, int[] requiredPacks, CancellationToken ct)
@@ -349,7 +349,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             return new RecipeSource(contract, root, installationId);
 
         // A normal Windows update must verify the old owned files before it can publish a new generation.
-        if (_os.IsWindows() && !descriptor.AllowsDerivedBootConfig)
+        if (_os.IsWindows())
             throw new InvalidDataException("Installed Redux files differ from the update baseline. Repair the installation before updating.");
         return null;
     }
@@ -435,7 +435,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 entry.FullSourceRetainedUnownedFiles.ToArray(), entry.FullSourceUnownedDirectories.ToArray(), entry.Id,
                 Identity(authority!), authority!.Feed.SnapshotAuthority(), pin);
         }
-        if (_os.IsWindows() && (selectedOwnership!.ToJson().AsSpan().SequenceEqual(selected.Manifest) ||
+        if (_os.IsWindows() && (selectedOwnership!.ToJson().AsSpan().SequenceEqual(selectedStock.ToJson()) ||
             await TreeMatchesAsync(root, selectedStock, ct)))
         {
             return new FullSourceStockPreparation(selectedStock, root, selectedOwnership!,
@@ -469,7 +469,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         var staged = target.Manifest;
         if (target.TargetRetention is { } retention)
         {
-            if (!_os.IsWindows() || target.AllowsDerivedBootConfig || target.InstalledBaseline is not null)
+            if (!_os.IsWindows() || target.InstalledBaseline is not null)
                 throw new InvalidDataException("Target retention is incompatible with this prepared release.");
             _ = Entry(retention.InstallationId);
             staged = ReleaseRecipePipeline.RetainedStageContract(target.Manifest, retention.Paths);
@@ -479,8 +479,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             string digest = Digest(installed.Manifest.ToJson());
             bool matchingSource = release.Descriptor.UpdateSourceDigests?.Contains(digest, StringComparer.OrdinalIgnoreCase) == true ||
                 release.Descriptor.UpdateArtifacts?.Any(artifact => artifact.SourceDigest.Equals(digest, StringComparison.OrdinalIgnoreCase)) == true;
-            if (!_os.IsWindows() || target.AllowsDerivedBootConfig ||
-                !matchingSource)
+            if (!_os.IsWindows() || !matchingSource)
                 throw new InvalidDataException("The changed-file stage has no matching authenticated installed baseline.");
             _ = Entry(installed.InstallationId);
             staged = ReleaseRecipePipeline.UpdateStageContract(target.Manifest, installed.Manifest);
@@ -501,10 +500,10 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         AuthorityRelease release = await ResolveAsync(preparation.Release.ReleaseId, preparation.Release.Channel, ct, preparation.AuthorityFeed);
         byte[] expected = preparation.Stock.ToJson();
         var definitions = BaselineDefinitions(release.Descriptor, entry).ToArray();
+        // A definition published before boot.config left every contract lists it. It is the same contract as without it.
         FullSourceBaselineDefinition? definition = definitions.SingleOrDefault(baseline =>
-            baseline.Manifest.AsSpan().SequenceEqual(expected));
-        if (preparation.Release != Identity(release) ||
-            !definitions.Any(baseline => baseline.Manifest.AsSpan().SequenceEqual(expected)) ||
+            StockBaselineManifest.FromJson(baseline.Manifest).ToJson().AsSpan().SequenceEqual(expected));
+        if (preparation.Release != Identity(release) || definition is null ||
             (entry.FullSourceBaselineIdentity is { } identity && identity != preparation.Stock.BaselineIdentity) ||
             !preparation.RetainedUnownedFiles.SequenceEqual(entry.FullSourceRetainedUnownedFiles, StringComparer.Ordinal) ||
             !preparation.UnownedDirectories.SequenceEqual(entry.FullSourceUnownedDirectories, StringComparer.Ordinal))
@@ -537,8 +536,8 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         if (target.AuthorityFeed is null)
             throw new InvalidDataException("Production target preparation requires its independently selected configured authority.");
         AuthorityRelease release = await ResolveAsync(target.Identity.ReleaseId, target.Identity.Channel, ct, target.AuthorityFeed);
-        if (target.Identity != Identity(release) || target.AllowsDerivedBootConfig != release.Descriptor.AllowsDerivedBootConfig ||
-            !target.Manifest.ToJson().AsSpan().SequenceEqual(release.Descriptor.TargetManifest))
+        if (target.Identity != Identity(release) ||
+            !target.Manifest.ToJson().AsSpan().SequenceEqual(release.Descriptor.GetNormalizedTargetManifest()))
             throw new InvalidDataException("Prepared release identity or permission differs from fresh configured authority metadata.");
         return release;
     }
@@ -601,8 +600,18 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             .Select(patch => new AuthorityRelease(feed, patch, trusted.Authority)).ToList();
     }
 
-    private async Task<RecipeSource> SelectBaselineAsync(IReadOnlyList<FullSourceBaselineDefinition> definitions,
+    internal async Task<RecipeSource> SelectBaselineAsync(IReadOnlyList<FullSourceBaselineDefinition> definitions,
         CancellationToken ct, ReleaseRecipeManifest? recipe = null, IReadOnlySet<string>? retainedTargetPaths = null)
+    {
+        RecipeSource source = await SelectVerifiedBaselineAsync(definitions, ct, recipe, retainedTargetPaths);
+        // A complete cached tree proves the contract, so the tree an earlier build kept for it is no longer needed.
+        if (!source.Projected && source.Root == BaselineRoot(source.Contract))
+            PruneSupersededBaselines(source.Contract);
+        return source;
+    }
+
+    private async Task<RecipeSource> SelectVerifiedBaselineAsync(IReadOnlyList<FullSourceBaselineDefinition> definitions,
+        CancellationToken ct, ReleaseRecipeManifest? recipe, IReadOnlySet<string>? retainedTargetPaths)
     {
         InvalidDataException? archiveCoverageFailure = null;
         bool windows = _os.IsWindows();
@@ -614,6 +623,9 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             var inputs = stockRecipe is null ? stock : ReleaseRecipePipeline.GetRecipeInputContract(stockRecipe, stock, retainedTargetPaths);
             bool projected = stockRecipe is not null;
             string root = BaselineRoot(stock);
+            // A tree an earlier build kept for this contract moves into place before anything needs the space to copy it.
+            if (await AdoptSupersededBaselineAsync(stock, inputs, root, ct))
+                return new RecipeSource(stock, root, Projected: projected);
             IReadOnlyList<StockBaselineFile> filesToCopy = inputs.Files;
             if (windows && !projected)
             {
@@ -934,7 +946,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     }
 
     private FullSourceReleaseIdentity Identity(AuthorityRelease release) => new(release.Descriptor.ReleaseId,
-        release.Descriptor.Channel, release.Descriptor.Version, release.Descriptor.TargetManifestSha256.ToUpperInvariant(), release.Authority);
+        release.Descriptor.Channel, release.Descriptor.Version, release.Descriptor.GetNormalizedTargetManifestSha256(), release.Authority);
 
     private string ArtifactUrl(string r2Url, string githubUrl) =>
         _configuration.Config.PatchDownloadSource == PatchDownloadSource.R2 ? r2Url : githubUrl;
@@ -960,7 +972,10 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         CreateDirectory(root);
         string path = At(root, ".preparation.lock");
         _paths.ValidateControlledPath(path);
-        return _fs.FileStream.New(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        FileSystemStream lease = _fs.FileStream.New(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        // Under the lease, so no other preparation is using what an earlier run left in the trash folder.
+        SweepTrash();
+        return lease;
     }
 
     private void RequireCacheChild(string path, string folder)

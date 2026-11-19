@@ -97,14 +97,14 @@ public partial class FullSourceInstallationServiceTest
     }
 
     private static HomeTabViewModel ReadinessHome(Fixture fixture, FullSourceInstallationService coordinator,
-        IInstallationStateService state)
+        IInstallationStateService state, IMessageBoxService? messages = null)
     {
         var installs = new Ksp2InstallService(fixture.Configuration, fixture.Fs, Mock.Of<IModuleDefinitionService>(),
             Mock.Of<ILogService>(), state, coordinator);
         var feeds = new Mock<IReleasesFeedService>();
         feeds.SetupGet(service => service.ReleasesFeed).Returns(new Dictionary<string, ManifestReleasesFeed>());
         return new HomeTabViewModel(installs, fixture.Configuration, feeds.Object, Mock.Of<IInstallPlanService>(),
-            Mock.Of<IUpdateService>(), fixture.Os, Mock.Of<IMessageBoxService>(), Mock.Of<IEnvironmentProvider>(),
+            Mock.Of<IUpdateService>(), fixture.Os, messages ?? Mock.Of<IMessageBoxService>(), Mock.Of<IEnvironmentProvider>(),
             fixture.Fs, Mock.Of<ILogService>(), Mock.Of<IWineRuntimeService>(), fixture.GameProcesses.Object, state);
     }
 

@@ -26,7 +26,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     IInstallFileLockService? installFileLockService = null,
     IFullSourceInstallationService? fullSource = null,
     IFullSourcePreparationService? preparation = null,
-    ISaveBackupService? saveBackupService = null) : IInstallPlanService
+    ISaveBackupService? saveBackupService = null,
+    IBootConfigSettingsService? bootConfig = null) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -108,6 +109,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             FullSourceReleaseIdentity? installedRelease = hasCatalog && !installPlan.IsFullSourceRepair
                 ? fullSource.GetPublishedIdentity(entry.Id)
                 : null;
+            IReadOnlyDictionary<string, string>? releaseSettings = null;
             if (!hasCatalog && IsLegacyBackup(install))
             {
                 await fullSource.UpgradeLegacyAsync(entry.Id,
@@ -122,7 +124,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         try
                         {
                             var result = await preparation.FetchSelectedPlanAsync(installPlan, entry.Id, false, null, ct, downloadProgress);
-                            installPlan.RequireFullSourceMatch(result.Target.Identity, result.Target.AllowsDerivedBootConfig);
+                            installPlan.RequireFullSourceMatch(result.Target.Identity);
+                            releaseSettings = result.Target.BootConfigSettings;
                             return (result.Target with { MayConsumeSource = true }, result.Stock);
                         }
                         catch (InvalidDataException failure) when (failure.Data.Contains("FullSourceStockMismatch"))
@@ -130,16 +133,18 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             throw new InvalidDataException(Loc["Install.LegacyStockVerificationFailed"], failure);
                         }
                     }, patchLog, ct, install);
+                ApplyBootConfig(entry, releaseSettings);
                 stepsProgress(1, 1);
                 return;
             }
             var (prepared, stock) = await preparation.FetchSelectedPlanAsync(installPlan, entry.Id, hasCatalog, installedRelease, ct, downloadProgress);
-            installPlan.RequireFullSourceMatch(prepared.Identity, prepared.AllowsDerivedBootConfig);
+            installPlan.RequireFullSourceMatch(prepared.Identity);
             if (stock is null && !fullSource.HasCatalog(install))
                 stock = await preparation.FetchStockAsync(entry.Id, prepared, ct);
             patchLog("Verifying and applying the prepared release...");
             await Task.Run(() => fullSource.ApplyAsync(entry.Id, prepared with { MayConsumeSource = true },
                 stock, installPlan.IsFullSourceRepair, patchLog, ct, install), ct);
+            ApplyBootConfig(entry, prepared.BootConfigSettings);
             stepsProgress(1, 1);
             return;
         }
@@ -162,11 +167,13 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         return ApplyToFolder(uninstall, install, log, downloadProgress, (_, _) => { }, ct);
                     },
                     async () => (target, await preparation.FetchStockAsync(id, target, ct)), patchLog, ct, install);
+                ApplyBootConfig(entry, target.BootConfigSettings);
                 stepsProgress(1, 1);
                 return;
             }
             await Task.Run(() => fullSource.ApplyAsync(id, target, installPlan.FullSourceStock,
                 installPlan.IsFullSourceRepair, patchLog, ct, install), ct);
+            ApplyBootConfig(entry, target.BootConfigSettings);
             stepsProgress(1, 1);
             return;
         }
@@ -175,6 +182,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         {
             var entry = launcherConfigService.Config.Ksp2Installs.Single(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install);
             await Task.Run(() => fullSource.UninstallAsync(entry.Id, patchLog, ct, install), ct);
+            bootConfig?.Revert(entry);
             stepsProgress(1, 1);
             return;
         }
@@ -405,6 +413,22 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 await RollbackOrRethrowAsync(install, log, ex);
             }
         }
+
+        // Boot settings follow the install outside the patching above. Removing Redux undoes them, installing applies them.
+        if (installPlan.Steps.Count != 0 &&
+            launcherConfigService.Config.Ksp2Installs.FirstOrDefault(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install) is { } legacyEntry)
+        {
+            if (!patched)
+                bootConfig?.Revert(legacyEntry);
+            else
+                ApplyBootConfig(legacyEntry, null);
+        }
+    }
+
+    private void ApplyBootConfig(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string>? releaseSettings)
+    {
+        bootConfig?.SetReleaseSettings(entry, releaseSettings);
+        bootConfig?.Apply(entry);
     }
 
     // Installs never touch saves, but a save opened in another game version may not load in this one, so the

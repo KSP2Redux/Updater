@@ -63,7 +63,7 @@ public class PrepatchOriginalContractTest
         byte[] bytes = prepatch.ToJson();
         var descriptor = new FullSourceReleaseDescriptor("fixture", "internal", "0.2.9.0.1", bytes,
             Convert.ToHexString(SHA256.HashData(bytes)), "https://fixture.test/release.json", "https://fixture.test/release.json",
-            [new FullSourceBaselineDefinition(stock.ToJson(), [])], false, 1)
+            [new FullSourceBaselineDefinition(stock.ToJson(), [])], 1)
         {
             PrepatchManifest = bytes, PrepatchManifestSha256 = Convert.ToHexString(SHA256.HashData(bytes)), PrepatchResources = resources
         };

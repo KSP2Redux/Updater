@@ -23,7 +23,6 @@ namespace Ksp2Redux.Tools.Launcher.Services.Install;
 /// </remarks>
 public partial class FullSourceInstallationService : IFullSourceInstallationService
 {
-    private const string BOOT_CONFIG = "KSP2_x64_Data/boot.config";
     private const int OBSERVATION_BUFFER_BYTES = 1024 * 1024;
     private readonly IFileSystem _fs;
     private readonly ILauncherConfigService _configuration;
@@ -248,7 +247,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         ValidateInputRoot(entry, target.SourceRoot);
         Catalog? catalog = ReadCatalog(entry);
         if (target.InstalledBaseline is { } installed &&
-            (!_os.IsWindows() || repair || target.AllowsDerivedBootConfig || installed.InstallationId != entry.Id ||
+            (!_os.IsWindows() || repair || installed.InstallationId != entry.Id ||
                 catalog?.Release?.ManifestSha256 != Digest(installed.Manifest.ToJson())))
             throw new InvalidDataException("The installed generation changed after update preparation. Prepare the release again.");
         var retention = target.TargetRetention;
@@ -257,7 +256,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             string? previous = retention.PreviousManifestSha256;
             bool matchesGeneration = catalog is not null && repair == (previous is null) &&
                 (repair || string.Equals(catalog.Release?.ManifestSha256, previous, StringComparison.OrdinalIgnoreCase));
-            if (!_os.IsWindows() || target.AllowsDerivedBootConfig || retention.InstallationId != entry.Id ||
+            if (!_os.IsWindows() || retention.InstallationId != entry.Id ||
                 target.InstalledBaseline is not null || !matchesGeneration)
                 throw new InvalidDataException("Prepared target retention does not belong to this installation and generation.");
         }
@@ -293,7 +292,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         StockBaselineManifest preparedLayout = target.Manifest;
         if (!fullPreparedStage)
         {
-            preparedLayout = ChangedSourceContract(target.Manifest, current, catalog.RetainedFiles, false);
+            preparedLayout = ChangedSourceContract(target.Manifest, current, catalog.RetainedFiles);
             if (retention?.Paths.Overlaps(preparedLayout.Files.Select(file => file.Path)) == true)
                 throw new InvalidDataException("An installed file selected for reuse changed after preparation. Prepare the release again.");
             // Only reuse the scan when the live generation requires the exact authenticated stage.
@@ -302,14 +301,14 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         }
         if (catalog.Archive is null && stock is null && catalog.ExistingBackup is null)
             throw new InvalidDataException("The original stock archive needs its separately verified source preparation.");
-        bool moveSource = target.MayConsumeSource && !target.AllowsDerivedBootConfig && _os.IsWindows() &&
+        bool moveSource = target.MayConsumeSource && _os.IsWindows() &&
             _fs is RealFileSystem && _preparation is FullSourcePreparationService &&
             string.Equals(_fs.Path.GetPathRoot(target.SourceRoot), _fs.Path.GetPathRoot(StorageRoot(entry)), StringComparison.OrdinalIgnoreCase) &&
             HasExactSourceLayout(target.SourceRoot, preparedLayout, ct);
         EnsureMutationAllowed(entry);
         if (isInitialConversion)
             Write(HeadPath(entry), catalog, "catalog-initialize");
-        Operation operation = Begin(entry, catalog, current, target.Manifest, target.Identity, target.AllowsDerivedBootConfig, repair,
+        Operation operation = Begin(entry, catalog, current, target.Manifest, target.Identity, repair,
             fullDirectorySource: moveSource && fullPreparedStage);
         Catalog previousCatalog = catalog;
         catalog = catalog with { Pending = operation.TransactionId };
@@ -335,8 +334,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             });
             if (!moveSource)
                 CopyTree(target.SourceRoot, operation.SourceRoot, SourceContract(catalog, operation), ct);
-            StockBaselineManifest targetGeneration = DeriveBootConfig(operation, target.Manifest);
-            operation = operation with { Target = targetGeneration.ToJson(), Archive = archive };
+            operation = operation with { Archive = archive };
             return ApplyPrepared(entry, catalog, operation, log, ct);
         }
         catch (OperationCanceledException failure)
@@ -366,7 +364,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         StockBaselineManifest stock = Manifest(catalog.Stock);
         VerifyCollisions(catalog, current, stock, ct);
         EnsureMutationAllowed(entry);
-        Operation operation = Begin(entry, catalog, current, stock, null, false, stockArchiveSource: _os.IsWindows());
+        Operation operation = Begin(entry, catalog, current, stock, null, stockArchiveSource: _os.IsWindows());
         Catalog previousCatalog = catalog;
         catalog = catalog with { Pending = operation.TransactionId };
         Write(HeadPath(entry), catalog, "catalog-pending", previousCatalog);
@@ -418,7 +416,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
     }
 
     private Operation Begin(Ksp2InstallEntry entry, Catalog catalog, StockBaselineManifest current,
-        StockBaselineManifest target, FullSourceReleaseIdentity? identity, bool derivedBoot, bool repair = false,
+        StockBaselineManifest target, FullSourceReleaseIdentity? identity, bool repair = false,
         bool stockArchiveSource = false, bool fullDirectorySource = false)
     {
         Guid id = Guid.NewGuid();
@@ -440,7 +438,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         var directories = current.Directories.Concat(target.Directories).ToHashSet(StringComparer.Ordinal);
         var operation = new Operation(FORMAT_VERSION, id, entry.Id, Root(entry), SourceRoot(entry, id), WorkRoot(entry, id),
             Digest(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(catalog, JSON_OPTIONS)), current.ToJson(), target.ToJson(),
-            target.ToJson(), identity, derivedBoot, entry.DisableGraphicsJobs, null, repair, protectedRoots,
+            target.ToJson(), identity, false, false, null, repair, protectedRoots,
             catalog.Archive, null, "preparing", null, ChangedFileStaging: true,
             SparseSourceStaging: identity is not null && _os.IsWindows() && !fullDirectorySource, StockArchiveSource: stockArchiveSource,
             MovedFileUndo: _os.IsWindows(),
@@ -473,7 +471,11 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         if (operation.Phase == "preparing")
         {
             if (Exists(_fs.Path.Combine(Root(entry), ".redux-transaction.active")) || Exists(operation.WorkRoot))
-                throw new InvalidDataException("Engine evidence conflicts with preparation-only catalog authority. Evidence retained.");
+                throw catalog.LegacyStored is not null ? LegacyPendingRefusal(entry) : new InvalidDataException(
+                    "Engine evidence conflicts with preparation-only catalog authority. Evidence retained.");
+            // A backup promotion of an earlier build rewrites that build's own operation bytes, which this one cannot match.
+            if (catalog.LegacyStored is not null && catalog.ExistingBackup is not null && catalog.Archive is null)
+                throw LegacyPendingRefusal(entry);
             VerifyTree(Root(entry), Manifest(operation.Current), CancellationToken.None);
             if (catalog.ExistingBackup is not null)
                 operation = CompletePendingBackupPromotion(entry, catalog, operation);
@@ -551,7 +553,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         Catalog published = catalog with
         {
             Ownership = ownership, Release = release, Archive = operation.Archive ?? catalog.Archive,
-            Pending = null, LastResult = result, LastTransaction = operation.TransactionId,
+            Pending = null, LastResult = result, LastTransaction = operation.TransactionId, LegacyStored = null,
             UnownedDirectories = result == InstallTransactionResult.Committed
                 ? catalog.UnownedDirectories.Concat(Manifest(catalog.Ownership).Directories
                     .Where(path => !targetDirectories.Contains(path) &&
@@ -559,7 +561,8 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
                     .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()
                 : catalog.UnownedDirectories
         };
-        Write(HeadPath(entry), published, "catalog-ownership", catalog);
+        // The head still holds the earlier build's bytes when its pending operation was rolled back here.
+        Write(HeadPath(entry), published, "catalog-ownership", catalog.LegacyStored ?? catalog);
         ProjectIdentity(entry, published);
         return published;
     }
@@ -843,55 +846,6 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             StockArchive.FlushLinuxDirectory(_fs, _fs.Path.GetDirectoryName(target)!);
         }
         VerifyTree(destination, manifest, ct);
-    }
-
-    private StockBaselineManifest DeriveBootConfig(Operation operation, StockBaselineManifest release)
-    {
-        if (!operation.DerivedBootConfig)
-            return release;
-        if (release.Files.All(file => file.Path != BOOT_CONFIG))
-            throw new InvalidDataException("Authenticated derived boot configuration requires its release-owned source file.");
-        string path = At(operation.SourceRoot, BOOT_CONFIG);
-        if (_fs.FileInfo.New(path).Length > 1024 * 1024)
-            throw new InvalidDataException("Derived boot configuration exceeds its byte budget.");
-        byte[] sourceBytes = _fs.File.ReadAllBytes(path);
-        int offset = sourceBytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF }) ? 3 : 0;
-        string text = new UTF8Encoding(false, true).GetString(sourceBytes.AsSpan(offset));
-        string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd('\n').Split('\n').ToList();
-        List<(string Key, string Value)> settings = new()
-        {
-            ("gfx-enable-gfx-jobs", operation.DisableGraphicsJobs ? "0" : "1")
-        };
-        // Older journals retain the exact HDR choice used to derive their recorded target bytes.
-        if (operation.EnableHdr is { } legacyHdr)
-            settings.Add(("hdr-display-enabled", legacyHdr ? "1" : "0"));
-        foreach ((string key, string value) in settings)
-        {
-            int index = lines.FindIndex(line => line.StartsWith($"{key}=", StringComparison.Ordinal));
-            if (lines.Count(line => line.StartsWith($"{key}=", StringComparison.Ordinal)) > 1)
-                throw new InvalidDataException("Derived boot configuration has duplicate settings.");
-            if (index < 0)
-                lines.Add($"{key}={value}");
-            else
-                lines[index] = $"{key}={value}";
-        }
-        byte[] bytes = Encoding.UTF8.GetBytes(string.Join(newline, lines) + newline);
-        int? permissions = release.Files.Single(file => file.Path == BOOT_CONFIG).UnixMode;
-        if (permissions is not null)
-            StockArchive.ApplyUnixPermissions(_fs, path, 384);
-        using (FileSystemStream output = _fs.FileStream.New(path, FileMode.Truncate, FileAccess.Write, FileShare.None))
-        {
-            output.Write(bytes);
-            output.Flush(true);
-        }
-        if (permissions is not null)
-            StockArchive.ApplyUnixPermissions(_fs, path, permissions.Value);
-        StockBaselineFile derived = new(BOOT_CONFIG, bytes.LongLength, Digest(bytes), permissions);
-        return new StockBaselineManifest($"{release.BaselineIdentity}:boot-v1:{derived.Sha256}",
-            "authenticated release with explicit launcher boot configuration v1", release.Files.Select(file =>
-                file.Path == BOOT_CONFIG ? derived : file), release.Directories,
-            release.HasUnixMetadata ? release.UnixDirectoryModes : null);
     }
 
     private FullSourceInstallationStatus Status(Catalog catalog, Exception? archiveFailure) =>

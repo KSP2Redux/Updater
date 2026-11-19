@@ -80,23 +80,6 @@ public partial class FullSourcePreparationServiceTest
     }
 
     /// <summary>
-    /// Permission changes under the same release ID and version invalidate a list-time selection.
-    /// </summary>
-    /// <returns>The verification task.</returns>
-    [Test]
-    public async Task Review_SelectedPermissionChanged_IsRejected()
-    {
-        Fixture fixture = Create();
-        InstallPlan plan = await SelectedPlan(fixture);
-        fixture.Patch = fixture.Patch with { FullSource = fixture.Patch.FullSource! with { AllowsDerivedBootConfig = true } };
-        await Assert.ThrowsAsync<InvalidDataException>(async () =>
-            await Services(fixture).GetRequiredService<IInstallPlanService>().ApplyToFolder(plan, fixture.Install,
-                _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None));
-        Assert.That(fixture.Requests, Is.Empty, "Changed release selections must stop before artifact requests.");
-        AssertTree(fixture.Fs, fixture.Install, fixture.Stock);
-    }
-
-    /// <summary>
     /// Republishing different target bytes under the same selector and version cannot change a list-time target contract.
     /// </summary>
     /// <param name="repair">Null for initial install, false for a managed update, or true for repair.</param>
@@ -128,7 +111,7 @@ public partial class FullSourcePreparationServiceTest
             fixture.StockRoot, fixture.Stock, [])], artifact);
         fixture.Patch = pipeline.CreateFeedEntry(artifact, publication, RELEASE_ID, CHANNEL, VERSION,
             "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
-            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], false, DateTime.UtcNow);
+            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], DateTime.UtcNow);
         fixture.ResponseOverride = (url, _, _) => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
         {
             Content = new StreamContent(fixture.Fs.File.OpenRead(At(fixture.Fs, artifact, new Uri(url).Segments.Last())))

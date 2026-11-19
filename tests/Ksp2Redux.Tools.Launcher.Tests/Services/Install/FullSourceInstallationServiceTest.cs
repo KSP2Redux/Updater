@@ -26,7 +26,7 @@ public partial class FullSourceInstallationServiceTest
     private const string RETAINED = "shared/retained.txt";
     private const string UNKNOWN = "shared/user-save.bin";
     private const string USER_BYTES = "literal unknown user bytes";
-    private const string STOCK_BOOT = "gfx-enable-gfx-jobs=1\r\nhdr-display-enabled=0\r\nstock=exact\r\n";
+    private const string STOCK_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=3\r\nstock=exact\r\n";
 
     private record Fixture(IFileSystem Fs, string Root, string Install, string Storage,
         Ksp2InstallEntry Entry, ILauncherConfigService Configuration, Mock<IFullSourcePreparationService> Preparation,
@@ -86,15 +86,16 @@ public partial class FullSourceInstallationServiceTest
         var release2 = Manifest("release-two", target2Files);
         var release3 = Manifest("release-three", target3Files);
         var target2 = new FullSourcePreparedTarget(new FullSourceReleaseIdentity("release-two", "beta", "2.0.0.1.200",
-            Digest(release2.ToJson()), "test independently pinned authentication receipt two"), release2, source2, true);
+            Digest(release2.ToJson()), "test independently pinned authentication receipt two"), release2, source2);
         var target3 = new FullSourcePreparedTarget(new FullSourceReleaseIdentity("release-three", "internal", "3.0.0.1.300",
-            Digest(release3.ToJson()), "test independently pinned authentication receipt three"), release3, source3, true);
+            Digest(release3.ToJson()), "test independently pinned authentication receipt three"), release3, source3);
         var preparation = new FullSourceStockPreparation(stock, stockRoot, stock, [RETAINED], ["shared"]);
         var entry = new Ksp2InstallEntry { ExePath = fs.Path.Combine(install, Ksp2Install.KSP2_EXE_NAME), Name = "Disposable", DisableGraphicsJobs = true };
         var config = new LauncherConfig(fs.Path.Combine(storage, "test-config.json")) { Ksp2Installs = [entry], ActiveKsp2InstallId = entry.Id };
         var configuration = new Mock<ILauncherConfigService>();
         configuration.SetupGet(service => service.Config).Returns(config);
         configuration.Setup(service => service.GetLocalStorageDirectory()).Returns(storage);
+        configuration.Setup(service => service.TrySave()).Returns(true);
         var verifier = new Mock<IFullSourcePreparationService>(MockBehavior.Strict);
         verifier.Setup(service => service.VerifyTargetAsync(It.IsAny<FullSourcePreparedTarget>(), It.IsAny<CancellationToken>()))
             .Returns((FullSourcePreparedTarget candidate, CancellationToken _) =>
@@ -169,9 +170,9 @@ public partial class FullSourceInstallationServiceTest
         Assert.That(installed.Release, Is.EqualTo(fixture.Target2.Identity));
         byte[] archive = fixture.Fs.File.ReadAllBytes(fixture.Archive);
         await new StockArchive(fixture.Fs, new ZipFileService(fixture.Fs)).VerifyAsync(fixture.Archive, fixture.Stock.Stock);
-        string boot = fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT));
-        Assert.That(boot, Does.Contain("gfx-enable-gfx-jobs=0\r\n").And.Contain("hdr-display-enabled=0\r\n"));
-        Assert.That(installed.Generation.Files.Single(file => file.Path == BOOT), Is.Not.EqualTo(fixture.Target2.Manifest.Files.Single(file => file.Path == BOOT)));
+        // The coordinator never reads, writes or owns boot.config.
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT));
+        Assert.That(installed.Generation.Files.Any(file => file.Path == BOOT), Is.False);
         FullSourceInstallationStatus updated = await Apply(fixture, target: fixture.Target3, initial: false);
         Generation(fixture, updated);
         Assert.That(updated.Release, Is.EqualTo(fixture.Target3.Identity));
@@ -391,19 +392,21 @@ public partial class FullSourceInstallationServiceTest
     }
 
     /// <summary>
-    /// A UTF-8 signature cannot hide the first setting or duplicate it, and uninstall restores the original signature bytes.
+    /// A boot.config with any bytes, here a signature and extra lines that match no contract, installs and uninstalls untouched.
     /// </summary>
     /// <returns>The verification task.</returns>
     [Test]
-    public async Task BootUtf8Signature_DerivesOneSettingAndRestoresExactOriginalBytes()
+    public async Task BootConfigWithAnyBytes_IsNeverMatchedOrChangedByTheCoordinator()
     {
         Fixture fixture = Create(bootBom: true);
+        byte[] custom = Encoding.UTF8.GetBytes("\uFEFFhand-edited=1\r\ngfx-enable-gfx-jobs=0\r\nbuild-guid=unknown\r\n");
+        fixture.Fs.File.WriteAllBytes(At(fixture.Fs, fixture.Install, BOOT), custom);
         await Apply(fixture);
-        string boot = fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT));
-        string[] lines = boot.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-        Assert.That(lines.Count(line => line.StartsWith("gfx-enable-gfx-jobs=", StringComparison.Ordinal)), Is.EqualTo(1));
-        Assert.That(lines.Single(line => line.StartsWith("gfx-enable-gfx-jobs=", StringComparison.Ordinal)), Is.EqualTo("gfx-enable-gfx-jobs=0"));
+        Assert.That(fixture.Fs.File.ReadAllBytes(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(custom));
         await fixture.Service().UninstallAsync(fixture.Entry.Id, _ => { }, CancellationToken.None);
-        Assert.That(fixture.Fs.File.ReadAllBytes(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(Encoding.UTF8.GetBytes("\uFEFF" + STOCK_BOOT)));
+        Assert.That(fixture.Fs.File.ReadAllBytes(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(custom));
+        fixture.Fs.File.Delete(At(fixture.Fs, fixture.Install, BOOT));
+        await Apply(fixture, initial: false);
+        Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, fixture.Install, BOOT)), Is.False, "No boot.config is created by an install.");
     }
 }

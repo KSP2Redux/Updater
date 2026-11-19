@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -191,9 +192,29 @@ public class ManifestReleasesFeed(
         {
             FullSourceReleaseId = descriptor.ReleaseId, FullSourceChannel = CurrentChannel,
             FullSourceVersion = targetVersion, FullSourceDownloadBytes = descriptor.DownloadBytes,
-            FullSourceFeed = feed.SnapshotAuthority(), FullSourceManifestSha256 = descriptor.TargetManifestSha256,
-            FullSourceAllowsDerivedBootConfig = descriptor.AllowsDerivedBootConfig, IsFullSourceRepair = repair
+            FullSourceFeed = feed.SnapshotAuthority(), FullSourceManifestSha256 = IdentityDigest(descriptor),
+            IsFullSourceRepair = repair
         };
     }
 
+    // The digest the installed release is compared by. A descriptor whose contract cannot be read cannot match any
+    // installation, and the preparation that would use it rejects it, so the list only needs to keep working.
+    // Parsing and hashing the contract takes a moment and the button state asks for it several times, so the answer is
+    // kept for as long as the descriptor lives. A refreshed feed has new descriptors.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<FullSourceReleaseDescriptor, string> IDENTITY_DIGESTS = [];
+
+    private static string IdentityDigest(FullSourceReleaseDescriptor descriptor) =>
+        IDENTITY_DIGESTS.GetValue(descriptor, ReadIdentityDigest);
+
+    private static string ReadIdentityDigest(FullSourceReleaseDescriptor descriptor)
+    {
+        try
+        {
+            return descriptor.GetNormalizedTargetManifestSha256();
+        }
+        catch (Exception failure) when (failure is InvalidDataException or JsonException or ArgumentException or InvalidOperationException)
+        {
+            return descriptor.TargetManifestSha256;
+        }
+    }
 }

@@ -294,21 +294,22 @@ internal static class FullSourcePublication
         if (stock.HasUnixMetadata)
             throw new InvalidDataException("Windows publication requires Windows target and stock contracts.");
         ReleaseManifestValidator.ValidateHostedGameContract(stock);
+        // Pinned contracts that still list boot.config publish without that entry.
+        stockBytes = stock.ToJson(MAX_CONTRACT_BYTES);
 
         var baseline = new FullSourceBaselineDefinition(stockBytes, options.SteamDepots ?? []);
-        byte[]? prepatchBytes = prepatchPath is null ? null : ReadContract(prepatchPath);
-        if (prepatchBytes is not null && (!IsSha256(options.ExpectedPrepatchManifestSha256) ||
-            !Convert.ToHexString(SHA256.HashData(prepatchBytes)).Equals(options.ExpectedPrepatchManifestSha256, StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidDataException("The pinned prepatch manifest changed before publication.");
-        var recipeContract = prepatchBytes is null ? stock : StockBaselineManifest.FromJson(prepatchBytes);
+        byte[]? prepatchBytes = null;
+        var recipeContract = stock;
+        if (prepatchPath is not null)
+            (prepatchBytes, recipeContract) = ReadPinnedPrepatch(ReadContract(prepatchPath), options.ExpectedPrepatchManifestSha256);
         var updateRecipes = new List<(ReleaseRecipeSourceTree Source, FullSourceUpdateArtifact Artifact)>();
         foreach (var update in updates)
         {
             byte[] bytes = ReadContract(update.ManifestPath);
-            var contract = StockBaselineManifest.FromJson(bytes);
-            if (contract.HasUnixMetadata || !contract.ToJson().AsSpan().SequenceEqual(bytes))
-                throw new InvalidDataException("A prior Redux update source must have a canonical Windows target contract.");
-            ReleaseManifestValidator.ValidateHostedGameContract(contract);
+            var (contract, normalized) = ReadUpdateSource(bytes);
+            if (!normalized.AsSpan().SequenceEqual(bytes))
+                Console.WriteLine($"The prior update source {update.ManifestPath} lists boot.config. It is used without that entry.");
+            bytes = normalized;
             string digest = Convert.ToHexString(SHA256.HashData(bytes));
             string markerName = $"update-{digest.ToLowerInvariant()}-release.json";
             var draft = new FullSourceUpdateArtifact(digest, digest, 1, 1,
@@ -316,6 +317,7 @@ internal static class FullSourcePublication
                 new Uri(new Uri(options.GitHubArtifactUrl), markerName).AbsoluteUri);
             updateRecipes.Add((new ReleaseRecipeSourceTree(update.Root, contract, SelectUpdateSources(paths, update.Root, contract)), draft));
         }
+        Dictionary<string, string>? bootConfigSettings = ReadBootConfigSettings(paths, player);
         // The existing validator also checks canonical contracts, version and HTTPS URLs before any packs are written.
         string targetHash = Convert.ToHexString(SHA256.HashData(targetBytes));
         var preview = new ReleasePatch
@@ -326,8 +328,9 @@ internal static class FullSourcePublication
             ReleasedAt = DateTime.UnixEpoch,
             Requires = new PatchRequirement { Version = null },
             FullSource = new FullSourceReleaseDescriptor(options.ReleaseId, options.Channel, options.Version,
-                targetBytes, targetHash, options.R2ArtifactUrl, options.GitHubArtifactUrl, [baseline], false, 1)
+                targetBytes, targetHash, options.R2ArtifactUrl, options.GitHubArtifactUrl, [baseline], 1)
             {
+                BootConfigSettings = bootConfigSettings,
                 UpdateArtifacts = updateRecipes.Count == 0 ? null : updateRecipes.Select(recipe => recipe.Artifact).ToList(),
                 PrepatchManifest = prepatchBytes,
                 PrepatchManifestSha256 = prepatchBytes is null ? null : Convert.ToHexString(SHA256.HashData(prepatchBytes)),
@@ -421,8 +424,8 @@ internal static class FullSourcePublication
 
         DateTime releasedAt = DateTime.UtcNow;
         ReleasePatch patch = pipeline.CreateFeedEntry(artifact, publication, options.ReleaseId, options.Channel,
-            options.Version, options.R2ArtifactUrl, options.GitHubArtifactUrl, [baseline], false, releasedAt,
-            prepatchManifest: prepatchBytes, prepatchResources: options.PrepatchResources);
+            options.Version, options.R2ArtifactUrl, options.GitHubArtifactUrl, [baseline], releasedAt,
+            prepatchManifest: prepatchBytes, prepatchResources: options.PrepatchResources, bootConfigSettings: bootConfigSettings);
         if (updateArtifacts.Count != 0)
             patch = patch with { FullSource = patch.FullSource! with { UpdateArtifacts = updateArtifacts } };
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = options.Channel, GeneratedAt = releasedAt, Patches = [patch] };
@@ -457,6 +460,8 @@ internal static class FullSourcePublication
         var directories = target.Directories.ToHashSet(StringComparer.Ordinal);
         foreach (var (_, relative, isDirectory) in TargetEntries(player))
         {
+            if (!isDirectory && BootConfigFile.IsExcluded(relative))
+                continue;
             if (!(isDirectory ? directories : files).Remove(relative))
                 throw new InvalidDataException($"The target contract omits {(isDirectory ? "directory" : "file")} '{relative}'.");
         }
@@ -526,6 +531,27 @@ internal static class FullSourcePublication
             Validate(entry.Name, entry.Value);
     }
 
+    // The player's boot.config is no contract file. Its keys travel in the authenticated release descriptor instead.
+    private static Dictionary<string, string>? ReadBootConfigSettings(InstallTransactionEngine paths, string player)
+    {
+        string path = Path.GetFullPath(Path.Combine(player, BootConfigFile.RELATIVE_PATH));
+        paths.ValidateControlledPath(path);
+        if (!File.Exists(path))
+        {
+            Console.WriteLine("The player has no boot.config, so the release carries no boot settings.");
+            return null;
+        }
+        using var input = File.OpenRead(path);
+        if (input.Length > BootConfigFile.MAX_BYTES)
+            throw new InvalidDataException("The player's boot.config exceeds its byte limit.");
+        byte[] bytes = new byte[(int)input.Length];
+        input.ReadExactly(bytes);
+        Dictionary<string, string> settings = BootConfigFile.ReadSettings(bytes);
+        if (settings.Count > BootConfigFile.MAX_SETTINGS)
+            throw new InvalidDataException("The player's boot.config has too many settings.");
+        return settings.Count == 0 ? null : settings;
+    }
+
     private static bool IsSha256(string? hash) => hash is { Length: 64 } && hash.All(Uri.IsHexDigit);
 
     private static byte[] ReadContract(string path)
@@ -578,6 +604,26 @@ internal static class FullSourcePublication
             return text.ReadUTF16(text.Length);
         }
         throw new InvalidDataException($"VersionID has no string constant {name}.");
+    }
+
+    // The pinned prepatch bytes are published as they are, so their digest stays the pinned one. The launcher derives
+    // the names of its original-stock caches from that digest, and reads the contract without boot.config.
+    private static (byte[] Bytes, StockBaselineManifest Contract) ReadPinnedPrepatch(byte[] bytes, string? expectedSha256)
+    {
+        if (!IsSha256(expectedSha256) || !Convert.ToHexString(SHA256.HashData(bytes)).Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The pinned prepatch manifest changed before publication.");
+        return (bytes, StockBaselineManifest.FromJson(bytes));
+    }
+
+    // A source cached by an older publication lists boot.config. Installations name their generation by the contract
+    // without it, and the cached files are checked against that contract, so the source is published in that form.
+    private static (StockBaselineManifest Contract, byte[] Bytes) ReadUpdateSource(byte[] bytes)
+    {
+        var contract = StockBaselineManifest.FromJson(bytes);
+        if (contract.HasUnixMetadata || !contract.IsCanonical(bytes))
+            throw new InvalidDataException("A prior Redux update source must have a canonical Windows target contract.");
+        ReleaseManifestValidator.ValidateHostedGameContract(contract);
+        return (contract, contract.ToJson(MAX_CONTRACT_BYTES));
     }
 
     private static List<ReleaseRecipeSource> SelectUpdateSources(InstallTransactionEngine paths,

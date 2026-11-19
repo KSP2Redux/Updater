@@ -86,7 +86,6 @@ internal class FullPlayerProbeBinding
         binding.Stock = StockBaselineManifest.FromJson(binding.ReadPin("stockManifest", ReleaseRecipePipeline.MAX_MANIFEST_BYTES));
         Require(binding.Target.BaselineIdentity == binding.Text("expectedTargetIdentity"), "Unexpected complete target identity.");
         Require(binding.Target.Files.Any(file => file.Path == "KSP2_x64.exe") &&
-            binding.Target.Files.Any(file => file.Path == "KSP2_x64_Data/boot.config") &&
             binding.Target.Files.Any(file => file.Path == "KSP2_x64_Data/StreamingAssets/aa/catalog.json") &&
             binding.Target.Files.Any(file => file.Path.EndsWith(".bundle", StringComparison.Ordinal)),
             "A complete actual player contract is required.");

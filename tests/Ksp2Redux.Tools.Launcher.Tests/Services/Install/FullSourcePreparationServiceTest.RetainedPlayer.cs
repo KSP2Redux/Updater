@@ -59,7 +59,7 @@ public partial class FullSourcePreparationServiceTest
         const string VERSION_R9 = "2.0.0.1.202";
         var patch = new ReleaseRecipePipeline(fs).CreateFeedEntry(artifact, publication, release, CHANNEL, VERSION_R9,
             "https://fixture.test/repair/stock/release.json", "https://fixture.test/repair/stock/release.json",
-            [new FullSourceBaselineDefinition(stock.ToJson(), [])], false, DateTime.UtcNow);
+            [new FullSourceBaselineDefinition(stock.ToJson(), [])], DateTime.UtcNow);
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = CHANNEL, GeneratedAt = DateTime.UtcNow, Patches = [patch] };
         var fixture = new Fixture(fs, root, At(fs, workspace, "RTX1/game"), stock, r9, artifact, publication,
             initializeStock: false, suppliedFeed: feed, suppliedPatch: patch);
@@ -569,7 +569,7 @@ public partial class FullSourcePreparationServiceTest
         // The fixture exposes installed-source recipes and rejects requests for stock delivery.
         var descriptor = new FullSourceReleaseDescriptor(id, channel, version, target.ToJson(), Digest(target.ToJson()),
             $"https://fixture.test/unavailable-stock/{id}/release.json", $"https://fixture.test/unavailable-stock/{id}/release.json",
-            [new FullSourceBaselineDefinition(stock.ToJson(), [])], false, 1) { UpdateArtifacts = [update] };
+            [new FullSourceBaselineDefinition(stock.ToJson(), [])], 1) { UpdateArtifacts = [update] };
         var patch = new ReleasePatch { Version = version, Requires = new PatchRequirement(), ReleasedAt = releasedAt,
             Size = 1, ChecksumSha256 = Digest([0]), FullSource = descriptor };
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = channel, GeneratedAt = DateTime.UtcNow, Patches = [patch] };

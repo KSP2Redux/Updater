@@ -23,6 +23,15 @@ public interface ILauncherConfigService
     void Save();
 
     /// <summary>
+    /// Persist the current configuration and report whether that worked.
+    /// </summary>
+    /// <remarks>
+    /// For callers that must not go on when the data is not durable. A failure is reported like <see cref="Save"/> does, and returned.
+    /// </remarks>
+    /// <returns>True when the configuration was written.</returns>
+    bool TrySave();
+
+    /// <summary>
     /// Resolve the configured local launcher storage directory.
     /// </summary>
     /// <returns>The absolute storage path.</returns>

@@ -4,8 +4,8 @@ This extends the existing coordinator and transaction engine. It does not scan o
 clean arbitrary retained conversion folders. No original installation, preparation
 baseline, authoring source or complete `uninstall.zip` is a deletion target.
 
-New Windows source stages copy only changed owned target files and an explicitly
-derived boot.config. Complete current/target/release contracts remain in the
+New Windows source stages copy only changed owned target files. Complete
+current/target/release contracts remain in the
 operation. The engine already consumes these sparse inputs through version-two
 changed-file staging. Input preparation stages have no immutable ownership-transfer
 lease, so the coordinator does not borrow or hardlink their mutable files. Their

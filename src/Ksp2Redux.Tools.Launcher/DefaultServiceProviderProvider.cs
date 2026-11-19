@@ -55,6 +55,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IBundleConversionService, BundleConversionService>();
         serviceCollection.AddSingleton<IInstallFileLockService, InstallFileLockService>();
         serviceCollection.AddSingleton<ISaveBackupService, SaveBackupService>();
+        serviceCollection.AddSingleton<IBootConfigSettingsService, BootConfigSettingsService>();
         serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
         serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();

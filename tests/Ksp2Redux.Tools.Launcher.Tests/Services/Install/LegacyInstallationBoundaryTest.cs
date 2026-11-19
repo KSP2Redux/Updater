@@ -306,50 +306,6 @@ public class LegacyInstallationBoundaryTest
     }
 
     /// <summary>
-    /// Startup and setting changes leave managed boot bytes intact and report skipped writes.
-    /// </summary>
-    /// <param name="protection">The protected evidence shape or a legacy control.</param>
-    [TestCase("pending")]
-    [TestCase("archive")]
-    [TestCase("corrupt")]
-    [TestCase("legacy")]
-    public void BootConfigWritesRespectInstallationState(string protection)
-    {
-        var fileSystem = CreateFileSystem();
-        string boot = fileSystem.Path.Combine(INSTALL_ROOT, "KSP2_x64_Data", "boot.config");
-        byte[] original = Encoding.UTF8.GetBytes("gfx-enable-gfx-jobs=1\r\nhdr-display-enabled=0\r\nunknown=42\r\n");
-        fileSystem.File.WriteAllBytes(boot, original);
-        if (protection == "pending")
-            fileSystem.File.WriteAllText(fileSystem.Path.Combine(INSTALL_ROOT, MARKER), "{");
-        if (protection == "archive")
-            WriteArchive(fileSystem, StockBaselineManifest.MANIFEST_PATH);
-        if (protection == "corrupt")
-            fileSystem.File.WriteAllText(fileSystem.Path.Combine(INSTALL_ROOT, "uninstall.zip"), "broken");
-        var config = new LauncherConfig("unused.json");
-        var configuration = new Mock<ILauncherConfigService>();
-        configuration.SetupGet(service => service.Config).Returns(config);
-        var log = new Mock<ILogService>();
-        var service = new Ksp2InstallService(configuration.Object, fileSystem,
-            Mock.Of<IModuleDefinitionService>(), log.Object, State(fileSystem));
-        var entry = service.AddInstall(fileSystem.Path.Combine(INSTALL_ROOT, "KSP2_x64.exe"));
-
-        Assert.DoesNotThrow(service.ApplyActiveInstallBootConfig);
-        service.UpdateInstallDisableGraphicsJobs(entry.Id, true);
-
-        if (protection == "legacy")
-        {
-            Assert.That(fileSystem.File.ReadAllText(boot), Does.Contain("gfx-enable-gfx-jobs=0"));
-            Assert.That(fileSystem.File.ReadAllText(boot), Does.Contain("hdr-display-enabled=0"));
-        }
-        else
-        {
-            Assert.That(fileSystem.File.ReadAllBytes(boot), Is.EqualTo(original));
-            log.Verify(candidate => candidate.Warn(It.Is<string>(text => text.Contains("Skipped boot.config")),
-                It.IsAny<string>(), It.IsAny<string>()), Times.AtLeastOnce);
-        }
-    }
-
-    /// <summary>
     /// Recursive install deletion also preserves stock archives and pending markers.
     /// </summary>
     /// <param name="pending">True for pending state, false for a completed full archive.</param>
@@ -423,6 +379,34 @@ public class LegacyInstallationBoundaryTest
         log.Verify(candidate => candidate.Warn(It.Is<string>(text => text.Contains("self-update is blocked")),
             It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         AssertUnchanged(fileSystem, before);
+    }
+
+    /// <summary>
+    /// The refusal of an operation an earlier build left pending is not an I/O error. The startup check reports it as a
+    /// blocked update with the refusal's own text, once, instead of failing the whole startup.
+    /// </summary>
+    /// <returns>The completed test.</returns>
+    [Test]
+    public async Task SelfUpdateCheck_ShowsTheCoordinatorsRefusalOnceInsteadOfFailingStartup()
+    {
+        var config = new LauncherConfig("unused.json");
+        var configuration = new Mock<ILauncherConfigService>();
+        configuration.SetupGet(service => service.Config).Returns(config);
+        var assembly = new Mock<IAssemblyService>();
+        assembly.Setup(service => service.GetName()).Returns(new System.Reflection.AssemblyName("Test"));
+        var state = new Mock<IInstallationStateService>();
+        state.Setup(service => service.EnsureSelfUpdateAllowed(It.IsAny<LauncherConfig>()))
+            .Throws(new InvalidDataException("Start over as described."));
+        var messages = new Mock<IMessageBoxService>();
+        var update = new UpdateService(configuration.Object, CreateFileSystem(), new MockEnvironmentProvider(), assembly.Object,
+            messages.Object, Mock.Of<ILogService>(), state.Object);
+
+        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.False);
+        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.False);
+
+        messages.Verify(service => service.ShowMessageBoxAsOwnedAsync(It.IsAny<string>(), "Start over as described.",
+            It.IsAny<MsBox.Avalonia.Enums.ButtonEnum>(), It.IsAny<MsBox.Avalonia.Enums.Icon>(), It.IsAny<object?>(),
+            It.IsAny<Avalonia.Controls.WindowStartupLocation>()), Times.Once);
     }
 
     /// <summary>

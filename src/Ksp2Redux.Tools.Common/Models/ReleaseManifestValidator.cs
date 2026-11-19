@@ -73,9 +73,8 @@ public static class ReleaseManifestValidator
         if (requireUnixMetadata && !manifest.HasUnixMetadata)
             throw new InvalidDataException("Linux release and stock definitions require complete version-two Unix metadata.");
         if (!manifest.Files.Any(file => file.Path == "KSP2_x64.exe") ||
-            !manifest.Files.Any(file => file.Path == "KSP2_x64_Data/boot.config") ||
             !manifest.Files.Any(file => file.Path.StartsWith("KSP2_x64_Data/StreamingAssets/", StringComparison.Ordinal)))
-            throw new InvalidDataException("Production full-source metadata must declare executable, original boot configuration and StreamingAssets coverage.");
+            throw new InvalidDataException("Production full-source metadata must declare executable and StreamingAssets coverage.");
     }
 
     private static void Validate(ReleaseManifest manifest, bool hosted, bool requireUnixMetadata)
@@ -176,8 +175,11 @@ public static class ReleaseManifestValidator
             throw new InvalidDataException("Invalid full-source release identity or transport bounds.");
         ValidateArtifactUrl(descriptor.R2ArtifactUrl);
         ValidateArtifactUrl(descriptor.GitHubArtifactUrl);
+        if (descriptor.BootConfigSettings is { } settings && (settings.Count > BootConfigFile.MAX_SETTINGS ||
+            settings.Any(setting => !BootConfigFile.IsValidSetting(setting.Key, setting.Value))))
+            throw new InvalidDataException("The release boot configuration settings are invalid.");
         var target = Restoration.StockBaselineManifest.FromJson(descriptor.TargetManifest);
-        if (!target.ToJson().AsSpan().SequenceEqual(descriptor.TargetManifest) ||
+        if (!target.IsCanonical(descriptor.TargetManifest) ||
             Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(descriptor.TargetManifest)) !=
             descriptor.TargetManifestSha256.ToUpperInvariant())
             throw new InvalidDataException("The full-source target contract or digest is not canonical.");
@@ -190,7 +192,7 @@ public static class ReleaseManifestValidator
         foreach (var baseline in descriptor.Baselines)
         {
             var stock = Restoration.StockBaselineManifest.FromJson(baseline.Manifest);
-            if (!stock.ToJson().AsSpan().SequenceEqual(baseline.Manifest) || !identities.Add(stock.BaselineIdentity) ||
+            if (!stock.IsCanonical(baseline.Manifest) || !identities.Add(stock.BaselineIdentity) ||
                 baseline.SteamDepots is null || baseline.SteamDepots.Count > 16 ||
                 baseline.SteamDepots.Any(depot => depot.DepotId == 0 || depot.ManifestId == 0) ||
                 baseline.SteamDepots.Select(depot => depot.DepotId).Distinct().Count() != baseline.SteamDepots.Count)
@@ -239,7 +241,7 @@ public static class ReleaseManifestValidator
                 descriptor.PrepatchManifestSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The common prepatch contract and all three embedded package pins are required.");
         var contract = StockBaselineManifest.FromJson(bytes);
-        if (contract.HasUnixMetadata || !contract.ToJson().AsSpan().SequenceEqual(bytes))
+        if (contract.HasUnixMetadata || !contract.IsCanonical(bytes))
             throw new InvalidDataException("The prepatch baseline must be a canonical Windows contract.");
         ValidateHostedGameContract(contract);
         return contract;

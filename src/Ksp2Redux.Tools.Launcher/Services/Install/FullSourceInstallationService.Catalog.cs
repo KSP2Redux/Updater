@@ -26,13 +26,19 @@ public partial class FullSourceInstallationService
         string[] RetainedFiles, string[] UnownedDirectories, string RetentionPolicy, Guid? Pending,
         InstallTransactionResult? LastResult, Guid? LastTransaction,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockBaselineFile? ExistingBackup = null,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockArchiveSources? RecoverySources = null);
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockArchiveSources? RecoverySources = null)
+    {
+        // The catalog exactly as an earlier build stored it, while an operation of that build is still pending.
+        // Only its pending operation and publication compare against these bytes. It is never persisted.
+        [JsonIgnore]
+        public Catalog? LegacyStored { get; init; }
+    }
 
     private record Operation(int FormatVersion, Guid TransactionId, Guid InstallationId, string InstallRoot,
         string SourceRoot, string WorkRoot, string PreviousDigest, byte[] Current, byte[] Target,
-        byte[] ReleaseManifest, FullSourceReleaseIdentity? Release, bool DerivedBootConfig,
-        bool DisableGraphicsJobs,
-        // Retain older operation journals without giving new installations a launcher-owned HDR override.
+        byte[] ReleaseManifest, FullSourceReleaseIdentity? Release,
+        // Retired boot derivation fields. Older journals still carry them, so they stay readable. New journals write false.
+        bool DerivedBootConfig, bool DisableGraphicsJobs,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? EnableHdr,
         bool IsRepair, string[] ProtectedRoots, StockBaselineFile? Archive,
         string? PlanDigest, string Phase, InstallTransactionResult? Result,
@@ -53,8 +59,7 @@ public partial class FullSourceInstallationService
         var entry = new Ksp2InstallEntry
         {
             Id = id,
-            ExePath = matches[0].ExePath,
-            DisableGraphicsJobs = matches[0].DisableGraphicsJobs
+            ExePath = matches[0].ExePath
         };
         string root = Root(entry);
         ValidateExpectedRoot(root, expectedInstallRoot);
@@ -125,9 +130,10 @@ public partial class FullSourceInstallationService
         string path = HeadPath(entry);
         if (!Exists(path))
             return null;
-        Catalog catalog = Read<Catalog>(path);
-        if (catalog.Stock is null || catalog.Ownership is null || catalog.RetainedFiles is null || catalog.UnownedDirectories is null)
+        Catalog stored = Read<Catalog>(path);
+        if (stored.Stock is null || stored.Ownership is null || stored.RetainedFiles is null || stored.UnownedDirectories is null)
             throw new InvalidDataException("Required catalog contracts or ownership policy are missing. Evidence retained.");
+        Catalog catalog = NormalizeLegacyContracts(entry, stored);
         if (catalog.FormatVersion != FORMAT_VERSION || catalog.InstallationId != entry.Id ||
             catalog.InstallRoot != Root(entry) || catalog.StorageRoot != StorageRoot(entry) ||
             catalog.RetentionPolicy is not (RETENTION or LEGACY_RETENTION) || catalog.Pending == Guid.Empty || catalog.LastTransaction == Guid.Empty ||
@@ -156,7 +162,84 @@ public partial class FullSourceInstallationService
         _ = new InstallTransactionPlan(Guid.NewGuid(), catalog.InstallRoot, SourceRoot(entry, Guid.NewGuid()),
             WorkRoot(entry, Guid.NewGuid()), owned, stock, stock,
             catalog.Archive ?? new StockBaselineFile(_fs.Path.Combine(catalog.InstallRoot, "uninstall.zip"), 1, new string('0', 64)));
+        // Persist the migration only after every check above passed, so later reads find the canonical form.
+        if (ReferenceEquals(catalog, stored))
+            return catalog;
+        // The pending operation of an earlier build is bound to the bytes of the catalog it began from. It is rolled back
+        // or refused by reconciliation, which publishes the canonical form. Until then the old bytes stay.
+        if (stored.Pending is not null)
+            return catalog with { LegacyStored = stored };
+        Write(path, catalog, "catalog-migrate", stored);
+        _log.Info($"Migrated the full-source catalog of installation {entry.Id}: boot.config left its contracts.");
         return catalog;
+    }
+
+    // Catalogs written before boot.config left every contract list it in Stock and Ownership, and name the release by
+    // the digest of a contract that lists it. Those bytes read as the contracts without that entry.
+    private Catalog NormalizeLegacyContracts(Ksp2InstallEntry entry, Catalog catalog)
+    {
+        byte[] stock = NormalizeContract(catalog.Stock);
+        byte[] ownership = NormalizeContract(catalog.Ownership);
+        if (stock.SequenceEqual(catalog.Stock) && ownership.SequenceEqual(catalog.Ownership))
+            return catalog;
+        FullSourceReleaseIdentity? release = catalog.Release;
+        // The feed names a release by the digest of its normalized contract, so the installation does too. Without
+        // retained files the release contract is the ownership contract. Otherwise the last committed operation holds it.
+        if (release is not null && !ownership.SequenceEqual(catalog.Ownership))
+        {
+            if (Digest(catalog.Ownership) == release.ManifestSha256)
+                release = release with { ManifestSha256 = Digest(ownership) };
+            else if (ReleaseContractOfLastOperation(entry, catalog, release) is { } contract)
+                release = release with { ManifestSha256 = Digest(contract) };
+        }
+        return catalog with { Stock = stock, Ownership = ownership, Release = release, RecoverySources = WithoutBootConfig(catalog.RecoverySources) };
+    }
+
+    // Source pins an earlier build took of its stock backup name boot.config when that file differed from stock. No
+    // contract lists the file now, so such pins would never match the rebuilt ones.
+    private static StockArchiveSources? WithoutBootConfig(StockArchiveSources? sources)
+    {
+        static bool Listed(StockBaselineFile file) => BootConfigFile.IsExcluded(file.Path);
+        static bool ListedRange(string range) => range.StartsWith(BootConfigFile.RELATIVE_PATH + "@", StringComparison.OrdinalIgnoreCase);
+        if (sources is null || (!sources.CurrentFiles.Any(Listed) && !sources.JournalRanges.Any(ListedRange)))
+            return sources;
+        string[] ranges = sources.JournalRanges.Where(range => !ListedRange(range)).ToArray();
+        return sources with
+        {
+            CurrentFiles = sources.CurrentFiles.Where(file => !Listed(file)).ToArray(),
+            JournalRanges = ranges,
+            // The journal is pinned only when a file was recovered through it, and every such file has ranges. When boot.config
+            // was the only one, a new observation reads no journal at all, so the pin goes with it.
+            Journal = ranges.Length == 0 ? null : sources.Journal
+        };
+    }
+
+    // The contract of an installed release that has retained files, in its normalized form, or null when the last
+    // operation is not that release's committed one.
+    private byte[]? ReleaseContractOfLastOperation(Ksp2InstallEntry entry, Catalog catalog, FullSourceReleaseIdentity release)
+    {
+        if (catalog.LastTransaction is not { } id || catalog.LastResult != InstallTransactionResult.Committed)
+            return null;
+        try
+        {
+            Operation operation = Read<Operation>(OperationPath(entry, id));
+            if (operation.TransactionId != id || operation.ReleaseManifest is null || operation.Release?.ManifestSha256 != release.ManifestSha256 ||
+                Digest(operation.ReleaseManifest) != release.ManifestSha256)
+                return null;
+            return NormalizeContract(operation.ReleaseManifest);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static byte[] NormalizeContract(byte[] bytes)
+    {
+        StockBaselineManifest manifest = StockBaselineManifest.FromJson(bytes);
+        if (!manifest.IsCanonical(bytes))
+            throw new InvalidDataException("A catalog manifest is noncanonical. Evidence retained.");
+        return manifest.ToJson();
     }
 
     private Operation ReadOperation(Ksp2InstallEntry entry, Catalog catalog)
@@ -167,13 +250,18 @@ public partial class FullSourceInstallationService
             operation.ProtectedRoots is null || operation.ProtectedRoots.Length > 1024 ||
             operation.ProtectedRoots.Any(string.IsNullOrWhiteSpace))
             throw new InvalidDataException("Required operation contracts or protected roots are invalid. Evidence retained.");
+        if (catalog.LegacyStored is not null)
+            operation = NormalizeLegacyOperation(operation);
         if (operation.FormatVersion != FORMAT_VERSION || operation.TransactionId != id ||
             operation.InstallationId != entry.Id || operation.InstallRoot != Root(entry) ||
             operation.SourceRoot != SourceRoot(entry, id) || operation.WorkRoot != WorkRoot(entry, id) ||
-            operation.PreviousDigest != Digest(JsonSerializer.SerializeToUtf8Bytes(catalog with { Pending = null }, JSON_OPTIONS)) ||
+            operation.PreviousDigest != Digest(JsonSerializer.SerializeToUtf8Bytes((catalog.LegacyStored ?? catalog) with { Pending = null }, JSON_OPTIONS)) ||
             operation.Phase is not ("preparing" or "ready" or "terminal") ||
             (operation.Phase == "terminal") != (operation.Result is not null))
             throw new InvalidDataException("Pending operation authority is corrupt or conflicts with its catalog. Evidence retained.");
+        // Past preparation the engine's own journal of that operation lists boot.config, so this build cannot recover it.
+        if (catalog.LegacyStored is not null && operation.Phase != "preparing")
+            throw LegacyPendingRefusal(entry);
         _engine.ValidateControlledPath(operation.SourceRoot);
         _engine.ValidateControlledPath(operation.WorkRoot);
         StockBaselineManifest current = Manifest(operation.Current);
@@ -191,16 +279,10 @@ public partial class FullSourceInstallationService
             ValidateIdentity(identity);
             if (identity.ManifestSha256 != Digest(release.ToJson()))
                 throw new InvalidDataException("Release identity differs from its authenticated manifest.");
-            StockBaselineManifest target = Manifest(operation.Target);
-            if (!operation.DerivedBootConfig && !operation.Target.SequenceEqual(operation.ReleaseManifest))
+            if (!operation.Target.SequenceEqual(operation.ReleaseManifest))
                 throw new InvalidDataException("Release-owned target bytes escaped their authenticated contract.");
-            if (operation.DerivedBootConfig &&
-                (!target.Directories.SequenceEqual(release.Directories) ||
-                 !target.Files.Where(file => file.Path != BOOT_CONFIG).SequenceEqual(release.Files.Where(file => file.Path != BOOT_CONFIG)) ||
-                 target.Files.Count != release.Files.Count || target.Files.All(file => file.Path != BOOT_CONFIG)))
-                throw new InvalidDataException("Derived target changed files outside its authenticated boot configuration permission.");
         }
-        else if (!operation.Target.SequenceEqual(catalog.Stock) || operation.DerivedBootConfig)
+        else if (!operation.Target.SequenceEqual(catalog.Stock))
         {
             throw new InvalidDataException("Stock restoration differs from the original contract.");
         }
@@ -229,6 +311,31 @@ public partial class FullSourceInstallationService
             throw new InvalidDataException("The operation plan digest is invalid. Evidence retained.");
         return operation;
     }
+
+    // The contracts of an operation written before boot.config left them, in their normalized form.
+    private static Operation NormalizeLegacyOperation(Operation operation)
+    {
+        byte[] release = NormalizeContract(operation.ReleaseManifest);
+        FullSourceReleaseIdentity? identity = operation.Release;
+        if (identity is not null && Digest(operation.ReleaseManifest) == identity.ManifestSha256)
+            identity = identity with { ManifestSha256 = Digest(release) };
+        return operation with
+        {
+            Current = NormalizeContract(operation.Current), Target = NormalizeContract(operation.Target),
+            ReleaseManifest = release, Release = identity
+        };
+    }
+
+    // An operation that an earlier build left pending and this one cannot roll back leaves the installation as it is.
+    // The way out names everything that would block the next start: the engine marker in the game folder survives a
+    // storefront reinstall, and the operation storage beside it would otherwise stay for good.
+    private InvalidDataException LegacyPendingRefusal(Ksp2InstallEntry entry) => new(
+        "An earlier version of the launcher stopped while changing this game, and this version cannot finish or undo " +
+        "that change. To start over, restore the original game files: uninstall the game in Steam or Epic and delete " +
+        $"what is left of '{Root(entry)}', or replace your portable copy with an original one. Delete the file " +
+        $"'{_fs.Path.Combine(Root(entry), ".redux-transaction.active")}' if it is still there, and delete the folders " +
+        $"'{StorageRoot(entry)}' and '{CatalogRoot(entry)}'. Then install Redux again. Copy out any mods you want to " +
+        "keep first. Your saves are not affected.");
 
     private InstallTransactionPlan BuildPlan(Ksp2InstallEntry entry, Catalog catalog, Operation operation)
     {

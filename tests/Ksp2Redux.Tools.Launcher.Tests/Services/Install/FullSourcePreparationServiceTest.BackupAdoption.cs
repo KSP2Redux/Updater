@@ -68,7 +68,7 @@ public partial class FullSourcePreparationServiceTest
         fixture.Artifact = artifact;
         fixture.Patch = pipeline.CreateFeedEntry(artifact, publication, RELEASE_ID, CHANNEL, VERSION,
             "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
-            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], false, DateTime.UtcNow);
+            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], DateTime.UtcNow);
         await PutCanonicalBackup(fixture);
         fixture.Fs.File.Delete(At(fixture.Fs, fixture.Install, BUNDLE));
         string baseline = At(fixture.Fs, fixture.Storage, "full-source-preparation-v1/baselines/" + Digest(fixture.Stock.ToJson()));
@@ -93,7 +93,7 @@ public partial class FullSourcePreparationServiceTest
         var prepared = await fixture.Preparation.FetchTargetAsync(RELEASE_ID, CHANNEL, CancellationToken.None);
         AssertTree(fixture.Fs, prepared.SourceRoot, fixture.Target);
         Assert.That(fixture.Fs.Directory.EnumerateFiles(baseline, "*", SearchOption.AllDirectories), Is.EquivalentTo(
-            new[] { BUNDLE, "KSP2_x64_Data/boot.config", Ksp2Install.KSP2_EXE_NAME }.Select(path => At(fixture.Fs, baseline, path))));
+            new[] { BUNDLE, SHARED, Ksp2Install.KSP2_EXE_NAME }.Select(path => At(fixture.Fs, baseline, path))));
         Assert.That(BackupHash(fixture), Is.EqualTo(originalHash));
         Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, fixture.Install, BUNDLE)), Is.False);
     }

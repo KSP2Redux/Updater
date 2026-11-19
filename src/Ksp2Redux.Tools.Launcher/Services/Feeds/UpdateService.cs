@@ -44,6 +44,7 @@ public class UpdateService : IUpdateService
 
     private static bool _isSingleFile;
     private bool _checkInProgress;
+    private bool _blockedMessageShown;
 
     private class GitHubReleaseAsset
     {
@@ -132,9 +133,17 @@ public class UpdateService : IUpdateService
                 _log.Warn(ex.Message);
                 return false;
             }
+            catch (InvalidDataException ex)
+            {
+                // The coordinator refuses an installation it cannot recover with this message, which says how to start
+                // over. It is shown once instead of the generic startup error, and the rest of the startup goes on.
+                _log.Warn(ex.Message);
+                ShowBlockedOnce(ex.Message);
+                return false;
+            }
             return await CheckAndPerformUpdateCoreAsync();
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or InvalidDataException)
         {
             _log.Warn($"Launcher self-update was blocked: {ex.Message}");
             return false;
@@ -142,6 +151,28 @@ public class UpdateService : IUpdateService
         finally
         {
             _checkInProgress = false;
+        }
+    }
+
+    private void ShowBlockedOnce(string message)
+    {
+        if (_blockedMessageShown)
+            return;
+        _blockedMessageShown = true;
+        // Not awaited: startup must not wait for the user to close the box.
+        _ = ShowBlockedAsync(message);
+    }
+
+    private async Task ShowBlockedAsync(string message)
+    {
+        try
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(Loc["Main.StartupError.Title"], message,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Could not show why the launcher update check is blocked.", ex);
         }
     }
 

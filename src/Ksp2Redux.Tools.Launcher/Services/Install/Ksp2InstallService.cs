@@ -51,7 +51,7 @@ public interface IKsp2InstallService
 public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem,
     IModuleDefinitionService moduleDefinitionService, ILogService logService,
     IInstallationStateService installationStateService, IFullSourceInstallationService? fullSource = null,
-    IReleasesFeedService? releases = null) : IKsp2InstallService
+    IBootConfigSettingsService? bootConfig = null) : IKsp2InstallService
 {
     private readonly HashSet<Guid> _checkedThisSession = [];
     private Guid? _targetId;
@@ -246,6 +246,13 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
         if (entry is null) return;
         if (entry.ExePath == newExePath) return;
+        // The undo record belongs to the folder it was made in. Another folder is not ours to revert.
+        if (!string.Equals(fileSystem.Path.GetDirectoryName(entry.ExePath), fileSystem.Path.GetDirectoryName(newExePath),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            entry.BootConfigOriginals = [];
+            entry.BootConfigReleaseSettings = null;
+        }
         entry.ExePath = newExePath;
         launcherConfigService.Save();
         if (id == launcherConfigService.Config.ActiveKsp2InstallId)
@@ -280,50 +287,13 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
 
     public void ApplyActiveInstallBootConfig()
     {
-        // Ksp2 holds the target install, so its own settings decide the boot config.
+        // Ksp2 holds the target install, so its own settings decide the boot config. Only Redux builds take them.
+        // A restored stock game still holding a record is one whose revert failed, so it is tried again here.
         if (TargetEntry is not { } entry) return;
         if (Ksp2 is not { IsValid: true } ksp2) return;
-        if (installationStateService.Inspect(ksp2.InstallDir!).LegacyMutationBlockReason is { } reason)
-        {
-            logService.Warn($"Skipped boot.config settings: {reason}");
-            return;
-        }
-        if (entry.ReleaseChannel is "internal" or "mr" or "next" or "next-mr" ||
-            (releases?.ReleasesFeed?.TryGetValue(entry.ReleaseChannel, out var feed) == true &&
-             feed.GetLatestVersion() is { } version && feed.GetFullSourcePlan(version) is not null))
-        {
-            logService.Info("Preserved boot.config before verified source installation. Stored settings do not mutate original stock bytes.");
-            return;
-        }
-        var bootConfigPath = fileSystem.Path.Combine(ksp2.InstallDir, "KSP2_x64_Data", "boot.config");
-
-        const string KEY = "gfx-enable-gfx-jobs";
-        string desiredLine = $"{KEY}={(entry.DisableGraphicsJobs ? "0" : "1")}";
-
-        try
-        {
-            if (!fileSystem.File.Exists(bootConfigPath)) return;
-            var lines = fileSystem.File.ReadAllLines(bootConfigPath).ToList();
-            int index = lines.FindIndex(line => line.StartsWith($"{KEY}=", StringComparison.Ordinal));
-            if (index >= 0)
-            {
-                if (lines[index] == desiredLine)
-                    return;
-                lines[index] = desiredLine;
-            }
-            else
-            {
-                lines.Add(desiredLine);
-            }
-            fileSystem.File.WriteAllLines(bootConfigPath, lines);
-        }
-        catch (IOException ex)
-        {
-            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
-        }
+        if (ksp2.Distribution == Distribution.Redux)
+            bootConfig?.Apply(entry);
+        else if (entry.BootConfigOriginals.Count != 0)
+            bootConfig?.Revert(entry);
     }
 }

@@ -21,11 +21,15 @@ public record FullSourceReleaseIdentity(string ReleaseId, string Channel, string
 /// <param name="Identity">The expected release identity.</param>
 /// <param name="Manifest">The authenticated complete release file contract.</param>
 /// <param name="SourceRoot">The separately prepared source tree.</param>
-/// <param name="AllowsDerivedBootConfig">True only when authenticated metadata permits launcher boot configuration.</param>
 /// <param name="AuthorityFeed">The selected nonsecret configured authority, or null for separately injected providers.</param>
 public record FullSourcePreparedTarget(FullSourceReleaseIdentity Identity, StockBaselineManifest Manifest,
-    string SourceRoot, bool AllowsDerivedBootConfig, FeedInfo? AuthorityFeed = null)
+    string SourceRoot, FeedInfo? AuthorityFeed = null)
 {
+    /// <summary>
+    /// Gets the boot.config settings of the authenticated release, which the launcher writes outside the transaction.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? BootConfigSettings { get; init; }
+
     /// <summary>
     /// Gets the installed baseline that supplies unchanged paths when only changed files are staged.
     /// </summary>
@@ -58,7 +62,7 @@ public record FullSourceTargetRetention(Guid InstallationId, IReadOnlySet<string
 /// <summary>
 /// Independently verified stock preparation and known initial ownership for a conversion.
 /// </summary>
-/// <param name="Stock">The original trusted storefront contract, including StreamingAssets and boot.config.</param>
+/// <param name="Stock">The original trusted storefront contract, including StreamingAssets.</param>
 /// <param name="SourceRoot">The verified pristine stock source, or an empty string when ExistingArchive supplies original bytes.</param>
 /// <param name="CurrentOwned">The independently known current owned file and directory contract.</param>
 /// <param name="RetainedUnownedFiles">The explicit file exclusions retained across generations.</param>

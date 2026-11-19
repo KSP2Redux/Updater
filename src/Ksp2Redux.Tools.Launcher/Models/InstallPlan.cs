@@ -57,11 +57,6 @@ public class InstallPlan
     public string? FullSourceManifestSha256 { get; init; }
 
     /// <summary>
-    /// Gets the selected boot derivation permission to compare during execution.
-    /// </summary>
-    public bool? FullSourceAllowsDerivedBootConfig { get; init; }
-
-    /// <summary>
     /// Gets the publisher-declared bounded artifact and pack download bytes.
     /// </summary>
     public long FullSourceDownloadBytes { get; init; }
@@ -91,12 +86,11 @@ public class InstallPlan
     /// </summary>
     public bool IsFullSourceRepair { get; init; }
 
-    internal void RequireFullSourceMatch(FullSourceReleaseIdentity identity, bool allowsDerivedBootConfig)
+    internal void RequireFullSourceMatch(FullSourceReleaseIdentity identity)
     {
         if (identity.Version != FullSourceVersion || identity.Channel != FullSourceChannel ||
             identity.ReleaseId != FullSourceReleaseId ||
-            (FullSourceManifestSha256 is { } digest && !digest.Equals(identity.ManifestSha256, StringComparison.OrdinalIgnoreCase)) ||
-            (FullSourceAllowsDerivedBootConfig is { } permission && permission != allowsDerivedBootConfig))
+            (FullSourceManifestSha256 is { } digest && !digest.Equals(identity.ManifestSha256, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("The selected release changed in the configured feed. Refresh the release list and select it again.");
     }
 

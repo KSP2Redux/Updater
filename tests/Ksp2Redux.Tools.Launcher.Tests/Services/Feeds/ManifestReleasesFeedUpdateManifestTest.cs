@@ -90,7 +90,7 @@ public class ManifestReleasesFeedUpdateManifestTest
         manifest.Patches[0] = manifest.Patches[0] with
         {
             FullSource = new FullSourceReleaseDescriptor("current-beta", "beta", "1.2.3.4.6", [], digest,
-                "https://fixture.test/release.json", "https://fixture-backup.test/release.json", [], false, 1)
+                "https://fixture.test/release.json", "https://fixture-backup.test/release.json", [], 1)
         };
         provider.Setup(p => p.GetManifest(It.IsAny<FeedInfo>())).ReturnsAsync(manifest);
         Assert.That(await feed.UpdateManifest(), Is.True);

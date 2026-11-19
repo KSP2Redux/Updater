@@ -26,4 +26,15 @@ public class Ksp2InstallEntry
     public string SteamAppId { get; set; } = "954850";
     public string LaunchArguments { get; set; } = "";
     public bool DisableGraphicsJobs { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the boot.config settings of the release installed here, or null for none.
+    /// </summary>
+    public Dictionary<string, string>? BootConfigReleaseSettings { get; set; }
+
+    /// <summary>
+    /// Gets or sets the undo record of the boot.config settings step: each key it changed with the value the
+    /// player had before, or null when the player had no such key.
+    /// </summary>
+    public Dictionary<string, string?> BootConfigOriginals { get; set; } = [];
 }

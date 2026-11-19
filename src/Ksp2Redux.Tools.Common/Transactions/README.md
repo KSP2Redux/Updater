@@ -351,7 +351,7 @@ Its local catalog digest detects corruption and does not authenticate release da
 1. Persist authenticated current/target/stock contracts, archive reference, root
    policy and transaction identity in a trusted launcher catalog before calling
    the engine. Resolve an active marker to that catalog on startup. Recover before
-   another plan, repair, game launch or boot-config mutation.
+   another plan, repair or game launch.
 2. Reconstruct complete release targets into separate NEW verified source roots.
    Verify/create the immutable stock archive once through `StockArchive`, never
    through the old partial-cache flow. Reuse it across releases.
@@ -362,8 +362,8 @@ Its local catalog digest detects corruption and does not authenticate release da
 4. Publish the new managed inventory and generation identity only for a committed
    result. Carry unowned file exclusions and directory policy across generations.
    If publication itself fails, startup must reconcile the committed engine result
-   with the catalog before another install. Coordinate `Ksp2InstallService`'s
-   boot-config writes with recovery and ownership.
+   with the catalog before another install. boot.config is outside ownership and
+   is edited by `BootConfigSettingsService`.
 5. Integrate uninstall via `RestoreToNewDirectoryAsync` and a stock-target plan.
    Apply the same mechanism for downgrade/channel switching and explicit repair.
    Add reviewed terminal generation retention/retirement. Keep `uninstall.zip`.

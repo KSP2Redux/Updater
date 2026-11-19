@@ -197,6 +197,11 @@ public partial class StockArchive
     /// <summary>
     /// Verify the exact manifest contract, entry set and every decompressed content byte.
     /// </summary>
+    /// <remarks>
+    /// An archive written before boot.config left every contract also holds that file, and its embedded manifest lists it.
+    /// It verifies with that one entry ignored when the manifest is the older form of exactly the expected contract.
+    /// Restoring such an archive never extracts boot.config.
+    /// </remarks>
     /// <param name="archivePath">The archive path.</param>
     /// <param name="expected">The caller's expected contract.</param>
     /// <param name="ct">The cancellation token.</param>
@@ -397,7 +402,9 @@ public partial class StockArchive
         long originalPosition = input.Position;
         try
         {
-            CheckZipDirectoryBudget(input, checked(expected.Files.Count + expected.Directories.Count + 1), ct);
+            // An archive written before boot.config left every contract also holds that file.
+            int entries = checked(expected.Files.Count + expected.Directories.Count + 1);
+            CheckZipDirectoryBudget(input, entries, ct, entries + 1);
         }
         catch (EndOfStreamException failure)
         {
@@ -409,7 +416,7 @@ public partial class StockArchive
         }
     }
 
-    private void CheckZipDirectoryBudget(Stream input, int? expectedEntries, CancellationToken ct)
+    private void CheckZipDirectoryBudget(Stream input, int? expectedEntries, CancellationToken ct, int? alsoAllowedEntries = null)
     {
         // Bound the directory before ZipArchive eagerly allocates every central-directory entry.
         // Check record boundaries too, so a false EOCD count or size cannot bypass the allocation cap.
@@ -477,7 +484,8 @@ public partial class StockArchive
                 needsZip64 = false;
             }
         }
-        if (needsZip64 || (expectedEntries is { } count && entryCount != (ulong)count) || entryCount > (ulong)_limits.MaxEntries ||
+        if (needsZip64 || (expectedEntries is { } count && entryCount != (ulong)count &&
+             (alsoAllowedEntries is not { } also || entryCount != (ulong)also)) || entryCount > (ulong)_limits.MaxEntries ||
             directoryBytes > (ulong)_limits.MaxCentralDirectoryBytes || directoryOffset > (ulong)directoryEnd ||
             directoryBytes != (ulong)directoryEnd - directoryOffset)
             throw new InvalidDataException("ZIP directory differs from the expected entry set or resource budget.");
@@ -546,9 +554,13 @@ public partial class StockArchive
         StockBaselineManifest expected, byte[] manifestBytes, CancellationToken ct)
     {
         IReadOnlyList<IZipArchiveEntry> allEntries = archive.Entries;
-        if (allEntries.Count > _limits.MaxEntries ||
-            allEntries.Count != expected.Files.Count + expected.Directories.Count + 1)
+        int expectedCount = expected.Files.Count + expected.Directories.Count + 1;
+        // An archive written before boot.config left every contract also holds that file and lists it in its embedded
+        // manifest. Its content is ignored here and never restored. Every other entry is checked as strictly as ever.
+        bool legacy = allEntries.Count == expectedCount + 1;
+        if (allEntries.Count > _limits.MaxEntries || (allEntries.Count != expectedCount && !legacy))
             throw new InvalidDataException("ZIP entry set does not match the complete expected baseline.");
+        bool sawBootConfig = false;
         var entries = new Dictionary<string, IZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
         var required = new HashSet<string>(expected.Files.Select(file => file.Path)
             .Concat(expected.Directories.Select(directory => directory + "/"))
@@ -566,22 +578,28 @@ public partial class StockArchive
                 (unixType != 0 && unixType != (isDirectory ? 0x4000 : 0x8000)) ||
                 (!isDirectory && (entry.ExternalAttributes & (int)FileAttributes.Directory) != 0))
                 throw new InvalidDataException($"ZIP link or special file '{name}' is invalid.");
-            if (!entries.TryAdd(path, entry) || !required.Remove(name))
+            bool bootConfig = legacy && !sawBootConfig && !isDirectory && BootConfigFile.IsExcluded(path);
+            if (!entries.TryAdd(path, entry) || (!bootConfig && !required.Remove(name)))
                 throw new InvalidDataException($"Unexpected, duplicate or conflicting ZIP path '{name}'.");
+            sawBootConfig |= bootConfig;
             if (entry.Length < 0 || (isDirectory && entry.Length != 0))
                 throw new InvalidDataException($"Invalid ZIP entry length for '{name}'.");
         }
-        if (required.Count != 0)
+        if (required.Count != 0 || (legacy && !sawBootConfig))
             throw new InvalidDataException("ZIP is missing expected entries.");
         IZipArchiveEntry metadata = entries[StockBaselineManifest.MANIFEST_PATH];
-        if (metadata.Length != manifestBytes.Length)
+        if (metadata.Length != manifestBytes.Length && (!legacy || metadata.Length > _limits.MaxManifestBytes))
             throw new InvalidDataException("Archive manifest differs from the expected contract.");
         using (Stream content = metadata.Open())
         {
-            var actual = new byte[manifestBytes.Length];
+            var actual = new byte[checked((int)metadata.Length)];
             ct.ThrowIfCancellationRequested();
             content.ReadExactly(actual);
-            if (content.ReadByte() != -1 || !actual.AsSpan().SequenceEqual(manifestBytes))
+            if (content.ReadByte() != -1)
+                throw new InvalidDataException("Archive manifest differs from the expected contract.");
+            if (legacy)
+                RequireLegacyManifest(actual, manifestBytes, entries);
+            else if (!actual.AsSpan().SequenceEqual(manifestBytes))
                 throw new InvalidDataException("Archive manifest differs from the expected contract.");
         }
         foreach (string directory in expected.Directories)
@@ -603,6 +621,17 @@ public partial class StockArchive
                 throw new InvalidDataException($"ZIP length differs from the baseline: '{file.Path}'.");
         }
         return entries;
+    }
+
+    // The embedded manifest must be the older form of exactly the expected contract: the same files and
+    // directories plus the one boot.config entry the archive holds.
+    private void RequireLegacyManifest(byte[] actual, byte[] expected, Dictionary<string, IZipArchiveEntry> entries)
+    {
+        StockBaselineManifest embedded = StockBaselineManifest.FromJson(actual, _limits);
+        if (embedded.DroppedBootConfig is not { } bootConfig || !embedded.IsLegacyForm(actual) ||
+            !embedded.ToJson(_limits.MaxManifestBytes).AsSpan().SequenceEqual(expected) ||
+            entries[bootConfig.Path].Length != bootConfig.Length)
+            throw new InvalidDataException("Archive manifest differs from the expected contract.");
     }
 
     private static async Task CopyVerifiedAsync(Stream input, Stream? output, StockBaselineFile expected,

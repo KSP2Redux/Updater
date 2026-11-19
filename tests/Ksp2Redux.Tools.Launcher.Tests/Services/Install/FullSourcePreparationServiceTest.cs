@@ -48,6 +48,7 @@ public partial class FullSourcePreparationServiceTest
 
     private const string BUNDLE = "KSP2_x64_Data/StreamingAssets/aa/content.bundle";
     private const string WEM = "KSP2_x64_Data/StreamingAssets/Audio/GeneratedSoundBanks/Windows/media.wem";
+    private const string SHARED = "KSP2_x64_Data/Plugins/shared.bin";
     private const string RELEASE_ID = "fixture-release-two";
     private const string CHANNEL = "beta";
     private const string VERSION = "2.0.0.1.200";
@@ -119,7 +120,7 @@ public partial class FullSourcePreparationServiceTest
                 pipeline.CreateFeedEntry(artifact, publication, fullPlayer?.ReleaseId ?? RELEASE_ID,
                 fullPlayer?.Channel ?? CHANNEL, fullPlayer?.Version ?? VERSION,
                 "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
-                [new FullSourceBaselineDefinition(stock.ToJson(), [])], false, DateTime.UtcNow);
+                [new FullSourceBaselineDefinition(stock.ToJson(), [])], DateTime.UtcNow);
             Transport.Setup(service => service.GetTrustedManifestAsync(It.IsAny<FeedInfo>(), It.IsAny<CancellationToken>()))
                 .Returns((FeedInfo _, CancellationToken ct) =>
                 {
@@ -185,7 +186,8 @@ public partial class FullSourcePreparationServiceTest
             [Ksp2Install.KSP2_EXE_NAME] = Encoding.UTF8.GetBytes("fixture original executable"),
             ["KSP2_x64_Data/boot.config"] = Encoding.UTF8.GetBytes("fixture=stock\r\n"),
             [BUNDLE] = Enumerable.Range(0, 262144).Select(index => (byte)(index * 13)).ToArray(),
-            [WEM] = Encoding.UTF8.GetBytes("fixture-original-encoded-media")
+            [WEM] = Encoding.UTF8.GetBytes("fixture-original-encoded-media"),
+            [SHARED] = Encoding.UTF8.GetBytes("fixture shared plugin")
         };
         var targetFiles = stockFiles.ToDictionary(pair => pair.Key, pair => (byte[])pair.Value.Clone());
         targetFiles[BUNDLE][131072] ^= 63;
@@ -322,7 +324,7 @@ public partial class FullSourcePreparationServiceTest
     /// </summary>
     /// <param name="field">The independently bound field to change.</param>
     /// <returns>The verification task.</returns>
-    [TestCase("channel"), TestCase("version"), TestCase("manifest"), TestCase("permission"), TestCase("authentication")]
+    [TestCase("channel"), TestCase("version"), TestCase("manifest"), TestCase("authentication")]
     public async Task ChangedPreparedClaims_AreRejected(string field)
     {
         Fixture fixture = Create();
@@ -332,7 +334,6 @@ public partial class FullSourcePreparationServiceTest
             "channel" => target with { Identity = target.Identity with { Channel = "internal" } },
             "version" => target with { Identity = target.Identity with { Version = "3.0.0.1.300" } },
             "manifest" => target with { Manifest = fixture.Stock },
-            "permission" => target with { AllowsDerivedBootConfig = true },
             _ => target with { Identity = target.Identity with { Authentication = "local-sha256" } }
         };
         await Assert.ThrowsAsync<InvalidDataException>(async () => await fixture.Preparation.VerifyTargetAsync(target, CancellationToken.None));
@@ -484,7 +485,7 @@ public partial class FullSourcePreparationServiceTest
         var patch = pipeline.CreateFeedEntry(artifact, publication, RELEASE_ID, CHANNEL, VERSION,
             "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
             [new FullSourceBaselineDefinition(stock.ToJson(), []), new FullSourceBaselineDefinition(alternate.ToJson(), [])],
-            false, DateTime.UtcNow);
+            DateTime.UtcNow);
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = CHANNEL, GeneratedAt = DateTime.UtcNow, Patches = [patch] };
         var fixture = new Fixture(fs, root, stockRoot, stock, target, artifact, publication,
             suppliedFeed: feed, suppliedPatch: patch);
@@ -539,7 +540,7 @@ public partial class FullSourcePreparationServiceTest
         string priorDigest = Digest(prior.ToJson());
         var patch = pipeline.CreateFeedEntry(artifact, publication, "fixture-release-four", CHANNEL, "2.0.0.1.202",
             "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
-            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], false, DateTime.UtcNow, separate ? null : [priorDigest]);
+            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], DateTime.UtcNow, separate ? null : [priorDigest]);
         var manifest = pipeline.Inspect(artifact, publication.ArtifactSha256, publication.TargetManifestSha256);
         int[] updatePacks;
         int[] stockPacks = ReleaseRecipePipeline.GetRequiredPackIndices(manifest, fixture.Stock);
@@ -631,7 +632,7 @@ public partial class FullSourcePreparationServiceTest
                 Is.EqualTo(new[] { At(fixture.Fs, stage, "Redux/delta.txt") }));
             var coordinator = fixture.Coordinator();
             var published = coordinator.GetPublishedIdentity(fixture.Entry.Id)!;
-            var stale = new FullSourcePreparedTarget(published, target, stage, false, fixture.Config.Feeds[0].SnapshotAuthority())
+            var stale = new FullSourcePreparedTarget(published, target, stage, fixture.Config.Feeds[0].SnapshotAuthority())
             {
                 InstalledBaseline = new FullSourceInstalledBaseline(fixture.Entry.Id, prior),
             };
@@ -650,7 +651,7 @@ public partial class FullSourcePreparationServiceTest
                 Is.EqualTo(new[] { At(fixture.Fs, stage, "Redux/delta.txt") }));
             var coordinator = fixture.Coordinator();
             var published = coordinator.GetPublishedIdentity(fixture.Entry.Id)!;
-            var stale = new FullSourcePreparedTarget(published, target, stage, false, fixture.Config.Feeds[0].SnapshotAuthority())
+            var stale = new FullSourcePreparedTarget(published, target, stage, fixture.Config.Feeds[0].SnapshotAuthority())
             {
                 TargetRetention = new FullSourceTargetRetention(fixture.Entry.Id,
                     fixture.Target.Files.Select(file => file.Path).ToHashSet(StringComparer.Ordinal), Digest(fixture.Target.ToJson())),
@@ -693,7 +694,7 @@ public partial class FullSourcePreparationServiceTest
         fixture.Artifact = artifact;
         fixture.Patch = pipeline.CreateFeedEntry(artifact, publication, RELEASE_ID, CHANNEL, VERSION,
             "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
-            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], false, DateTime.UtcNow);
+            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], DateTime.UtcNow);
         fixture.ResponseOverride = (url, offset, _) => new Uri(url).Segments.Last() == "pack-000000.bin"
             ? throw new InvalidOperationException("Only retained content uses this pack.")
             : fixture.Response(url, offset);
@@ -820,6 +821,31 @@ public partial class FullSourcePreparationServiceTest
     }
 
     /// <summary>
+    /// A stock installation matches with any boot.config or none, and any other changed file still fails.
+    /// </summary>
+    /// <param name="bootState">The installation's boot.config.</param>
+    /// <returns>The verification task.</returns>
+    [TestCase("edited")]
+    [TestCase("absent")]
+    public async Task StockMatching_AcceptsAnyBootConfigButNotAChangedFile(string bootState)
+    {
+        Fixture fixture = Create();
+        string boot = At(fixture.Fs, fixture.Install, "KSP2_x64_Data/boot.config");
+        if (bootState == "absent")
+            fixture.Fs.File.Delete(boot);
+        else
+            fixture.Fs.File.WriteAllBytes(boot, Encoding.UTF8.GetBytes("\uFEFFgfx-enable-gfx-jobs=0\r\nhdr-display-enabled=1\r\n"));
+
+        FullSourceStockPreparation stock = await fixture.Preparation.FetchStockAsync(fixture.Entry.Id, CancellationToken.None);
+        Assert.That(stock.Stock.ToJson(), Is.EqualTo(fixture.Stock.ToJson()));
+
+        Put(fixture.Fs, fixture.Install, WEM, Encoding.UTF8.GetBytes("changed encoded media"));
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            await fixture.Preparation.FetchStockAsync(fixture.Entry.Id, CancellationToken.None));
+        Assert.That(failure!.Data.Contains("FullSourceStockMismatch"), Is.True);
+    }
+
+    /// <summary>
     /// Stage using verified stock inputs without treating the projected files as a complete stock backup.
     /// </summary>
     /// <param name="splitInputs">Require verified inputs from two configured installations.</param>
@@ -830,7 +856,6 @@ public partial class FullSourcePreparationServiceTest
     {
         Fixture input = Create();
         var fs = input.Fs;
-        const string boot = "KSP2_x64_Data/boot.config";
         const string unused = "KSP2_x64_Data/StreamingAssets/stock-only.bin";
         byte[] unusedBytes = new byte[2 * 1024 * 1024];
         Put(fs, input.StockRoot, unused, unusedBytes);
@@ -844,15 +869,15 @@ public partial class FullSourcePreparationServiceTest
             [new ReleaseRecipeSourceTree(input.StockRoot, stock, [])], artifact);
         var recipe = pipeline.Inspect(artifact, publication.ArtifactSha256, publication.TargetManifestSha256);
         var required = ReleaseRecipePipeline.GetRecipeInputContract(recipe, stock);
-        Assert.That(required.Files.Select(file => file.Path), Is.EquivalentTo(new[] { Ksp2Install.KSP2_EXE_NAME, boot }));
+        Assert.That(required.Files.Select(file => file.Path), Is.EquivalentTo(new[] { Ksp2Install.KSP2_EXE_NAME, SHARED }));
 
         var fixture = new Fixture(fs, root, input.StockRoot, stock, input.Target, artifact, publication);
         fs.File.Delete(At(fs, fixture.Install, unused));
         if (splitInputs)
         {
-            fs.File.Delete(At(fs, fixture.Install, boot));
+            fs.File.Delete(At(fs, fixture.Install, SHARED));
             string other = At(fs, root, "other-install");
-            Put(fs, other, boot, fs.File.ReadAllBytes(At(fs, input.StockRoot, boot)));
+            Put(fs, other, SHARED, fs.File.ReadAllBytes(At(fs, input.StockRoot, SHARED)));
             fixture.Config.Ksp2Installs.Add(new Ksp2InstallEntry { ExePath = At(fs, other, Ksp2Install.KSP2_EXE_NAME), Name = "Second fixture" });
         }
         string cache = At(fs, fixture.Storage, "full-source-preparation-v1/baselines/" + Digest(stock.ToJson()));
@@ -890,7 +915,6 @@ public partial class FullSourcePreparationServiceTest
     {
         Fixture fixture = Create();
         var fs = fixture.Fs;
-        const string boot = "KSP2_x64_Data/boot.config";
         const string executable = Ksp2Install.KSP2_EXE_NAME;
         string artifact = At(fs, fixture.Root, "cache-resume-artifact");
         var pipeline = new ReleaseRecipePipeline(fs, _ => { });
@@ -899,10 +923,10 @@ public partial class FullSourcePreparationServiceTest
         fixture.Artifact = artifact;
         fixture.Patch = pipeline.CreateFeedEntry(artifact, publication, RELEASE_ID, CHANNEL, VERSION,
             "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
-            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], false, DateTime.UtcNow);
+            [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], DateTime.UtcNow);
         var recipe = pipeline.Inspect(artifact, publication.ArtifactSha256, publication.TargetManifestSha256);
         var required = ReleaseRecipePipeline.GetRecipeInputContract(recipe, fixture.Stock);
-        Assert.That(required.Files.Select(file => file.Path), Is.EquivalentTo(new[] { executable, boot }));
+        Assert.That(required.Files.Select(file => file.Path), Is.EquivalentTo(new[] { executable, SHARED }));
 
         string cache = At(fs, fixture.Storage, "full-source-preparation-v1/baselines/" + Digest(fixture.Stock.ToJson()));
         byte[] cachedBytes = fs.File.ReadAllBytes(At(fs, fixture.StockRoot, executable));
@@ -913,23 +937,23 @@ public partial class FullSourcePreparationServiceTest
             await PutCanonicalBackup(fixture);
         string? archiveHash = archiveSource ? BackupHash(fixture) : null;
         fs.File.Delete(At(fs, fixture.Install, executable));
-        byte[] bootBytes = fs.File.ReadAllBytes(At(fs, fixture.StockRoot, boot));
+        byte[] sharedBytes = fs.File.ReadAllBytes(At(fs, fixture.StockRoot, SHARED));
         if (archiveSource)
-            fs.File.Delete(At(fs, fixture.Install, boot));
-        fixture.Space.Setup(service => service.GetAvailableFreeSpace(cache)).Returns(512L * 1024 * 1024 + bootBytes.LongLength);
+            fs.File.Delete(At(fs, fixture.Install, SHARED));
+        fixture.Space.Setup(service => service.GetAvailableFreeSpace(cache)).Returns(512L * 1024 * 1024 + sharedBytes.LongLength);
 
         if (corruptCache)
         {
             var error = await Assert.ThrowsAsync<IOException>(async () =>
                 await fixture.Preparation.FetchTargetAsync(RELEASE_ID, CHANNEL, CancellationToken.None));
             Assert.That(error!.Message, Does.Contain($"Required {required.TotalBytes} bytes"));
-            Assert.That(fs.File.Exists(At(fs, cache, boot)), Is.False);
+            Assert.That(fs.File.Exists(At(fs, cache, SHARED)), Is.False);
         }
         else
         {
             var prepared = await fixture.Preparation.FetchTargetAsync(RELEASE_ID, CHANNEL, CancellationToken.None);
             AssertTree(fs, prepared.SourceRoot, fixture.Target);
-            Assert.That(fs.File.ReadAllBytes(At(fs, cache, boot)), Is.EqualTo(bootBytes));
+            Assert.That(fs.File.ReadAllBytes(At(fs, cache, SHARED)), Is.EqualTo(sharedBytes));
         }
         Assert.That(fs.File.ReadAllBytes(At(fs, cache, executable)), Is.EqualTo(cachedBytes));
         Assert.That(fs.File.Exists(At(fs, fixture.Install, executable)), Is.False);
@@ -964,6 +988,11 @@ public partial class FullSourcePreparationServiceTest
         long missingBytes = fixture.Stock.Files.Single(file => file.Path == WEM).Length;
         fixture.Space.Setup(service => service.GetAvailableFreeSpace(cache))
             .Returns(512L * 1024 * 1024 + missingBytes);
+        // The tree an earlier build kept for this contract, named by the digest of the form that listed boot.config.
+        byte[] olderBoot = Encoding.UTF8.GetBytes("wait-for-native-debugger=0\r\n");
+        string older = At(fs, fixture.Storage, "full-source-preparation-v1/baselines/" +
+            Digest(fixture.Stock.ToJsonWithBootConfig(olderBoot.Length, Digest(olderBoot))));
+        Put(fs, older, "KSP2_x64_Data/boot.config", olderBoot);
 
         if (corruptCache)
         {
@@ -972,6 +1001,7 @@ public partial class FullSourcePreparationServiceTest
                 await fixture.Preparation.FetchStockAsync(fixture.Entry.Id, CancellationToken.None));
             Assert.That(error!.Message, Does.Contain($"Required {missingBytes + corruptBytes} bytes"));
             Assert.That(fs.File.Exists(At(fs, cache, WEM)), Is.False);
+            Assert.That(fs.Directory.Exists(older), Is.True, "Nothing is superseded before the new cache verified.");
         }
         else
         {
@@ -979,6 +1009,7 @@ public partial class FullSourcePreparationServiceTest
             Assert.That(prepared.SourceRoot, Is.EqualTo(cache));
             AssertTree(fs, cache, fixture.Stock);
             await fixture.Preparation.VerifyStockAsync(prepared, CancellationToken.None);
+            Assert.That(fs.Directory.Exists(older), Is.False, "The verified cache supersedes the older tree.");
         }
         Assert.That(fs.File.ReadAllBytes(At(fs, fixture.Install, BUNDLE)), Is.EqualTo(userBundle));
         fixture.Steam.VerifyNoOtherCalls();

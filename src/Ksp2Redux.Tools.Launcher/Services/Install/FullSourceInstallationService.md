@@ -8,7 +8,7 @@ enable unauthenticated local release installation.
 
 New operations use the canonical engine's version-two changed-file staging policy.
 The complete prepared target is still verified. New Windows operations copy only
-changed owned inputs and derived boot.config into the coordinator's separate source
+changed owned inputs into the coordinator's separate source
 stage. Only changed owned target files and necessary undo are then
 copied into engine storage. Existing operations without the optional
 `ChangedFileStaging` field retain version-one plan digests and recovery. The false
@@ -21,7 +21,7 @@ Preparation caches and stock restore staging remain separate peak disk costs.
 
 `IFullSourcePreparationService` is a required independent boundary. A production
 implementation must authenticate release identity, channel, the complete manifest and
-boot derivation permission against its publisher trust configuration. It must separately
+boot.config settings against its publisher trust configuration. It must separately
 establish the original complete storefront contract and known initial conversion
 ownership. Source file hashes and a local catalog checksum are not authentication.
 
@@ -35,7 +35,7 @@ Initial conversion requires verified pristine stock and independently known owne
 Legacy Redux upgrades run the existing uninstall followed by stock verification and
 a fresh install under one coordinator reservation. Complete canonical archives remain
 eligible for adoption. See [the backup contract](FullSourceInstallationService.Backup.md).
-The trusted stock contract includes StreamingAssets, boot.config and empty directories.
+The trusted stock contract includes StreamingAssets and empty directories. boot.config is in no contract.
 
 ## Authority, storage and bounds
 
@@ -55,7 +55,7 @@ The canonical catalog paths are:
 The head persists the exact original stock contract, published owned tree and release
 identity, archive reference, configured root/identity, ownership exclusions, retention
 policy and pending transaction ID. The operation persists exact observed current and
-target contracts, authenticated release contract, derived boot preferences, archive
+target contracts, authenticated release contract, archive
 reference, source/work locations, protected roots, transaction ID and plan digest.
 The ready operation is saved before `Apply`. The original stock identity and archive
 reference remain immutable across generations.
@@ -199,7 +199,7 @@ redux-launcher-cli uninstall --install <configured-id> --yes
 
 Apply, update, downgrade and channel switching share the target-generation operation.
 Uninstall uses `StockArchive.RestoreToNewDirectoryAsync`, a new stock stage and the
-original stock target. It preserves `uninstall.zip` and exact original boot.config.
+original stock target. It preserves `uninstall.zip`.
 
 Ordinary update rejects changed or absent owned files. Explicit repair observes bytes
 only at previously owned paths, supplies those actual bytes for verified undo, and
@@ -214,15 +214,79 @@ Previously owned directories that remain because unknown children prevented empt
 removal are carried forward as explicit unowned directory exclusions. This permits
 later stock restoration without adopting or deleting the unknown children.
 
-Boot preferences enter the target contract only when independently authenticated
-metadata explicitly permits the version-one boot derivation. The signed source
-boot.config is verified before derivation in the owned stage. The resulting file hash
-and generation identity are persisted before engine mutation. All other release files
-remain exact. Legacy `ApplyActiveInstallBootConfig` remains blocked for cataloged roots.
-An initial UTF-8 signature is consumed during derivation so the first setting cannot
-be hidden or duplicated. Stock uninstall restores that original signature byte-for-byte.
-Changing a preference after commit does not silently rewrite a signed/managed file.
-Applying the preference requires another verified target-generation operation.
+`KSP2_x64_Data/boot.config` is outside the coordinator. Parsing a contract drops its
+entry, so no hash, file-set check, recipe, stage, backup, journal or catalog covers it,
+and any boot.config or none matches stock. `BootConfigSettingsService` edits the file by
+key after an install, update or repair, when the graphics jobs option changes and before
+each launch. It writes the release's settings from the release descriptor plus the
+launcher's own, which win. Release keys overwrite the player's own edits of those keys on
+every apply. `build-guid` is never managed.
+
+The step records each key's stock state on the installation the first time it manages the
+key, including keys that already hold the wanted value. A stock file has exactly
+`wait-for-native-debugger=0`, `hdr-display-enabled=0`, `gc-max-time-slice=3` and a
+`build-guid`, so those three keys are recorded with those values and every other key as
+absent. The file's current content is not the original, because an earlier build may have
+written to it. The record is saved before the file is written. If it cannot be saved, the
+file is left alone until the next try. A key that a release drops is written back to its
+stock state, and leaves the record only after that write worked. Uninstall puts every
+recorded key back and clears the record. Changing an installation's folder clears the
+record. The step checks no hash and never fails for file content. It reads at most 64 KiB, skips a larger
+file with a log line, and replaces the file from a temporary file in its folder that it flushes first, so an
+interrupted write leaves the old content. Before a write it deletes the leftover `boot.config.<32 hex digits>.tmp`
+files of earlier interrupted writes in that folder, and nothing else. A revert that failed at uninstall keeps its record, and the launcher tries it again
+at every start for an installation that is no longer Redux.
+
+Data written before boot.config left the contracts is read without that entry:
+
+- A catalog whose Stock or Ownership lists it is rewritten once in canonical form on its
+  first read, after all other checks passed. A release is named everywhere by the digest of its
+  normalized contract (`GetNormalizedTargetManifestSha256` on the descriptor), which is what the
+  feed plan, the prepared target and the installed identity carry, so an installation and the
+  feed agree on a release published in either form. The published `TargetManifestSha256` stays
+  the digest of the published bytes and only checks the artifact marker and the descriptor.
+  The catalog's release digest follows the normalized contract: from the ownership contract when
+  that is the release contract, otherwise from the contract in the last committed operation.
+  Source pins of the original backup that name boot.config are dropped, and so is its journal pin
+  when boot.config was the only file recovered through that journal.
+- An operation of an earlier build that is still pending is recovered only when it stopped
+  while preparing, with no engine marker or work folder: the game folder is verified against the
+  normalized current contract and the existing preparation-only reconciliation publishes
+  RolledBack. The operation file stays as evidence, and the head is replaced only when its bytes are
+  still those the operation was bound to. Past preparation the engine's own journal of that
+  operation lists boot.config, so this build cannot recover it. Every action then fails with a
+  message that names the way out: restore the original game files (uninstall the game in Steam or
+  Epic and delete what is left of the game folder, or replace the portable copy), delete the engine
+  marker `.redux-transaction.active` in the game folder if it is still there, delete the
+  `.redux-fullsource-<id>` storage folder beside the game folder and the launcher's catalog folder,
+  then install Redux again. The message says saves are not affected and carries the real paths. The
+  marker is named because a storefront reinstall can leave it, and it blocks every action by itself.
+  Nothing is changed on the way. The launcher's startup self-update check shows this message once
+  instead of failing startup, and the launch button shows it again.
+- A retained terminal operation that lists it is left alone. Payload retirement compares exact
+  saved plan bytes, so that operation keeps its payloads.
+- An `uninstall.zip` that holds boot.config verifies with that entry ignored, when its embedded
+  manifest is the older form of exactly the expected contract. Restoring never extracts the
+  file. Every other entry and byte is checked as before.
+- Caches under `baselines` and `prepatch-backups` that an earlier build named by the digest of
+  a contract listing boot.config are proven by that name and the boot.config they hold, or by the
+  older embedded manifest of an archive. When one holds exactly the bytes of the current
+  contract it is renamed to the current name before anything needs space to rebuild it. Otherwise
+  it is renamed into `trash` in the preparation cache and deleted from there once the cache of
+  the same contract verified. Every preparation first finishes the deletions an earlier run left in
+  `trash`. A tree or archive that fails its check stays where it is. Nothing outside `baselines`,
+  `prepatch-backups` and `trash` is touched. The caches of the original stock are reclaimed when
+  that original is next needed, not before.
+- A release published in the older form still reads: its artifact drops the boot.config recipe or
+  exact copy, and a source contract or update source digest may name either form. Every artifact the
+  CI built from 14 November 2026 also lists boot.config as a recipe source. That source is dropped on
+  reading and the other sources are renumbered, so such an artifact installs and repairs when no
+  recipe reads bytes from it. A recipe that does read from it is refused with "This release needs
+  boot.config as a recipe input and cannot be installed by this launcher." The pinned prepatch
+  contract is published as pinned, so `PrepatchManifestSha256` and the names derived from it do not
+  change. It is read without boot.config.
+
+Journals keep their retired boot derivation fields so older ones still read.
 
 ## Parent disposable validation
 

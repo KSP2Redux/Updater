@@ -118,6 +118,45 @@ public partial class StockArchive
             .ToDictionary(pair => pair.Key, pair => pair.Value.Length, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Read the embedded manifest bytes of an existing archive under the same size and entry budgets as verification.
+    /// </summary>
+    /// <remarks>
+    /// The bytes are untrusted. This only identifies which contract an archive claims to hold.
+    /// </remarks>
+    /// <param name="archivePath">The archive path.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The embedded manifest bytes, or null when the archive has none.</returns>
+    /// <exception cref="InvalidDataException">Thrown when the archive is unsafe or exceeds its budgets.</exception>
+    public byte[]? ReadEmbeddedManifest(string archivePath, CancellationToken ct = default)
+    {
+        string path = DiskPath(archivePath);
+        ValidateRecoveryPath(path);
+        EnsureSafePath(path, false);
+        using FileSystemStream input = _fileSystem.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (input.Length > _limits.MaxArchiveBytes)
+            throw new InvalidDataException("ZIP exceeds the archive byte budget.");
+        try
+        {
+            CheckZipDirectoryBudget(input, null, ct);
+        }
+        catch (EndOfStreamException failure)
+        {
+            throw new InvalidDataException("ZIP metadata is truncated.", failure);
+        }
+        input.Position = 0;
+        using IZipArchive archive = _zipFileService.NewArchive(input, ZipArchiveMode.Read, true);
+        IZipArchiveEntry? entry = archive.Entries.FirstOrDefault(item => item.FullName == StockBaselineManifest.MANIFEST_PATH);
+        if (entry is null)
+            return null;
+        if (entry.Length is <= 0 or > int.MaxValue || entry.Length > _limits.MaxManifestBytes)
+            throw new InvalidDataException("The embedded manifest exceeds the metadata budget.");
+        using Stream content = entry.Open();
+        var bytes = new byte[(int)entry.Length];
+        content.ReadExactly(bytes);
+        return content.ReadByte() == -1 ? bytes : throw new InvalidDataException("The embedded manifest differs from its declared length.");
+    }
+
     private Dictionary<string, IZipArchiveEntry> ReadRecoveryEntries(IZipArchive archive, CancellationToken ct)
     {
         var entries = new Dictionary<string, IZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);

@@ -42,6 +42,13 @@ public partial class FullSourceInstallationService
             catalog.Archive is null || operation.Current is null || operation.Target is null ||
             operation.ReleaseManifest is null || operation.ProtectedRoots is null)
             throw new InvalidDataException("Published head and terminal operation conflict. Payloads retained.");
+        // An operation written before boot.config left every contract lists it in its contracts and its saved engine plan.
+        // Retirement compares those exact bytes, so such an operation keeps its payloads and is left alone.
+        if (new[] { operation.Current, operation.Target, operation.ReleaseManifest }.Any(bytes => !NormalizeContract(bytes).SequenceEqual(bytes)))
+        {
+            _log.Info($"Payload retirement was skipped for transaction {id:N}, which an earlier launcher build wrote.");
+            return false;
+        }
         _engine.ValidateControlledPath(operation.SourceRoot);
         _engine.ValidateControlledPath(operation.WorkRoot);
         foreach (Ksp2InstallEntry other in _configuration.Config.Ksp2Installs.Where(other => other.Id != entry.Id))
@@ -54,14 +61,10 @@ public partial class FullSourceInstallationService
         if (operation.Release is { } identity)
         {
             ValidateIdentity(identity);
-            if (identity.ManifestSha256 != Digest(release.ToJson()) ||
-                (!operation.DerivedBootConfig && !operation.Target.SequenceEqual(operation.ReleaseManifest)) ||
-                (operation.DerivedBootConfig && (!target.Directories.SequenceEqual(release.Directories) ||
-                    target.Files.Count != release.Files.Count || target.Files.All(file => file.Path != BOOT_CONFIG) ||
-                    !target.Files.Where(file => file.Path != BOOT_CONFIG).SequenceEqual(release.Files.Where(file => file.Path != BOOT_CONFIG)))))
+            if (identity.ManifestSha256 != Digest(release.ToJson()) || !operation.Target.SequenceEqual(operation.ReleaseManifest))
                 throw new InvalidDataException("Terminal release differs from its independently authenticated contract.");
         }
-        else if (!operation.Target.SequenceEqual(catalog.Stock) || operation.DerivedBootConfig)
+        else if (!operation.Target.SequenceEqual(catalog.Stock))
         {
             throw new InvalidDataException("Terminal stock restoration differs from its original contract.");
         }
@@ -164,17 +167,16 @@ public partial class FullSourceInstallationService
             return new StockBaselineManifest(target.BaselineIdentity, target.Provenance, []);
         if (!operation.SparseSourceStaging)
             return target;
-        return ChangedSourceContract(target, Manifest(operation.Current), catalog.RetainedFiles, operation.DerivedBootConfig);
+        return ChangedSourceContract(target, Manifest(operation.Current), catalog.RetainedFiles);
     }
 
     private static StockBaselineManifest ChangedSourceContract(StockBaselineManifest target,
-        StockBaselineManifest current, IEnumerable<string> retainedFiles, bool derivedBootConfig)
+        StockBaselineManifest current, IEnumerable<string> retainedFiles)
     {
         var currentFiles = current.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
         var retained = retainedFiles.ToHashSet(StringComparer.Ordinal);
         return new StockBaselineManifest(target.BaselineIdentity, target.Provenance, target.Files.Where(file =>
-                (derivedBootConfig && file.Path == BOOT_CONFIG) ||
-                (!retained.Contains(file.Path) && currentFiles.GetValueOrDefault(file.Path) != file)),
+                !retained.Contains(file.Path) && currentFiles.GetValueOrDefault(file.Path) != file),
             target.Directories, target.HasUnixMetadata ? target.UnixDirectoryModes : null);
     }
 }

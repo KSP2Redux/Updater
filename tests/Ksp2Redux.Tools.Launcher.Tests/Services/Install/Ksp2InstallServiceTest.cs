@@ -193,4 +193,68 @@ public class Ksp2InstallServiceTest
             Assert.That(raised, Is.Zero);
         });
     }
+
+    /// <summary>
+    /// The boot.config undo record belongs to its folder: another folder clears it, another executable name in the same folder keeps it.
+    /// </summary>
+    [Test]
+    public void UpdateInstallExePath_ClearsTheBootConfigRecordOnlyWhenTheFolderChanges()
+    {
+        var fileSystem = new Testably.Abstractions.Testing.MockFileSystem(options =>
+            options.SimulatingOperatingSystem(Testably.Abstractions.Testing.SimulationMode.Windows));
+        var cfg = new Mock<ILauncherConfigService>();
+        var entry = new Ksp2InstallEntry
+        {
+            ExePath = @"C:\Game\KSP2_x64.exe", BootConfigOriginals = new() { ["gfx-enable-gfx-jobs"] = null },
+            BootConfigReleaseSettings = new() { ["k"] = "v" }
+        };
+        cfg.SetupGet(c => c.Config).Returns(new LauncherConfig { StoragePath = @"C:\cfg.json", Ksp2Installs = [entry] });
+        var svc = new Ksp2InstallService(cfg.Object, fileSystem, Mock.Of<IModuleDefinitionService>(), Mock.Of<ILogService>(),
+            Mock.Of<IInstallationStateService>());
+
+        svc.UpdateInstallExePath(entry.Id, @"C:\Game\Renamed.exe");
+        Assert.That(entry.BootConfigOriginals, Has.Count.EqualTo(1));
+        Assert.That(entry.BootConfigReleaseSettings, Is.Not.Null);
+
+        svc.UpdateInstallExePath(entry.Id, @"D:\Elsewhere\KSP2_x64.exe");
+        Assert.That(entry.BootConfigOriginals, Is.Empty);
+        Assert.That(entry.BootConfigReleaseSettings, Is.Null);
+    }
+
+    /// <summary>
+    /// A Redux install gets its boot.config settings applied. A stock game whose record an uninstall could not revert
+    /// has it reverted at the next start, and a stock game without a record is left alone.
+    /// </summary>
+    /// <param name="redux">Whether the folder holds a Redux build.</param>
+    /// <param name="hasRecord">Whether the installation still has an undo record.</param>
+    [TestCase(true, true)]
+    [TestCase(false, true)]
+    [TestCase(false, false)]
+    public void ApplyActiveInstallBootConfig_AppliesForReduxAndRetriesAFailedRevertForStock(bool redux, bool hasRecord)
+    {
+        var fileSystem = new Testably.Abstractions.Testing.MockFileSystem(options =>
+            options.SimulatingOperatingSystem(Testably.Abstractions.Testing.SimulationMode.Windows));
+        fileSystem.Directory.CreateDirectory(@"C:\Game\Redux\Content");
+        if (!redux)
+            fileSystem.Directory.Delete(@"C:\Game\Redux", true);
+        fileSystem.File.WriteAllText(@"C:\Game\KSP2_x64.exe", "x");
+        var entry = new Ksp2InstallEntry { ExePath = @"C:\Game\KSP2_x64.exe" };
+        if (hasRecord)
+            entry.BootConfigOriginals = new() { ["gfx-enable-gfx-jobs"] = null };
+        var cfg = new Mock<ILauncherConfigService>();
+        cfg.SetupGet(c => c.Config).Returns(new LauncherConfig
+        {
+            StoragePath = @"C:\cfg.json", Ksp2Installs = [entry], ActiveKsp2InstallId = entry.Id
+        });
+        var bootConfig = new Mock<IBootConfigSettingsService>();
+        var svc = new Ksp2InstallService(cfg.Object, fileSystem, Mock.Of<IModuleDefinitionService>(), Mock.Of<ILogService>(),
+            Mock.Of<IInstallationStateService>(), null, bootConfig.Object);
+        svc.TryLoadKsp2Install();
+        Assert.That(svc.Ksp2!.Distribution == Ksp2Redux.Tools.Launcher.Models.Distribution.Redux, Is.EqualTo(redux));
+
+        svc.ApplyActiveInstallBootConfig();
+
+        bootConfig.Verify(service => service.Apply(entry), redux ? Times.Once() : Times.Never());
+        bootConfig.Verify(service => service.Revert(entry), !redux && hasRecord ? Times.Once() : Times.Never());
+    }
 }

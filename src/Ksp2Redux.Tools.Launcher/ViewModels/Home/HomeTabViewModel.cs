@@ -382,7 +382,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             _installationStateService.EnsureLaunchAllowed(_ksp2InstallService.Ksp2.InstallDir!);
         }
-        catch (Exception ex) when (ex is IOException or FilesInUseException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or FilesInUseException)
         {
             _log.Warn(ex.Message);
             await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch", ex.Message,
@@ -441,6 +441,7 @@ public partial class HomeTabViewModel : ViewModelBase
         try
         {
             string root = _ksp2InstallService.Ksp2!.InstallDir!;
+            _ksp2InstallService.ApplyActiveInstallBootConfig();
             using IDisposable? lease = await Task.Run(
                 () => _installationStateService.AcquireLaunchLease(root, cancellationToken), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -547,6 +548,7 @@ public partial class HomeTabViewModel : ViewModelBase
             await _wineRuntimeService.PrepareAsync(runtime, line => AppendToInstallLog(line.Localized), cancellationToken);
 
             var startInfo = _wineRuntimeService.CreateLaunchInfo(runtime, ksp2.ExePath, ksp2.InstallDir!, launchArguments);
+            _ksp2InstallService.ApplyActiveInstallBootConfig();
             using IDisposable? lease = await Task.Run(
                 () => _installationStateService.AcquireLaunchLease(ksp2.InstallDir!, cancellationToken), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();

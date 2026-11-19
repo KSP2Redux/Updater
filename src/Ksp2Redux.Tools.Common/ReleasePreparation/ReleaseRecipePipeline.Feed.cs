@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Ksp2Redux.Tools.BundleConversion.Bundles;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Common.Restoration;
 
@@ -53,8 +54,81 @@ public partial class ReleaseRecipePipeline
         if (manifest.TargetManifest is null || !EqualHash(Digest(manifest.TargetManifest), expectedTargetSha256))
             throw new InvalidDataException("Release target contract digest mismatch.");
         target = StockBaselineManifest.FromJson(manifest.TargetManifest);
+        manifest = WithoutBootConfig(manifest);
         ValidateManifest(manifest, target);
         return manifest;
+    }
+
+    // A release published before boot.config left every contract also carries a recipe or an exact copy for that file,
+    // and lists it as a recipe source, which every release built by the CI since 14 November 2026 does. Contracts read
+    // without it, so the artifact reads without it too. A source nothing reads from is dropped. A recipe that reads
+    // bytes from it cannot be reconstructed, so the artifact is refused. Every other recipe is checked as before.
+    private static ReleaseRecipeManifest WithoutBootConfig(ReleaseRecipeManifest manifest)
+    {
+        static bool Lists(ReleaseRecipeVariant? variant) =>
+            variant is not null && (variant.Files?.Any(file => file is not null && BootConfigFile.IsExcluded(file.Path)) == true ||
+                variant.ExactCopies?.Keys.Any(BootConfigFile.IsExcluded) == true ||
+                variant.Sources?.Any(source => source is not null && BootConfigFile.IsExcluded(source.Path)) == true);
+        if (manifest.Variants is null || !manifest.Variants.Any(Lists))
+            return manifest;
+        return manifest with
+        {
+            Variants = manifest.Variants.Select(variant => !Lists(variant) ? variant : WithoutBootConfig(variant!)).ToList()
+        };
+    }
+
+    private static ReleaseRecipeVariant WithoutBootConfig(ReleaseRecipeVariant variant)
+    {
+        var files = variant.Files?.Where(file => file is null || !BootConfigFile.IsExcluded(file.Path)).ToList()!;
+        var sources = variant.Sources;
+        if (sources is not null)
+        {
+            var dropped = Enumerable.Range(0, sources.Count)
+                .Where(index => sources[index] is not null && BootConfigFile.IsExcluded(sources[index].Path)).ToHashSet();
+            if (dropped.Count > 0)
+            {
+                files = files?.Select(file => WithoutSources(file, dropped, sources.Count)).ToList()!;
+                sources = sources.Where((_, index) => !dropped.Contains(index)).ToList();
+            }
+        }
+        return variant with
+        {
+            Sources = sources!,
+            Files = files,
+            ExactCopies = variant.ExactCopies?.Where(copy => !BootConfigFile.IsExcluded(copy.Key))
+                .ToDictionary(copy => copy.Key, copy => copy.Value)
+        };
+    }
+
+    // Removes the dropped variant sources from one recipe and renumbers the rest. A recipe whose shape does not fit its
+    // variant is returned unchanged, so the ordinary validation refuses it.
+    private static ReleaseFileRecipe? WithoutSources(ReleaseFileRecipe? file, HashSet<int> dropped, int total)
+    {
+        var recipe = file?.Recipe;
+        if (file is null || recipe?.Sources is null)
+            return file;
+        int[] indices = file.SourceIndices ?? Enumerable.Range(0, recipe.Sources.Count).ToArray();
+        if (indices.Length != recipe.Sources.Count || (file.SourceIndices is null && indices.Length != total) ||
+            indices.Any(index => index < 0 || index >= total))
+            return file;
+        int Renumber(int index) => index - dropped.Count(other => other < index);
+        var local = Enumerable.Range(0, indices.Length).Where(position => dropped.Contains(indices[position])).ToHashSet();
+        if (local.Count > 0)
+        {
+            if (recipe.Entries?.Any(entry => entry?.Segments?.Any(segment =>
+                    segment is not null && segment.Kind == BundleRecipeSegmentKind.Source && local.Contains(segment.SourceIndex)) == true) == true)
+                throw new InvalidDataException(
+                    "This release needs boot.config as a recipe input and cannot be installed by this launcher.");
+            foreach (var segment in recipe.Entries?.Where(entry => entry?.Segments is not null).SelectMany(entry => entry.Segments)
+                ?? [])
+            {
+                if (segment is not null && segment.Kind == BundleRecipeSegmentKind.Source)
+                    segment.SourceIndex -= local.Count(position => position < segment.SourceIndex);
+            }
+            recipe.Sources = recipe.Sources.Where((_, position) => !local.Contains(position)).ToList();
+        }
+        return file.SourceIndices is null ? file
+            : file with { SourceIndices = indices.Where((_, position) => !local.Contains(position)).Select(Renumber).ToArray() };
     }
 
     /// <summary>
@@ -72,24 +146,25 @@ public partial class ReleaseRecipePipeline
     /// <param name="r2ArtifactUrl">The future primary HTTPS release.json URL.</param>
     /// <param name="githubArtifactUrl">The future backup HTTPS release.json URL.</param>
     /// <param name="baselines">The complete publisher-curated baselines and optional exact Steam selectors.</param>
-    /// <param name="allowsDerivedBootConfig">True only when the publisher permits boot derivation.</param>
     /// <param name="releasedAt">The intended release timestamp.</param>
     /// <param name="updateSourceDigests">The complete prior Redux release contract digests, or null for stock-only recipes.</param>
     /// <param name="prepatchManifest">The pinned common prepatch contract, or null for original stock recipes.</param>
     /// <param name="prepatchResources">The embedded package digests for the common prepatch, or null.</param>
+    /// <param name="bootConfigSettings">The boot.config keys and values of the release's player, or null.</param>
     /// <returns>The validated feed entry for local serialization and review.</returns>
     public ReleasePatch CreateFeedEntry(string artifactRoot, ReleaseRecipePublication publication,
         string releaseId, string channel, string version, string r2ArtifactUrl, string githubArtifactUrl,
-        List<FullSourceBaselineDefinition> baselines, bool allowsDerivedBootConfig, DateTime releasedAt,
+        List<FullSourceBaselineDefinition> baselines, DateTime releasedAt,
         List<string>? updateSourceDigests = null, byte[]? prepatchManifest = null,
-        Dictionary<string, string>? prepatchResources = null)
+        Dictionary<string, string>? prepatchResources = null, Dictionary<string, string>? bootConfigSettings = null)
     {
         ReleaseRecipeManifest manifest = Inspect(artifactRoot, publication.ArtifactSha256, publication.TargetManifestSha256);
         long size = _fileSystem.FileInfo.New(Child(artifactRoot, "release.json")).Length;
         var descriptor = new FullSourceReleaseDescriptor(releaseId, channel, version, manifest.TargetManifest,
             publication.TargetManifestSha256, r2ArtifactUrl, githubArtifactUrl, baselines,
-            allowsDerivedBootConfig, checked(size + manifest.Packs.Sum(pack => (long)pack.Length)))
+            checked(size + manifest.Packs.Sum(pack => (long)pack.Length)))
         {
+            BootConfigSettings = bootConfigSettings,
             UpdateSourceDigests = updateSourceDigests,
             PrepatchManifest = prepatchManifest,
             PrepatchManifestSha256 = prepatchManifest is null ? null : Digest(prepatchManifest),
@@ -115,12 +190,22 @@ public partial class ReleaseRecipePipeline
     public static void ValidateFeedArtifact(ReleaseRecipeManifest manifest, FullSourceReleaseDescriptor descriptor, long markerLength)
     {
         var prepatch = ReleaseManifestValidator.GetPrepatchBaseline(descriptor);
-        var expectedDigests = (prepatch is null ? descriptor.Baselines.Select(baseline => Digest(baseline.Manifest))
-                : new[] { Digest(prepatch.ToJson()) })
-            .Concat(descriptor.UpdateSourceDigests ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!manifest.TargetManifest.AsSpan().SequenceEqual(descriptor.TargetManifest) ||
-            expectedDigests.Count != manifest.Variants.Count ||
-            manifest.Variants.Any(variant => !expectedDigests.Contains(Digest(variant.SourceManifest))) ||
+        // Contracts of releases published before boot.config left them list it. A variant is identified by the digest of
+        // its normalized contract. A listed update source may name either form of it.
+        var expectedDigests = (prepatch is null ? descriptor.Baselines.Select(baseline => NormalizedDigest(baseline.Manifest))
+            : new[] { Digest(prepatch.ToJson()) }).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var variantDigests = manifest.Variants.Select(variant => NormalizedDigest(variant.SourceManifest))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (string listed in descriptor.UpdateSourceDigests ?? [])
+        {
+            string? matching = manifest.Variants.Where(variant => EqualHash(Digest(variant.SourceManifest), listed) ||
+                EqualHash(NormalizedDigest(variant.SourceManifest), listed)).Select(variant => NormalizedDigest(variant.SourceManifest))
+                .FirstOrDefault();
+            expectedDigests.Add(matching ?? listed);
+        }
+        if (!NormalizedTarget(manifest.TargetManifest).AsSpan().SequenceEqual(descriptor.GetNormalizedTargetManifest()) ||
+            variantDigests.Count != manifest.Variants.Count || expectedDigests.Count != variantDigests.Count ||
+            variantDigests.Any(digest => !expectedDigests.Contains(digest)) ||
             checked(markerLength + manifest.Packs.Sum(pack => (long)pack.Length)) != descriptor.DownloadBytes)
             throw new InvalidDataException("Artifact target, source contracts or byte counts differ from feed metadata.");
     }
@@ -133,8 +218,9 @@ public partial class ReleaseRecipePipeline
     /// <param name="artifact">The authenticated separate update artifact descriptor.</param>
     public static void ValidateUpdateFeedArtifact(ReleaseRecipeManifest manifest, byte[] target, FullSourceUpdateArtifact artifact)
     {
-        if (!manifest.TargetManifest.AsSpan().SequenceEqual(target) || manifest.Variants.Count != 1 ||
-            !EqualHash(Digest(manifest.Variants[0].SourceManifest), artifact.SourceDigest) ||
+        if (!NormalizedTarget(manifest.TargetManifest).AsSpan().SequenceEqual(NormalizedTarget(target)) || manifest.Variants.Count != 1 ||
+            !(EqualHash(Digest(manifest.Variants[0].SourceManifest), artifact.SourceDigest) ||
+                EqualHash(NormalizedDigest(manifest.Variants[0].SourceManifest), artifact.SourceDigest)) ||
             checked(artifact.MarkerSize + manifest.Packs.Sum(pack => (long)pack.Length)) != artifact.DownloadBytes)
             throw new InvalidDataException("Separate update target, source or byte counts differ from feed metadata.");
     }
@@ -147,12 +233,17 @@ public partial class ReleaseRecipePipeline
     /// <returns>The variant's complete source contract.</returns>
     public static StockBaselineManifest GetSourceContract(ReleaseRecipeManifest manifest, string sourceDigest)
     {
-        var variant = manifest.Variants.SingleOrDefault(variant => EqualHash(Digest(variant.SourceManifest), sourceDigest))
+        var variant = manifest.Variants.SingleOrDefault(variant => EqualHash(Digest(variant.SourceManifest), sourceDigest) ||
+                EqualHash(NormalizedDigest(variant.SourceManifest), sourceDigest))
             ?? throw new InvalidDataException("No recipe variant matches the requested source contract digest.");
         var source = StockBaselineManifest.FromJson(variant.SourceManifest);
         new StockArchiveLimits().Validate(source);
-        if (!source.ToJson().AsSpan().SequenceEqual(variant.SourceManifest))
+        if (!source.IsCanonical(variant.SourceManifest))
             throw new InvalidDataException("The update source contract is not canonical.");
         return source;
     }
+
+    private static byte[] NormalizedTarget(byte[] contract) => StockBaselineManifest.FromJson(contract).ToJson();
+
+    private static string NormalizedDigest(byte[] contract) => Digest(NormalizedTarget(contract));
 }

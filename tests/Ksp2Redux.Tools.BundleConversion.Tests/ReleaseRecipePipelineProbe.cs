@@ -42,7 +42,6 @@ public class ReleaseRecipePipelineProbe
     /// </summary>
     /// <param name="changedPath">The control-only difference in two small mock contracts.</param>
     [TestCase("KSP2_x64_Data/app.info")]
-    [TestCase("KSP2_x64_Data/boot.config")]
     [TestCase("KSP2_x64_Data/Managed/Ksp2Redux.pdb")]
     [TestCase("KSP2_x64_Data/Managed/Ksp2Redux.dll.mdb")]
     [TestCase("KSP2_x64_Data/ScriptingAssemblies.json")]

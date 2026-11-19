@@ -4,6 +4,7 @@ using AssetsTools.NET;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Ksp2Redux.Tools.BundleConversion.Bundles;
+using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Common.ReleasePreparation;
 using Ksp2Redux.Tools.Common.Restoration;
 using Testably.Abstractions.Testing;
@@ -680,6 +681,223 @@ public class ReleaseRecipePipelineTest
         Assert.That(result.LogicalLiteralBytes, Is.EqualTo(68));
         Assert.That(ReadManifest().Variants[0].Files[0].Recipe.MatchingProfile, Is.EqualTo(BundleRecipe.HINTED_MATCHING_PROFILE));
         Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\changed.wem"), Is.EqualTo(changed));
+    }
+
+    /// <summary>
+    /// The player's boot.config is in no contract, so publishing and preparing accept any bytes or none for it.
+    /// </summary>
+    /// <param name="stockState">What the source tree holds at boot.config when it is prepared.</param>
+    [TestCase("same")]
+    [TestCase("other bytes")]
+    [TestCase("absent")]
+    public void BootConfigOfAnyBytesOrNone_NeverChangesPublicationOrPreparation(string stockState)
+    {
+        const string boot = "KSP2_x64_Data/boot.config";
+        string bootPath = BASELINE + @"\KSP2_x64_Data\boot.config";
+        byte[] old = RandomBytes(100000);
+        var baseline = WriteContract(BASELINE, ("old.bin", old), (boot, [1, 2, 3]));
+        var target = WriteContract(TARGET, ("new.bin", RandomBytes(50000)), (boot, [9, 9]));
+        Assert.That(baseline.Files.Select(file => file.Path), Is.EqualTo(new[] { "old.bin" }));
+        Assert.That(target.Files.Select(file => file.Path), Is.EqualTo(new[] { "new.bin" }));
+        if (stockState == "other bytes")
+            _fileSystem.File.WriteAllBytes(bootPath, "gfx-enable-gfx-jobs=1\r\nhdr-display-enabled=1\r\n"u8.ToArray());
+        else if (stockState == "absent")
+            _fileSystem.File.Delete(bootPath);
+
+        var published = Publish(target, baseline);
+        var prepared = Prepare(published, baseline);
+
+        Assert.That(prepared.ToJson(), Is.EqualTo(target.ToJson()));
+        Assert.That(_fileSystem.File.Exists(STAGE + @"\KSP2_x64_Data\boot.config"), Is.False);
+    }
+
+    /// <summary>
+    /// A contract that still lists boot.config, as older releases and pinned manifests do, reads without that entry.
+    /// </summary>
+    [Test]
+    public void ContractListingBootConfig_ReadsWithoutItAndStaysCanonicalForFeedValidation()
+    {
+        var withBoot = new StockBaselineManifest("legacy", "lists boot.config",
+            [new StockBaselineFile("a.bin", 1, new string('A', 64)), new StockBaselineFile("KSP2_x64_Data/boot.config", 5, new string('B', 64))]);
+        var without = new StockBaselineManifest("legacy", "lists boot.config", [new StockBaselineFile("a.bin", 1, new string('A', 64))]);
+        Assert.That(withBoot.Files, Is.EqualTo(without.Files));
+        Assert.That(withBoot.TotalBytes, Is.EqualTo(1));
+
+        string legacyJson = """
+            {"formatVersion":1,"hashAlgorithm":"SHA-256","baselineIdentity":"legacy","provenance":"lists boot.config","files":[
+            {"path":"KSP2_x64_Data/boot.config","length":5,"sha256":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"},
+            {"path":"a.bin","length":1,"sha256":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}],"directories":["KSP2_x64_Data"]}
+            """.ReplaceLineEndings("").Replace("\n", "");
+        byte[] legacy = System.Text.Encoding.UTF8.GetBytes(legacyJson);
+        var parsed = StockBaselineManifest.FromJson(legacy);
+        Assert.That(parsed.Files.Select(file => file.Path), Is.EqualTo(new[] { "a.bin" }));
+        Assert.That(parsed.IsCanonical(legacy), Is.True);
+        Assert.That(parsed.IsCanonical(parsed.ToJson()), Is.True);
+        Assert.That(parsed.IsCanonical(System.Text.Encoding.UTF8.GetBytes(legacyJson.Replace("legacy\"", "other\""))), Is.False);
+    }
+
+    /// <summary>
+    /// Ignoring boot.config does not loosen any other file. A changed source or target file is still rejected.
+    /// </summary>
+    /// <param name="changeTarget">True to change a target file after freezing its contract, false to change a source file.</param>
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ChangedNonBootFile_IsStillRejectedWhileBootConfigDiffers(bool changeTarget)
+    {
+        const string boot = "KSP2_x64_Data/boot.config";
+        var baseline = WriteContract(BASELINE, ("old.bin", RandomBytes(100000)), (boot, [1, 2, 3]));
+        var target = WriteContract(TARGET, ("new.bin", RandomBytes(50000)), (boot, [9, 9]));
+        _fileSystem.File.WriteAllBytes(BASELINE + @"\KSP2_x64_Data\boot.config", [7]);
+        if (changeTarget)
+        {
+            _fileSystem.File.WriteAllBytes(TARGET + @"\new.bin", RandomBytes(50001));
+            Assert.Throws<InvalidDataException>(() => Publish(target, baseline));
+            return;
+        }
+
+        var published = Publish(target, baseline);
+        byte[] changed = _fileSystem.File.ReadAllBytes(BASELINE + @"\old.bin");
+        changed[10] ^= 1;
+        _fileSystem.File.WriteAllBytes(BASELINE + @"\old.bin", changed);
+        Assert.Throws<InvalidDataException>(() => Prepare(published, baseline));
+        Assert.That(_fileSystem.Directory.Exists(STAGE), Is.False);
+    }
+
+    /// <summary>
+    /// A release published before boot.config left the contracts lists it in its target, its sources and its exact copies.
+    /// It reads, validates against its feed descriptor and prepares as the same release without it, with the same
+    /// identity digest, and a genuinely different release still differs.
+    /// </summary>
+    [Test]
+    public void ReleasePublishedBeforeBootConfigLeftTheContracts_ReadsAndPreparesAsTheSameRelease()
+    {
+        const string boot = "KSP2_x64_Data/boot.config";
+        // A real contract has the player's data folder, which the older form's boot.config entry would also imply.
+        var baseline = WriteContract(BASELINE, ("old.bin", RandomBytes(100000)), ("KSP2_x64_Data/kept.bin", [1, 2, 3]));
+        var target = WriteContract(TARGET, ("new.bin", RandomBytes(50000)), ("KSP2_x64_Data/kept.bin", [1, 2, 3]));
+        Publish(target, baseline);
+        var manifest = ReadManifest();
+        string bootHash = new('C', 64);
+        byte[] legacyTarget = target.ToJsonWithBootConfig(3, bootHash);
+        byte[] legacySource = baseline.ToJsonWithBootConfig(3, bootHash);
+        var variant = manifest.Variants[0] with
+        {
+            SourceManifest = legacySource,
+            ExactCopies = new Dictionary<string, string>(manifest.Variants[0].ExactCopies ?? []) { [boot] = boot }
+        };
+        manifest = manifest with { Version = 4, TargetManifest = legacyTarget, Variants = [variant] };
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(manifest);
+        _fileSystem.File.WriteAllBytes(ARTIFACT + @"\release.json", json);
+        string artifactSha = Convert.ToHexString(SHA256.HashData(json));
+        string targetSha = Convert.ToHexString(SHA256.HashData(legacyTarget));
+
+        var inspected = _pipeline.Inspect(ARTIFACT, artifactSha, targetSha);
+
+        Assert.That(inspected.Variants[0].ExactCopies?.ContainsKey(boot) ?? false, Is.False);
+        var descriptor = new FullSourceReleaseDescriptor("release", "beta", "1.2.3.4.5", legacyTarget, targetSha,
+            "https://fixture.test/release.json", "https://fixture-backup.test/release.json",
+            [new FullSourceBaselineDefinition(legacySource, [])], json.Length + inspected.Packs.Sum(pack => (long)pack.Length));
+        Assert.DoesNotThrow(() => ReleaseRecipePipeline.ValidateFeedArtifact(inspected, descriptor, json.Length));
+        Assert.That(descriptor.GetNormalizedTargetManifestSha256(), Is.EqualTo(Convert.ToHexString(SHA256.HashData(target.ToJson()))),
+            "The identity digest is the one of the same release published without the entry.");
+        Assert.That(descriptor.TargetManifestSha256, Is.Not.EqualTo(descriptor.GetNormalizedTargetManifestSha256()));
+        foreach (byte[] source in new[] { legacySource, baseline.ToJson() })
+            Assert.That(ReleaseRecipePipeline.GetSourceContract(inspected, Convert.ToHexString(SHA256.HashData(source))).ToJson(),
+                Is.EqualTo(baseline.ToJson()));
+
+        var prepared = _pipeline.Prepare(ARTIFACT, artifactSha, targetSha, BASELINE, baseline, STAGE);
+
+        Assert.That(prepared.ToJson(), Is.EqualTo(target.ToJson()));
+        Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\new.bin"), Is.EqualTo(_fileSystem.File.ReadAllBytes(TARGET + @"\new.bin")));
+        byte[] otherTarget = new StockBaselineManifest(target.BaselineIdentity, target.Provenance,
+            [new StockBaselineFile("new.bin", 50001, new string('D', 64))]).ToJsonWithBootConfig(3, bootHash);
+        var other = descriptor with { TargetManifest = otherTarget, TargetManifestSha256 = Convert.ToHexString(SHA256.HashData(otherTarget)) };
+        Assert.That(other.GetNormalizedTargetManifestSha256(), Is.Not.EqualTo(descriptor.GetNormalizedTargetManifestSha256()));
+        Assert.Throws<InvalidDataException>(() => ReleaseRecipePipeline.ValidateFeedArtifact(inspected, other, json.Length));
+    }
+
+    /// <summary>
+    /// Every release the CI built since 14 November 2026 lists boot.config as a recipe source, first among the sources.
+    /// A source no recipe reads from is dropped, and the other sources keep their bytes under the shifted indices.
+    /// </summary>
+    /// <param name="implicitMapping">True for recipes without a local source mapping, which carry every variant source.</param>
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BootConfigListedAsUnusedRecipeSource_IsDroppedAndTheReleasePrepares(bool implicitMapping)
+    {
+        byte[] bytes = RandomBytes(200000);
+        var baseline = WriteContract(BASELINE, ("old.bin", bytes), ("KSP2_x64_Data/kept.bin", [1]));
+        var target = WriteContract(TARGET, ("new.bin", bytes.Concat(new byte[] { 42 }).ToArray()), ("KSP2_x64_Data/kept.bin", [1]));
+        Publish(target, baseline);
+        var (json, inspected) = ListBootConfigAsSource(ReadManifest(), implicitMapping, reads: false);
+        _fileSystem.File.WriteAllBytes(ARTIFACT + @"\release.json", json);
+        string artifactSha = Convert.ToHexString(SHA256.HashData(json));
+        string targetSha = Convert.ToHexString(SHA256.HashData(inspected.TargetManifest));
+
+        var manifest = _pipeline.Inspect(ARTIFACT, artifactSha, targetSha);
+
+        Assert.That(manifest.Variants[0].Sources.Select(source => source.Path), Is.EqualTo(new[] { "old.bin" }));
+        var recipe = manifest.Variants[0].Files.Single(file => file.Path == "new.bin");
+        Assert.That(recipe.Recipe.Sources, Has.Count.EqualTo(1));
+        Assert.That(recipe.SourceIndices, implicitMapping ? Is.Null : Is.EqualTo(new[] { 0 }));
+        Assert.That(recipe.Recipe.Entries.SelectMany(entry => entry.Segments).Where(segment => segment.Kind == BundleRecipeSegmentKind.Source)
+            .Select(segment => segment.SourceIndex).Distinct().ToArray(), Is.EqualTo(new[] { 0 }));
+        var prepared = _pipeline.Prepare(ARTIFACT, artifactSha, targetSha, BASELINE, baseline, STAGE);
+        Assert.That(prepared.ToJson(), Is.EqualTo(target.ToJson()));
+        Assert.That(_fileSystem.File.ReadAllBytes(STAGE + @"\new.bin"), Is.EqualTo(bytes.Concat(new byte[] { 42 }).ToArray()));
+    }
+
+    /// <summary>
+    /// A release whose recipe reads bytes from boot.config cannot be reconstructed without that file, so it is refused with
+    /// a message that says why.
+    /// </summary>
+    /// <param name="implicitMapping">True for recipes without a local source mapping, which carry every variant source.</param>
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BootConfigReadByARecipe_IsRefusedWithAClearMessage(bool implicitMapping)
+    {
+        byte[] bytes = RandomBytes(200000);
+        var baseline = WriteContract(BASELINE, ("old.bin", bytes), ("KSP2_x64_Data/kept.bin", [1]));
+        var target = WriteContract(TARGET, ("new.bin", bytes.Concat(new byte[] { 42 }).ToArray()), ("KSP2_x64_Data/kept.bin", [1]));
+        Publish(target, baseline);
+        var (json, inspected) = ListBootConfigAsSource(ReadManifest(), implicitMapping, reads: true);
+        _fileSystem.File.WriteAllBytes(ARTIFACT + @"\release.json", json);
+
+        var error = Assert.Throws<InvalidDataException>(() => _pipeline.Inspect(ARTIFACT,
+            Convert.ToHexString(SHA256.HashData(json)), Convert.ToHexString(SHA256.HashData(inspected.TargetManifest))));
+
+        Assert.That(error!.Message, Does.Contain("boot.config as a recipe input"));
+    }
+
+    // Rewrites a published artifact the way the CI listed it: the contracts name boot.config, and it is the first recipe
+    // source. Its recipes then address the old source one place later, and read the new first source when reads is set.
+    private (byte[] Json, ReleaseRecipeManifest Manifest) ListBootConfigAsSource(ReleaseRecipeManifest manifest, bool implicitMapping, bool reads)
+    {
+        const string boot = "KSP2_x64_Data/boot.config";
+        string bootHash = new('C', 64);
+        var target = StockBaselineManifest.FromJson(manifest.TargetManifest);
+        var source = StockBaselineManifest.FromJson(manifest.Variants[0].SourceManifest);
+        var oldFile = source.Files.Single(file => file.Path == "old.bin");
+        var oldSource = new BundleRecipeSource { Kind = BundleRecipeSourceKind.RawFile, Length = oldFile.Length, DataLength = oldFile.Length, Sha256 = oldFile.Sha256 };
+        var files = manifest.Variants[0].Files.Select(file =>
+        {
+            foreach (var segment in file.Recipe.Entries.SelectMany(entry => entry.Segments).Where(segment => segment.Kind == BundleRecipeSegmentKind.Source))
+                segment.SourceIndex = reads ? 0 : segment.SourceIndex + 1;
+            var used = file.SourceIndices!.Length > 0 ? file.Recipe.Sources[0] : oldSource;
+            file.Recipe.Sources.Clear();
+            file.Recipe.Sources.Add(new BundleRecipeSource { Kind = BundleRecipeSourceKind.RawFile, Length = 113, DataLength = 113, Sha256 = bootHash });
+            if (implicitMapping || file.SourceIndices.Length > 0)
+                file.Recipe.Sources.Add(used);
+            return implicitMapping ? file with { SourceIndices = null } : file with { SourceIndices = file.Recipe.Sources.Count == 2 ? [0, 1] : [0] };
+        }).ToList();
+        var variant = manifest.Variants[0] with
+        {
+            SourceManifest = source.ToJsonWithBootConfig(113, bootHash),
+            Sources = [new ReleaseRecipeSource(boot, BundleRecipeSourceKind.RawFile), .. manifest.Variants[0].Sources],
+            Files = files
+        };
+        manifest = manifest with { Version = implicitMapping ? 1 : 4, TargetManifest = target.ToJsonWithBootConfig(113, bootHash), Variants = [variant] };
+        return (JsonSerializer.SerializeToUtf8Bytes(manifest), manifest);
     }
 
     private ReleaseRecipePublication Publish(StockBaselineManifest target, StockBaselineManifest baseline)

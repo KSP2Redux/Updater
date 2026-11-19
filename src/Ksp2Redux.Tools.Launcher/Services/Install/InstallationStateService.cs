@@ -158,7 +158,7 @@ public class InstallationStateService(IFileSystem fileSystem, IZipFileService zi
         {
             return new InstallationState(null,
                 $"The backup at '{installRoot}' could not be safely inspected: {ex.Message} " +
-                "Legacy changes and boot.config writes are blocked. The backup has been preserved.");
+                "Legacy changes are blocked. The backup has been preserved.");
         }
     }
 
@@ -322,7 +322,7 @@ public class InstallationStateService(IFileSystem fileSystem, IZipFileService zi
         ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException;
 
     private static InstallationState ProtectedArchive(string root) => new(null,
-        $"The installation at '{root}' claims a full stock backup. Legacy changes and boot.config writes are blocked. " +
+        $"The installation at '{root}' claims a full stock backup. Legacy changes are blocked. " +
         "Use the full-source installation coordinator. The backup is preserved, but has not been authenticated or verified.");
 
     private static void CheckDirectoryBudget(Stream input)

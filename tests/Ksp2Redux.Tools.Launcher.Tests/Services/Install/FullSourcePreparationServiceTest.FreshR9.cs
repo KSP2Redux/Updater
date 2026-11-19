@@ -84,7 +84,7 @@ public partial class FullSourcePreparationServiceTest
         string version = latest ? "2.0.0.1.203" : "2.0.0.1.202";
         var patch = new ReleaseRecipePipeline(fs).CreateFeedEntry(artifact, publication, release, CHANNEL, version,
             "https://fixture.test/fresh/stock/release.json", "https://fixture.test/fresh/stock/release.json",
-            [new FullSourceBaselineDefinition(stock.ToJson(), [])], false, DateTime.UtcNow);
+            [new FullSourceBaselineDefinition(stock.ToJson(), [])], DateTime.UtcNow);
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = CHANNEL, GeneratedAt = DateTime.UtcNow, Patches = [patch] };
         Assert.That(fs.File.Exists(At(fs, install, "mods/user.txt")), Is.False, "Preserve existing unowned files.");
         string keeper = At(fs, workspace, "RX8/game");

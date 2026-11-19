@@ -66,7 +66,7 @@ public partial class FullSourcePreparationServiceTest
             Size = 1, ChecksumSha256 = Digest([0]),
             FullSource = new FullSourceReleaseDescriptor(RELEASE_ID, CHANNEL, VERSION, target.ToJson(), Digest(target.ToJson()),
                 "https://fixture.test/unavailable-stock/release.json", "https://fixture-backup.test/unavailable-stock/release.json",
-                [new FullSourceBaselineDefinition(stock.ToJson(), [])], false, 1)
+                [new FullSourceBaselineDefinition(stock.ToJson(), [])], 1)
         };
         var feed = new ReleaseManifest { SchemaVersion = 3, Channel = CHANNEL, GeneratedAt = DateTime.UtcNow, Patches = [patch] };
         var fixture = new Fixture(fs, root, At(fs, workspace, "RTX1/game"), stock, target, At(fs, delta, "artifact"), null!,
@@ -315,7 +315,7 @@ public partial class FullSourcePreparationServiceTest
                 fixture.Patch = new ReleaseRecipePipeline(fs).CreateFeedEntry(fixture.Artifact, published,
                     selected.ReleaseId, selected.Channel, selected.Version,
                     "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
-                    new() { new FullSourceBaselineDefinition(first.Stock.ToJson(), new()) }, false, DateTime.UtcNow);
+                    new() { new FullSourceBaselineDefinition(first.Stock.ToJson(), new()) }, DateTime.UtcNow);
             }
             void VerifyInstalled(StockBaselineManifest expected)
             {

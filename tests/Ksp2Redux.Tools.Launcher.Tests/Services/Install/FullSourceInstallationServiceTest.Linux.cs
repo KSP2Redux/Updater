@@ -60,7 +60,7 @@ public partial class FullSourceInstallationServiceTest
             preparation.Object, os, Mock.Of<ILogService>(), processes.Object, new InstallFileLockService(fs, os));
         var identity = new FullSourceReleaseIdentity("owned-linux-release", "beta", "2.0.0.1.200",
             Convert.ToHexString(SHA256.HashData(target.ToJson())), "fixture:explicit-native-linux-authority");
-        var prepared = new FullSourcePreparedTarget(identity, target, source, false);
+        var prepared = new FullSourcePreparedTarget(identity, target, source);
         var baseline = new FullSourceStockPreparation(stock, original, stock, [], [], entry.Id, identity);
         await Coordinator().ApplyAsync(entry.Id, prepared, baseline, false, _ => { }, CancellationToken.None);
         string archive = fs.Path.Combine(game, "uninstall.zip");

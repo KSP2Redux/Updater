@@ -654,7 +654,9 @@ public partial class ReleaseRecipePipeline
     private static ReleaseRecipeVariant SelectVariant(ReleaseRecipeManifest manifest, StockBaselineManifest sourceContract)
     {
         byte[] sourceBytes = sourceContract.ToJson();
-        return manifest.Variants.SingleOrDefault(variant => variant.SourceManifest.AsSpan().SequenceEqual(sourceBytes))
+        // A release published before boot.config left every contract stores its sources with that entry.
+        return manifest.Variants.SingleOrDefault(variant => variant.SourceManifest.AsSpan().SequenceEqual(sourceBytes) ||
+                StockBaselineManifest.FromJson(variant.SourceManifest).ToJson().AsSpan().SequenceEqual(sourceBytes))
             ?? throw new InvalidDataException("No recipe variant supports the independently expected baseline.");
     }
 

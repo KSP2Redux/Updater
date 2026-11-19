@@ -59,7 +59,7 @@ public partial class FullSourceInstallationServiceTest
     /// </summary>
     /// <returns>The verification task.</returns>
     [Test]
-    public async Task StorageLifecycle_SourceStageContainsOnlyChangedInputsAndDerivedBoot()
+    public async Task StorageLifecycle_SourceStageContainsOnlyChangedInputs()
     {
         Fixture fixture = Create();
         await Apply(fixture);
@@ -73,7 +73,7 @@ public partial class FullSourceInstallationServiceTest
             string source = fixture.Fs.Path.Combine(fixture.Root, $".redux-fullsource-{fixture.Entry.Id:N}", $"{id:N}-source");
             Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, source, RETAINED)), Is.False);
             Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, source, BUNDLE)), Is.False);
-            Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, source, BOOT)), Is.True);
+            Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, source, BOOT)), Is.False);
             observed = true;
         });
         await Apply(fixture, service, initial: false);

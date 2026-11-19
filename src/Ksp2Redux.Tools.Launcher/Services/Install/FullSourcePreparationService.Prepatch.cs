@@ -140,8 +140,16 @@ public partial class FullSourcePreparationService
         if (!_os.IsWindows())
             throw new PlatformNotSupportedException("Embedded prepatch normalization requires Windows.");
         string final = BaselineRoot(prepatch);
-        if (await TreeMatchesAsync(final, prepatch, ct))
+        if (await AdoptSupersededBaselineAsync(prepatch, prepatch, final, ct))
+        {
+            PruneSupersededBaselines(prepatch);
             return new RecipeSource(prepatch, final);
+        }
+        if (await TreeMatchesAsync(final, prepatch, ct))
+        {
+            PruneSupersededBaselines(prepatch);
+            return new RecipeSource(prepatch, final);
+        }
         if (_fs.Directory.Exists(final))
             throw new InvalidDataException("The prepatch cache differs from its pinned contract and has been preserved.");
         RecipeSource original = await SelectBaselineAsync(BaselineDefinitions(descriptor), ct);
@@ -162,7 +170,11 @@ public partial class FullSourcePreparationService
         string backups = At(CacheRoot(), "prepatch-backups");
         CreateDirectory(backups);
         string backup = At(backups, Digest(original.Contract.ToJson()).ToLowerInvariant() + ".zip");
-        if (_fs.File.Exists(backup))
+        if (!_fs.File.Exists(backup) && await AdoptSupersededBackupAsync(original.Contract, backup, ct))
+        {
+            // The archive an earlier build kept for this contract verified and now has its current name.
+        }
+        else if (_fs.File.Exists(backup))
             await _archive.VerifyAsync(backup, original.Contract, ct);
         else
             await _archive.CreateAsync(original.Root, backup, original.Contract, ct);
@@ -178,6 +190,9 @@ public partial class FullSourcePreparationService
         _paths.ValidateControlledPath(staging);
         _paths.ValidateControlledPath(final);
         _fs.Directory.Move(staging, final);
+        // Both the backup and the prepatch tree are verified, so the ones an earlier build kept can go.
+        PruneSupersededBackups(original.Contract, backup);
+        PruneSupersededBaselines(prepatch);
         return new RecipeSource(prepatch, final);
     }
 }

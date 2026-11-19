@@ -1,4 +1,6 @@
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
+using Ksp2Redux.Tools.Common.Restoration;
 
 namespace Ksp2Redux.Tools.Common.Models;
 
@@ -13,13 +15,28 @@ namespace Ksp2Redux.Tools.Common.Models;
 /// <param name="R2ArtifactUrl">The HTTPS release.json URL on the primary source.</param>
 /// <param name="GitHubArtifactUrl">The HTTPS release.json URL on the backup source.</param>
 /// <param name="Baselines">The supported complete publisher-curated storefront definitions.</param>
-/// <param name="AllowsDerivedBootConfig">True when the publisher permits version-one boot derivation.</param>
 /// <param name="DownloadBytes">The artifact and pack bytes used for planning.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public record FullSourceReleaseDescriptor(string ReleaseId, string Channel, string Version,
     byte[] TargetManifest, string TargetManifestSha256, string R2ArtifactUrl, string GitHubArtifactUrl,
-    List<FullSourceBaselineDefinition> Baselines, bool AllowsDerivedBootConfig, long DownloadBytes)
+    List<FullSourceBaselineDefinition> Baselines, long DownloadBytes)
 {
+    /// <summary>
+    /// Gets the boot.config keys and values the release's player was built with, without its build identity.
+    /// </summary>
+    /// <remarks>
+    /// The launcher writes them into the installed boot.config outside the install transaction.
+    /// Unlike the other optional fields, a launcher that predates this one rejects a descriptor carrying it.
+    /// </remarks>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? BootConfigSettings { get; init; }
+
+    /// <summary>
+    /// Gets the retired boot derivation permission, which older descriptors carry. Its value has no effect.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AllowsDerivedBootConfig { get; init; }
+
     /// <summary>
     /// Gets the common prepatched tree used by initial recipes, independently of original stock backup contracts.
     /// </summary>
@@ -49,6 +66,27 @@ public record FullSourceReleaseDescriptor(string ReleaseId, string Channel, stri
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<FullSourceUpdateArtifact>? UpdateArtifacts { get; init; }
+
+    /// <summary>
+    /// Get the target contract in the form the launcher keeps: the contract's own serialization, without boot.config.
+    /// </summary>
+    /// <remarks>
+    /// A release published before boot.config left every contract lists it in <see cref="TargetManifest"/>. Both forms
+    /// read as the same contract and give the same bytes here.
+    /// </remarks>
+    /// <returns>The canonical contract bytes.</returns>
+    public byte[] GetNormalizedTargetManifest() => StockBaselineManifest.FromJson(TargetManifest).ToJson();
+
+    /// <summary>
+    /// Get the digest that names this release's contract everywhere outside the artifact marker check.
+    /// </summary>
+    /// <remarks>
+    /// Installed catalogs, plans and prepared targets carry this digest, so an install and the feed agree on a release
+    /// whichever form of its contract was published. <see cref="TargetManifestSha256"/> stays the digest of the published
+    /// bytes, which only the artifact marker and the descriptor's own validation compare.
+    /// </remarks>
+    /// <returns>The upper-case SHA-256 of the canonical contract bytes.</returns>
+    public string GetNormalizedTargetManifestSha256() => Convert.ToHexString(SHA256.HashData(GetNormalizedTargetManifest()));
 }
 
 /// <summary>

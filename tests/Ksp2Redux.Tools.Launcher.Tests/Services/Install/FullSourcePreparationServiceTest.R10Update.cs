@@ -67,7 +67,7 @@ public partial class FullSourcePreparationServiceTest
         var previous = new ReleaseRecipePipeline(fs).CreateFeedEntry(At(fs, stockPublication, "stock-artifact"), previousArtifact,
             PREVIOUS, CHANNEL, "2.0.0.1.202", "https://fixture.test/unavailable-stock/release.json",
             "https://fixture.test/unavailable-stock/release.json", [new FullSourceBaselineDefinition(stock.ToJson(), [])],
-            false, now.AddMinutes(-1));
+            now.AddMinutes(-1));
         var feed = next.Feed with { Patches = [previous, next.Patch] };
         ReleaseManifestValidator.Validate(feed);
 
