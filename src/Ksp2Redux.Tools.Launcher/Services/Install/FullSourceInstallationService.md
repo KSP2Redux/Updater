@@ -222,6 +222,13 @@ each launch. It writes the release's settings from the release descriptor plus t
 launcher's own, which win. Release keys overwrite the player's own edits of those keys on
 every apply. `build-guid` is never managed.
 
+The release's settings are also published in the catalog (`ReleaseBootConfig`), from the operation
+(`BootConfigSettings`) that committed the generation, so they survive a stop between the commit and
+the launcher configuration write. `Ksp2InstallService.ApplyActiveInstallBootConfig` copies them into
+the installation's record before it applies a Redux build. An empty catalog record means the release
+has no settings and clears a stale record. A catalog from an earlier launcher has none (null), and then
+the configuration record is left as it is.
+
 The step records each key's stock state on the installation the first time it manages the
 key, including keys that already hold the wanted value. A stock file has exactly
 `wait-for-native-debugger=0`, `hdr-display-enabled=0`, `gc-max-time-slice=3` and a
@@ -230,8 +237,11 @@ absent. The file's current content is not the original, because an earlier build
 written to it. The record is saved before the file is written. If it cannot be saved, the
 file is left alone until the next try. A key that a release drops is written back to its
 stock state, and leaves the record only after that write worked. Uninstall puts every
-recorded key back and clears the record. Changing an installation's folder clears the
-record. The step checks no hash and never fails for file content. It reads at most 64 KiB, skips a larger
+recorded key back and clears the record. When the `uninstall.zip` an earlier launcher wrote still
+holds the game's original boot.config, uninstall first records its keys (at most 64 KiB, valid
+settings only, never `build-guid`) as the originals, so keys that launcher wrote without recording
+them are restored too. A missing, oversized or unreadable entry changes nothing. Changing an
+installation's folder clears the record. The step checks no hash and never fails for file content. It reads at most 64 KiB, skips a larger
 file with a log line, and replaces the file from a temporary file in its folder that it flushes first, so an
 interrupted write leaves the old content. Before a write it deletes the leftover `boot.config.<32 hex digits>.tmp`
 files of earlier interrupted writes in that folder, and nothing else. A revert that failed at uninstall keeps its record, and the launcher tries it again
@@ -250,10 +260,13 @@ Data written before boot.config left the contracts is read without that entry:
   Source pins of the original backup that name boot.config are dropped, and so is its journal pin
   when boot.config was the only file recovered through that journal.
 - An operation of an earlier build that is still pending is recovered only when it stopped
-  while preparing, with no engine marker or work folder: the game folder is verified against the
-  normalized current contract and the existing preparation-only reconciliation publishes
-  RolledBack. The operation file stays as evidence, and the head is replaced only when its bytes are
-  still those the operation was bound to. Past preparation the engine's own journal of that
+  while preparing, or while ready before the engine started, with no engine marker or work folder
+  (that build wrote ready before entering the engine, which creates the marker first): the game
+  folder is verified against the normalized current contract and the existing preparation-only
+  reconciliation publishes RolledBack. A ready operation skips the plan digest check, because that
+  digest covers contracts listing boot.config, and a game folder that fails verification keeps the
+  refusal below. The operation file stays as evidence, and the head is replaced only when its bytes are
+  still those the operation was bound to. Once the engine ran, its own journal of that
   operation lists boot.config, so this build cannot recover it. Every action then fails with a
   message that names the way out: restore the original game files (uninstall the game in Steam or
   Epic and delete what is left of the game folder, or replace the portable copy), delete the engine

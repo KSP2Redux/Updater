@@ -26,7 +26,9 @@ public partial class FullSourceInstallationService
         string[] RetainedFiles, string[] UnownedDirectories, string RetentionPolicy, Guid? Pending,
         InstallTransactionResult? LastResult, Guid? LastTransaction,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockBaselineFile? ExistingBackup = null,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockArchiveSources? RecoverySources = null)
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockArchiveSources? RecoverySources = null,
+        // The boot.config settings of the committed release. Null for catalogs written before they were recorded.
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dictionary<string, string>? ReleaseBootConfig = null)
     {
         // The catalog exactly as an earlier build stored it, while an operation of that build is still pending.
         // Only its pending operation and publication compare against these bytes. It is never persisted.
@@ -46,7 +48,9 @@ public partial class FullSourceInstallationService
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SparseSourceStaging = false,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool StockArchiveSource = false,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool MovedFileUndo = false,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool OwnedSourceStaging = false);
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool OwnedSourceStaging = false,
+        // The release's boot.config settings, published with the catalog when this operation commits. Null for stock restoration.
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dictionary<string, string>? BootConfigSettings = null);
 
     private record Envelope(int FormatVersion, string Sha256, byte[] Payload);
 
@@ -149,6 +153,8 @@ public partial class FullSourceInstallationService
             throw new InvalidDataException("Retained unowned files cannot belong to managed ownership.");
         if (catalog.Release is { } identity)
             ValidateIdentity(identity);
+        if (catalog.ReleaseBootConfig is { } bootConfig)
+            ValidateBootConfigSettings(bootConfig);
         if (catalog.Archive is { } archive)
             ValidateArchiveReference(entry, archive);
         if (catalog.ExistingBackup is { } existingBackup)
@@ -259,9 +265,12 @@ public partial class FullSourceInstallationService
             operation.Phase is not ("preparing" or "ready" or "terminal") ||
             (operation.Phase == "terminal") != (operation.Result is not null))
             throw new InvalidDataException("Pending operation authority is corrupt or conflicts with its catalog. Evidence retained.");
-        // Past preparation the engine's own journal of that operation lists boot.config, so this build cannot recover it.
-        if (catalog.LegacyStored is not null && operation.Phase != "preparing")
+        // Once the engine ran, its own journal of that operation lists boot.config, so this build cannot recover it.
+        // A ready operation only qualifies for rollback when no engine evidence exists, which reconciliation checks.
+        if (catalog.LegacyStored is not null && operation.Phase == "terminal")
             throw LegacyPendingRefusal(entry);
+        if (operation.BootConfigSettings is { } bootConfigSettings)
+            ValidateBootConfigSettings(bootConfigSettings);
         _engine.ValidateControlledPath(operation.SourceRoot);
         _engine.ValidateControlledPath(operation.WorkRoot);
         StockBaselineManifest current = Manifest(operation.Current);
@@ -307,9 +316,16 @@ public partial class FullSourceInstallationService
                 !_configuration.Config.Ksp2Installs.Where(other => other.Id != entry.Id).Select(Root).Contains(root))
                 throw new InvalidDataException("Protected paths are outside configured installations and controlled storage.");
         }
-        if (operation.Phase != "preparing" && BuildPlan(entry, catalog, operation).GetDigest() != operation.PlanDigest)
+        // The digest of an earlier build's plan covers contracts that listed boot.config, so it cannot match this build's plan.
+        if (operation.Phase != "preparing" && catalog.LegacyStored is null && BuildPlan(entry, catalog, operation).GetDigest() != operation.PlanDigest)
             throw new InvalidDataException("The operation plan digest is invalid. Evidence retained.");
         return operation;
+    }
+
+    private static void ValidateBootConfigSettings(Dictionary<string, string> settings)
+    {
+        if (settings.Count > BootConfigFile.MAX_SETTINGS || settings.Any(setting => !BootConfigFile.IsValidSetting(setting.Key, setting.Value)))
+            throw new InvalidDataException("The recorded release boot configuration settings are invalid. Evidence retained.");
     }
 
     // The contracts of an operation written before boot.config left them, in their normalized form.
@@ -329,13 +345,13 @@ public partial class FullSourceInstallationService
     // An operation that an earlier build left pending and this one cannot roll back leaves the installation as it is.
     // The way out names everything that would block the next start: the engine marker in the game folder survives a
     // storefront reinstall, and the operation storage beside it would otherwise stay for good.
-    private InvalidDataException LegacyPendingRefusal(Ksp2InstallEntry entry) => new(
+    private InvalidDataException LegacyPendingRefusal(Ksp2InstallEntry entry, Exception? inner = null) => new(
         "An earlier version of the launcher stopped while changing this game, and this version cannot finish or undo " +
         "that change. To start over, restore the original game files: uninstall the game in Steam or Epic and delete " +
         $"what is left of '{Root(entry)}', or replace your portable copy with an original one. Delete the file " +
         $"'{_fs.Path.Combine(Root(entry), ".redux-transaction.active")}' if it is still there, and delete the folders " +
         $"'{StorageRoot(entry)}' and '{CatalogRoot(entry)}'. Then install Redux again. Copy out any mods you want to " +
-        "keep first. Your saves are not affected.");
+        "keep first. Your saves are not affected.", inner);
 
     private InstallTransactionPlan BuildPlan(Ksp2InstallEntry entry, Catalog catalog, Operation operation)
     {

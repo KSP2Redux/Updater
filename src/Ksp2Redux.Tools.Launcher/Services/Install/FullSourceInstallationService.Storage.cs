@@ -33,7 +33,9 @@ public partial class FullSourceInstallationService
         if (catalog.LastTransaction is not { } id || catalog.LastResult is not { } result)
             return false;
         Operation operation = Read<Operation>(OperationPath(entry, id));
-        if (operation.Phase == "preparing")
+        // A preparing operation never ran the engine. An earlier build's ready operation that was rolled back before the
+        // engine started stays as it was written, and has no engine storage either.
+        if (operation.Phase == "preparing" || (operation.Phase == "ready" && result == InstallTransactionResult.RolledBack))
             return false;
         if (operation.FormatVersion != FORMAT_VERSION || operation.TransactionId != id ||
             operation.InstallationId != entry.Id || operation.InstallRoot != Root(entry) ||

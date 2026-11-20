@@ -42,6 +42,10 @@ public partial class FullSourceInstallationServiceTest
             LegacyBytes(journal, "Current");
             LegacyBytes(journal, "Target");
             LegacyBytes(journal, "ReleaseManifest");
+            journal.Remove("BootConfigSettings");
+            // The plan an earlier build digested listed boot.config, so its digest differs from this build's.
+            if (journal["PlanDigest"] is not null)
+                journal["PlanDigest"] = Digest("earlier build plan"u8.ToArray());
             journal["Release"]!["ManifestSha256"] = Digest(LegacyContract(fixture.Target3.Manifest.ToJson()));
             journal["PreviousDigest"] = Digest(Json(before));
         });
@@ -49,18 +53,23 @@ public partial class FullSourceInstallationServiceTest
     }
 
     /// <summary>
-    /// An operation of an earlier build that stopped while preparing, with nothing changed in the game folder, is rolled
-    /// back by whatever touches the installation first, and the installation works as before.
+    /// An operation of an earlier build that stopped while preparing, or while ready before it entered the engine,
+    /// with nothing changed in the game folder, is rolled back by whatever touches the installation first, and the
+    /// installation works as before.
     /// </summary>
     /// <param name="entryPoint">What touches the installation first.</param>
+    /// <param name="boundary">Where the earlier build stopped.</param>
     /// <returns>The verification task.</returns>
-    [TestCase("reconcile")]
-    [TestCase("launch")]
-    [TestCase("update")]
-    public async Task LegacyPendingInPreparation_IsRolledBackAndTheInstallationWorks(string entryPoint)
+    [TestCase("reconcile", "stage-create")]
+    [TestCase("launch", "stage-create")]
+    [TestCase("update", "stage-create")]
+    [TestCase("reconcile", "engine-apply")]
+    [TestCase("launch", "engine-apply")]
+    [TestCase("update", "engine-apply")]
+    public async Task LegacyPendingBeforeTheEngine_IsRolledBackAndTheInstallationWorks(string entryPoint, string boundary)
     {
         Fixture fixture = Create();
-        var (operation, _, operationBytes) = await LegacyPending(fixture, "stage-create", false);
+        var (operation, _, operationBytes) = await LegacyPending(fixture, boundary, false);
         Assert.That(Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["Pending"], Is.Not.Null);
 
         switch (entryPoint)
@@ -92,17 +101,32 @@ public partial class FullSourceInstallationServiceTest
     }
 
     /// <summary>
-    /// An operation of an earlier build that got past preparation cannot be finished here. The installation, the
-    /// operation and the head stay as they are, and the message says how to start over.
+    /// An operation of an earlier build that got past the start of the engine cannot be finished here. The
+    /// installation, the operation and the head stay as they are, and the message says how to start over.
     /// </summary>
-    /// <param name="after">Whether the earlier build stopped after the engine applied the generation.</param>
+    /// <param name="evidence">What the engine left: its work folder after a full run, or its marker or an unrelated change.</param>
     /// <returns>The verification task.</returns>
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task LegacyPendingPastPreparation_IsRefusedWithAWayOutAndEvidenceRetained(bool after)
+    [TestCase("applied")]
+    [TestCase("marker")]
+    [TestCase("work-folder")]
+    [TestCase("changed-game-file")]
+    public async Task LegacyPendingPastTheEngineStart_IsRefusedWithAWayOutAndEvidenceRetained(string evidence)
     {
         Fixture fixture = Create();
-        var (operation, head, operationBytes) = await LegacyPending(fixture, "engine-apply", after);
+        var (operation, head, operationBytes) = await LegacyPending(fixture, "engine-apply", evidence == "applied");
+        switch (evidence)
+        {
+            case "marker":
+                fixture.Fs.File.WriteAllText(fixture.Fs.Path.Combine(fixture.Install, ".redux-transaction.active"), "engine marker");
+                break;
+            case "work-folder":
+                fixture.Fs.Directory.CreateDirectory(fixture.Fs.Path.Combine(
+                    fixture.Root, $".redux-fullsource-{fixture.Entry.Id:N}", $"{fixture.Fs.Path.GetFileNameWithoutExtension(operation)}-work"));
+                break;
+            case "changed-game-file":
+                Put(fixture.Fs, fixture.Install, BUNDLE, "changed by someone else");
+                break;
+        }
         Dictionary<string, string> tree = fixture.Fs.Directory.EnumerateFiles(fixture.Install, "*", SearchOption.AllDirectories)
             .ToDictionary(path => path, path => Digest(fixture.Fs.File.ReadAllBytes(path)));
 

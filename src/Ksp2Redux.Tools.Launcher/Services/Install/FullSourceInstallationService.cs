@@ -83,14 +83,20 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
     }
 
     /// <inheritdoc />
-    public FullSourceReleaseIdentity? GetPublishedIdentity(Guid installationId)
+    public FullSourceReleaseIdentity? GetPublishedIdentity(Guid installationId) => ReadPublished(installationId).Release;
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string>? GetPublishedBootConfigSettings(Guid installationId) =>
+        ReadPublished(installationId).ReleaseBootConfig;
+
+    private Catalog ReadPublished(Guid installationId)
     {
         Ksp2InstallEntry entry = Entry(installationId);
         using FileSystemStream lease = Lock(entry);
         Catalog catalog = ReadCatalog(entry) ?? throw new InvalidDataException("The full-source catalog is absent.");
         if (catalog.Pending is not null || Exists(_fs.Path.Combine(Root(entry), ".redux-transaction.active")))
             throw new IOException("Installation recovery must finish before reading its published identity.");
-        return catalog.Release;
+        return catalog;
     }
 
     /// <inheritdoc />
@@ -309,7 +315,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         if (isInitialConversion)
             Write(HeadPath(entry), catalog, "catalog-initialize");
         Operation operation = Begin(entry, catalog, current, target.Manifest, target.Identity, repair,
-            fullDirectorySource: moveSource && fullPreparedStage);
+            fullDirectorySource: moveSource && fullPreparedStage, bootConfigSettings: target.BootConfigSettings);
         Catalog previousCatalog = catalog;
         catalog = catalog with { Pending = operation.TransactionId };
         Write(HeadPath(entry), catalog, "catalog-pending", previousCatalog);
@@ -417,7 +423,8 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
 
     private Operation Begin(Ksp2InstallEntry entry, Catalog catalog, StockBaselineManifest current,
         StockBaselineManifest target, FullSourceReleaseIdentity? identity, bool repair = false,
-        bool stockArchiveSource = false, bool fullDirectorySource = false)
+        bool stockArchiveSource = false, bool fullDirectorySource = false,
+        IReadOnlyDictionary<string, string>? bootConfigSettings = null)
     {
         Guid id = Guid.NewGuid();
         if (Exists(SourceRoot(entry, id)) || Exists(WorkRoot(entry, id)) || Exists(OperationPath(entry, id)) ||
@@ -442,7 +449,11 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             catalog.Archive, null, "preparing", null, ChangedFileStaging: true,
             SparseSourceStaging: identity is not null && _os.IsWindows() && !fullDirectorySource, StockArchiveSource: stockArchiveSource,
             MovedFileUndo: _os.IsWindows(),
-            OwnedSourceStaging: identity is not null && _os.IsWindows() && _fs is RealFileSystem);
+            OwnedSourceStaging: identity is not null && _os.IsWindows() && _fs is RealFileSystem,
+            // An empty record means the release has none, which differs from a catalog that never recorded them.
+            BootConfigSettings: identity is null ? null : (bootConfigSettings ?? new Dictionary<string, string>())
+                .Where(setting => BootConfigFile.IsValidSetting(setting.Key, setting.Value))
+                .ToDictionary(setting => setting.Key, setting => setting.Value, StringComparer.Ordinal));
         _ = new InstallTransactionPlan(id, Root(entry), operation.SourceRoot, operation.WorkRoot, current, target,
             Manifest(catalog.Stock), catalog.Archive ?? new StockBaselineFile(_fs.Path.Combine(Root(entry), "uninstall.zip"),
                 1, new string('0', 64)), catalog.RetainedFiles.Where(targetFiles.Contains),
@@ -468,7 +479,10 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         Operation operation = ReadOperation(entry, catalog);
         InstallTransactionResult result;
         Exception? archiveFailure;
-        if (operation.Phase == "preparing")
+        // An earlier build writes ready before it enters the engine. Until the engine leaves its marker or work root,
+        // no game file was touched, so such an operation rolls back like one that was still preparing.
+        bool legacyReady = catalog.LegacyStored is not null && operation.Phase == "ready";
+        if (operation.Phase == "preparing" || legacyReady)
         {
             if (Exists(_fs.Path.Combine(Root(entry), ".redux-transaction.active")) || Exists(operation.WorkRoot))
                 throw catalog.LegacyStored is not null ? LegacyPendingRefusal(entry) : new InvalidDataException(
@@ -476,7 +490,14 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             // A backup promotion of an earlier build rewrites that build's own operation bytes, which this one cannot match.
             if (catalog.LegacyStored is not null && catalog.ExistingBackup is not null && catalog.Archive is null)
                 throw LegacyPendingRefusal(entry);
-            VerifyTree(Root(entry), Manifest(operation.Current), CancellationToken.None);
+            try
+            {
+                VerifyTree(Root(entry), Manifest(operation.Current), CancellationToken.None);
+            }
+            catch (InvalidDataException failure) when (legacyReady)
+            {
+                throw LegacyPendingRefusal(entry, failure);
+            }
             if (catalog.ExistingBackup is not null)
                 operation = CompletePendingBackupPromotion(entry, catalog, operation);
             result = InstallTransactionResult.RolledBack;
@@ -504,8 +525,9 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             if (operation.Result is { } recorded && recorded != result)
                 throw new InvalidDataException("The recorded result conflicts with verified engine evidence.");
         }
-        // Even an unhealthy backup must not hide a committed or restored generation.
-        if (operation.Phase != "preparing")
+        // Even an unhealthy backup must not hide a committed or restored generation. The operation file of an earlier
+        // build stays as it was written, since this build cannot rewrite those bytes.
+        if (operation.Phase != "preparing" && !legacyReady)
         {
             Operation previousOperation = operation;
             operation = operation with { Phase = "terminal", Result = result };
@@ -552,7 +574,8 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         }
         Catalog published = catalog with
         {
-            Ownership = ownership, Release = release, Archive = operation.Archive ?? catalog.Archive,
+            Ownership = ownership, Release = release,
+            ReleaseBootConfig = result == InstallTransactionResult.Committed ? operation.BootConfigSettings : catalog.ReleaseBootConfig, Archive = operation.Archive ?? catalog.Archive,
             Pending = null, LastResult = result, LastTransaction = operation.TransactionId, LegacyStored = null,
             UnownedDirectories = result == InstallTransactionResult.Committed
                 ? catalog.UnownedDirectories.Concat(Manifest(catalog.Ownership).Directories

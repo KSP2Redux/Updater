@@ -1,6 +1,7 @@
 ﻿using System.IO.Abstractions;
 using System.Runtime.ExceptionServices;
 using Ksp2Redux.Tools.Common.Patching;
+using Ksp2Redux.Tools.Common.Restoration;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -182,6 +183,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         {
             var entry = launcherConfigService.Config.Ksp2Installs.Single(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install);
             await Task.Run(() => fullSource.UninstallAsync(entry.Id, patchLog, ct, install), ct);
+            if (bootConfig is not null && ReadArchivedBootConfig(install, patchLog) is { } archived)
+                bootConfig.RecordStockSettings(entry, archived);
             bootConfig?.Revert(entry);
             stepsProgress(1, 1);
             return;
@@ -422,6 +425,34 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                 bootConfig?.Revert(legacyEntry);
             else
                 ApplyBootConfig(legacyEntry, null);
+        }
+    }
+
+    // An archive an earlier launcher wrote also holds the game's original boot.config. Newer archives do not, and a
+    // missing, oversized or unreadable entry just leaves the recorded originals as they are.
+    private Dictionary<string, string>? ReadArchivedBootConfig(string install, Action<string> log)
+    {
+        try
+        {
+            string path = fileSystem.Path.Combine(install, "uninstall.zip");
+            if (!fileSystem.File.Exists(path))
+                return null;
+            using var input = fileSystem.File.OpenRead(path);
+            using var archive = zipFileService.NewArchive(input, System.IO.Compression.ZipArchiveMode.Read, false);
+            var entry = archive.Entries.FirstOrDefault(item => !item.FullName.EndsWith('/') && BootConfigFile.IsExcluded(item.FullName));
+            if (entry is null || entry.Length > BootConfigFile.MAX_BYTES)
+                return null;
+            using var content = entry.Open();
+            var buffer = new byte[BootConfigFile.MAX_BYTES + 1];
+            int length = 0, read;
+            while (length < buffer.Length && (read = content.Read(buffer, length, buffer.Length - length)) > 0)
+                length += read;
+            return length > BootConfigFile.MAX_BYTES ? null : BootConfigFile.ReadSettings(buffer[..length]);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
+        {
+            log($"The original boot.config in the backup could not be read: {failure.Message}");
+            return null;
         }
     }
 

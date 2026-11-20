@@ -295,6 +295,17 @@ public interface IFullSourceInstallationService
     FullSourceReleaseIdentity? GetPublishedIdentity(Guid installationId);
 
     /// <summary>
+    /// Read the boot.config settings of the committed release, which are published with its generation.
+    /// </summary>
+    /// <param name="installationId">The configured installation identity.</param>
+    /// <returns>
+    /// The release's keys and values, empty when the release has none, or null when the catalog never recorded them
+    /// (written by an earlier launcher) or the installation is stock.
+    /// </returns>
+    /// <exception cref="IOException">Thrown when pending recovery or coordination prevents the read.</exception>
+    IReadOnlyDictionary<string, string>? GetPublishedBootConfigSettings(Guid installationId) => null;
+
+    /// <summary>
     /// Recover pending work and publish its verified outcome, including after marker cleanup.
     /// </summary>
     /// <remarks>

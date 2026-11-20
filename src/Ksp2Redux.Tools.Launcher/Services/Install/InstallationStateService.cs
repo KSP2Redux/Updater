@@ -289,8 +289,10 @@ public class InstallationStateService(IFileSystem fileSystem, IZipFileService zi
             JsonElement head = catalog.RootElement;
             string[] names = ["FormatVersion", "InstallationId", "InstallRoot", "StorageRoot", "Stock", "Ownership",
                 "Release", "Archive", "RetainedFiles", "UnownedDirectories", "RetentionPolicy", "Pending", "LastResult", "LastTransaction"];
+            // Catalogs written since the release's boot.config settings are recorded carry them as one more property.
+            string[] known = [.. names, "ReleaseBootConfig"];
             if (head.GetProperty("FormatVersion").GetInt32() != 1 ||
-                head.EnumerateObject().Count() != names.Length || head.EnumerateObject().Any(property => !names.Contains(property.Name)) ||
+                names.Any(name => !head.TryGetProperty(name, out _)) || head.EnumerateObject().Any(property => !known.Contains(property.Name)) ||
                 head.EnumerateObject().Select(property => property.Name).Distinct(StringComparer.Ordinal).Count() != head.EnumerateObject().Count() ||
                 head.GetProperty("InstallationId").GetGuid() != entry.Id ||
                 head.GetProperty("InstallRoot").GetString() != fileSystem.Path.GetDirectoryName(entry.ExePath) ||

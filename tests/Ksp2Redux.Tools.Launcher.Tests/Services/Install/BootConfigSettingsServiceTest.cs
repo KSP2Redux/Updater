@@ -358,4 +358,56 @@ public class BootConfigSettingsServiceTest
         Assert.That(others.Select(_fs.File.Exists), Is.All.True);
         Assert.That(Read(), Is.EqualTo("a=1\nk=v\ngfx-enable-gfx-jobs=1\n"));
     }
+
+    /// <summary>
+    /// An installation converted by an earlier launcher has no record of the keys that launcher wrote. The keys of its
+    /// original boot.config become the originals, replace a recorded storefront guess, and uninstall restores them
+    /// without touching the build identity or lines the original did not have.
+    /// </summary>
+    [Test]
+    public void RecordedStockSettings_AreRestoredByUninstall()
+    {
+        Write("wait-for-native-debugger=0\r\nhdr-display-enabled=1\r\ngc-max-time-slice=9\r\nbuild-guid=redux\r\nextra=2\r\nredux-only=1\r\n");
+        _entry.BootConfigOriginals = new() { ["gc-max-time-slice"] = "3", ["gfx-enable-gfx-jobs"] = null };
+
+        _service.RecordStockSettings(_entry, new Dictionary<string, string>
+        {
+            ["hdr-display-enabled"] = "0", ["gc-max-time-slice"] = "5", ["extra"] = "1", ["build-guid"] = "stock", ["bad key"] = "1"
+        });
+
+        Assert.That(_entry.BootConfigOriginals, Is.EqualTo(new Dictionary<string, string?>
+        {
+            ["gc-max-time-slice"] = "5", ["gfx-enable-gfx-jobs"] = null, ["hdr-display-enabled"] = "0", ["extra"] = "1"
+        }));
+        _configuration.Verify(service => service.TrySave(), Times.Once);
+
+        _service.Revert(_entry);
+
+        Assert.That(Read(), Is.EqualTo("wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=5\r\nbuild-guid=redux\r\nextra=1\r\nredux-only=1\r\n"));
+        Assert.That(_entry.BootConfigOriginals, Is.Empty);
+    }
+
+    /// <summary>
+    /// Nothing recorded and nothing to change is not saved, and a record that cannot be saved is still used by the
+    /// uninstall that follows.
+    /// </summary>
+    [Test]
+    public void RecordedStockSettings_AreNotSavedWhenUnchangedAndKeptWhenSavingFails()
+    {
+        _entry.BootConfigOriginals = new() { ["hdr-display-enabled"] = "0" };
+
+        _service.RecordStockSettings(_entry, new Dictionary<string, string>());
+        _service.RecordStockSettings(_entry, new Dictionary<string, string> { ["hdr-display-enabled"] = "0", ["build-guid"] = "x" });
+
+        _configuration.Verify(service => service.TrySave(), Times.Never);
+
+        _configuration.Setup(service => service.TrySave()).Returns(false);
+        Write("hdr-display-enabled=1\n");
+        _service.RecordStockSettings(_entry, new Dictionary<string, string> { ["gc-max-time-slice"] = "3" });
+
+        Assert.That(_entry.BootConfigOriginals.Keys, Is.EquivalentTo(new[] { "hdr-display-enabled", "gc-max-time-slice" }));
+        _log.Verify(log => log.Warn(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        _service.Revert(_entry);
+        Assert.That(Read(), Is.EqualTo("hdr-display-enabled=0\ngc-max-time-slice=3\n"));
+    }
 }

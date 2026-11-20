@@ -38,6 +38,19 @@ public interface IBootConfigSettingsService
     void SetReleaseSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string>? settings);
 
     /// <summary>
+    /// Record the settings of the installation's own original boot.config as the originals of those keys.
+    /// </summary>
+    /// <remarks>
+    /// For an installation an earlier launcher converted, whose stock archive still holds the original file and
+    /// which never recorded the keys that launcher wrote. Each key replaces its recorded original, because the
+    /// archive is the installation's own stock state. Keys that cannot be managed, such as build-guid, are ignored.
+    /// The record is saved when possible, and a later <see cref="Revert"/> writes these values back.
+    /// </remarks>
+    /// <param name="entry">The configured installation.</param>
+    /// <param name="stock">The keys and values of the original boot.config.</param>
+    void RecordStockSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string> stock);
+
+    /// <summary>
     /// Put every recorded key back to its stock state, delete the keys a stock file lacks, and clear the record.
     /// </summary>
     /// <remarks>
@@ -135,6 +148,26 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
                 return;
             entry.BootConfigReleaseSettings = wanted;
             configuration.Save();
+        }
+    }
+
+    /// <inheritdoc />
+    public void RecordStockSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string> stock)
+    {
+        lock (_gate)
+        {
+            var originals = new Dictionary<string, string?>(entry.BootConfigOriginals, StringComparer.Ordinal);
+            foreach (var (key, value) in stock)
+            {
+                if (BootConfigFile.IsValidSetting(key, value))
+                    originals[key] = value;
+            }
+            if (originals.Count == entry.BootConfigOriginals.Count && !originals.Except(entry.BootConfigOriginals).Any())
+                return;
+            // Kept in memory even when it cannot be saved, so the revert that follows still uses it.
+            entry.BootConfigOriginals = originals;
+            if (!configuration.TrySave())
+                log.Warn("Could not save the original boot.config settings. They are used for this restore only.");
         }
     }
 

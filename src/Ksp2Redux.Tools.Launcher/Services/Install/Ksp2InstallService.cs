@@ -292,8 +292,31 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (TargetEntry is not { } entry) return;
         if (Ksp2 is not { IsValid: true } ksp2) return;
         if (ksp2.Distribution == Distribution.Redux)
+        {
+            RestoreReleaseSettings(entry);
             bootConfig?.Apply(entry);
+        }
         else if (entry.BootConfigOriginals.Count != 0)
+        {
             bootConfig?.Revert(entry);
+        }
+    }
+
+    // The committed generation carries its release's settings. The configuration record is written after the commit,
+    // so an interrupted install can leave it missing or stale.
+    private void RestoreReleaseSettings(Ksp2InstallEntry entry)
+    {
+        if (bootConfig is null || fullSource is null)
+            return;
+        try
+        {
+            if (fullSource.HasCatalog(fileSystem.Path.GetDirectoryName(entry.ExePath)!) &&
+                fullSource.GetPublishedBootConfigSettings(entry.Id) is { } published)
+                bootConfig.SetReleaseSettings(entry, published);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException)
+        {
+            logService.Warn($"The release's boot.config settings could not be read: {failure.Message}");
+        }
     }
 }

@@ -15,15 +15,15 @@ public partial class FullSourceInstallationServiceTest
     private const string BOOT_CONFIG_FILE_BYTES = "legacy boot.config as an earlier build recorded it";
 
     // The contract as an earlier build wrote it: the same files plus one boot.config entry.
-    private static byte[] LegacyContract(byte[] canonical)
+    private static byte[] LegacyContract(byte[] canonical, byte[]? bootConfig = null)
     {
+        bootConfig ??= Encoding.UTF8.GetBytes(BOOT_CONFIG_FILE_BYTES);
         var node = JsonNode.Parse(canonical)!.AsObject();
         var files = node["files"]!.AsArray();
         var list = files.Select(file => file!.DeepClone()).ToList();
         list.Add(new JsonObject
         {
-            ["path"] = BOOT, ["length"] = Encoding.UTF8.GetByteCount(BOOT_CONFIG_FILE_BYTES),
-            ["sha256"] = Digest(Encoding.UTF8.GetBytes(BOOT_CONFIG_FILE_BYTES))
+            ["path"] = BOOT, ["length"] = bootConfig.Length, ["sha256"] = Digest(bootConfig)
         });
         list = list.OrderBy(file => (string)file!["path"]!, StringComparer.Ordinal).ToList();
         files.Clear();
@@ -69,6 +69,8 @@ public partial class FullSourceInstallationServiceTest
         {
             LegacyBytes(catalog, "Stock");
             LegacyBytes(catalog, "Ownership");
+            // Earlier builds did not record the release's boot.config settings.
+            catalog.Remove("ReleaseBootConfig");
             if (catalog["Release"] is JsonObject identity)
                 identity["ManifestSha256"] = releaseDigest ?? Digest(LegacyContract(fixture.Target2.Manifest.ToJson()));
         });
@@ -77,6 +79,7 @@ public partial class FullSourceInstallationServiceTest
             LegacyBytes(journal, "Current");
             LegacyBytes(journal, "Target");
             LegacyBytes(journal, "ReleaseManifest");
+            journal.Remove("BootConfigSettings");
             if (journal["Release"] is JsonObject identity)
                 identity["ManifestSha256"] = releaseDigest ?? Digest(LegacyContract(fixture.Target2.Manifest.ToJson()));
         });
@@ -176,8 +179,10 @@ public partial class FullSourceInstallationServiceTest
     }
 
     // Add boot.config to a stock backup and give it the older embedded manifest, then pin the new bytes.
-    private static void WriteLegacyArchive(Fixture fixture, bool corruptManifest = false, string? extraEntry = null)
+    private static void WriteLegacyArchive(Fixture fixture, bool corruptManifest = false, string? extraEntry = null,
+        byte[]? archivedBootConfig = null)
     {
+        archivedBootConfig ??= Encoding.UTF8.GetBytes(BOOT_CONFIG_FILE_BYTES);
         byte[] bytes = fixture.Fs.File.ReadAllBytes(fixture.Archive);
         using (var stream = new MemoryStream())
         {
@@ -193,13 +198,13 @@ public partial class FullSourceInstallationServiceTest
                     canonical = copy.ToArray();
                 }
                 manifest.Delete();
-                byte[] legacy = LegacyContract(canonical);
+                byte[] legacy = LegacyContract(canonical, archivedBootConfig);
                 if (corruptManifest)
                     legacy = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(legacy).Replace("storefront/build-original", "storefront/other"));
                 using (Stream output = zip.CreateEntry(StockBaselineManifest.MANIFEST_PATH, CompressionLevel.NoCompression).Open())
                     output.Write(legacy);
                 using (Stream output = zip.CreateEntry(BOOT, CompressionLevel.NoCompression).Open())
-                    output.Write(Encoding.UTF8.GetBytes(BOOT_CONFIG_FILE_BYTES));
+                    output.Write(archivedBootConfig);
                 if (extraEntry is not null)
                 {
                     using Stream output = zip.CreateEntry(extraEntry, CompressionLevel.NoCompression).Open();

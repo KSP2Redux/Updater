@@ -1,0 +1,208 @@
+using System.Text;
+using System.Text.Json.Nodes;
+using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Common.Transactions;
+using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Moq;
+
+namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
+
+/// <summary>
+/// The release's boot.config settings are published with its generation, and uninstall restores the original file's keys.
+/// </summary>
+public partial class FullSourceInstallationServiceTest
+{
+    // The independent test authority accepts the target again once it carries settings.
+    private static FullSourcePreparedTarget WithBootSettings(Fixture fixture, FullSourcePreparedTarget target,
+        Dictionary<string, string> settings)
+    {
+        FullSourcePreparedTarget changed = target with { BootConfigSettings = settings };
+        fixture.Preparation.Setup(service => service.VerifyTargetAsync(changed, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        return changed;
+    }
+
+    private static (Ksp2InstallService Installs, InstallationStateService Guard) Installs(Fixture fixture)
+    {
+        FullSourceInstallationService coordinator = fixture.Service();
+        var guard = new InstallationStateService(fixture.Fs, new ZipFileService(fixture.Fs), coordinator);
+        return (new Ksp2InstallService(fixture.Configuration, fixture.Fs, Mock.Of<IModuleDefinitionService>(),
+            Mock.Of<ILogService>(), guard, coordinator,
+            new BootConfigSettingsService(fixture.Configuration, fixture.Fs, Mock.Of<ILogService>())), guard);
+    }
+
+    /// <summary>
+    /// A release's settings are published with the generation that commits, an update without settings records none,
+    /// and stock has no release settings.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task ReleaseBootSettings_ArePublishedWithTheCommittedGeneration()
+    {
+        Fixture fixture = Create();
+        var settings = new Dictionary<string, string> { ["enable-directstorage"] = "True", ["gc-max-time-slice"] = "3" };
+
+        await Apply(fixture, target: WithBootSettings(fixture, fixture.Target2, settings));
+        Assert.That(fixture.Service().GetPublishedBootConfigSettings(fixture.Entry.Id), Is.EqualTo(settings));
+
+        await Apply(fixture, target: fixture.Target3, initial: false);
+        Assert.That(fixture.Service().GetPublishedBootConfigSettings(fixture.Entry.Id), Is.Empty,
+            "A release without settings records that it has none.");
+
+        await fixture.Service().UninstallAsync(fixture.Entry.Id, _ => { }, CancellationToken.None);
+        Assert.That(fixture.Service().GetPublishedBootConfigSettings(fixture.Entry.Id), Is.Null);
+    }
+
+    /// <summary>
+    /// A rolled-back update leaves the settings of the generation that stayed.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task RolledBackUpdate_KeepsThePublishedReleaseSettings()
+    {
+        Fixture fixture = Create();
+        var settings = new Dictionary<string, string> { ["enable-directstorage"] = "True" };
+        await Apply(fixture, target: WithBootSettings(fixture, fixture.Target2, settings));
+        await Assert.ThrowsAsync<IOException>(async () => await Apply(fixture, fixture.Service((name, after) =>
+        {
+            if (name == "stage-create" && !after)
+                throw new IOException("Process loss");
+        }), fixture.Target3, initial: false));
+
+        Assert.That(fixture.Service().Reconcile(fixture.Entry.Id)!.TransactionResult, Is.EqualTo(InstallTransactionResult.RolledBack));
+        Assert.That(fixture.Service().GetPublishedBootConfigSettings(fixture.Entry.Id), Is.EqualTo(settings));
+    }
+
+    /// <summary>
+    /// The launcher stops after the game committed and before it saved the release's settings. The next start finds
+    /// the settings in the catalog and writes them.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task InterruptedInstall_StartupAppliesTheCommittedReleaseSettings()
+    {
+        Fixture fixture = Create();
+        FullSourcePreparedTarget target = WithBootSettings(fixture, fixture.Target2, new() { ["enable-directstorage"] = "True" });
+        await Assert.ThrowsAsync<IOException>(async () => await Apply(fixture, fixture.Service((name, after) =>
+        {
+            if (name == "engine-apply" && after)
+                throw new IOException("Process loss after the engine committed");
+        }), target));
+        Assert.That(fixture.Entry.BootConfigReleaseSettings, Is.Null);
+        var (installs, _) = Installs(fixture);
+
+        installs.TryLoadKsp2Install();
+        installs.ApplyActiveInstallBootConfig();
+
+        Assert.That(fixture.Entry.BootConfigReleaseSettings, Is.EqualTo(new Dictionary<string, string> { ["enable-directstorage"] = "True" }));
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)),
+            Is.EqualTo(STOCK_BOOT + "enable-directstorage=True\r\ngfx-enable-gfx-jobs=0\r\n"));
+    }
+
+    /// <summary>
+    /// A stale configuration record is replaced by the catalog's, and a release without settings clears it.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task StaleConfigurationRecord_IsReplacedByTheCatalogRecord()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        fixture.Entry.BootConfigReleaseSettings = new() { ["old-setting"] = "1" };
+        var (installs, _) = Installs(fixture);
+        installs.TryLoadKsp2Install();
+
+        installs.ApplyActiveInstallBootConfig();
+
+        Assert.That(fixture.Entry.BootConfigReleaseSettings, Is.Null);
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT + "gfx-enable-gfx-jobs=0\r\n"));
+    }
+
+    /// <summary>
+    /// A catalog written before the settings were recorded still reads, is not rewritten by the read, and leaves the
+    /// configuration record as it is.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task CatalogWithoutRecordedSettings_ReadsAndLeavesTheConfigurationRecord()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture, target: WithBootSettings(fixture, fixture.Target2, new() { ["enable-directstorage"] = "True" }));
+        Rewrite(fixture, fixture.Head, catalog => catalog.Remove("ReleaseBootConfig"));
+        byte[] head = fixture.Fs.File.ReadAllBytes(fixture.Head);
+        fixture.Entry.BootConfigReleaseSettings = new() { ["kept"] = "1" };
+        var (installs, _) = Installs(fixture);
+        installs.TryLoadKsp2Install();
+
+        Assert.That(fixture.Service().GetPublishedBootConfigSettings(fixture.Entry.Id), Is.Null);
+        installs.ApplyActiveInstallBootConfig();
+
+        Assert.That(fixture.Entry.BootConfigReleaseSettings, Is.EqualTo(new Dictionary<string, string> { ["kept"] = "1" }));
+        Assert.That(fixture.Fs.File.ReadAllBytes(fixture.Head), Is.EqualTo(head));
+        fixture.Service().AcquireLaunchLease(fixture.Install)?.Dispose();
+        string configurationPath = fixture.Configuration.Config.StoragePath;
+        fixture.Fs.File.WriteAllBytes(configurationPath, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(fixture.Configuration.Config));
+        Assert.DoesNotThrow(() => new InstallationStateService(fixture.Fs, new ZipFileService(fixture.Fs))
+            .EnsureSelfUpdateAllowedFromFile(configurationPath));
+    }
+
+    /// <summary>
+    /// A recorded setting the launcher could not write, such as the build identity, is evidence of a corrupt catalog.
+    /// </summary>
+    /// <returns>The verification task.</returns>
+    [Test]
+    public async Task CatalogWithAnInvalidRecordedSetting_IsRefused()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        Rewrite(fixture, fixture.Head, catalog => catalog["ReleaseBootConfig"] = new JsonObject { ["build-guid"] = "other" });
+
+        Assert.Throws<InvalidDataException>(() => fixture.Service().GetPublishedBootConfigSettings(fixture.Entry.Id));
+    }
+
+    private const string ARCHIVED_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=3\r\nbuild-guid=stock-guid\r\nextra=5\r\n";
+    private const string REDUX_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=1\r\ngc-max-time-slice=3\r\nbuild-guid=redux-guid\r\nextra=9\r\nredux-only=1\r\n";
+
+    /// <summary>
+    /// Uninstalling an installation an earlier launcher converted restores the keys of the original boot.config in its
+    /// backup, even though the settings step never recorded them, and never changes the build identity. An entry that
+    /// is missing, too large or has no usable line changes nothing, and the uninstall still works.
+    /// </summary>
+    /// <param name="archived">The boot.config in the earlier launcher's backup, or null for a backup without one.</param>
+    /// <param name="expected">The boot.config after the uninstall.</param>
+    /// <returns>The verification task.</returns>
+    [TestCase(ARCHIVED_BOOT,
+        "wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=3\r\nbuild-guid=redux-guid\r\nextra=5\r\nredux-only=1\r\n")]
+    [TestCase(null, REDUX_BOOT)]
+    [TestCase("oversized", REDUX_BOOT)]
+    [TestCase("unusable", REDUX_BOOT)]
+    public async Task UninstallOfAnEarlierLauncherInstall_RestoresTheArchivedBootConfigKeys(string? archived, string expected)
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        WriteLegacyRecords(fixture);
+        if (archived is not null)
+        {
+            byte[] bytes = archived switch
+            {
+                "oversized" => Encoding.UTF8.GetBytes("hdr-display-enabled=0\r\n" + new string('x', 64 * 1024)),
+                "unusable" => [0xFF, 0xFE, 0x00, 0x01, 0x80],
+                _ => Encoding.UTF8.GetBytes(archived)
+            };
+            WriteLegacyArchive(fixture, archivedBootConfig: bytes);
+        }
+        fixture.Fs.File.WriteAllBytes(At(fixture.Fs, fixture.Install, BOOT), Encoding.UTF8.GetBytes(REDUX_BOOT));
+        using var output = new StringWriter();
+        CliContext context = Context(fixture, output, bootSettings: true);
+        var plan = new InstallPlan();
+        plan.Uninstall();
+
+        await context.InstallPlanService.ApplyToFolder(plan, fixture.Install, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None);
+
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(expected));
+        Assert.That(fixture.Entry.BootConfigOriginals, Is.Empty);
+        Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.Null);
+    }
+}
