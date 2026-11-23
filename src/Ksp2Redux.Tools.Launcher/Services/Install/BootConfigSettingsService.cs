@@ -96,12 +96,6 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
             var originals = new Dictionary<string, string?>(entry.BootConfigOriginals, StringComparer.Ordinal);
             foreach (string key in desired.Keys)
                 originals.TryAdd(key, BootConfigFile.StockValue(key));
-            // The record comes first, so a write that happens never lacks the original it replaces.
-            if (originals.Count != entry.BootConfigOriginals.Count && !Persist(entry, originals))
-            {
-                log.Warn($"Could not save the boot.config undo record. {path} was left as it is and will be tried again later.");
-                return;
-            }
 
             var changes = new Dictionary<string, string?>(desired.Count, StringComparer.Ordinal);
             var dropped = new List<string>();
@@ -124,6 +118,14 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
                 }
             }
             byte[] edited = BootConfigFile.Edit(content, changes);
+            if (!FitsWhenWritten(path, edited))
+                return;
+            // The record comes first, so a write that happens never lacks the original it replaces.
+            if (originals.Count != entry.BootConfigOriginals.Count && !Persist(entry, originals))
+            {
+                log.Warn($"Could not save the boot.config undo record. {path} was left as it is and will be tried again later.");
+                return;
+            }
             if (!ReferenceEquals(edited, content) && !Write(path, edited))
                 return;
             // Only a key that went back to its original, or already was there, leaves the record.
@@ -179,16 +181,17 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
                     }
                     else
                     {
-                        // A file too large to read stays as it is, and so does the record.
-                        if (Read(path) is not { } content)
+                        byte[]? content = Read(path);
+                        byte[]? edited = content is null ? null : BootConfigFile.Edit(content, originals
+                            .Where(original => BootConfigFile.IsValidSetting(original.Key, ""))
+                            .ToDictionary(original => original.Key, original => original.Value));
+                        // Keep the record if the file cannot be read or the edit would make it unreadable.
+                        if (edited is null || !FitsWhenWritten(path, edited))
                         {
                             if (stock is null)
                                 SetReleaseSettings(entry, null);
                             return false;
                         }
-                        byte[] edited = BootConfigFile.Edit(content, originals
-                            .Where(original => BootConfigFile.IsValidSetting(original.Key, ""))
-                            .ToDictionary(original => original.Key, original => original.Value));
                         if (!ReferenceEquals(edited, content))
                             Replace(path, edited);
                     }
@@ -259,6 +262,14 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
             return content;
         log.Warn($"{path} is larger than {BootConfigFile.MAX_BYTES / 1024} KiB. Its settings were skipped.");
         return null;
+    }
+
+    private bool FitsWhenWritten(string path, byte[] content)
+    {
+        if (content.Length <= BootConfigFile.MAX_BYTES)
+            return true;
+        log.Warn($"Editing {path} would make it larger than {BootConfigFile.MAX_BYTES / 1024} KiB. Its settings were skipped.");
+        return false;
     }
 
     // Writes a temporary file beside the target, flushes it to disk and moves it over, so no reader or crash sees a

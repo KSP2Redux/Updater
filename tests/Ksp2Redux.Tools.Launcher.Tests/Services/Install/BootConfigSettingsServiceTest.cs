@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using System.Text;
+using Ksp2Redux.Tools.Common.Restoration;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -313,6 +314,33 @@ public class BootConfigSettingsServiceTest
         Assert.That(_entry.BootConfigOriginals.Keys, Is.EquivalentTo(new[] { "k" }));
         _log.Verify(log => log.Warn(It.Is<string>(text => text.Contains("larger than 64 KiB")),
             It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
+    }
+
+    [Test]
+    public void ApplyThatWouldExceedTheReadLimit_LeavesTheFileAndUndoRecordAlone()
+    {
+        string original = "#" + new string('x', BootConfigFile.MAX_BYTES - 2) + "\n";
+        Write(original);
+
+        _service.Apply(_entry);
+
+        Assert.That(Read(), Is.EqualTo(original));
+        Assert.That(_entry.BootConfigOriginals, Is.Empty);
+    }
+
+    [Test]
+    public void StockRestoreThatWouldExceedTheReadLimit_CanBeRetried()
+    {
+        string original = "#" + new string('x', BootConfigFile.MAX_BYTES - 2) + "\n";
+        Write(original);
+        var stock = new Dictionary<string, string> { ["wait-for-native-debugger"] = "0" };
+
+        Assert.That(_service.TryRestoreStockSettings(_entry, stock), Is.False);
+        Assert.That(Read(), Is.EqualTo(original));
+
+        Write("build-guid=keep\n");
+        Assert.That(_service.TryRestoreStockSettings(_entry, stock), Is.True);
+        Assert.That(Read(), Is.EqualTo("build-guid=keep\nwait-for-native-debugger=0\n"));
     }
 
     /// <summary>

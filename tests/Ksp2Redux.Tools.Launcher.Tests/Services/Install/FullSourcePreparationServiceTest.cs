@@ -339,6 +339,29 @@ public partial class FullSourcePreparationServiceTest
         await Assert.ThrowsAsync<InvalidDataException>(async () => await fixture.Preparation.VerifyTargetAsync(target, CancellationToken.None));
     }
 
+    [Test]
+    public async Task ChangedPublisherBootSettings_RejectThePreparedInstall()
+    {
+        Fixture fixture = Create();
+        fixture.Patch = fixture.Patch with
+        {
+            FullSource = fixture.Patch.FullSource! with { BootConfigSettings = new() { ["gfx-threading-mode"] = "6" } }
+        };
+        var target = await fixture.Preparation.FetchTargetAsync(RELEASE_ID, CHANNEL, CancellationToken.None);
+        var stock = await fixture.Preparation.FetchStockAsync(fixture.Entry.Id, target, CancellationToken.None);
+        fixture.Patch = fixture.Patch with
+        {
+            FullSource = fixture.Patch.FullSource! with { BootConfigSettings = new() { ["gfx-threading-mode"] = "2" } }
+        };
+
+        var coordinator = fixture.Coordinator();
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            await coordinator.ApplyAsync(fixture.Entry.Id, target, stock, false, _ => { }, CancellationToken.None));
+
+        Assert.That(failure!.Message, Does.Contain("boot settings"));
+        AssertTree(fixture.Fs, fixture.Install, fixture.Stock);
+    }
+
     /// <summary>
     /// Wrong metadata is rejected before target staging or live-file mutation.
     /// </summary>
@@ -505,18 +528,21 @@ public partial class FullSourcePreparationServiceTest
     /// <returns>The verification task.</returns>
     [TestCase("update", false)]
     [TestCase("legacy", false)]
+    [TestCase("legacy-missing-journal", false)]
     [TestCase("unsupported", false)]
     [TestCase("damaged", false)]
     [TestCase("repair", false)]
     [TestCase("update", true)]
     [TestCase("legacy", true)]
+    [TestCase("legacy-missing-journal", true)]
     [TestCase("unsupported", true)]
     [TestCase("damaged", true)]
     [TestCase("repair", true)]
     public async Task InstallPlanSelectsVerifiedReduxSourceOrStock(string scenario, bool separate)
     {
         Fixture fixture = Create();
-        bool legacy = scenario == "legacy";
+        bool missingJournal = scenario == "legacy-missing-journal";
+        bool legacy = scenario == "legacy" || missingJournal;
         if (legacy)
             PublishInOlderForm(fixture);
         var service = Services(fixture).GetRequiredService<IInstallPlanService>();
@@ -544,6 +570,8 @@ public partial class FullSourcePreparationServiceTest
         var publication = pipeline.PublishHosted(updateRoot, target, separate ? [stockSource] : [updateSource, stockSource], artifact);
         byte[] priorManifest = legacy ? fixture.Patch.FullSource!.TargetManifest : prior.ToJson();
         string priorDigest = Digest(priorManifest);
+        if (missingJournal)
+            WriteCatalogWithIncompleteLegacyIdentityMigration(fixture, priorDigest);
         if (legacy && !separate)
             publication = UseLegacyUpdateSource(fixture, artifact, publication, prior, priorManifest);
         var patch = pipeline.CreateFeedEntry(artifact, publication, "fixture-release-four", CHANNEL, "2.0.0.1.202",
@@ -620,7 +648,7 @@ public partial class FullSourcePreparationServiceTest
 
         bool usesInstalledSource = scenario is "update" or "legacy";
         int[] expectedPacks = usesInstalledSource ? updatePacks : stockPacks;
-        if (scenario is "repair" or "unsupported")
+        if (scenario is "repair" or "unsupported" or "legacy-missing-journal")
         {
             string[] changedFiles = scenario == "repair" ? [BUNDLE, "Redux/delta.txt"] : ["Redux/delta.txt"];
             var retained = target.Files.Select(file => file.Path).Except(changedFiles, StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal);
@@ -628,11 +656,16 @@ public partial class FullSourcePreparationServiceTest
         }
         string prefix = usesInstalledSource ? updatePrefix : "";
         var requests = expectedPacks.Select(index => $"{prefix}pack-{index:D6}.bin").Append(prefix + "release.json");
+        bool inspectedSeparateUpdate = missingJournal && separate;
+        if (inspectedSeparateUpdate)
+            requests = requests.Append(updatePrefix + "release.json");
         Assert.That(fixture.Requests.Select(request => new Uri(request.Url).Segments.Last()),
             Is.EquivalentTo(requests));
         string selectedArtifact = usesInstalledSource ? updateArtifactRoot : artifact;
         long expectedBytes = expectedPacks.Select(index => $"pack-{index:D6}.bin").Append("release.json")
             .Sum(name => fixture.Fs.FileInfo.New(At(fixture.Fs, selectedArtifact, name)).Length);
+        if (inspectedSeparateUpdate)
+            expectedBytes += fixture.Fs.FileInfo.New(At(fixture.Fs, updateArtifactRoot, "release.json")).Length;
         Assert.That(progress.Select(report => report.Bytes), Is.Ordered);
         Assert.That(progress.All(report => report.Bytes <= report.Total), Is.True);
         Assert.That(progress.Last(), Is.EqualTo((expectedBytes, expectedBytes)));
@@ -659,7 +692,7 @@ public partial class FullSourcePreparationServiceTest
             Assert.That(fixture.Fs.Directory.EnumerateFiles(stage, "*", SearchOption.AllDirectories), Is.EquivalentTo(
                 new[] { At(fixture.Fs, stage, BUNDLE), At(fixture.Fs, stage, "Redux/delta.txt") }));
         }
-        else if (scenario == "unsupported")
+        else if (scenario == "unsupported" || missingJournal)
         {
             Assert.That(fixture.Fs.Directory.EnumerateFiles(stage, "*", SearchOption.AllDirectories),
                 Is.EqualTo(new[] { At(fixture.Fs, stage, "Redux/delta.txt") }));

@@ -19,6 +19,28 @@ public partial class FullSourcePreparationServiceTest
 {
     private static byte[] Sha(byte[] bytes) => SHA256.HashData(bytes);
 
+    private static void WriteCatalogWithIncompleteLegacyIdentityMigration(Fixture fixture, string publishedDigest)
+    {
+        string head = At(fixture.Fs, fixture.Storage, $"full-source-v1/{fixture.Entry.Id:N}/installation.json");
+        var envelope = JsonNode.Parse(fixture.Fs.File.ReadAllBytes(head))!.AsObject();
+        var catalog = JsonNode.Parse(Convert.FromBase64String(envelope["Payload"]!.GetValue<string>()))!.AsObject();
+        fixture.Fs.File.Delete(At(fixture.Fs, fixture.Fs.Path.GetDirectoryName(head)!,
+            $"{catalog["LastTransaction"]!.GetValue<Guid>():N}.json"));
+
+        // Older installs with derived settings stored different boot bytes in ownership and the published contract.
+        catalog["Stock"] = Convert.ToBase64String(fixture.Stock.ToJsonWithBootConfig(15, new string('C', 64)));
+        catalog["Ownership"] = Convert.ToBase64String(fixture.Target.ToJsonWithBootConfig(20, new string('D', 64)));
+        var release = catalog["Release"]!.AsObject();
+        release["ManifestSha256"] = publishedDigest;
+        release.Remove("PublishedManifestSha256");
+
+        var options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(catalog, options);
+        envelope["Payload"] = Convert.ToBase64String(payload);
+        envelope["Sha256"] = Digest(payload);
+        fixture.Fs.File.WriteAllBytes(head, JsonSerializer.SerializeToUtf8Bytes(envelope, options));
+    }
+
     private static ReleaseRecipePublication UseLegacyUpdateSource(Fixture fixture, string artifact,
         ReleaseRecipePublication publication, StockBaselineManifest prior, byte[] legacyManifest)
     {

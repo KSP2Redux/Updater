@@ -103,6 +103,51 @@ public partial class FullSourceInstallationServiceTest
         }
     }
 
+    [TestCase("untouched")]
+    [TestCase("changed-target-file")]
+    [TestCase("engine-marker")]
+    public async Task LegacyReadyWithDerivedBoot_RollsBackOnlyWhenSafe(string scenario)
+    {
+        Fixture fixture = Create();
+        var (operation, head, _) = await LegacyPending(fixture, "engine-apply", false);
+        Rewrite(fixture, operation, journal =>
+        {
+            var target = JsonNode.Parse(Convert.FromBase64String(journal["Target"]!.GetValue<string>()))!.AsObject();
+            byte[] derived = "gfx-enable-gfx-jobs=0\n"u8.ToArray();
+            string bootHash = Digest(derived);
+            target["baselineIdentity"] = $"{fixture.Target3.Manifest.BaselineIdentity}:boot-v1:{bootHash}";
+            target["provenance"] = "authenticated release with explicit launcher boot configuration v1";
+            var files = target["files"]!.AsArray();
+            var boot = files.Single(file => file!["path"]!.GetValue<string>() == BOOT);
+            boot!["sha256"] = bootHash;
+            boot["length"] = derived.Length;
+            if (scenario == "changed-target-file")
+                files.Single(file => file!["path"]!.GetValue<string>() == BUNDLE)!["sha256"] = new string('C', 64);
+            journal["Target"] = Convert.ToBase64String(Json(target));
+            journal["DerivedBootConfig"] = true;
+        });
+        if (scenario == "engine-marker")
+            fixture.Fs.File.WriteAllText(fixture.Fs.Path.Combine(fixture.Install, ".redux-transaction.active"), "engine marker");
+        byte[] evidence = fixture.Fs.File.ReadAllBytes(operation);
+
+        if (scenario == "untouched")
+        {
+            var status = fixture.Service().Reconcile(fixture.Entry.Id)!;
+            Assert.That(status.TransactionResult, Is.EqualTo(InstallTransactionResult.RolledBack));
+            Assert.That(status.Release!.ManifestSha256, Is.EqualTo(fixture.Target2.Identity.ManifestSha256));
+            fixture.Service().AcquireLaunchLease(fixture.Install)?.Dispose();
+        }
+        else
+        {
+            var failure = Assert.Throws<InvalidDataException>(() => fixture.Service().Reconcile(fixture.Entry.Id));
+            Assert.That(failure!.Message, Does.Contain(scenario == "engine-marker"
+                ? "uninstall the game in Steam or Epic"
+                : "differs from its authenticated release"));
+            Assert.That(fixture.Fs.File.ReadAllBytes(fixture.Head), Is.EqualTo(head));
+        }
+        Assert.That(fixture.Fs.File.ReadAllBytes(operation), Is.EqualTo(evidence));
+    }
+
     /// <summary>
     /// An operation of an earlier build that got past the start of the engine cannot be finished here. The
     /// installation, the operation and the head stay as they are, and the message says how to start over.

@@ -195,10 +195,16 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 release.Patch.Size, release.Patch.ChecksumSha256, "", markerBytes, descriptor.DownloadBytes, downloadProgress, ct);
             markerBytes += release.Patch.Size;
             ReleaseRecipePipeline.ValidateFeedArtifact(stock.Manifest, descriptor, release.Patch.Size);
-            // Without a direct source, the stock recipe can skip target files the installation already supplies.
             string? sourceDigest = descriptor.UpdateSourceDigests?.FirstOrDefault(digest => installedRelease?.MatchesManifestDigest(digest) == true);
-            bool hasDirectSource = update is not null || sourceDigest is not null;
-            Guid? retentionId = repairInstallationId ?? (!hasDirectSource && installedRelease is not null ? installationId : null);
+            if (installationId is { } inlineId && installedRelease is not null && sourceDigest is not null)
+            {
+                var contract = ReleaseRecipePipeline.GetSourceContract(stock.Manifest, sourceDigest);
+                if (await VerifyInstalledRecipeSourceAsync(inlineId, contract, installedRelease, sourceDigest, ct) is { } installedSource)
+                    return await PrepareArtifactAsync(release, stock, installedSource, markerBytes, downloadProgress, ct);
+            }
+
+            // Without a verified direct source, the stock recipe can skip target files the installation already supplies.
+            Guid? retentionId = repairInstallationId ?? (installedRelease is not null ? installationId : null);
             FullSourceTargetRetention? retention = null;
             if (retentionId is { } retainingId && _os.IsWindows())
             {
@@ -211,7 +217,9 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 }
                 retention = new FullSourceTargetRetention(retainingId, paths.ToFrozenSet(StringComparer.Ordinal), installedRelease?.ManifestSha256);
             }
-            var source = await SelectRecipeSourceAsync(descriptor, stock.Manifest, installationId, installedRelease, sourceDigest, ct, retention?.Paths);
+            var source = ReleaseManifestValidator.GetPrepatchBaseline(descriptor) is { } prepatch
+                ? await PreparePrepatchSourceAsync(descriptor, prepatch, ct)
+                : await SelectBaselineAsync(descriptor.Baselines, ct, stock.Manifest, retention?.Paths);
             return await PrepareArtifactAsync(release, stock, source, markerBytes, downloadProgress, ct, retention);
         }
         finally
@@ -298,7 +306,8 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         }, ct);
         return new FullSourcePreparedTarget(Identity(release), target, stage, release.Feed.SnapshotAuthority())
         {
-            InstalledBaseline = installed, TargetRetention = retention, BootConfigSettings = descriptor.BootConfigSettings
+            InstalledBaseline = installed, TargetRetention = retention,
+            BootConfigSettings = descriptor.BootConfigSettings?.ToFrozenDictionary(StringComparer.Ordinal)
         };
     }
 
@@ -328,27 +337,18 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         return _fs.File.Exists(path) ? _fs.FileInfo.New(path).Length : 0;
     }
 
-    private async Task<RecipeSource> SelectRecipeSourceAsync(
-        FullSourceReleaseDescriptor descriptor, ReleaseRecipeManifest manifest, Guid? installationId,
-        FullSourceReleaseIdentity? installedRelease, string? sourceDigest, CancellationToken ct, IReadOnlySet<string>? retainedTargetPaths)
-    {
-        if (installationId is { } id && installedRelease is not null && sourceDigest is not null)
-        {
-            var contract = ReleaseRecipePipeline.GetSourceContract(manifest, sourceDigest);
-            if (await VerifyInstalledRecipeSourceAsync(id, contract, installedRelease, sourceDigest, ct) is { } source)
-                return source;
-        }
-        if (ReleaseManifestValidator.GetPrepatchBaseline(descriptor) is { } prepatch)
-            return await PreparePrepatchSourceAsync(descriptor, prepatch, ct);
-        return await SelectBaselineAsync(descriptor.Baselines, ct, manifest, retainedTargetPaths);
-    }
-
     private async Task<RecipeSource?> VerifyInstalledRecipeSourceAsync(Guid installationId, StockBaselineManifest contract,
         FullSourceReleaseIdentity installedRelease, string sourceDigest, CancellationToken ct)
     {
         string normalized = Digest(contract.ToJson());
         if (!normalized.Equals(installedRelease.ManifestSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            // If catalog migration could only retain the older published digest, this installed-source recipe
+            // cannot bind to its normalized identity. The stock path can still verify the live owned tree.
+            if (contract.DroppedBootConfig is not null && sourceDigest.Equals(installedRelease.ManifestSha256, StringComparison.OrdinalIgnoreCase))
+                return null;
             throw new InvalidDataException("The update recipe source differs from the installed release contract.");
+        }
         string root = InstallRoot(Entry(installationId));
         if (await TreeMatchesAsync(root, contract, ct))
             return new RecipeSource(contract, root, installationId)
@@ -546,7 +546,12 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         AuthorityRelease release = await ResolveAsync(target.Identity.ReleaseId, target.Identity.Channel, ct, target.AuthorityFeed);
         if (target.Identity != Identity(release) ||
             !target.Manifest.ToJson().AsSpan().SequenceEqual(release.Descriptor.GetNormalizedTargetManifest()))
-            throw new InvalidDataException("Prepared release identity or permission differs from fresh configured authority metadata.");
+            throw new InvalidDataException("Prepared release differs from fresh configured authority metadata.");
+        var preparedSettings = target.BootConfigSettings;
+        var publishedSettings = release.Descriptor.BootConfigSettings;
+        if ((preparedSettings?.Count ?? 0) != (publishedSettings?.Count ?? 0) ||
+            (preparedSettings is { Count: > 0 } && preparedSettings.Except(publishedSettings!).Any()))
+            throw new InvalidDataException("Prepared release boot settings differ from fresh configured authority metadata. Prepare the release again.");
         return release;
     }
 

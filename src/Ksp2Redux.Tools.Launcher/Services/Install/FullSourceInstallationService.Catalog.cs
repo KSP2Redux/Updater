@@ -281,12 +281,14 @@ public partial class FullSourceInstallationService
         };
     }
 
-    private static byte[] NormalizeContract(byte[] bytes)
+    private static byte[] NormalizeContract(byte[] bytes) => ReadLegacyContract(bytes).ToJson();
+
+    private static StockBaselineManifest ReadLegacyContract(byte[] bytes)
     {
         StockBaselineManifest manifest = StockBaselineManifest.FromJson(bytes);
         if (!manifest.IsCanonical(bytes))
             throw new InvalidDataException("A catalog manifest is noncanonical. Evidence retained.");
-        return manifest.ToJson();
+        return manifest;
     }
 
     private Operation ReadOperation(Ksp2InstallEntry entry, Catalog catalog)
@@ -372,16 +374,36 @@ public partial class FullSourceInstallationService
     // The contracts of an operation written before boot.config left them, in their normalized form.
     private static Operation NormalizeLegacyOperation(Operation operation)
     {
-        byte[] release = NormalizeContract(operation.ReleaseManifest);
+        StockBaselineManifest releaseContract = ReadLegacyContract(operation.ReleaseManifest);
+        StockBaselineManifest targetContract = ReadLegacyContract(operation.Target);
+        byte[] release = releaseContract.ToJson();
+        byte[] target = targetContract.ToJson();
         FullSourceReleaseIdentity? identity = operation.Release;
         if (identity is not null && Digest(operation.ReleaseManifest) == identity.ManifestSha256)
             identity = identity with { ManifestSha256 = Digest(release) };
+        if (operation.Phase == "ready" && operation.DerivedBootConfig)
+        {
+            if (identity is null || !IsLegacyDerivedTarget(targetContract, releaseContract))
+                throw new InvalidDataException("Legacy derived target differs from its authenticated release outside boot.config.");
+            // This ready journal can only roll back after reconciliation proves that the engine never touched the game.
+            target = release;
+        }
         return operation with
         {
-            Current = NormalizeContract(operation.Current), Target = NormalizeContract(operation.Target),
+            Current = NormalizeContract(operation.Current), Target = target,
             ReleaseManifest = release, Release = identity
         };
     }
+
+    private static bool IsLegacyDerivedTarget(StockBaselineManifest target, StockBaselineManifest release) =>
+        target.DroppedBootConfig is { } boot && release.DroppedBootConfig is { } publishedBoot &&
+        boot.UnixMode == publishedBoot.UnixMode &&
+        target.BaselineIdentity == $"{release.BaselineIdentity}:boot-v1:{boot.Sha256}" &&
+        target.Provenance == "authenticated release with explicit launcher boot configuration v1" &&
+        target.HasUnixMetadata == release.HasUnixMetadata &&
+        target.Directories.SequenceEqual(release.Directories) &&
+        target.UnixDirectoryModes.SequenceEqual(release.UnixDirectoryModes) &&
+        target.Files.SequenceEqual(release.Files);
 
     // An operation that an earlier build left pending and this one cannot roll back leaves the installation as it is.
     // The way out names everything that would block the next start: the engine marker in the game folder survives a
