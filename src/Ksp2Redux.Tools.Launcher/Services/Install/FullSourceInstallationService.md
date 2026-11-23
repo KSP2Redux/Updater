@@ -237,10 +237,11 @@ absent. The file's current content is not the original, because an earlier build
 written to it. The record is saved before the file is written. If it cannot be saved, the
 file is left alone until the next try. A key that a release drops is written back to its
 stock state, and leaves the record only after that write worked. Uninstall puts every
-recorded key back and clears the record. When the `uninstall.zip` an earlier launcher wrote still
-holds the game's original boot.config, uninstall first records its keys (at most 64 KiB, valid
-settings only, never `build-guid`) as the originals, so keys that launcher wrote without recording
-them are restored too. A missing, oversized or unreadable entry changes nothing. Changing an
+recorded key back and clears the record. Full-source uninstall reads valid settings from the verified
+stock archive's legacy boot.config entry before the engine runs. The committed stock generation
+records them in `StockBootConfigRestore` so a restart can replay the restore. The archived values
+take precedence over the install profile's undo record. The coordinator clears the pending restore
+after the file is restored and any profile undo record is cleared. Changing an
 installation's folder clears the record. The step checks no hash and never fails for file content. It reads at most 64 KiB, skips a larger
 file with a log line, and replaces the file from a temporary file in its folder that it flushes first, so an
 interrupted write leaves the old content. Before a write it deletes the leftover `boot.config.<32 hex digits>.tmp`
@@ -253,10 +254,11 @@ Data written before boot.config left the contracts is read without that entry:
   first read, after all other checks passed. A release is named everywhere by the digest of its
   normalized contract (`GetNormalizedTargetManifestSha256` on the descriptor), which is what the
   feed plan, the prepared target and the installed identity carry, so an installation and the
-  feed agree on a release published in either form. The published `TargetManifestSha256` stays
-  the digest of the published bytes and only checks the artifact marker and the descriptor.
-  The catalog's release digest follows the normalized contract: from the ownership contract when
-  that is the release contract, otherwise from the contract in the last committed operation.
+  feed agree on a release published in either form. The identity also retains the original published
+  digest when different, so update recipes advertised with either digest can use the installed files.
+  The catalog's normalized release digest comes from the ownership contract when it is the full release
+  contract, or from an operation that committed the recorded release. A later rolled-back operation
+  does not replace that release. Migration retries if its committed record is temporarily unavailable.
   Source pins of the original backup that name boot.config are dropped, and so is its journal pin
   when boot.config was the only file recovered through that journal.
 - An operation of an earlier build that is still pending is recovered only when it stopped

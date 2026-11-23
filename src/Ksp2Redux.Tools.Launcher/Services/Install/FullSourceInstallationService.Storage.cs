@@ -30,6 +30,8 @@ public partial class FullSourceInstallationService
             return false;
         if (catalog.Pending is not null || Exists(_fs.Path.Combine(Root(entry), ".redux-transaction.active")))
             throw new IOException("Pending transaction authority prevents payload retirement. Evidence retained.");
+        if (catalog.ReleaseIdentityMigrationPending)
+            return false;
         if (catalog.LastTransaction is not { } id || catalog.LastResult is not { } result)
             return false;
         Operation operation = Read<Operation>(OperationPath(entry, id));
@@ -137,7 +139,9 @@ public partial class FullSourceInstallationService
             catalog = catalog with { RetentionPolicy = RETENTION };
             Write(HeadPath(entry), catalog, "catalog-retention", previous);
         }
-        var authority = new RetirementAuthority(1, JsonSerializer.SerializeToUtf8Bytes(catalog, JSON_OPTIONS),
+        // Acknowledging the separate boot settings restore does not change the owned generation.
+        Catalog publishedHead = catalog with { StockBootConfigRestore = null };
+        var authority = new RetirementAuthority(1, JsonSerializer.SerializeToUtf8Bytes(publishedHead, JSON_OPTIONS),
             Digest(JsonSerializer.SerializeToUtf8Bytes(operation, JSON_OPTIONS)), plan.GetDigest(), source.ToJson(), storageWasAbsent);
         if (persisted is null)
             Write(receipt, authority, "retirement-authority");

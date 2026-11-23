@@ -81,7 +81,8 @@ public partial class FullSourceInstallationServiceTest
         services.AddSingleton(fixture.Os);
         services.AddSingleton(fixture.Preparation.Object);
         services.AddSingleton(fixture.GameProcesses.Object);
-        services.AddSingleton<IFullSourceInstallationService>(fixture.Service());
+        services.AddSingleton<IFullSourceInstallationService>(provider =>
+            fixture.Service(bootConfig: provider.GetService<IBootConfigSettingsService>()));
         services.AddSingleton<IInstallationStateService, InstallationStateService>();
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         if (bootSettings)

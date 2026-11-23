@@ -547,7 +547,36 @@ public partial class StockArchive
     internal sealed class PinnedEntries(IZipArchive archive, Dictionary<string, IZipArchiveEntry> entries) : IDisposable
     {
         internal Stream Open(StockBaselineFile file) => entries[file.Path].Open();
+
+        internal Dictionary<string, string>? ReadBootConfig()
+        {
+            if (!entries.TryGetValue(BootConfigFile.RELATIVE_PATH, out var entry) || entry.Length > BootConfigFile.MAX_BYTES)
+                return null;
+            using Stream content = entry.Open();
+            var bytes = new byte[(int)entry.Length];
+            content.ReadExactly(bytes);
+            return content.ReadByte() == -1 ? BootConfigFile.ReadSettings(bytes)
+                : throw new InvalidDataException("Archived boot.config differs from its declared length.");
+        }
+
         public void Dispose() => archive.Dispose();
+    }
+
+    /// <summary>
+    /// Read the original boot settings held in a previously verified stock archive.
+    /// </summary>
+    /// <param name="archivePath">The path to the verified archive.</param>
+    /// <param name="expected">The independently pinned stock contract.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The archived settings, or null when the legacy entry is absent or oversized.</returns>
+    public Dictionary<string, string>? ReadArchivedBootConfig(string archivePath, StockBaselineManifest expected,
+        CancellationToken ct)
+    {
+        string path = DiskPath(archivePath);
+        EnsureSafePath(path, false);
+        using FileSystemStream input = _fileSystem.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using PinnedEntries entries = OpenPinnedEntries(input, expected, ct);
+        return entries.ReadBootConfig();
     }
 
     private Dictionary<string, IZipArchiveEntry> InspectCanonicalEntries(IZipArchive archive,

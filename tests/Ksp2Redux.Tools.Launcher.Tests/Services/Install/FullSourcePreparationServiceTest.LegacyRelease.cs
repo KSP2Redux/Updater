@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Ksp2Redux.Tools.BundleConversion.Bundles;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Common.ReleasePreparation;
@@ -16,6 +18,20 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 public partial class FullSourcePreparationServiceTest
 {
     private static byte[] Sha(byte[] bytes) => SHA256.HashData(bytes);
+
+    private static ReleaseRecipePublication UseLegacyUpdateSource(Fixture fixture, string artifact,
+        ReleaseRecipePublication publication, StockBaselineManifest prior, byte[] legacyManifest)
+    {
+        string marker = At(fixture.Fs, artifact, "release.json");
+        var document = JsonNode.Parse(fixture.Fs.File.ReadAllBytes(marker))!;
+        string source = Convert.ToBase64String(prior.ToJson());
+        var variant = document["Variants"]!.AsArray().Single(item => item!["SourceManifest"]!.GetValue<string>() == source);
+        variant!["SourceManifest"] = Convert.ToBase64String(legacyManifest);
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(document,
+            new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+        fixture.Fs.File.WriteAllBytes(marker, bytes);
+        return publication with { ArtifactSha256 = Digest(bytes) };
+    }
 
     // How the artifact of an older release lists boot.config as a recipe source.
     private enum OlderBootSource { NotListed, ListedUnused, ReadByARecipe }

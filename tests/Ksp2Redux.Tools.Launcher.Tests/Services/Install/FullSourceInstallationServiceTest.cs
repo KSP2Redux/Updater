@@ -36,10 +36,10 @@ public partial class FullSourceInstallationServiceTest
         internal Mock<IGameProcessService> GameProcesses { get; } = new();
 
         internal FullSourceInstallationService Service(Action<string, bool>? fault = null,
-            Action<string, bool>? engineFault = null) => new(Fs, Configuration, new ZipFileService(Fs), Space,
+            Action<string, bool>? engineFault = null, IBootConfigSettingsService? bootConfig = null) => new(Fs, Configuration, new ZipFileService(Fs), Space,
                 Preparation.Object, Os, Mock.Of<ILogService>(), GameProcesses.Object, new InstallFileLockService(Fs, Os), fault,
                 new InstallTransactionEngine(Fs, Space.GetAvailableFreeSpace, engineFault,
-                    Fs is MockFileSystem ? _ => { } : null));
+                    Fs is MockFileSystem ? _ => { } : null), bootConfig);
 
         internal string Head => Fs.Path.Combine(Storage, "full-source-v1", Entry.Id.ToString("N"), "installation.json");
         internal string Archive => Fs.Path.Combine(Install, "uninstall.zip");

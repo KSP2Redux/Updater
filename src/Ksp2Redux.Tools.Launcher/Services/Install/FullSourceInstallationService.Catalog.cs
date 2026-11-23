@@ -28,7 +28,9 @@ public partial class FullSourceInstallationService
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockBaselineFile? ExistingBackup = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] StockArchiveSources? RecoverySources = null,
         // The boot.config settings of the committed release. Null for catalogs written before they were recorded.
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dictionary<string, string>? ReleaseBootConfig = null)
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dictionary<string, string>? ReleaseBootConfig = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ReleaseIdentityMigrationPending = false,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dictionary<string, string>? StockBootConfigRestore = null)
     {
         // The catalog exactly as an earlier build stored it, while an operation of that build is still pending.
         // Only its pending operation and publication compare against these bytes. It is never persisted.
@@ -49,7 +51,7 @@ public partial class FullSourceInstallationService
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool StockArchiveSource = false,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool MovedFileUndo = false,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool OwnedSourceStaging = false,
-        // The release's boot.config settings, published with the catalog when this operation commits. Null for stock restoration.
+        // The release settings for a Redux target, or the original settings to restore for a stock target.
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dictionary<string, string>? BootConfigSettings = null);
 
     private record Envelope(int FormatVersion, string Sha256, byte[] Payload);
@@ -155,6 +157,12 @@ public partial class FullSourceInstallationService
             ValidateIdentity(identity);
         if (catalog.ReleaseBootConfig is { } bootConfig)
             ValidateBootConfigSettings(bootConfig);
+        if (catalog.StockBootConfigRestore is { } stockSettings)
+        {
+            if (catalog.Release is not null)
+                throw new InvalidDataException("A Redux generation cannot have a stock boot configuration restore.");
+            ValidateBootConfigSettings(stockSettings);
+        }
         if (catalog.Archive is { } archive)
             ValidateArchiveReference(entry, archive);
         if (catalog.ExistingBackup is { } existingBackup)
@@ -186,19 +194,29 @@ public partial class FullSourceInstallationService
     {
         byte[] stock = NormalizeContract(catalog.Stock);
         byte[] ownership = NormalizeContract(catalog.Ownership);
-        if (stock.SequenceEqual(catalog.Stock) && ownership.SequenceEqual(catalog.Ownership))
+        bool ownershipChanged = !ownership.SequenceEqual(catalog.Ownership);
+        bool contractsChanged = ownershipChanged || !stock.SequenceEqual(catalog.Stock);
+        if (!contractsChanged && (!catalog.ReleaseIdentityMigrationPending || catalog.Pending is not null))
             return catalog;
         FullSourceReleaseIdentity? release = catalog.Release;
-        // The feed names a release by the digest of its normalized contract, so the installation does too. Without
-        // retained files the release contract is the ownership contract. Otherwise the last committed operation holds it.
-        if (release is not null && !ownership.SequenceEqual(catalog.Ownership))
+        bool migrationPending = false;
+        if (release is not null && (ownershipChanged || catalog.ReleaseIdentityMigrationPending))
         {
-            if (Digest(catalog.Ownership) == release.ManifestSha256)
-                release = release with { ManifestSha256 = Digest(ownership) };
-            else if (ReleaseContractOfLastOperation(entry, catalog, release) is { } contract)
-                release = release with { ManifestSha256 = Digest(contract) };
+            byte[]? contract = Digest(catalog.Ownership) == release.ManifestSha256
+                ? ownership
+                : FindCommittedReleaseContract(entry, catalog, release);
+            if (contract is null)
+                migrationPending = true;
+            else
+                release = NormalizeReleaseIdentity(release, contract);
         }
-        return catalog with { Stock = stock, Ownership = ownership, Release = release, RecoverySources = WithoutBootConfig(catalog.RecoverySources) };
+        if (!contractsChanged && migrationPending)
+            return catalog;
+        return catalog with
+        {
+            Stock = stock, Ownership = ownership, Release = release, ReleaseIdentityMigrationPending = migrationPending,
+            RecoverySources = WithoutBootConfig(catalog.RecoverySources)
+        };
     }
 
     // Source pins an earlier build took of its stock backup name boot.config when that file differed from stock. No
@@ -220,16 +238,29 @@ public partial class FullSourceInstallationService
         };
     }
 
-    // The contract of an installed release that has retained files, in its normalized form, or null when the last
-    // operation is not that release's committed one.
-    private byte[]? ReleaseContractOfLastOperation(Ksp2InstallEntry entry, Catalog catalog, FullSourceReleaseIdentity release)
+    // A rolled-back operation becomes LastTransaction without replacing the installed release.
+    private byte[]? FindCommittedReleaseContract(Ksp2InstallEntry entry, Catalog catalog, FullSourceReleaseIdentity release)
     {
-        if (catalog.LastTransaction is not { } id || catalog.LastResult != InstallTransactionResult.Committed)
-            return null;
+        if (catalog.LastResult == InstallTransactionResult.Committed && catalog.LastTransaction is { } last &&
+            ReadCommittedReleaseContract(entry, last, release) is { } latest)
+            return latest;
+        foreach (string path in _fs.Directory.EnumerateFiles(CatalogRoot(entry), "*.json"))
+        {
+            if (Guid.TryParseExact(_fs.Path.GetFileNameWithoutExtension(path), "N", out Guid id) && id != catalog.LastTransaction &&
+                ReadCommittedReleaseContract(entry, id, release) is { } contract)
+                return contract;
+        }
+        return null;
+    }
+
+    private byte[]? ReadCommittedReleaseContract(Ksp2InstallEntry entry, Guid id, FullSourceReleaseIdentity release)
+    {
         try
         {
             Operation operation = Read<Operation>(OperationPath(entry, id));
-            if (operation.TransactionId != id || operation.ReleaseManifest is null || operation.Release?.ManifestSha256 != release.ManifestSha256 ||
+            if (operation.FormatVersion != FORMAT_VERSION || operation.TransactionId != id || operation.InstallationId != entry.Id ||
+                operation.InstallRoot != Root(entry) || operation.Phase != "terminal" || operation.Result != InstallTransactionResult.Committed ||
+                operation.Release != release || operation.ReleaseManifest is null ||
                 Digest(operation.ReleaseManifest) != release.ManifestSha256)
                 return null;
             return NormalizeContract(operation.ReleaseManifest);
@@ -238,6 +269,16 @@ public partial class FullSourceInstallationService
         {
             return null;
         }
+    }
+
+    private static FullSourceReleaseIdentity NormalizeReleaseIdentity(FullSourceReleaseIdentity release, byte[] contract)
+    {
+        string normalized = Digest(contract);
+        return release.ManifestSha256 == normalized ? release : release with
+        {
+            PublishedManifestSha256 = release.ManifestSha256,
+            ManifestSha256 = normalized
+        };
     }
 
     private static byte[] NormalizeContract(byte[] bytes)
@@ -474,13 +515,16 @@ public partial class FullSourceInstallationService
             if (string.IsNullOrWhiteSpace(text) || text.Length > 4096 || text.Any(char.IsControl))
                 throw new InvalidDataException("The independently authenticated release identity is invalid.");
         }
-        if (string.IsNullOrEmpty(identity.ManifestSha256) || identity.ManifestSha256.Length != 64 || !identity.ManifestSha256.All(Uri.IsHexDigit) ||
-            identity.ManifestSha256 != identity.ManifestSha256.ToUpperInvariant())
+        if (!IsManifestDigest(identity.ManifestSha256) ||
+            (identity.PublishedManifestSha256 is { } published && !IsManifestDigest(published)))
             throw new InvalidDataException("The release manifest digest is invalid.");
         string[] version = identity.Version.Split('.');
         if (version.Length != 5 || !Version.TryParse(string.Join('.', version[..4]), out _) || string.IsNullOrWhiteSpace(version[4]))
             throw new InvalidDataException("The authenticated game version requires its four-component version and build identity.");
     }
+
+    private static bool IsManifestDigest(string? digest) =>
+        digest is { Length: 64 } && digest.All(Uri.IsHexDigit) && digest == digest.ToUpperInvariant();
 
     private static void ValidatePaths(string[] paths, bool directories = false)
     {

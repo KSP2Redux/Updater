@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Ksp2Redux.Tools.Common.Restoration;
 using Ksp2Redux.Tools.Common.Transactions;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -13,7 +14,18 @@ namespace Ksp2Redux.Tools.Launcher.Services.Install;
 /// <param name="ManifestSha256">The digest of the independently authenticated release tree contract.</param>
 /// <param name="Authentication">The verifier's nonsecret authentication evidence identifier.</param>
 public record FullSourceReleaseIdentity(string ReleaseId, string Channel, string Version,
-    string ManifestSha256, string Authentication);
+    string ManifestSha256, string Authentication)
+{
+    /// <summary>
+    /// Gets the digest advertised by an older publisher when it differs from the normalized digest.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PublishedManifestSha256 { get; init; }
+
+    internal bool MatchesManifestDigest(string digest) =>
+        ManifestSha256.Equals(digest, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(PublishedManifestSha256, digest, StringComparison.OrdinalIgnoreCase);
+}
 
 /// <summary>
 /// A prepared source tree and release contract requiring independent verification before use.
@@ -49,7 +61,13 @@ public record FullSourcePreparedTarget(FullSourceReleaseIdentity Identity, Stock
 /// </summary>
 /// <param name="InstallationId">The installation that must still own this generation when the update starts.</param>
 /// <param name="Manifest">The complete publisher-pinned prior release contract.</param>
-public record FullSourceInstalledBaseline(Guid InstallationId, StockBaselineManifest Manifest);
+public record FullSourceInstalledBaseline(Guid InstallationId, StockBaselineManifest Manifest)
+{
+    /// <summary>
+    /// Gets the source digest advertised by the selected recipe when it differs from the normalized digest.
+    /// </summary>
+    public string? PublishedSourceSha256 { get; init; }
+}
 
 /// <summary>
 /// Target paths omitted from a stock-based stage and verified again under the installation lock.
@@ -304,6 +322,13 @@ public interface IFullSourceInstallationService
     /// </returns>
     /// <exception cref="IOException">Thrown when pending recovery or coordination prevents the read.</exception>
     IReadOnlyDictionary<string, string>? GetPublishedBootConfigSettings(Guid installationId) => null;
+
+    /// <summary>
+    /// Replay boot.config restoration for a published stock generation.
+    /// </summary>
+    /// <param name="installationId">The configured installation identity.</param>
+    /// <returns>True if the coordinator handled the request, including any restore that needs a retry.</returns>
+    bool RestorePublishedStockBootConfig(Guid installationId) => false;
 
     /// <summary>
     /// Recover pending work and publish its verified outcome, including after marker cleanup.

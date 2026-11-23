@@ -3,7 +3,10 @@ using System.Text;
 using System.Text.Json.Nodes;
 using Ksp2Redux.Tools.Common.Restoration;
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Common.Transactions;
+using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using Moq;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 
@@ -175,7 +178,53 @@ public partial class FullSourceInstallationServiceTest
         FullSourceReleaseIdentity identity = fixture.Service().GetPublishedIdentity(fixture.Entry.Id)!;
 
         Assert.That(identity.ManifestSha256, Is.EqualTo(Digest(ownership)));
-        Assert.That(identity with { ManifestSha256 = fixture.Target2.Identity.ManifestSha256 }, Is.EqualTo(fixture.Target2.Identity));
+        Assert.That(identity.PublishedManifestSha256, Is.EqualTo(Digest(LegacyContract(ownership))));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LegacyCatalog_MigratesTheCommittedReleaseAfterARollback(bool committedOperationInitiallyMissing)
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        string committedOperation = OperationFile(fixture, Decode(fixture.Fs.File.ReadAllBytes(fixture.Head)));
+        await Assert.ThrowsAsync<IOException>(() => Apply(fixture, fixture.Service((name, after) =>
+        {
+            if (name == "engine-apply" && !after)
+                throw new IOException("Interrupted update");
+        }), fixture.Target3, initial: false));
+        Assert.That(fixture.Service().Reconcile(fixture.Entry.Id)!.TransactionResult, Is.EqualTo(InstallTransactionResult.RolledBack));
+        string legacyDigest = Digest(LegacyContract(fixture.Target2.Manifest.ToJson()));
+        Rewrite(fixture, fixture.Head, catalog =>
+        {
+            LegacyBytes(catalog, "Stock");
+            LegacyBytes(catalog, "Ownership");
+            catalog.Remove("ReleaseBootConfig");
+            catalog["Release"]!["ManifestSha256"] = legacyDigest;
+        });
+        Rewrite(fixture, committedOperation, journal =>
+        {
+            LegacyBytes(journal, "Current");
+            LegacyBytes(journal, "Target");
+            LegacyBytes(journal, "ReleaseManifest");
+            journal.Remove("BootConfigSettings");
+            journal["Release"]!["ManifestSha256"] = legacyDigest;
+        });
+        if (committedOperationInitiallyMissing)
+        {
+            byte[] journal = fixture.Fs.File.ReadAllBytes(committedOperation);
+            fixture.Fs.File.Delete(committedOperation);
+            Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id)!.ManifestSha256, Is.EqualTo(legacyDigest));
+            fixture.Fs.File.WriteAllBytes(committedOperation, journal);
+        }
+        FullSourceReleaseIdentity expected = fixture.Target2.Identity with { PublishedManifestSha256 = legacyDigest };
+        Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.EqualTo(expected));
+        FullSourceReleaseIdentity reopened = fixture.Service().GetPublishedIdentity(fixture.Entry.Id)!;
+        Assert.That(reopened, Is.EqualTo(expected));
+        var (feed, version) = await FeedOf(LegacyContract(fixture.Target2.Manifest.ToJson()), expected.ReleaseId);
+        var installed = new Ksp2Install(fixture.Fs, Mock.Of<IModuleDefinitionService>(), fixture.Entry.ExePath, reopened);
+        Assert.That(installed.IsInstalledVersion(version, feed.GetFullSourcePlan(version, repair: true)), Is.True);
+        Assert.That(Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["ReleaseIdentityMigrationPending"], Is.Null);
     }
 
     // Add boot.config to a stock backup and give it the older embedded manifest, then pin the new bytes.

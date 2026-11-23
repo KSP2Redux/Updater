@@ -31,6 +31,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
     private readonly ILogService _log;
     private readonly IGameProcessService _gameProcesses;
     private readonly IInstallFileLockService _fileLocks;
+    private readonly IBootConfigSettingsService? _bootConfig;
     private readonly StockArchive _archive;
     private readonly InstallTransactionEngine _engine;
     private readonly Action<string, bool>? _boundary;
@@ -49,11 +50,12 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
     /// <param name="fileLocks">The existing installation file-use safeguard.</param>
     /// <param name="operationBoundary">The optional interruption observer for standalone verification.</param>
     /// <param name="engine">The optional transaction engine for filesystem fault verification.</param>
+    /// <param name="bootConfig">The launcher service that applies stock boot configuration after publication.</param>
     public FullSourceInstallationService(IFileSystem fileSystem, ILauncherConfigService configuration,
         IZipFileService zipFileService, IDiskSpaceService diskSpace, IFullSourcePreparationService preparation,
         IOperatingSystemService operatingSystem, ILogService log, IGameProcessService gameProcesses,
         IInstallFileLockService fileLocks, Action<string, bool>? operationBoundary = null,
-        InstallTransactionEngine? engine = null)
+        InstallTransactionEngine? engine = null, IBootConfigSettingsService? bootConfig = null)
     {
         _fs = fileSystem;
         _configuration = configuration;
@@ -62,6 +64,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         _log = log;
         _gameProcesses = gameProcesses;
         _fileLocks = fileLocks;
+        _bootConfig = bootConfig;
         _boundary = operationBoundary;
         _archive = new StockArchive(fileSystem, zipFileService, availableSpace: diskSpace.GetAvailableFreeSpace,
             compressEntries: operatingSystem.IsWindows());
@@ -89,10 +92,34 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
     public IReadOnlyDictionary<string, string>? GetPublishedBootConfigSettings(Guid installationId) =>
         ReadPublished(installationId).ReleaseBootConfig;
 
+    /// <inheritdoc />
+    public bool RestorePublishedStockBootConfig(Guid installationId)
+    {
+        if (_bootConfig is null)
+            return false;
+        Ksp2InstallEntry entry = Entry(installationId);
+        using FileSystemStream lease = Lock(entry);
+        Catalog catalog = ReadPublished(entry);
+        if (catalog.Release is not null)
+            return true;
+        if (catalog.StockBootConfigRestore is not { } settings)
+            return false;
+        Ksp2InstallEntry configured = _configuration.Config.Ksp2Installs.Single(candidate => candidate.Id == entry.Id);
+        ValidateExpectedRoot(Root(configured), Root(entry));
+        if (_bootConfig.TryRestoreStockSettings(configured, settings))
+            Write(HeadPath(entry), catalog with { StockBootConfigRestore = null }, "catalog-stock-boot-restored", catalog);
+        return true;
+    }
+
     private Catalog ReadPublished(Guid installationId)
     {
         Ksp2InstallEntry entry = Entry(installationId);
         using FileSystemStream lease = Lock(entry);
+        return ReadPublished(entry);
+    }
+
+    private Catalog ReadPublished(Ksp2InstallEntry entry)
+    {
         Catalog catalog = ReadCatalog(entry) ?? throw new InvalidDataException("The full-source catalog is absent.");
         if (catalog.Pending is not null || Exists(_fs.Path.Combine(Root(entry), ".redux-transaction.active")))
             throw new IOException("Installation recovery must finish before reading its published identity.");
@@ -254,7 +281,8 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         Catalog? catalog = ReadCatalog(entry);
         if (target.InstalledBaseline is { } installed &&
             (!_os.IsWindows() || repair || installed.InstallationId != entry.Id ||
-                catalog?.Release?.ManifestSha256 != Digest(installed.Manifest.ToJson())))
+                catalog?.Release is not { } liveRelease || liveRelease.ManifestSha256 != Digest(installed.Manifest.ToJson()) ||
+                (installed.PublishedSourceSha256 is { } sourceDigest && !liveRelease.MatchesManifestDigest(sourceDigest))))
             throw new InvalidDataException("The installed generation changed after update preparation. Prepare the release again.");
         var retention = target.TargetRetention;
         if (retention is not null)
@@ -370,7 +398,9 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         StockBaselineManifest stock = Manifest(catalog.Stock);
         VerifyCollisions(catalog, current, stock, ct);
         EnsureMutationAllowed(entry);
-        Operation operation = Begin(entry, catalog, current, stock, null, stockArchiveSource: _os.IsWindows());
+        var stockSettings = ReadStockBootConfig(catalog.Archive!, stock, log, ct);
+        Operation operation = Begin(entry, catalog, current, stock, null, stockArchiveSource: _os.IsWindows(),
+            bootConfigSettings: stockSettings);
         Catalog previousCatalog = catalog;
         catalog = catalog with { Pending = operation.TransactionId };
         Write(HeadPath(entry), catalog, "catalog-pending", previousCatalog);
@@ -451,7 +481,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             MovedFileUndo: _os.IsWindows(),
             OwnedSourceStaging: identity is not null && _os.IsWindows() && _fs is RealFileSystem,
             // An empty record means the release has none, which differs from a catalog that never recorded them.
-            BootConfigSettings: identity is null ? null : (bootConfigSettings ?? new Dictionary<string, string>())
+            BootConfigSettings: (bootConfigSettings ?? new Dictionary<string, string>())
                 .Where(setting => BootConfigFile.IsValidSetting(setting.Key, setting.Value))
                 .ToDictionary(setting => setting.Key, setting => setting.Value, StringComparer.Ordinal));
         _ = new InstallTransactionPlan(id, Root(entry), operation.SourceRoot, operation.WorkRoot, current, target,
@@ -575,7 +605,14 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         Catalog published = catalog with
         {
             Ownership = ownership, Release = release,
-            ReleaseBootConfig = result == InstallTransactionResult.Committed ? operation.BootConfigSettings : catalog.ReleaseBootConfig, Archive = operation.Archive ?? catalog.Archive,
+            ReleaseBootConfig = result == InstallTransactionResult.Committed
+                ? (release is null ? null : operation.BootConfigSettings)
+                : catalog.ReleaseBootConfig,
+            StockBootConfigRestore = result == InstallTransactionResult.Committed
+                ? (release is null ? operation.BootConfigSettings : null)
+                : catalog.StockBootConfigRestore,
+            Archive = operation.Archive ?? catalog.Archive,
+            ReleaseIdentityMigrationPending = result != InstallTransactionResult.Committed && catalog.ReleaseIdentityMigrationPending,
             Pending = null, LastResult = result, LastTransaction = operation.TransactionId, LegacyStored = null,
             UnownedDirectories = result == InstallTransactionResult.Committed
                 ? catalog.UnownedDirectories.Concat(Manifest(catalog.Ownership).Directories
@@ -640,6 +677,24 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         {
             return failure;
         }
+    }
+
+    private Dictionary<string, string> ReadStockBootConfig(StockBaselineFile archive, StockBaselineManifest stock,
+        Action<string> log, CancellationToken ct)
+    {
+        try
+        {
+            var settings = _archive.ReadArchivedBootConfig(archive.Path, stock, ct);
+            if (settings is { Count: <= BootConfigFile.MAX_SETTINGS })
+                return settings;
+            if (settings is not null)
+                log("The original boot.config in the backup has too many settings to restore.");
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
+        {
+            log($"The original boot.config in the backup could not be read: {failure.Message}");
+        }
+        return [];
     }
 
     private async Task<StockBaselineFile> EnsureArchiveAsync(Ksp2InstallEntry entry, Catalog catalog,

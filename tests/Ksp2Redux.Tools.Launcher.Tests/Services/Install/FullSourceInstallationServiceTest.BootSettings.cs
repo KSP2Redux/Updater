@@ -26,11 +26,11 @@ public partial class FullSourceInstallationServiceTest
 
     private static (Ksp2InstallService Installs, InstallationStateService Guard) Installs(Fixture fixture)
     {
-        FullSourceInstallationService coordinator = fixture.Service();
+        var bootConfig = new BootConfigSettingsService(fixture.Configuration, fixture.Fs, Mock.Of<ILogService>());
+        FullSourceInstallationService coordinator = fixture.Service(bootConfig: bootConfig);
         var guard = new InstallationStateService(fixture.Fs, new ZipFileService(fixture.Fs), coordinator);
         return (new Ksp2InstallService(fixture.Configuration, fixture.Fs, Mock.Of<IModuleDefinitionService>(),
-            Mock.Of<ILogService>(), guard, coordinator,
-            new BootConfigSettingsService(fixture.Configuration, fixture.Fs, Mock.Of<ILogService>())), guard);
+            Mock.Of<ILogService>(), guard, coordinator, bootConfig), guard);
     }
 
     /// <summary>
@@ -164,6 +164,50 @@ public partial class FullSourceInstallationServiceTest
 
     private const string ARCHIVED_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=3\r\nbuild-guid=stock-guid\r\nextra=5\r\n";
     private const string REDUX_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=1\r\ngc-max-time-slice=3\r\nbuild-guid=redux-guid\r\nextra=9\r\nredux-only=1\r\n";
+
+    [TestCase("catalog-ownership:publish", true, false)]
+    [TestCase("engine-apply", true, false)]
+    [TestCase("engine-apply", true, true)]
+    [TestCase("engine-apply", false, false)]
+    public async Task InterruptedLegacyUninstall_RestoresArchivedSettingsOnlyAfterAStockCommit(
+        string boundary, bool committed, bool lockedOnRestart)
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        WriteLegacyRecords(fixture);
+        WriteLegacyArchive(fixture, archivedBootConfig: Encoding.UTF8.GetBytes(ARCHIVED_BOOT));
+        string boot = At(fixture.Fs, fixture.Install, BOOT);
+        fixture.Fs.File.WriteAllText(boot, REDUX_BOOT);
+        await Assert.ThrowsAsync<IOException>(() => fixture.Service((name, after) =>
+        {
+            if (name == boundary && after == committed)
+                throw new IOException("Interrupted during uninstall");
+        }).UninstallAsync(fixture.Entry.Id, _ => { }, CancellationToken.None));
+
+        var (installs, _) = Installs(fixture);
+        installs.TryLoadKsp2Install();
+        if (lockedOnRestart)
+        {
+            using (fixture.Fs.File.Open(boot, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                installs.ApplyActiveInstallBootConfig();
+            Assert.That(Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["StockBootConfigRestore"], Is.Not.Null);
+        }
+        installs.ApplyActiveInstallBootConfig();
+
+        if (committed)
+        {
+            Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.Null);
+            Assert.That(fixture.Fs.File.ReadAllText(boot), Does.Contain("hdr-display-enabled=0").And.Contain("extra=5"));
+            Assert.That(Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["StockBootConfigRestore"], Is.Null);
+            await fixture.Service().RetireCompletedPayloadsAsync(fixture.Entry.Id, CancellationToken.None);
+        }
+        else
+        {
+            Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id)!.ReleaseId, Is.EqualTo(fixture.Target2.Identity.ReleaseId));
+            Assert.That(fixture.Fs.File.ReadAllText(boot), Does.Contain("hdr-display-enabled=1").And.Contain("extra=9"));
+            Assert.That(Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["StockBootConfigRestore"], Is.Null);
+        }
+    }
 
     /// <summary>
     /// Uninstalling an installation an earlier launcher converted restores the keys of the original boot.config in its

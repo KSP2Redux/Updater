@@ -77,7 +77,10 @@ public partial class FullSourceInstallationServiceTest
             case "reconcile":
                 FullSourceInstallationStatus status = fixture.Service().Reconcile(fixture.Entry.Id)!;
                 Assert.That(status.TransactionResult, Is.EqualTo(InstallTransactionResult.RolledBack));
-                Assert.That(status.Release, Is.EqualTo(fixture.Target2.Identity));
+                Assert.That(status.Release, Is.EqualTo(fixture.Target2.Identity with
+                {
+                    PublishedManifestSha256 = Digest(LegacyContract(fixture.Target2.Manifest.ToJson()))
+                }));
                 Generation(fixture, status);
                 break;
             case "launch":
@@ -232,7 +235,7 @@ public partial class FullSourceInstallationServiceTest
         WriteLegacyRecords(fixture);
         byte[] published = LegacyContract(fixture.Target2.Manifest.ToJson());
         FullSourceReleaseIdentity identity = fixture.Service().GetPublishedIdentity(fixture.Entry.Id)!;
-        Assert.That(identity, Is.EqualTo(fixture.Target2.Identity));
+        Assert.That(identity, Is.EqualTo(fixture.Target2.Identity with { PublishedManifestSha256 = Digest(published) }));
 
         var (feed, version) = await FeedOf(published, "release-two");
         InstallPlan plan = feed.GetFullSourcePlan(version)!;
@@ -260,7 +263,7 @@ public partial class FullSourceInstallationServiceTest
         }
 
         Generation(fixture, await Apply(fixture, initial: false, repair: true));
-        Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.EqualTo(identity));
+        Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.EqualTo(fixture.Target2.Identity));
         Generation(fixture, await Apply(fixture, target: fixture.Target3, initial: false));
     }
 

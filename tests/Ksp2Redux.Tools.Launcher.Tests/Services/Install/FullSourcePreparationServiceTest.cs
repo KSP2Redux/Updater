@@ -504,16 +504,21 @@ public partial class FullSourcePreparationServiceTest
     /// <param name="separate">True for an independently downloaded update artifact.</param>
     /// <returns>The verification task.</returns>
     [TestCase("update", false)]
+    [TestCase("legacy", false)]
     [TestCase("unsupported", false)]
     [TestCase("damaged", false)]
     [TestCase("repair", false)]
     [TestCase("update", true)]
+    [TestCase("legacy", true)]
     [TestCase("unsupported", true)]
     [TestCase("damaged", true)]
     [TestCase("repair", true)]
     public async Task InstallPlanSelectsVerifiedReduxSourceOrStock(string scenario, bool separate)
     {
         Fixture fixture = Create();
+        bool legacy = scenario == "legacy";
+        if (legacy)
+            PublishInOlderForm(fixture);
         var service = Services(fixture).GetRequiredService<IInstallPlanService>();
         await service.ApplyToFolder(new InstallPlan
         {
@@ -537,7 +542,10 @@ public partial class FullSourcePreparationServiceTest
         var stockSource = new ReleaseRecipeSourceTree(fixture.StockRoot, fixture.Stock, []);
         var updateSource = new ReleaseRecipeSourceTree(previousRoot, prior, []);
         var publication = pipeline.PublishHosted(updateRoot, target, separate ? [stockSource] : [updateSource, stockSource], artifact);
-        string priorDigest = Digest(prior.ToJson());
+        byte[] priorManifest = legacy ? fixture.Patch.FullSource!.TargetManifest : prior.ToJson();
+        string priorDigest = Digest(priorManifest);
+        if (legacy && !separate)
+            publication = UseLegacyUpdateSource(fixture, artifact, publication, prior, priorManifest);
         var patch = pipeline.CreateFeedEntry(artifact, publication, "fixture-release-four", CHANNEL, "2.0.0.1.202",
             "https://fixture.test/build/release.json", "https://fixture-backup.test/build/release.json",
             [new FullSourceBaselineDefinition(fixture.Stock.ToJson(), [])], DateTime.UtcNow, separate ? null : [priorDigest]);
@@ -551,6 +559,8 @@ public partial class FullSourcePreparationServiceTest
             string separateRoot = At(fixture.Fs, fixture.Root, "separate-update-artifact");
             updateArtifactRoot = separateRoot;
             var update = pipeline.PublishHosted(updateRoot, target, [updateSource], separateRoot);
+            if (legacy)
+                update = UseLegacyUpdateSource(fixture, separateRoot, update, prior, priorManifest);
             var updateManifest = pipeline.Inspect(separateRoot, update.ArtifactSha256, update.TargetManifestSha256);
             long markerSize = fixture.Fs.FileInfo.New(At(fixture.Fs, separateRoot, "release.json")).Length;
             updatePrefix = $"update-{priorDigest.ToLowerInvariant()}-";
@@ -608,25 +618,26 @@ public partial class FullSourcePreparationServiceTest
         await service.ApplyToFolder(plan, fixture.Install, _ => { }, RecordProgress, (_, _) => { }, CancellationToken.None);
         AssertTree(fixture.Fs, fixture.Install, target);
 
-        int[] expectedPacks = scenario == "update" ? updatePacks : stockPacks;
+        bool usesInstalledSource = scenario is "update" or "legacy";
+        int[] expectedPacks = usesInstalledSource ? updatePacks : stockPacks;
         if (scenario is "repair" or "unsupported")
         {
             string[] changedFiles = scenario == "repair" ? [BUNDLE, "Redux/delta.txt"] : ["Redux/delta.txt"];
             var retained = target.Files.Select(file => file.Path).Except(changedFiles, StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal);
             expectedPacks = ReleaseRecipePipeline.GetRequiredPackIndices(manifest, fixture.Stock, retained);
         }
-        string prefix = scenario == "update" ? updatePrefix : "";
+        string prefix = usesInstalledSource ? updatePrefix : "";
         var requests = expectedPacks.Select(index => $"{prefix}pack-{index:D6}.bin").Append(prefix + "release.json");
         Assert.That(fixture.Requests.Select(request => new Uri(request.Url).Segments.Last()),
             Is.EquivalentTo(requests));
-        string selectedArtifact = scenario == "update" ? updateArtifactRoot : artifact;
+        string selectedArtifact = usesInstalledSource ? updateArtifactRoot : artifact;
         long expectedBytes = expectedPacks.Select(index => $"pack-{index:D6}.bin").Append("release.json")
             .Sum(name => fixture.Fs.FileInfo.New(At(fixture.Fs, selectedArtifact, name)).Length);
         Assert.That(progress.Select(report => report.Bytes), Is.Ordered);
         Assert.That(progress.All(report => report.Bytes <= report.Total), Is.True);
         Assert.That(progress.Last(), Is.EqualTo((expectedBytes, expectedBytes)));
         string stage = fixture.Fs.Directory.EnumerateDirectories(stages).Single(path => !beforeStages.Contains(path));
-        if (scenario == "update")
+        if (usesInstalledSource)
         {
             Assert.That(fixture.Fs.Directory.EnumerateFiles(stage, "*", SearchOption.AllDirectories),
                 Is.EqualTo(new[] { At(fixture.Fs, stage, "Redux/delta.txt") }));
@@ -634,7 +645,10 @@ public partial class FullSourcePreparationServiceTest
             var published = coordinator.GetPublishedIdentity(fixture.Entry.Id)!;
             var stale = new FullSourcePreparedTarget(published, target, stage, fixture.Config.Feeds[0].SnapshotAuthority())
             {
-                InstalledBaseline = new FullSourceInstalledBaseline(fixture.Entry.Id, prior),
+                InstalledBaseline = new FullSourceInstalledBaseline(fixture.Entry.Id, prior)
+                {
+                    PublishedSourceSha256 = legacy ? priorDigest : null
+                }
             };
             var error = await Assert.ThrowsAsync<InvalidDataException>(async () =>
                 await coordinator.ApplyAsync(fixture.Entry.Id, stale, null, false, _ => { }, CancellationToken.None));

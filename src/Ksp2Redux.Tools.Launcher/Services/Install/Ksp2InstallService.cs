@@ -296,9 +296,26 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
             RestoreReleaseSettings(entry);
             bootConfig?.Apply(entry);
         }
-        else if (entry.BootConfigOriginals.Count != 0)
+        else
         {
-            bootConfig?.Revert(entry);
+            RestoreStockSettings(entry, ksp2.InstallDir!);
+        }
+    }
+
+    private void RestoreStockSettings(Ksp2InstallEntry entry, string root)
+    {
+        if (bootConfig is null)
+            return;
+        try
+        {
+            if (fullSource?.HasCatalog(root) == true && fullSource.RestorePublishedStockBootConfig(entry.Id))
+                return;
+            if (entry.BootConfigOriginals.Count != 0)
+                bootConfig.Revert(entry);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException)
+        {
+            logService.Warn($"The stock boot.config settings could not be restored: {failure.Message}");
         }
     }
 

@@ -44,7 +44,10 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     }
 
     private record RecipeArtifact(string Url, string Marker, string Sha256, string PackPrefix, ReleaseRecipeManifest Manifest);
-    internal record RecipeSource(StockBaselineManifest Contract, string Root, Guid? InstalledId = null, bool Projected = false);
+    internal record RecipeSource(StockBaselineManifest Contract, string Root, Guid? InstalledId = null, bool Projected = false)
+    {
+        internal string? PublishedSourceSha256 { get; init; }
+    }
 
     /// <summary>
     /// Construct preparation using the launcher's existing authority, download, storefront and cache systems.
@@ -103,7 +106,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     {
         EnsureSupported();
         AuthorityRelease release = await ResolveAsync(releaseId, channel, ct, feed);
-        return await PrepareTargetAsync(release, ct, downloadProgress, installationId, installedRelease.ManifestSha256);
+        return await PrepareTargetAsync(release, ct, downloadProgress, installationId, installedRelease);
     }
 
     /// <inheritdoc />
@@ -154,7 +157,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         if (plan.IsFullSourceRepair)
             return (await PrepareTargetAsync(release, ct, downloadProgress, repairInstallationId: installationId), null);
         if (installedRelease is not null)
-            return (await PrepareTargetAsync(release, ct, downloadProgress, installationId, installedRelease.ManifestSha256), null);
+            return (await PrepareTargetAsync(release, ct, downloadProgress, installationId, installedRelease), null);
         return (await PrepareTargetAsync(release, ct, downloadProgress), null);
     }
 
@@ -167,24 +170,24 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
 
     private async Task<FullSourcePreparedTarget> PrepareTargetAsync(AuthorityRelease release, CancellationToken ct,
         Action<long, long>? downloadProgress,
-        Guid? installationId = null, string? installedDigest = null, Guid? repairInstallationId = null)
+        Guid? installationId = null, FullSourceReleaseIdentity? installedRelease = null, Guid? repairInstallationId = null)
     {
         await _gate.WaitAsync(ct);
         try
         {
             using FileSystemStream lease = Lease();
             FullSourceReleaseDescriptor descriptor = release.Descriptor;
-            var update = descriptor.UpdateArtifacts?.SingleOrDefault(candidate =>
-                candidate.SourceDigest.Equals(installedDigest, StringComparison.OrdinalIgnoreCase));
+            var update = descriptor.UpdateArtifacts?.FirstOrDefault(candidate =>
+                installedRelease?.MatchesManifestDigest(candidate.SourceDigest) == true);
             long markerBytes = 0;
-            if (installationId is { } id && update is not null)
+            if (installationId is { } id && installedRelease is not null && update is not null)
             {
                 var artifact = await InspectArtifactAsync(release, ArtifactUrl(update.R2ArtifactUrl, update.GitHubArtifactUrl),
                     update.MarkerSize, update.MarkerSha256, update.AssetPrefix, markerBytes, update.DownloadBytes, downloadProgress, ct);
                 markerBytes += update.MarkerSize;
                 ReleaseRecipePipeline.ValidateUpdateFeedArtifact(artifact.Manifest, descriptor.TargetManifest, update);
                 var installed = ReleaseRecipePipeline.GetSourceContract(artifact.Manifest, update.SourceDigest);
-                if (await VerifyInstalledRecipeSourceAsync(id, installed, descriptor, ct) is { } installedSource)
+                if (await VerifyInstalledRecipeSourceAsync(id, installed, installedRelease, update.SourceDigest, ct) is { } installedSource)
                     return await PrepareArtifactAsync(release, artifact, installedSource, markerBytes, downloadProgress, ct);
             }
 
@@ -193,9 +196,9 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             markerBytes += release.Patch.Size;
             ReleaseRecipePipeline.ValidateFeedArtifact(stock.Manifest, descriptor, release.Patch.Size);
             // Without a direct source, the stock recipe can skip target files the installation already supplies.
-            bool hasDirectSource = update is not null || (installedDigest is not null &&
-                descriptor.UpdateSourceDigests?.Contains(installedDigest, StringComparer.OrdinalIgnoreCase) == true);
-            Guid? retentionId = repairInstallationId ?? (!hasDirectSource && installedDigest is not null ? installationId : null);
+            string? sourceDigest = descriptor.UpdateSourceDigests?.FirstOrDefault(digest => installedRelease?.MatchesManifestDigest(digest) == true);
+            bool hasDirectSource = update is not null || sourceDigest is not null;
+            Guid? retentionId = repairInstallationId ?? (!hasDirectSource && installedRelease is not null ? installationId : null);
             FullSourceTargetRetention? retention = null;
             if (retentionId is { } retainingId && _os.IsWindows())
             {
@@ -206,9 +209,9 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                     if (await MatchesAsync(At(root, file.Path), file, ct))
                         paths.Add(file.Path);
                 }
-                retention = new FullSourceTargetRetention(retainingId, paths.ToFrozenSet(StringComparer.Ordinal), installedDigest);
+                retention = new FullSourceTargetRetention(retainingId, paths.ToFrozenSet(StringComparer.Ordinal), installedRelease?.ManifestSha256);
             }
-            var source = await SelectRecipeSourceAsync(descriptor, stock.Manifest, installationId, installedDigest, ct, retention?.Paths);
+            var source = await SelectRecipeSourceAsync(descriptor, stock.Manifest, installationId, installedRelease, sourceDigest, ct, retention?.Paths);
             return await PrepareArtifactAsync(release, stock, source, markerBytes, downloadProgress, ct, retention);
         }
         finally
@@ -243,7 +246,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         CreateDirectory(stages);
         var targetContract = StockBaselineManifest.FromJson(descriptor.TargetManifest);
         var installed = installedId is { } id && _os.IsWindows()
-            ? new FullSourceInstalledBaseline(id, contract)
+            ? new FullSourceInstalledBaseline(id, contract) { PublishedSourceSha256 = selection.PublishedSourceSha256 }
             : null;
         var staged = installed is not null ? ReleaseRecipePipeline.UpdateStageContract(targetContract, contract)
             : retention is null ? targetContract : ReleaseRecipePipeline.RetainedStageContract(targetContract, retention.Paths);
@@ -327,13 +330,12 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
 
     private async Task<RecipeSource> SelectRecipeSourceAsync(
         FullSourceReleaseDescriptor descriptor, ReleaseRecipeManifest manifest, Guid? installationId,
-        string? installedDigest, CancellationToken ct, IReadOnlySet<string>? retainedTargetPaths)
+        FullSourceReleaseIdentity? installedRelease, string? sourceDigest, CancellationToken ct, IReadOnlySet<string>? retainedTargetPaths)
     {
-        if (installationId is { } id && installedDigest is not null &&
-            descriptor.UpdateSourceDigests?.Contains(installedDigest, StringComparer.OrdinalIgnoreCase) == true)
+        if (installationId is { } id && installedRelease is not null && sourceDigest is not null)
         {
-            var contract = ReleaseRecipePipeline.GetSourceContract(manifest, installedDigest);
-            if (await VerifyInstalledRecipeSourceAsync(id, contract, descriptor, ct) is { } source)
+            var contract = ReleaseRecipePipeline.GetSourceContract(manifest, sourceDigest);
+            if (await VerifyInstalledRecipeSourceAsync(id, contract, installedRelease, sourceDigest, ct) is { } source)
                 return source;
         }
         if (ReleaseManifestValidator.GetPrepatchBaseline(descriptor) is { } prepatch)
@@ -342,11 +344,17 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     }
 
     private async Task<RecipeSource?> VerifyInstalledRecipeSourceAsync(Guid installationId, StockBaselineManifest contract,
-        FullSourceReleaseDescriptor descriptor, CancellationToken ct)
+        FullSourceReleaseIdentity installedRelease, string sourceDigest, CancellationToken ct)
     {
+        string normalized = Digest(contract.ToJson());
+        if (!normalized.Equals(installedRelease.ManifestSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The update recipe source differs from the installed release contract.");
         string root = InstallRoot(Entry(installationId));
         if (await TreeMatchesAsync(root, contract, ct))
-            return new RecipeSource(contract, root, installationId);
+            return new RecipeSource(contract, root, installationId)
+            {
+                PublishedSourceSha256 = normalized.Equals(sourceDigest, StringComparison.OrdinalIgnoreCase) ? null : sourceDigest
+            };
 
         // A normal Windows update must verify the old owned files before it can publish a new generation.
         if (_os.IsWindows())
@@ -476,7 +484,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         }
         if (target.InstalledBaseline is { } installed)
         {
-            string digest = Digest(installed.Manifest.ToJson());
+            string digest = installed.PublishedSourceSha256 ?? Digest(installed.Manifest.ToJson());
             bool matchingSource = release.Descriptor.UpdateSourceDigests?.Contains(digest, StringComparer.OrdinalIgnoreCase) == true ||
                 release.Descriptor.UpdateArtifacts?.Any(artifact => artifact.SourceDigest.Equals(digest, StringComparison.OrdinalIgnoreCase)) == true;
             if (!_os.IsWindows() || !matchingSource)
@@ -945,8 +953,16 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         }, storage);
     }
 
-    private FullSourceReleaseIdentity Identity(AuthorityRelease release) => new(release.Descriptor.ReleaseId,
-        release.Descriptor.Channel, release.Descriptor.Version, release.Descriptor.GetNormalizedTargetManifestSha256(), release.Authority);
+    private FullSourceReleaseIdentity Identity(AuthorityRelease release)
+    {
+        var descriptor = release.Descriptor;
+        string normalized = descriptor.GetNormalizedTargetManifestSha256();
+        return new FullSourceReleaseIdentity(descriptor.ReleaseId, descriptor.Channel, descriptor.Version, normalized, release.Authority)
+        {
+            PublishedManifestSha256 = normalized.Equals(descriptor.TargetManifestSha256, StringComparison.OrdinalIgnoreCase)
+                ? null : descriptor.TargetManifestSha256.ToUpperInvariant()
+        };
+    }
 
     private string ArtifactUrl(string r2Url, string githubUrl) =>
         _configuration.Config.PatchDownloadSource == PatchDownloadSource.R2 ? r2Url : githubUrl;

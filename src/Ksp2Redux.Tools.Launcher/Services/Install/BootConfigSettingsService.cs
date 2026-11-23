@@ -38,17 +38,16 @@ public interface IBootConfigSettingsService
     void SetReleaseSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string>? settings);
 
     /// <summary>
-    /// Record the settings of the installation's own original boot.config as the originals of those keys.
+    /// Restore the archived original settings together with the install profile's boot.config undo record.
     /// </summary>
     /// <remarks>
     /// For an installation an earlier launcher converted, whose stock archive still holds the original file and
-    /// which never recorded the keys that launcher wrote. Each key replaces its recorded original, because the
-    /// archive is the installation's own stock state. Keys that cannot be managed, such as build-guid, are ignored.
-    /// The record is saved when possible, and a later <see cref="Revert"/> writes these values back.
+    /// which never recorded the keys that launcher wrote. Archived values take precedence over the undo record.
     /// </remarks>
     /// <param name="entry">The configured installation.</param>
     /// <param name="stock">The keys and values of the original boot.config.</param>
-    void RecordStockSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string> stock);
+    /// <returns>True if the file and its saved undo record no longer need recovery.</returns>
+    bool TryRestoreStockSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string> stock);
 
     /// <summary>
     /// Put every recorded key back to its stock state, delete the keys a stock file lacks, and clear the record.
@@ -152,31 +151,25 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
     }
 
     /// <inheritdoc />
-    public void RecordStockSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string> stock)
+    public bool TryRestoreStockSettings(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string> stock) => Revert(entry, stock);
+
+    /// <inheritdoc />
+    public void Revert(Ksp2InstallEntry entry) => Revert(entry, null);
+
+    private bool Revert(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string>? stock)
     {
         lock (_gate)
         {
             var originals = new Dictionary<string, string?>(entry.BootConfigOriginals, StringComparer.Ordinal);
-            foreach (var (key, value) in stock)
+            if (stock is not null)
             {
-                if (BootConfigFile.IsValidSetting(key, value))
-                    originals[key] = value;
+                foreach (var (key, value) in stock)
+                {
+                    if (BootConfigFile.IsValidSetting(key, value))
+                        originals[key] = value;
+                }
             }
-            if (originals.Count == entry.BootConfigOriginals.Count && !originals.Except(entry.BootConfigOriginals).Any())
-                return;
-            // Kept in memory even when it cannot be saved, so the revert that follows still uses it.
-            entry.BootConfigOriginals = originals;
-            if (!configuration.TrySave())
-                log.Warn("Could not save the original boot.config settings. They are used for this restore only.");
-        }
-    }
-
-    /// <inheritdoc />
-    public void Revert(Ksp2InstallEntry entry)
-    {
-        lock (_gate)
-        {
-            if (entry.BootConfigOriginals.Count != 0 && PathOf(entry) is { } path)
+            if (originals.Count != 0 && PathOf(entry) is { } path)
             {
                 try
                 {
@@ -189,10 +182,11 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
                         // A file too large to read stays as it is, and so does the record.
                         if (Read(path) is not { } content)
                         {
-                            SetReleaseSettings(entry, null);
-                            return;
+                            if (stock is null)
+                                SetReleaseSettings(entry, null);
+                            return false;
                         }
-                        byte[] edited = BootConfigFile.Edit(content, entry.BootConfigOriginals
+                        byte[] edited = BootConfigFile.Edit(content, originals
                             .Where(original => BootConfigFile.IsValidSetting(original.Key, ""))
                             .ToDictionary(original => original.Key, original => original.Value));
                         if (!ReferenceEquals(edited, content))
@@ -203,15 +197,28 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
                 {
                     // The record stays, so the next start can try again.
                     log.Warn($"Could not restore {path}: {failure.Message} Its settings will be restored later.");
-                    SetReleaseSettings(entry, null);
-                    return;
+                    if (stock is null)
+                        SetReleaseSettings(entry, null);
+                    return false;
                 }
             }
             if (entry.BootConfigOriginals.Count == 0 && entry.BootConfigReleaseSettings is null)
-                return;
+                return true;
+            var previousOriginals = entry.BootConfigOriginals;
+            var previousRelease = entry.BootConfigReleaseSettings;
             entry.BootConfigOriginals = [];
             entry.BootConfigReleaseSettings = null;
-            configuration.Save();
+            if (stock is null)
+            {
+                configuration.Save();
+                return true;
+            }
+            if (configuration.TrySave())
+                return true;
+            entry.BootConfigOriginals = previousOriginals;
+            entry.BootConfigReleaseSettings = previousRelease;
+            log.Warn("Could not clear the saved boot.config undo record. Stock settings will be restored again later.");
+            return false;
         }
     }
 
