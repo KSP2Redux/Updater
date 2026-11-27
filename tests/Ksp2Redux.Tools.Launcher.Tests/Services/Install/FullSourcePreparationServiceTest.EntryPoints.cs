@@ -304,6 +304,8 @@ public partial class FullSourcePreparationServiceTest
             AssumeYes = true, Install = fixture.Entry.Id.ToString()
         }), Is.Zero, output.ToString());
         AssertTree(fixture.Fs, fixture.Install, fixture.Stock);
+        Assert.That(fixture.Coordinator().HasCatalog(fixture.Install), Is.False);
+        Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, fixture.Install, "uninstall.zip")), Is.False);
     }
 
     /// <summary>

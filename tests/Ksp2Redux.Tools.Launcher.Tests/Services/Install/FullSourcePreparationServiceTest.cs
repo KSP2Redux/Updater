@@ -111,6 +111,7 @@ public partial class FullSourcePreparationServiceTest
             Config = new LauncherConfig { Ksp2Installs = [Entry], Feeds = [feed], ActiveKsp2InstallId = Entry.Id };
             Configuration.SetupGet(service => service.Config).Returns(Config);
             Configuration.Setup(service => service.GetLocalStorageDirectory()).Returns(Storage);
+            Configuration.Setup(service => service.TrySave()).Returns(true);
             Os.Setup(service => service.IsWindows()).Returns(true);
             Space.Setup(service => service.GetAvailableFreeSpace(It.IsAny<string>())).Returns((string path) =>
                 fullPlayer is null ? long.MaxValue : fs.DriveInfo.New(fs.Path.GetPathRoot(path)!).AvailableFreeSpace);
