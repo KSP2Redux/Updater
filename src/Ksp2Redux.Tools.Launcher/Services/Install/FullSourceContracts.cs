@@ -398,4 +398,10 @@ public interface IFullSourceInstallationService
     /// <exception cref="FilesInUseException">Thrown when installation files are held before mutation.</exception>
     Task<FullSourceInstallationStatus> UninstallAsync(Guid installationId, Action<string> log, CancellationToken ct,
         string? expectedInstallRoot = null);
+
+    /// <summary>
+    /// Restore verified stock and release the folder from full-source management.
+    /// </summary>
+    Task<FullSourceInstallationStatus> UninstallToStockAsync(Guid installationId, Action<string> log, CancellationToken ct,
+        string expectedInstallRoot);
 }

@@ -28,18 +28,13 @@ public class FullSourceCommand : ReduxCommand<FullSourceSettings>
                 status = await Task.Run(() => coordinator.Reconcile(entry.Id, installRoot), cancellationToken);
                 break;
             case "uninstall":
-                // The plan route would otherwise run a legacy uninstall here.
                 if (!coordinator.HasCatalog(installRoot))
                     return context.Output.Fail(ExitCode.INSTALL_NOT_FOUND, NO_CATALOG);
                 if (CliConfirm.Ask(context.Output, settings.AssumeYes,
                         $"Return '{entry.Name}' to its original stock generation?", requireAnswer: false) == ConfirmAnswer.Declined)
                     return context.Output.Fail(ExitCode.CANCELLED, "Nothing was removed.");
-                // The plan route also puts the boot.config settings back.
-                var uninstall = new InstallPlan();
-                uninstall.Uninstall();
-                await context.InstallPlanService.ApplyToFolder(uninstall, installRoot,
-                    line => context.Output.Progress(line.English), (_, _) => { }, (_, _) => { }, cancellationToken);
-                status = coordinator.Reconcile(entry.Id, installRoot);
+                status = await Task.Run(() => coordinator.UninstallToStockAsync(entry.Id,
+                    context.Output.Progress, cancellationToken, installRoot), cancellationToken);
                 break;
             case "apply":
             case "repair":

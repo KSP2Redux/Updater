@@ -131,7 +131,6 @@ public partial class FullSourceInstallationServiceTest
         {
             Operation = "apply", Release = "release-two", Channel = "beta", Install = fixture.Entry.Id.ToString()
         }), Is.Zero);
-        byte[] archive = fixture.Fs.File.ReadAllBytes(fixture.Archive);
         Assert.That(context.ReadInstall(fixture.Entry.ExePath)!.GameVersion!.BuildNumber, Is.EqualTo("200"));
         // The settings step ran: the file carries the launcher's line, and the original of that line is on record.
         Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT + "gfx-enable-gfx-jobs=0\r\n"));
@@ -149,8 +148,9 @@ public partial class FullSourceInstallationServiceTest
         context.InstallService.TryLoadKsp2Install();
         Assert.That(context.InstallService.Ksp2!.Distribution, Is.EqualTo(Ksp2Redux.Tools.Launcher.Models.Distribution.Redux));
         Assert.That(await new UninstallCommand().RunWithContextAsync(context, new UninstallSettings { AssumeYes = true }), Is.Zero);
-        Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.Null);
-        Preserved(fixture, archive);
+        Assert.That(fixture.Service().HasCatalog(fixture.Install), Is.False);
+        Assert.That(fixture.Fs.File.Exists(fixture.Archive), Is.False);
+        Preserved(fixture);
         Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT));
         Assert.That(fixture.Entry.BootConfigOriginals, Is.Empty);
     }

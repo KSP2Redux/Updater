@@ -247,6 +247,6 @@ public partial class FullSourceInstallationServiceTest
 
         Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(expected));
         Assert.That(fixture.Entry.BootConfigOriginals, Is.Empty);
-        Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.Null);
+        Assert.That(fixture.Service().HasCatalog(fixture.Install), Is.False);
     }
 }

@@ -489,14 +489,19 @@ public partial class FullSourceInstallationService
             }
             else
             {
-                byte[] oldPayload = JsonSerializer.SerializeToUtf8Bytes(previous, JSON_OPTIONS);
-                byte[] expected = JsonSerializer.SerializeToUtf8Bytes(new Envelope(FORMAT_VERSION, Digest(oldPayload), oldPayload), JSON_OPTIONS);
-                using FileSystemStream input = _fs.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-                if (input.Length != expected.Length || Convert.ToHexString(SHA256.HashData(input)) != Digest(expected))
-                    throw new InvalidDataException("Catalog publication found changed evidence. All bytes were retained.");
+                RequirePublishedBytes(path, previous);
             }
             StockArchive.PublishFile(_fs, candidate, path, previous is not null);
         });
+    }
+
+    private void RequirePublishedBytes<T>(string path, T previous) where T : class
+    {
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(previous, JSON_OPTIONS);
+        byte[] expected = JsonSerializer.SerializeToUtf8Bytes(new Envelope(FORMAT_VERSION, Digest(payload), payload), JSON_OPTIONS);
+        using FileSystemStream input = _fs.FileStream.New(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (input.Length != expected.Length || Convert.ToHexString(SHA256.HashData(input)) != Digest(expected))
+            throw new InvalidDataException("Catalog publication found changed evidence. All bytes were retained.");
     }
 
     private FileSystemStream Lock(Ksp2InstallEntry entry)

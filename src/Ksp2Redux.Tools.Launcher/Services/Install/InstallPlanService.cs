@@ -181,9 +181,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             installPlan.Steps[0] is UninstallStep or RevertToStockStep)
         {
             var entry = launcherConfigService.Config.Ksp2Installs.Single(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install);
-            await Task.Run(() => fullSource.UninstallAsync(entry.Id, patchLog, ct, install), ct);
-            if (!fullSource.RestorePublishedStockBootConfig(entry.Id))
-                bootConfig?.Revert(entry);
+            await Task.Run(() => fullSource.UninstallToStockAsync(entry.Id, patchLog, ct, install), ct);
             stepsProgress(1, 1);
             return;
         }

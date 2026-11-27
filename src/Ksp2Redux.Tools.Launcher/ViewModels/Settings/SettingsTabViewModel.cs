@@ -814,7 +814,21 @@ public partial class SettingsTabViewModel : ViewModelBase
             return;
         }
         var installDir = _fileSystem.Path.GetDirectoryName(activeExe);
-        if (string.IsNullOrEmpty(installDir) || !_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
+        bool hasUninstallState;
+        try
+        {
+            hasUninstallState = !string.IsNullOrEmpty(installDir) &&
+                (_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")) ||
+                    _fullSource?.HasCatalog(installDir) == true);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.UninstallRedux.Failed", ex.UserMessage()),
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+        if (!hasUninstallState)
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
                 _localization["Settings.UninstallRedux.NotInstalled"], windowStartupLocation:WindowStartupLocation.CenterOwner);

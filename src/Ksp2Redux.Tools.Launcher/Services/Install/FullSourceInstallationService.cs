@@ -104,9 +104,17 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             return true;
         if (catalog.StockBootConfigRestore is not { } settings)
             return false;
+        TryRestoreStockBootConfigLocked(entry, catalog, settings);
+        return true;
+    }
+
+    private bool TryRestoreStockBootConfigLocked(Ksp2InstallEntry entry, Catalog catalog, IReadOnlyDictionary<string, string> settings)
+    {
         Ksp2InstallEntry configured = _configuration.Config.Ksp2Installs.Single(candidate => candidate.Id == entry.Id);
         ValidateExpectedRoot(Root(configured), Root(entry));
-        if (_bootConfig.TryRestoreStockSettings(configured, settings))
+        if (_bootConfig?.TryRestoreStockSettings(configured, settings) != true)
+            return false;
+        if (catalog.StockBootConfigRestore is not null)
             Write(HeadPath(entry), catalog with { StockBootConfigRestore = null }, "catalog-stock-boot-restored", catalog);
         return true;
     }
@@ -385,6 +393,11 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         EnsureSupported();
         Ksp2InstallEntry entry = Entry(installationId, expectedInstallRoot);
         using FileSystemStream lease = Lock(entry);
+        return await UninstallLockedAsync(entry, log, ct);
+    }
+
+    private async Task<FullSourceInstallationStatus> UninstallLockedAsync(Ksp2InstallEntry entry, Action<string> log, CancellationToken ct)
+    {
         EnsureMutationAllowed(entry);
         FullSourceInstallationStatus status = ReconcileLocked(entry)
             ?? throw new InvalidDataException("The installation has no full-source catalog.");

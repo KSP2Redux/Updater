@@ -1,15 +1,18 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using CodeHollow.FeedReader;
 using Ksp2Redux.Tools.Common.Restoration;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.ViewModels;
 using Ksp2Redux.Tools.Launcher.ViewModels.Home;
 using Ksp2Redux.Tools.Launcher.ViewModels.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using MsBox.Avalonia.Enums;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.HeadlessTests;
 
@@ -102,6 +105,29 @@ public class LegacyInstallationBoundaryGuiTest
         Assert.That(TestAppBuilder.MessageBoxService.Invocations.Any(call =>
             call.Arguments.OfType<string>().Any(text => text.Contains("claims a full stock backup"))), Is.True);
         TestAppBuilder.ZipFileService.Verify(service => service.OpenRead(It.IsAny<string>()), Times.Never);
+    }
+
+    /// <summary>
+    /// A stock game with a catalog but no live archive can reach the normal uninstall confirmation.
+    /// </summary>
+    /// <returns>The completed test.</returns>
+    [AvaloniaTest]
+    public async Task DirectSettingsRestoreOffersRetryForManagedStockWithoutLiveArchive()
+    {
+        Bootstrap(false, false);
+        var fullSource = new Mock<IFullSourceInstallationService>();
+        fullSource.Setup(service => service.HasCatalog(INSTALL_ROOT)).Returns(true);
+        var settings = ActivatorUtilities.CreateInstance<SettingsTabViewModel>(TestAppBuilder.ServiceProvider, fullSource.Object);
+        string confirmation = LocalizationService.Default["Settings.UninstallRedux.Confirm"];
+        TestAppBuilder.MessageBoxService.Setup(service => service.ShowMessageBoxAsOwnedAsync(
+            It.IsAny<string>(), confirmation, ButtonEnum.YesNo, It.IsAny<Icon>(), It.IsAny<object>(),
+            It.IsAny<WindowStartupLocation>())).ReturnsAsync(ButtonResult.No);
+
+        await settings.UninstallRedux();
+
+        TestAppBuilder.MessageBoxService.Verify(service => service.ShowMessageBoxAsOwnedAsync(
+            It.IsAny<string>(), confirmation, ButtonEnum.YesNo, It.IsAny<Icon>(), It.IsAny<object>(),
+            It.IsAny<WindowStartupLocation>()), Times.Once);
     }
 
     /// <summary>

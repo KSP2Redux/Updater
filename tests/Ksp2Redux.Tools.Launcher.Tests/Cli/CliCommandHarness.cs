@@ -20,10 +20,12 @@ internal sealed class CliCommandHarness
     public const string STORAGE = @"C:\AppDataLocal";
     public const string HOME = @"C:\Users\Player";
 
+    private readonly IFullSourceInstallationService? _fullSource;
     private CliContext? _context;
 
-    public CliCommandHarness()
+    public CliCommandHarness(IFullSourceInstallationService? fullSource = null)
     {
+        _fullSource = fullSource;
         Environment.SetFolderPath(System.Environment.SpecialFolder.LocalApplicationData, STORAGE);
         Environment.SetFolderPath(System.Environment.SpecialFolder.ApplicationData, STORAGE);
         Environment.SetFolderPath(System.Environment.SpecialFolder.UserProfile, HOME);
@@ -109,6 +111,8 @@ internal sealed class CliCommandHarness
         services.AddSingleton(Wine.Object);
         services.AddSingleton(Steam.Object);
         services.AddSingleton(Downloader.Object);
+        if (_fullSource is not null)
+            services.AddSingleton(_fullSource);
 
         return new CliContext(services.BuildServiceProvider(), Output);
     }
