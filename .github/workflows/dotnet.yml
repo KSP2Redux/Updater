@@ -65,6 +65,16 @@ jobs:
                     # No command means usage, which is exit code 1 rather than a crash.
                     ./publish/cli/redux-launcher-cli && exit 1 || test $? -eq 1
 
+    windows:
+        runs-on: windows-latest
+        steps:
+            -   uses: actions/checkout@v7
+            -   uses: actions/setup-dotnet@v6
+                with:
+                    dotnet-version: 11.0.x
+            -   name: Run the Windows test suite
+                run: dotnet test --verbosity normal
+
     # The Wine runtime is left out here, as it has its own workflow.
     macos:
         runs-on: macos-15
