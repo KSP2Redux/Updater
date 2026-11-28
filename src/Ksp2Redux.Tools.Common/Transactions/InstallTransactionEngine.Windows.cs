@@ -64,22 +64,35 @@ public partial class InstallTransactionEngine
         Mutate($"{name}:open", () =>
         {
             // Original and parent permissions remain untouched. Only a fresh owned candidate is created.
-            using FileStream output = FileSystemAclExtensions.Create(new FileInfo(candidate), FileMode.CreateNew,
-                FileSystemRights.Write | FileSystemRights.ReadPermissions, FileShare.None, BUFFER_BYTES,
-                FileOptions.None, security);
+            // Windows can drop the auto-inherited control bit when given an explicit descriptor at creation.
+            // Create an inheriting sibling in its final parent and qualify its complete descriptor before writing bytes.
+            var descriptor = new RawSecurityDescriptor(expected, 0);
+            bool inherit = sibling is not null && descriptor.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclAutoInherited)
+                && !descriptor.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected);
+            using FileStream output = inherit
+                ? new FileStream(candidate, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, BUFFER_BYTES)
+                : FileSystemAclExtensions.Create(new FileInfo(candidate), FileMode.CreateNew,
+                    FileSystemRights.Write | FileSystemRights.ReadPermissions, FileShare.None, BUFFER_BYTES,
+                    FileOptions.None, security);
+            if (inherit && !FileSystemAclExtensions.GetAccessControl(output).GetSecurityDescriptorBinaryForm().AsSpan().SequenceEqual(expected))
+            {
+                SetWindowsFileAccess(candidate, expected);
+                if (!FileSystemAclExtensions.GetAccessControl(output).GetSecurityDescriptorBinaryForm().AsSpan().SequenceEqual(expected))
+                    throw new InvalidDataException("Inherited candidate permissions differ from the original. Evidence retained.");
+            }
             VerifyStream(input, output, file, ct, name);
             Mutate($"{name}:flush", () => output.Flush(true));
         });
         RequireMatch(candidate, file);
-        if (sibling is not null && !WindowsFileSecurityMatches(candidate, expected))
+        if (sibling is not null)
             Mutate($"{name}:security", () =>
             {
                 Safe(candidate);
                 RequireMatch(candidate, file);
                 RequireWindowsFileSecurity(securitySource, expected);
-                var access = new FileSecurity();
-                access.SetSecurityDescriptorBinaryForm(expected, AccessControlSections.Access);
-                FileSystemAclExtensions.SetAccessControl(new FileInfo(candidate), access);
+                if (!WindowsFileSecurityMatches(candidate, expected))
+                    SetWindowsFileAccess(candidate, expected);
+                RequireWindowsFileSecurity(candidate, expected);
             });
         RequireWindowsFileSecurity(securitySource, expected);
         RequireWindowsFileSecurity(candidate, expected);
@@ -99,6 +112,13 @@ public partial class InstallTransactionEngine
         RequireWindowsFileSecurity(securitySource, expected);
         RequireWindowsFileSecurity(destination, expected);
         FlushParent(destination);
+    }
+    [SupportedOSPlatform("windows")]
+    private static void SetWindowsFileAccess(string path, byte[] expected)
+    {
+        var access = new FileSecurity();
+        access.SetSecurityDescriptorBinaryForm(expected, AccessControlSections.Access);
+        FileSystemAclExtensions.SetAccessControl(new FileInfo(path), access);
     }
 #pragma warning restore RS0030
 

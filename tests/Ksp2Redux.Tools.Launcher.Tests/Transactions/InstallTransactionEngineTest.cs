@@ -566,12 +566,22 @@ public partial class InstallTransactionEngineTest
     /// <summary>
     /// Replacement and undo retain the original descriptor while new content inherits its destination parent.
     /// </summary>
-    [Test]
+    [TestCase(false)]
+    [TestCase(true)]
     [Platform("Win")]
     [SupportedOSPlatform("windows")]
-    public void WindowsReplacementAndUndo_PreserveOriginalSecurityAcrossDifferentStagingInheritance()
+    public void WindowsReplacementAndUndo_PreserveOriginalSecurityAcrossDifferentStagingInheritance(bool explicitRule)
     {
         var (fs, plan, root, original) = WindowsSecurityFixture();
+        if (explicitRule)
+        {
+            var info = new FileInfo(fs.Path.Combine(plan.InstallRoot, "game.exe"));
+            FileSecurity access = FileSystemAclExtensions.GetAccessControl(info);
+            access.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.AnonymousSid, null),
+                FileSystemRights.Delete, AccessControlType.Deny));
+            FileSystemAclExtensions.SetAccessControl(info, access);
+            original = WindowsDescriptor(info.FullName);
+        }
         bool preserve = false;
         try
         {
