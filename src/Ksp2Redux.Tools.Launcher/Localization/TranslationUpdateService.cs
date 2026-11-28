@@ -1,6 +1,9 @@
 using System.Globalization;
 using System.IO.Abstractions;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -36,7 +39,7 @@ public interface ITranslationUpdateService
 public sealed partial class TranslationUpdateService : ITranslationUpdateService
 {
     private const string NEUTRAL_FILE = "Strings.resx";
-    private const string ETAGS_FILE = "etags.json";
+    private const string SNAPSHOT_FILE = "snapshot.json";
     private const string CACHE_FOLDER = "translations";
 
     private static readonly CultureInfo EnglishCulture = CultureInfo.GetCultureInfo("en");
@@ -50,6 +53,11 @@ public sealed partial class TranslationUpdateService : ITranslationUpdateService
     private readonly IFileSystem _fileSystem;
     private readonly ILogService _log;
     private readonly HttpClient _http;
+    private readonly SemaphoreSlim _refresh = new(1);
+
+    private sealed record CachedFile(string? ETag, Dictionary<string, string> Texts);
+
+    private sealed record CacheSnapshot(string SourceKey, Dictionary<string, CachedFile> Files);
 
     [GeneratedRegex(@"\{(\d+)(?:[,:][^}]*)?\}")]
     private static partial Regex Placeholder();
@@ -70,15 +78,21 @@ public sealed partial class TranslationUpdateService : ITranslationUpdateService
     }
 
     private string CacheDirectory => _fileSystem.Path.Combine(_config.GetLocalStorageDirectory(), CACHE_FOLDER);
+    private string CachePath => _fileSystem.Path.Combine(CacheDirectory, SNAPSHOT_FILE);
+    private string? SourceUrl => _config.Config.TranslationsUrl?.TrimEnd('/');
 
     private static string FileName(string culture) => $"Strings.{culture}.resx";
 
-    private static IEnumerable<string> FileNames() =>
-        LocalizationService.TranslationCultures.Select(FileName).Prepend(NEUTRAL_FILE);
-
     public void ApplyCached()
     {
-        if (!_config.Config.DownloadTranslationUpdates || ReadCached(NEUTRAL_FILE) is not { } remoteEnglish)
+        if (!_config.Config.DownloadTranslationUpdates || SourceUrl is not { Length: > 0 } source)
+        {
+            _localization.SetDownloadedTexts(NoTexts);
+            return;
+        }
+
+        var files = ReadSnapshot(source);
+        if (files.GetValueOrDefault(NEUTRAL_FILE)?.Texts is not { } remoteEnglish)
         {
             _localization.SetDownloadedTexts(NoTexts);
             return;
@@ -87,7 +101,7 @@ public sealed partial class TranslationUpdateService : ITranslationUpdateService
         var texts = new Dictionary<string, IReadOnlyDictionary<string, string>>();
         foreach (var culture in LocalizationService.TranslationCultures)
         {
-            if (ReadCached(FileName(culture)) is not { } translation) continue;
+            if (files.GetValueOrDefault(FileName(culture))?.Texts is not { } translation) continue;
             var usable = SelectUsable(remoteEnglish, translation, key => _builtIn.GetString(key, EnglishCulture));
             if (usable.Count > 0) texts[culture] = usable;
         }
@@ -102,28 +116,56 @@ public sealed partial class TranslationUpdateService : ITranslationUpdateService
 
     public async Task<bool> DownloadAsync(CancellationToken cancellationToken = default)
     {
-        if (!_config.Config.DownloadTranslationUpdates) return false;
-
-        var etags = ReadEtags();
-        var changed = false;
-        foreach (var file in FileNames())
+        await _refresh.WaitAsync(cancellationToken);
+        try
         {
-            try
-            {
-                changed |= await DownloadFileAsync(file, etags, cancellationToken);
-            }
-            catch (Exception ex) when (ex is HttpRequestException or IOException or XmlException or UnauthorizedAccessException
-                                           || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
-            {
-                // Every file comes from the same host, so after one failure the rest would only wait out the
-                // same timeout. The cache from the last start stays in use.
-                _log.Warn($"Couldn't download translation updates ({file}): {ex.Message}");
-                break;
-            }
-        }
+            if (!_config.Config.DownloadTranslationUpdates || SourceUrl is not { Length: > 0 } source)
+                return false;
 
-        WriteEtags(etags);
-        return changed;
+            var current = ReadSnapshot(source);
+            var previousEnglish = CachedTranslation(current, NEUTRAL_FILE);
+            var english = await DownloadFileAsync(source, NEUTRAL_FILE, previousEnglish, cancellationToken, revalidate: true);
+            if (english is null)
+                return false;
+
+            var files = new Dictionary<string, CachedFile> { [NEUTRAL_FILE] = english };
+            bool changed = !ReferenceEquals(previousEnglish, english);
+            bool englishChanged = previousEnglish is null || !SameTexts(previousEnglish, english);
+            foreach (string culture in LocalizationService.TranslationCultures)
+            {
+                string name = FileName(culture);
+                var cached = CachedTranslation(current, name);
+                // A validator from the old English snapshot cannot vouch for a translation of the new English.
+                var downloaded = await DownloadFileAsync(source, name, englishChanged ? null : cached, cancellationToken,
+                    revalidate: englishChanged);
+                if (downloaded is not null)
+                    files.Add(name, downloaded);
+
+                changed |= !ReferenceEquals(cached, downloaded);
+            }
+
+            if (!changed)
+                return false;
+
+            // The branch can advance during the download. Only publish files checked against the same English.
+            var confirmed = await DownloadFileAsync(source, NEUTRAL_FILE, english, cancellationToken, revalidate: true);
+            if (confirmed is null || !SameTexts(english, confirmed))
+                return false;
+            files[NEUTRAL_FILE] = confirmed;
+
+            await SaveSnapshotAsync(new CacheSnapshot(SourceKey(source), files), cancellationToken);
+            return true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or XmlException or UnauthorizedAccessException
+                                   || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            _log.Warn($"Couldn't download translation updates: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            _refresh.Release();
+        }
     }
 
     public async Task UpdateAsync(CancellationToken cancellationToken = default)
@@ -137,35 +179,35 @@ public sealed partial class TranslationUpdateService : ITranslationUpdateService
         });
     }
 
-    private async Task<bool> DownloadFileAsync(string file, Dictionary<string, string> etags, CancellationToken cancellationToken)
+    private async Task<CachedFile?> DownloadFileAsync(string source, string name, CachedFile? cached,
+        CancellationToken cancellationToken, bool revalidate)
     {
-        var path = _fileSystem.Path.Combine(CacheDirectory, file);
-        var cached = _fileSystem.File.Exists(path);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{_config.Config.TranslationsUrl.TrimEnd('/')}/{file}");
-        if (cached && etags.TryGetValue(file, out var etag)) request.Headers.TryAddWithoutValidation("If-None-Match", etag);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{source}/{name}");
+        if (revalidate)
+            request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+        if (cached?.ETag is { } etag)
+            request.Headers.TryAddWithoutValidation("If-None-Match", etag);
 
         using var response = await _http.SendAsync(request, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.NotModified) return false;
+        if (response.StatusCode == HttpStatusCode.NotModified)
+            return cached ?? throw new HttpRequestException($"Received an unchanged response for uncached translation {name}.");
         if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            // The pipeline removes a language that fell below its threshold, so the launcher drops it too.
-            etags.Remove(file);
-            if (!cached) return false;
-            _fileSystem.File.Delete(path);
-            return true;
-        }
+            return null;
 
         response.EnsureSuccessStatusCode();
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-        ReadResx(bytes);
-        if (response.Headers.ETag is { } newTag) etags[file] = newTag.ToString();
-        else etags.Remove(file);
-        if (cached && _fileSystem.File.ReadAllBytes(path).AsSpan().SequenceEqual(bytes)) return false;
-
-        _fileSystem.Directory.CreateDirectory(CacheDirectory);
-        await _fileSystem.File.WriteAllBytesAsync(path, bytes, cancellationToken);
-        return true;
+        var downloaded = new CachedFile(response.Headers.ETag?.ToString(), ReadResx(bytes));
+        return cached is not null && cached.ETag == downloaded.ETag && SameTexts(cached, downloaded)
+            ? cached
+            : downloaded;
     }
+
+    private static CachedFile? CachedTranslation(Dictionary<string, CachedFile> files, string name) =>
+        files.GetValueOrDefault(name) is { Texts: not null } file ? file : null;
+
+    private static bool SameTexts(CachedFile first, CachedFile second) =>
+        first.Texts.Count == second.Texts.Count
+        && first.Texts.All(pair => second.Texts.TryGetValue(pair.Key, out var text) && text == pair.Value);
 
     /// <summary>
     /// The translated texts this launcher can use: the key exists in the build with the same English text the
@@ -178,23 +220,48 @@ public sealed partial class TranslationUpdateService : ITranslationUpdateService
         var usable = new Dictionary<string, string>();
         foreach (var (key, text) in translation)
         {
-            if (string.IsNullOrWhiteSpace(text) || !remoteEnglish.TryGetValue(key, out var english)) continue;
+            if (string.IsNullOrWhiteSpace(text) || !remoteEnglish.TryGetValue(key, out var english) || english is null) continue;
             if (builtInEnglish(key) != english) continue;
-            if (!PlaceholderIndices(english).SequenceEqual(PlaceholderIndices(text))) continue;
+            if (!TryGetPlaceholderIndices(english, out var expected) || !TryGetPlaceholderIndices(text, out var translated)
+                || !expected.SetEquals(translated) || (expected.Count > 0 && !IsCompositeFormat(text)))
+                continue;
             usable[key] = text;
         }
 
         return usable;
     }
 
-    private static int[] PlaceholderIndices(string text) =>
-        Placeholder().Matches(text.Replace("{{", "").Replace("}}", ""))
-            .Select(match => int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)).Distinct().Order().ToArray();
+    private static bool IsCompositeFormat(string text)
+    {
+        try
+        {
+            _ = CompositeFormat.Parse(text);
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryGetPlaceholderIndices(string text, out HashSet<int> indices)
+    {
+        indices = [];
+        foreach (Match match in Placeholder().Matches(text.Replace("{{", "").Replace("}}", "")))
+        {
+            if (!int.TryParse(match.Groups[1].ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out int index))
+                return false;
+            indices.Add(index);
+        }
+        return true;
+    }
 
     internal static Dictionary<string, string> ReadResx(byte[] bytes)
     {
         using var stream = new MemoryStream(bytes);
-        var root = XDocument.Load(stream).Root ?? throw new XmlException("The file has no root element.");
+        var root = XDocument.Load(stream).Root;
+        if (root is null || root.Name != "root")
+            throw new XmlException("The file is not a RESX resource.");
         var texts = new Dictionary<string, string>();
         foreach (var data in root.Elements("data"))
         {
@@ -207,45 +274,45 @@ public sealed partial class TranslationUpdateService : ITranslationUpdateService
         return texts;
     }
 
-    private Dictionary<string, string>? ReadCached(string file)
+    private Dictionary<string, CachedFile> ReadSnapshot(string source)
     {
-        var path = _fileSystem.Path.Combine(CacheDirectory, file);
         try
         {
-            return _fileSystem.File.Exists(path) ? ReadResx(_fileSystem.File.ReadAllBytes(path)) : null;
-        }
-        catch (Exception ex) when (ex is IOException or XmlException or UnauthorizedAccessException)
-        {
-            _log.Warn($"Ignoring the cached translation file {file}: {ex.Message}");
-            return null;
-        }
-    }
-
-    private Dictionary<string, string> ReadEtags()
-    {
-        var path = _fileSystem.Path.Combine(CacheDirectory, ETAGS_FILE);
-        try
-        {
-            return _fileSystem.File.Exists(path)
-                ? JsonSerializer.Deserialize<Dictionary<string, string>>(_fileSystem.File.ReadAllText(path)) ?? []
-                : [];
+            if (!_fileSystem.File.Exists(CachePath))
+                return [];
+            var snapshot = JsonSerializer.Deserialize<CacheSnapshot>(_fileSystem.File.ReadAllText(CachePath));
+            return snapshot is { Files: not null } && snapshot.SourceKey == SourceKey(source) ? snapshot.Files : [];
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
+            _log.Warn($"Ignoring the cached translations: {ex.Message}");
             return [];
         }
     }
 
-    private void WriteEtags(Dictionary<string, string> etags)
+    private static string SourceKey(string source) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)));
+
+    private async Task SaveSnapshotAsync(CacheSnapshot snapshot, CancellationToken cancellationToken)
     {
+        _fileSystem.Directory.CreateDirectory(CacheDirectory);
+        string temporary = _fileSystem.Path.Combine(CacheDirectory, $"{Guid.NewGuid():N}.tmp");
         try
         {
-            _fileSystem.Directory.CreateDirectory(CacheDirectory);
-            _fileSystem.File.WriteAllText(_fileSystem.Path.Combine(CacheDirectory, ETAGS_FILE), JsonSerializer.Serialize(etags));
+            await _fileSystem.File.WriteAllBytesAsync(temporary, JsonSerializer.SerializeToUtf8Bytes(snapshot), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _fileSystem.File.Move(temporary, CachePath, overwrite: true);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        finally
         {
-            _log.Warn($"Couldn't save the translation download state: {ex.Message}");
+            try
+            {
+                if (_fileSystem.File.Exists(temporary))
+                    _fileSystem.File.Delete(temporary);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _log.Warn($"Couldn't remove an unfinished translation snapshot: {ex.Message}");
+            }
         }
     }
 }
