@@ -49,6 +49,14 @@ public class FeedInfo
     public FeedInfo ForRecipeFeed(IEnvironmentProvider environmentProvider)
     {
         FeedInfo result = SnapshotAuthority();
+        // Older launchers stored private feeds as owner/repo. Resolve that shorthand only to GitHub.
+        if (result.Repository.TrimEnd('/').Split('/') is [var owner, var name] &&
+            owner.Length > 0 && name.Length > 0 && name is not ("." or "..") &&
+            owner.All(character => char.IsAsciiLetterOrDigit(character) || character == '-') &&
+            name.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.'))
+        {
+            result.Repository = $"https://github.com/{owner}/{name}";
+        }
         result.Token = string.IsNullOrWhiteSpace(TokenEnvironmentVariable) ? Token
             : environmentProvider.GetEnvironmentVariable(TokenEnvironmentVariable)
                 ?? throw new InvalidOperationException($"Token environment variable '{TokenEnvironmentVariable}' is not set.");
