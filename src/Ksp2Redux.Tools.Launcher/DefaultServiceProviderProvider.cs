@@ -37,6 +37,8 @@ public static class DefaultServiceProviderProvider
             localization.Log = provider.GetRequiredService<ILogService>();
             return localization;
         });
+        serviceCollection.AddSingleton<IStringSource, ResourceStringSource>();
+        serviceCollection.AddSingleton<ITranslationUpdateService, TranslationUpdateService>();
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();

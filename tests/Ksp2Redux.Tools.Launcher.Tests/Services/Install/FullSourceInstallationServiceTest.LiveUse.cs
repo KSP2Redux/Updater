@@ -563,7 +563,7 @@ public partial class FullSourceInstallationServiceTest
             Mock.Of<ISteamSessionService>(), Mock.Of<ISteamDialogService>(), fixture.Os,
             Mock.Of<IKsp2GameUninstallService>(), state, LocalizationService.Default, feeds.Object,
             Mock.Of<IWineRuntimeService>(), Mock.Of<IDiskSpaceService>(), Mock.Of<ISaveBackupService>(backups => backups.List() == Array.Empty<SaveBackup>()),
-            Mock.Of<IGameProcessService>(), coordinator);
+            Mock.Of<IGameProcessService>(), Mock.Of<ITranslationUpdateService>(), coordinator);
         Dictionary<string, string> before = LiveUseSnapshot(fixture);
         using var held = running ? null : fixture.Fs.File.Open(At(fixture.Fs, fixture.Install, BUNDLE),
             FileMode.Open, FileAccess.Read, FileShare.Read);

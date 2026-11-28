@@ -65,8 +65,12 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Before the window, so it is created in the language the player chose.
+            // Before the window, so it is created in the language the player chose. The translations downloaded
+            // on an earlier start come first, since the chosen language may only exist as one of those.
+            var translationUpdates = _serviceProvider.GetRequiredService<ITranslationUpdateService>();
+            translationUpdates.ApplyCached();
             localization.SetLanguage(_serviceProvider.GetRequiredService<ILauncherConfigService>().Config.Language);
+            _ = UpdateTranslationsAsync(translationUpdates, log);
 
             var mainWindow = new MainWindow
             {
@@ -83,6 +87,19 @@ public partial class App(IServiceProvider? serviceProvider = null) : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // Runs alongside the window opening. Newer texts swap in live once they have arrived.
+    private static async Task UpdateTranslationsAsync(ITranslationUpdateService translationUpdates, ILogService log)
+    {
+        try
+        {
+            await Task.Run(() => translationUpdates.UpdateAsync());
+        }
+        catch (Exception ex)
+        {
+            log.Error("Updating the translations failed.", ex);
+        }
     }
 
     private async void AboutMenuItem_OnClick(object? sender, EventArgs e)

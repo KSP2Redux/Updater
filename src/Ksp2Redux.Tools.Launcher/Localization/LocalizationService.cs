@@ -17,9 +17,13 @@ public sealed class LocalizationService : ILocalizationService
     // What Avalonia's indexer bindings listen for. Unlike WPF, it is the indexer's own name, not "Item[]".
     internal const string INDEXER_NAME = "Item";
 
+    private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> NoDownloadedTexts =
+        new Dictionary<string, IReadOnlyDictionary<string, string>>();
+
     private readonly IStringSource _source;
     private readonly CultureInfo _systemCulture;
-    private readonly CultureInfo[] _availableCultures;
+    private CultureInfo[] _availableCultures = [];
+    private IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> _downloaded = NoDownloadedTexts;
     private readonly ConcurrentDictionary<string, bool> _warned = new();
 
     /// <summary>
@@ -33,14 +37,19 @@ public sealed class LocalizationService : ILocalizationService
         _source = source;
         _systemCulture = systemCulture ?? CultureInfo.CurrentUICulture;
         Culture = EnglishCulture;
+        AvailableLanguages = FindLanguages();
+    }
 
+    // English first, then every translation culture the build carries or that was downloaded, in contract order.
+    private List<LanguageOption> FindLanguages()
+    {
         var languages = new List<LanguageOption> { ToOption(EnglishCulture) };
         languages.AddRange(TranslationCultures
             .Select(CultureInfo.GetCultureInfo)
-            .Where(source.HasTranslation)
+            .Where(culture => _source.HasTranslation(culture) || _downloaded.ContainsKey(culture.Name))
             .Select(ToOption));
-        AvailableLanguages = languages;
         _availableCultures = languages.Select(language => CultureInfo.GetCultureInfo(language.CultureName)).ToArray();
+        return languages;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -51,14 +60,16 @@ public sealed class LocalizationService : ILocalizationService
 
     public CultureInfo Culture { get; private set; }
 
-    public IReadOnlyList<LanguageOption> AvailableLanguages { get; }
+    public IReadOnlyList<LanguageOption> AvailableLanguages { get; private set; }
 
     public string this[string key]
     {
         get
         {
             var culture = Culture;
-            var text = _source.GetString(key, culture);
+            var text = _downloaded.TryGetValue(culture.Name, out var downloaded) && downloaded.TryGetValue(key, out var newer)
+                ? newer
+                : _source.GetString(key, culture);
             if (string.IsNullOrEmpty(text) && culture.Name != EnglishCulture.Name)
             {
                 text = _source.GetString(key, EnglishCulture);
@@ -115,6 +126,25 @@ public sealed class LocalizationService : ILocalizationService
 
         Culture = culture;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Culture)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(INDEXER_NAME));
+        LanguageChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void SetDownloadedTexts(IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> texts)
+    {
+        var previous = _downloaded;
+        _downloaded = texts;
+
+        var languages = FindLanguages();
+        if (!languages.SequenceEqual(AvailableLanguages))
+        {
+            AvailableLanguages = languages;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvailableLanguages)));
+        }
+
+        // Only the shown language's texts matter right now. The others are read when one is picked.
+        var culture = Culture.Name;
+        if (!previous.ContainsKey(culture) && !texts.ContainsKey(culture)) return;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(INDEXER_NAME));
         LanguageChanged?.Invoke(this, EventArgs.Empty);
     }

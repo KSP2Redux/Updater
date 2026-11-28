@@ -31,6 +31,9 @@ https://ksp2redux.org</value>
   <data name="App.About.UnknownVersion" xml:space="preserve">
     <value>未知</value>
   </data>
+  <data name="App.AlreadyRunning" xml:space="preserve">
+    <value>KSP2 Redux已在运行。请切换到其窗口，或在重新启动前先关闭它。</value>
+  </data>
   <data name="Tab.Home" xml:space="preserve">
     <value>首页</value>
   </data>
@@ -85,6 +88,12 @@ https://ksp2redux.org</value>
   <data name="Sidebar.Link.Forums.Tooltip" xml:space="preserve">
     <value>KSP论坛</value>
   </data>
+  <data name="Community.Label" xml:space="preserve">
+    <value>新闻</value>
+  </data>
+  <data name="Community.ViewOnBlog" xml:space="preserve">
+    <value>在博客中打开</value>
+  </data>
   <data name="Community.ViewOnBlog.Tooltip" xml:space="preserve">
     <value>在博客上查看</value>
   </data>
@@ -92,7 +101,26 @@ https://ksp2redux.org</value>
     <value>COMING SOON</value>
   </data>
   <data name="Mods.Roadmap" xml:space="preserve">
-    <value>模组支持已在路线图中 :3</value>
+    <value>模组支持已在路线图中:3
+在此之前，可在最新资讯中查看即将推出的内容。</value>
+  </data>
+  <data name="Mods.ReadNews" xml:space="preserve">
+    <value>阅读最新资讯</value>
+  </data>
+  <data name="Home.InstallLog.Copy" xml:space="preserve">
+    <value>复制</value>
+  </data>
+  <data name="Home.InstallLog.Copy.Tooltip" xml:space="preserve">
+    <value>复制整个日志。要复制部分行，请选中它们并按Ctrl+C。</value>
+  </data>
+  <data name="Home.InstallLog.Copied" xml:space="preserve">
+    <value>日志已复制到剪贴板</value>
+  </data>
+  <data name="Clipboard.CopyFailed" xml:space="preserve">
+    <value>无法复制到剪贴板。请重试。</value>
+  </data>
+  <data name="Home.InstallLog.Title" xml:space="preserve">
+    <value>安装日志</value>
   </data>
   <data name="Home.Progress.Downloaded" xml:space="preserve">
     <value>已下载：</value>
@@ -105,6 +133,18 @@ https://ksp2redux.org</value>
   </data>
   <data name="Home.Progress.InstallFormat" xml:space="preserve">
     <value>{0}/{3}步骤({1:0}%)</value>
+  </data>
+  <data name="Home.Progress.Rate" xml:space="preserve">
+    <value>{0}/s · {1}</value>
+  </data>
+  <data name="Home.Progress.TimeLeft.Seconds" xml:space="preserve">
+    <value>剩余约{0}秒</value>
+  </data>
+  <data name="Home.Progress.TimeLeft.Minutes" xml:space="preserve">
+    <value>剩余约{0}分钟</value>
+  </data>
+  <data name="Home.Progress.TimeLeft.Hours" xml:space="preserve">
+    <value>剩余约{0}小时{1}分钟</value>
   </data>
   <data name="Home.LauncherUpdateNeeded" xml:space="preserve">
     <value>需要新版本的更新程序才能安装或更新Redux</value>
@@ -241,6 +281,12 @@ https://ksp2redux.org</value>
   <data name="Settings.CopyDiagnosticInfo" xml:space="preserve">
     <value>复制诊断信息</value>
   </data>
+  <data name="Settings.CopyDiagnosticInfo.Tooltip" xml:space="preserve">
+    <value>复制你的启动器版本、系统信息、安装信息及最近日志，可直接粘贴到错误报告中。你的用户文件夹将以~显示。</value>
+  </data>
+  <data name="Settings.CopyDiagnosticInfo.Copied" xml:space="preserve">
+    <value>已复制到剪贴板</value>
+  </data>
   <data name="Settings.VerboseLogging" xml:space="preserve">
     <value>记录详细日志</value>
   </data>
@@ -248,10 +294,10 @@ https://ksp2redux.org</value>
     <value>将更详细的信息写入日志文件。有助于排查问题。</value>
   </data>
   <data name="Settings.BackgroundMotion" xml:space="preserve">
-    <value>动态背景</value>
+    <value>动态效果</value>
   </data>
   <data name="Settings.BackgroundMotion.Tooltip" xml:space="preserve">
-    <value>背景将会跟随鼠标移动。如果该动态效果引起分心或不适，请关闭此项。</value>
+    <value>鼠标移动时，背景会轻微偏移，且界面带有动画效果。如果该动态效果会分散注意力或引起不适，请关闭此项。</value>
   </data>
   <data name="Settings.LauncherVersion" xml:space="preserve">
     <value>启动器 v{0}</value>
@@ -412,6 +458,40 @@ https://ksp2redux.org</value>
     <value>无法打开游戏数据文件夹。
 {0}</value>
   </data>
+  <data name="Settings.SaveBackups" xml:space="preserve">
+    <value>保存备份：</value>
+  </data>
+  <data name="Settings.SaveBackups.Tooltip" xml:space="preserve">
+    <value>每次安装、更新或卸载前，你的存档和航天器都会进行备份。系统会保留最新的五个备份。</value>
+  </data>
+  <data name="Settings.SaveBackups.None" xml:space="preserve">
+    <value>暂无</value>
+  </data>
+  <data name="Settings.SaveBackups.Restore" xml:space="preserve">
+    <value>恢复</value>
+  </data>
+  <data name="Settings.SaveBackups.OpenFolder" xml:space="preserve">
+    <value>打开备份文件夹</value>
+  </data>
+  <data name="Settings.SaveBackups.Confirm" xml:space="preserve">
+    <value>用{0}的备份替换你当前的存档和航天器吗？
+
+你当前的存档会先进行备份，因此你可以通过此列表恢复到它们。</value>
+  </data>
+  <data name="Settings.SaveBackups.Busy" xml:space="preserve">
+    <value>关闭KSP2并等待启动器完成当前操作，然后恢复备份。</value>
+  </data>
+  <data name="Settings.SaveBackups.Restored" xml:space="preserve">
+    <value>你的存档和航天器已恢复为备份中的状态。你之前拥有的存档已保存在最新的备份中。</value>
+  </data>
+  <data name="Settings.SaveBackups.Failed" xml:space="preserve">
+    <value>无法恢复备份：{0}
+
+如果你的部分存档已被替换，你之前拥有的存档已保存在最新的备份中。</value>
+  </data>
+  <data name="Settings.SaveBackups.FolderFailed" xml:space="preserve">
+    <value>无法打开存档备份文件夹：{0}</value>
+  </data>
   <data name="Settings.LogsFolder.Failed" xml:space="preserve">
     <value>无法打开日志文件夹：{0}</value>
   </data>
@@ -421,7 +501,7 @@ https://ksp2redux.org</value>
   <data name="Settings.UninstallKsp2.NotAGameFolder.Message" xml:space="preserve">
     <value>{0}
 
-看起来不像是KSP2的安装文件夹（{1}旁边没有KSP2_x64_Data），因此没有删除任何内容。如果它指向了错误的位置，请改为移除该配置。</value>
+看起来不像是一个仅存放KSP2的文件夹，因此没有删除任何内容。删除操作会移除整个文件夹，所以该文件夹中需要有{1}以及旁边的KSP2_x64_Data，且不能包含其他程序或大量其他文件。如果你确定，请手动删除；如果该配置指向了错误的位置，请将其移除。</value>
   </data>
   <data name="Settings.UninstallKsp2.Missing.Title" xml:space="preserve">
     <value>KSP2已移除</value>
@@ -462,6 +542,15 @@ https://ksp2redux.org</value>
   </data>
   <data name="Settings.UninstallRedux.NotInstalled" xml:space="preserve">
     <value>Redux尚未安装……</value>
+  </data>
+  <data name="Settings.Busy" xml:space="preserve">
+    <value>关闭KSP2并等待启动器完成当前操作，然后重试。</value>
+  </data>
+  <data name="Home.CloseWhileBusy.Title" xml:space="preserve">
+    <value>仍在运行</value>
+  </data>
+  <data name="Home.CloseWhileBusy.Message" xml:space="preserve">
+    <value>启动器正在更改你的游戏文件。现在关闭会导致KSP2更新不完整。请在“首页”标签页取消安装，或等待其完成后再关闭启动器。</value>
   </data>
   <data name="Settings.UninstallRedux.Confirm" xml:space="preserve">
     <value>你确定要卸载Redux吗？</value>
@@ -725,6 +814,9 @@ softwareupdate --install-rosetta --agree-to-license</value>
   <data name="Home.Log.Installed" xml:space="preserve">
     <value>KSP2 Redux已成功安装</value>
   </data>
+  <data name="Home.Log.NoRoute" xml:space="preserve">
+    <value>从已安装版本到{0}没有可用路径。</value>
+  </data>
   <data name="Home.Log.Cancelled" xml:space="preserve">
     <value>安装已取消</value>
   </data>
@@ -771,6 +863,10 @@ softwareupdate --install-rosetta --agree-to-license</value>
   </data>
   <data name="Update.ActionMessage" xml:space="preserve">
     <value>启动器将下载并更新，在此过程中可能会重启几次。
+如果不进行更新，你将无法安装新的Redux版本。</value>
+  </data>
+  <data name="Update.ActionMessage.MacOS" xml:space="preserve">
+    <value>点击“确定”下载新版本，然后将KSP2 Redux从磁盘映像拖入“应用程序”文件夹，并替换旧版本。
 如果不进行更新，你将无法安装新的Redux版本。</value>
   </data>
   <data name="Update.WhatsNew.NoNotes" xml:space="preserve">
@@ -882,6 +978,12 @@ softwareupdate --install-rosetta --agree-to-license</value>
   </data>
   <data name="Install.CheckingFiles" xml:space="preserve">
     <value>正在检查是否有其他程序占用游戏文件……</value>
+  </data>
+  <data name="Install.SavesBackedUp" xml:space="preserve">
+    <value>已将你的存档和航天器备份至{0}</value>
+  </data>
+  <data name="Install.SavesBackupFailed" xml:space="preserve">
+    <value>无法备份你的存档，将在没有备份的情况下继续：{0}</value>
   </data>
   <data name="Install.Uninstalling" xml:space="preserve">
     <value>正在卸载KSP2 Redux</value>
