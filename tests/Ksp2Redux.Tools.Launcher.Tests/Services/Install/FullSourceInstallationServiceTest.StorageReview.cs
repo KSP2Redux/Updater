@@ -122,16 +122,5 @@ public partial class FullSourceInstallationServiceTest
             await VerifyRepairDefersPreviousRetirement(fixture);
         else
             await VerifyDirectLegacyUninstall(fixture);
-        string report = fixture.Fs.Path.Combine(fixture.Root, "storage-review-result.json");
-        fixture.Fs.File.WriteAllBytes(report, JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            fixture.Root, installation = fixture.Entry.Id, repair, previousWork,
-            previousPayloadsPreserved = repair, exactStockRestored = !repair,
-            archiveSha256 = Digest(fixture.Fs.File.ReadAllBytes(fixture.Archive)),
-            publishedHeadSha256 = Digest(fixture.Fs.File.ReadAllBytes(fixture.Head)),
-            pending = Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["Pending"] is not null
-        }));
-        if (_temporaryWindowsRoot is null)
-            TestContext.AddTestAttachment(report, "Reviewed native Windows coordinator-transition evidence.");
     }
 }

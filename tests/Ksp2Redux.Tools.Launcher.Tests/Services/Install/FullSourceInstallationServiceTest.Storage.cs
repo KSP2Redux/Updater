@@ -420,24 +420,6 @@ public partial class FullSourceInstallationServiceTest
         Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(STOCK_BOOT));
         string storage = fixture.Fs.Path.Combine(fixture.Root, $".redux-fullsource-{fixture.Entry.Id:N}");
         Assert.That(fixture.Fs.Directory.EnumerateDirectories(storage).Any(path => path.EndsWith("-source", StringComparison.Ordinal)), Is.False);
-        string report = fixture.Fs.Path.Combine(fixture.Root, "storage-lifecycle-result.json");
-        long retiredPayloadBytes = 0;
-        foreach (string intentPath in fixture.Fs.Directory.EnumerateFiles(storage, "payload-retirement.json", SearchOption.AllDirectories))
-        {
-            JsonNode intent = JsonNode.Parse(fixture.Fs.File.ReadAllBytes(intentPath))!;
-            retiredPayloadBytes += StockBaselineManifest.FromJson(Convert.FromBase64String(intent["Source"]!.GetValue<string>())).TotalBytes;
-            retiredPayloadBytes += StockBaselineManifest.FromJson(Convert.FromBase64String(intent["Work"]!.GetValue<string>()))
-                .Files.Where(file => file.Path.Contains('/')).Sum(file => file.Length);
-        }
-        fixture.Fs.File.WriteAllBytes(report, JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            fixture.Root, installation = fixture.Entry.Id, archiveSha256 = Digest(archive),
-            archiveLength = archive.LongLength, sourceStages = 0, retiredPayloadBytes,
-            completedRetirements = fixture.Fs.Directory.EnumerateFiles(storage, "payload-retirement.complete", SearchOption.AllDirectories).Count(),
-            interrupted, exactStockRestored = true, unknownFilesPreserved = true
-        }));
-        if (_temporaryWindowsRoot is null)
-            TestContext.AddTestAttachment(report, "Small native Windows retirement and exact uninstall evidence.");
     }
 
     /// <summary>

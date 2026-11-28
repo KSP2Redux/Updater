@@ -1,5 +1,4 @@
 using System.IO.Abstractions;
-using System.Text.Json;
 using Ksp2Redux.Tools.Common.Restoration;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Testably.Abstractions;
@@ -24,31 +23,8 @@ public partial class FullSourceInstallationServiceTest
     private Fixture NativeFixture()
     {
         var fs = new RealFileSystem();
-        string? workspace = fs.Path.GetDirectoryName(typeof(FullSourceInstallationServiceTest).Assembly.Location);
-        while (workspace is not null && !fs.Directory.Exists(fs.Path.Combine(workspace, "Documentation", "Omnipatching")))
-            workspace = fs.Path.GetDirectoryName(workspace);
-        // Leave room for the launcher's temporary sibling names beneath the game directory.
-        string name = $"coordinator-{Guid.NewGuid():N}";
-        if (workspace is null)
-        {
-            _temporaryWindowsRoot = fs.Path.Combine(fs.Path.GetTempPath(), name);
-            return Create(fs, _temporaryWindowsRoot);
-        }
-        string root = fs.Path.Combine(workspace, "Library", "Omnipatching", name);
-        Fixture fixture = Create(fs, root);
-        string report = fs.Path.Combine(root, "inputs.json");
-        fs.File.WriteAllBytes(report, JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            root, fixture.Install, fixture.Storage, installationId = fixture.Entry.Id,
-            stockInput = fixture.Stock.SourceRoot, releaseTwo = fixture.Target2.SourceRoot, releaseThree = fixture.Target3.SourceRoot,
-            stock = fixture.Stock.Stock.BaselineIdentity, targetTwo = fixture.Target2.Identity, targetThree = fixture.Target3.Identity
-        }));
-        fs.File.WriteAllBytes(fs.Path.Combine(root, "stock-manifest.json"), fixture.Stock.Stock.ToJson());
-        fs.File.WriteAllBytes(fs.Path.Combine(root, "release-two-manifest.json"), fixture.Target2.Manifest.ToJson());
-        fs.File.WriteAllBytes(fs.Path.Combine(root, "release-three-manifest.json"), fixture.Target3.Manifest.ToJson());
-        TestContext.AddTestAttachment(report, "Retained real Windows contained inputs and generation identities.");
-        TestContext.Progress.WriteLine($"Retained coordinator native evidence: {root}");
-        return fixture;
+        _temporaryWindowsRoot = fs.Path.Combine(fs.Path.GetTempPath(), $"coordinator-{Guid.NewGuid():N}");
+        return Create(fs, _temporaryWindowsRoot);
     }
 
     /// <summary>
@@ -56,7 +32,7 @@ public partial class FullSourceInstallationServiceTest
     /// </summary>
     /// <returns>The verification task.</returns>
     [Test, Platform("Win")]
-    public async Task NativeContainedIntegration_RunsCompleteProductionOperationsAndRetainsEvidence()
+    public async Task NativeContainedIntegration_RunsCompleteProductionOperations()
     {
         Fixture fixture = NativeFixture();
         Generation(fixture, await Apply(fixture));
@@ -75,7 +51,6 @@ public partial class FullSourceInstallationServiceTest
         await new StockArchive(fixture.Fs, new Ksp2Redux.Tools.Common.Services.ZipFileService(fixture.Fs))
             .VerifyAsync(fixture.Archive, fixture.Stock.Stock);
         Preserved(fixture, archive);
-        fixture.Fs.File.WriteAllText(fixture.Fs.Path.Combine(fixture.Root, "complete.txt"), "All contained generation, repair and uninstall assertions passed.");
     }
 
     /// <summary>
