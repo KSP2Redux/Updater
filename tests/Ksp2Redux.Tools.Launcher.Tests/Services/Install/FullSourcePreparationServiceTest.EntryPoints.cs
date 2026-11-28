@@ -234,7 +234,7 @@ public partial class FullSourcePreparationServiceTest
         AssertTree(fixture.Fs, fixture.Install, fixture.Target);
     }
 
-    private static IServiceProvider Services(Fixture fixture)
+    private static IServiceProvider Services(Fixture fixture, IBootConfigSettingsService? bootConfig = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(fixture.Configuration.Object);
@@ -243,7 +243,7 @@ public partial class FullSourcePreparationServiceTest
         services.AddSingleton(fixture.Space.Object);
         services.AddSingleton(fixture.Os.Object);
         services.AddSingleton<IFullSourcePreparationService>(fixture.Preparation);
-        services.AddSingleton<IFullSourceInstallationService>(fixture.Coordinator());
+        services.AddSingleton<IFullSourceInstallationService>(fixture.Coordinator(bootConfig: bootConfig));
         services.AddSingleton<IInstallationStateService, InstallationStateService>();
         services.AddSingleton<IKsp2InstallService, Ksp2InstallService>();
         services.AddSingleton<IInstallPlanService, InstallPlanService>();

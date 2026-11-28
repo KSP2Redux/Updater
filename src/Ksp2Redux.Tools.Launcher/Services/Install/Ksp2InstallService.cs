@@ -1,7 +1,6 @@
 using System.IO.Abstractions;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
-using Ksp2Redux.Tools.Launcher.Services.Feeds;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
@@ -287,53 +286,24 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
 
     public void ApplyActiveInstallBootConfig()
     {
-        // Ksp2 holds the target install, so its own settings decide the boot config. Only Redux builds take them.
-        // A restored stock game still holding a record is one whose revert failed, so it is tried again here.
-        if (TargetEntry is not { } entry) return;
-        if (Ksp2 is not { IsValid: true } ksp2) return;
-        if (ksp2.Distribution == Distribution.Redux)
-        {
-            RestoreReleaseSettings(entry);
-            bootConfig?.Apply(entry);
-        }
-        else
-        {
-            RestoreStockSettings(entry, ksp2.InstallDir!);
-        }
-    }
-
-    private void RestoreStockSettings(Ksp2InstallEntry entry, string root)
-    {
-        if (bootConfig is null)
+        if (bootConfig is null || TargetEntry is not { } entry || Ksp2 is not { IsValid: true } ksp2)
             return;
         try
         {
-            if (fullSource?.HasCatalog(root) == true && fullSource.RestorePublishedStockBootConfig(entry.Id))
+            string root = ksp2.InstallDir;
+            if (fullSource?.TryApplyPublishedBootConfig(entry.Id, root) == true)
                 return;
-            if (entry.BootConfigOriginals.Count != 0)
+
+            // A refused legacy transaction can still own boot.config even when game code can be read.
+            installationStateService.EnsureLaunchAllowed(root);
+            if (ksp2.Distribution == Distribution.Redux)
+                bootConfig.Apply(entry);
+            else if (entry.BootConfigOriginals.Count != 0 || entry.BootConfigReleaseSettings is not null)
                 bootConfig.Revert(entry);
         }
-        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException)
+        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or FilesInUseException)
         {
-            logService.Warn($"The stock boot.config settings could not be restored: {failure.Message}");
-        }
-    }
-
-    // The committed generation carries its release's settings. The configuration record is written after the commit,
-    // so an interrupted install can leave it missing or stale.
-    private void RestoreReleaseSettings(Ksp2InstallEntry entry)
-    {
-        if (bootConfig is null || fullSource is null)
-            return;
-        try
-        {
-            if (fullSource.HasCatalog(fileSystem.Path.GetDirectoryName(entry.ExePath)!) &&
-                fullSource.GetPublishedBootConfigSettings(entry.Id) is { } published)
-                bootConfig.SetReleaseSettings(entry, published);
-        }
-        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException)
-        {
-            logService.Warn($"The release's boot.config settings could not be read: {failure.Message}");
+            logService.Warn($"The boot.config settings could not be applied. {failure.Message}");
         }
     }
 }

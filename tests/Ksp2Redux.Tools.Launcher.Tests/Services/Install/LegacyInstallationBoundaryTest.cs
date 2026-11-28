@@ -354,16 +354,21 @@ public class LegacyInstallationBoundaryTest
     }
 
     /// <summary>
-    /// GUI self-update returns a blocked result before networking or update-directory cleanup.
+    /// An inactive pending install prevents launcher replacement while healthy profiles remain installable.
     /// </summary>
     /// <returns>The completed test.</returns>
     [Test]
-    public async Task GuiSelfUpdatePreservesPendingInstallAndUpdateFiles()
+    public async Task GuiSelfUpdateVetoPreservesPendingInstallAndAllowsHealthyProfile()
     {
         var fileSystem = CreateFileSystem();
+        const string healthyRoot = @"C:\Games\Healthy";
+        fileSystem.Directory.CreateDirectory(healthyRoot);
         fileSystem.File.WriteAllText(fileSystem.Path.Combine(INSTALL_ROOT, MARKER), "");
         var before = Snapshot(fileSystem);
         var config = new LauncherConfig("unused.json");
+        var active = new Ksp2InstallEntry { ExePath = fileSystem.Path.Combine(healthyRoot, "KSP2_x64.exe") };
+        config.Ksp2Installs.Add(active);
+        config.ActiveKsp2InstallId = active.Id;
         config.Ksp2Installs.Add(new Ksp2InstallEntry { ExePath = fileSystem.Path.Combine(INSTALL_ROOT, "KSP2_x64.exe") });
         var configuration = new Mock<ILauncherConfigService>();
         configuration.SetupGet(service => service.Config).Returns(config);
@@ -371,10 +376,13 @@ public class LegacyInstallationBoundaryTest
         var assembly = new Mock<IAssemblyService>();
         assembly.Setup(service => service.GetName()).Returns(new System.Reflection.AssemblyName("Test"));
         var log = new Mock<ILogService>();
+        var state = State(fileSystem);
         var update = new UpdateService(configuration.Object, fileSystem, environment, assembly.Object,
-            Mock.Of<IMessageBoxService>(), log.Object, State(fileSystem));
+            Mock.Of<IMessageBoxService>(), log.Object, state);
 
-        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.False);
+        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.True);
+        Assert.DoesNotThrow(() => state.EnsureLegacyMutationAllowed(healthyRoot));
+        Assert.Throws<IOException>(() => state.EnsureLegacyMutationAllowed(INSTALL_ROOT));
 
         log.Verify(candidate => candidate.Warn(It.Is<string>(text => text.Contains("self-update is blocked")),
             It.IsAny<string>(), It.IsAny<string>()), Times.Once);
@@ -401,8 +409,8 @@ public class LegacyInstallationBoundaryTest
         var update = new UpdateService(configuration.Object, CreateFileSystem(), new MockEnvironmentProvider(), assembly.Object,
             messages.Object, Mock.Of<ILogService>(), state.Object);
 
-        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.False);
-        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.False);
+        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.True);
+        Assert.That(await update.CheckAndPerformUpdateAsync(), Is.True);
 
         messages.Verify(service => service.ShowMessageBoxAsOwnedAsync(It.IsAny<string>(), "Start over as described.",
             It.IsAny<MsBox.Avalonia.Enums.ButtonEnum>(), It.IsAny<MsBox.Avalonia.Enums.Icon>(), It.IsAny<object?>(),

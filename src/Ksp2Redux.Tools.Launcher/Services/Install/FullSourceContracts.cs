@@ -42,6 +42,9 @@ public record FullSourcePreparedTarget(FullSourceReleaseIdentity Identity, Stock
     /// </summary>
     public IReadOnlyDictionary<string, string>? BootConfigSettings { get; init; }
 
+    // The historical target contract authenticates these bytes directly when prepared settings are rechecked.
+    internal byte[]? HistoricalBootConfig { get; init; }
+
     /// <summary>
     /// Gets the installed baseline that supplies unchanged paths when only changed files are staged.
     /// </summary>
@@ -324,11 +327,13 @@ public interface IFullSourceInstallationService
     IReadOnlyDictionary<string, string>? GetPublishedBootConfigSettings(Guid installationId) => null;
 
     /// <summary>
-    /// Replay boot.config restoration for a published stock generation.
+    /// Apply or restore boot.config for the published generation under the coordinator lock.
     /// </summary>
     /// <param name="installationId">The configured installation identity.</param>
-    /// <returns>True if the coordinator handled the request, including any restore that needs a retry.</returns>
-    bool RestorePublishedStockBootConfig(Guid installationId) => false;
+    /// <param name="expectedInstallRoot">The selected installation folder.</param>
+    /// <returns>True if a published generation owns the settings, false if no published generation applies.</returns>
+    /// <exception cref="IOException">Thrown when pending recovery or coordination prevents applying the settings.</exception>
+    bool TryApplyPublishedBootConfig(Guid installationId, string expectedInstallRoot) => false;
 
     /// <summary>
     /// Recover pending work and publish its verified outcome, including after marker cleanup.

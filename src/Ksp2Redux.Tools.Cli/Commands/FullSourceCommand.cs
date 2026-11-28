@@ -12,6 +12,8 @@ public class FullSourceCommand : ReduxCommand<FullSourceSettings>
 {
     private const string NO_CATALOG = "The installation has no full-source catalog.";
 
+    protected override bool ChangesConfig => true;
+
     /// <inheritdoc />
     protected override async Task<int> RunAsync(CliContext context, FullSourceSettings settings, CancellationToken cancellationToken)
     {

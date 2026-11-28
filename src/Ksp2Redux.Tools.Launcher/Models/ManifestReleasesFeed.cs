@@ -193,6 +193,7 @@ public class ManifestReleasesFeed(
             FullSourceReleaseId = descriptor.ReleaseId, FullSourceChannel = CurrentChannel,
             FullSourceVersion = targetVersion, FullSourceDownloadBytes = descriptor.DownloadBytes,
             FullSourceFeed = feed.SnapshotAuthority(), FullSourceManifestSha256 = IdentityDigest(descriptor),
+            FullSourcePublishedManifestSha256 = descriptor.TargetManifestSha256,
             IsFullSourceRepair = repair
         };
     }

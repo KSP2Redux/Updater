@@ -1,8 +1,11 @@
+using System.Text;
 using System.Text.Json;
 using Ksp2Redux.Tools.Cli.Commands;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Common.Restoration;
 using Ksp2Redux.Tools.Common.Services;
+using Ksp2Redux.Tools.Common.Transactions;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Moq;
@@ -95,15 +98,19 @@ public partial class FullSourceInstallationServiceTest
         await ApplyPlanAsync(reinstall);
 
         Assert.That(coordinator.GetPublishedIdentity(fixture.Entry.Id), Is.EqualTo(fixture.Target3.Identity));
-        Assert.That(fixture.Fs.File.Exists(fixture.Archive), Is.True);
-        Assert.That(fixture.Fs.File.ReadAllBytes(retiredBackup), Is.EqualTo(originalBackup));
+        Assert.That(fixture.Fs.File.ReadAllBytes(fixture.Archive), Is.EqualTo(originalBackup));
+        Assert.That(fixture.Fs.File.Exists(retiredBackup), Is.False);
         Preserved(fixture);
+
+        var secondUninstall = new InstallPlan();
+        secondUninstall.Uninstall();
+        await ApplyPlanAsync(secondUninstall);
+        Assert.That(fixture.Fs.Directory.EnumerateFiles(storage, "*-released-stock.zip").Single(), Is.EqualTo(retiredBackup));
+        Assert.That(fixture.Fs.File.ReadAllBytes(retiredBackup), Is.EqualTo(originalBackup));
+        Assert.That(coordinator.HasCatalog(fixture.Install), Is.False);
 
         if (fixture.Fs is RealFileSystem)
         {
-            var uninstall = new InstallPlan();
-            uninstall.Uninstall();
-            await ApplyPlanAsync(uninstall);
             var cache = new CacheService(fixture.Fs, new ZipFileService(fixture.Fs), state);
             cache.RecursivelyCreateCache(fixture.Install);
             Put(fixture.Fs, fixture.Install, Ksp2Install.KSP2_EXE_NAME, "simulated legacy patch");
@@ -117,7 +124,7 @@ public partial class FullSourceInstallationServiceTest
     }
 
     [Test]
-    public async Task Uninstall_InterruptedAfterMovingBackup_BlocksLegacyAndResumesFromVerifiedStock()
+    public async Task Recover_InterruptedAfterMovingBackup_BlocksLegacyAndResumesFromVerifiedStock()
     {
         Fixture fixture = Create();
         await Apply(fixture);
@@ -159,8 +166,145 @@ public partial class FullSourceInstallationServiceTest
         Assert.That(fixture.Fs.File.ReadAllBytes(retiredBackup), Is.EqualTo(new byte[] { 1, 2, 3 }));
 
         fixture.Fs.File.WriteAllBytes(retiredBackup, originalBackup);
-        await restarted.UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, fixture.Install);
+        using var output = new StringWriter();
+        Assert.That(await new FullSourceCommand().RunWithContextAsync(Context(fixture, output), new FullSourceSettings
+        {
+            Operation = "recover", Install = fixture.Entry.Id.ToString()
+        }), Is.EqualTo(ExitCode.SUCCESS), output.ToString());
+        Assert.That(restarted.HasCatalog(fixture.Install), Is.False);
         Assert.DoesNotThrow(() => state.EnsureLegacyMutationAllowed(fixture.Install));
         Preserved(fixture);
+    }
+
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    [TestCase(false, false)]
+    public async Task StockHandoff_LearnedDirectoriesAreReusableOnlyByTheOriginalInstallation(bool sameProfile,
+        bool configureCaseAlias)
+    {
+        Fixture fixture = Create();
+        const string releaseFile = "Redux/managed.bin";
+        const string releaseContents = "published Redux bytes";
+        const string userFile = "Redux/config.json";
+        Put(fixture.Fs, fixture.Target2.SourceRoot, releaseFile, releaseContents);
+        var original = fixture.Target2.Manifest;
+        var manifest = new StockBaselineManifest(original.BaselineIdentity, original.Provenance,
+            original.Files.Append(new StockBaselineFile(releaseFile, releaseContents.Length,
+                Digest(Encoding.UTF8.GetBytes(releaseContents)))), original.Directories.Append("Redux"));
+        var target = fixture.Target2 with
+        {
+            Identity = fixture.Target2.Identity with { ManifestSha256 = Digest(manifest.ToJson()) },
+            Manifest = manifest
+        };
+        fixture.Preparation.Setup(service => service.VerifyTargetAsync(target, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        await Apply(fixture, target: target);
+        Put(fixture.Fs, fixture.Install, userFile, USER_BYTES);
+
+        await fixture.Service().UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, fixture.Install);
+        Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, fixture.Install, releaseFile)), Is.False);
+
+        if (sameProfile)
+        {
+            Fixture reinstall = fixture;
+            if (configureCaseAlias)
+            {
+                var stock = fixture.Stock with { UnownedDirectories = [.. fixture.Stock.UnownedDirectories, "redux"] };
+                fixture.Preparation.Setup(service => service.VerifyStockAsync(stock, It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+                reinstall = fixture with { Stock = stock };
+            }
+            await Apply(reinstall, target: target);
+            Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, releaseFile)), Is.EqualTo(releaseContents));
+        }
+        else
+        {
+            // A separate profile must make its own decision about the occupied path.
+            var newEntry = new Ksp2InstallEntry { ExePath = fixture.Entry.ExePath };
+            fixture.Configuration.Config.Ksp2Installs = [newEntry];
+            var failure = await Assert.ThrowsAsync<InvalidDataException>(() => Apply(fixture with { Entry = newEntry }, target: target));
+            Assert.That(failure?.Message, Does.Contain("unowned directory"));
+            Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, fixture.Install, releaseFile)), Is.False);
+        }
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, userFile)), Is.EqualTo(USER_BYTES));
+    }
+
+    [Test]
+    public async Task Reinstall_InterruptedAfterReusingBackup_RecoversWithoutLeavingAnotherArchive()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        byte[] originalBackup = fixture.Fs.File.ReadAllBytes(fixture.Archive);
+        await fixture.Service().UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, fixture.Install);
+        var interrupted = fixture.Service((operation, after) =>
+        {
+            if (operation == "reuse-released-stock-backup" && after)
+                throw new IOException("Launcher exited after recovering the original archive.");
+        });
+
+        await Assert.ThrowsAsync<IOException>(() => Apply(fixture, interrupted));
+        Assert.That(fixture.Fs.File.ReadAllBytes(fixture.Archive), Is.EqualTo(originalBackup));
+        var resumed = fixture.Service();
+        Assert.That(resumed.Reconcile(fixture.Entry.Id)?.TransactionResult, Is.EqualTo(InstallTransactionResult.RolledBack));
+        await Apply(fixture, resumed);
+        Assert.That(resumed.GetPublishedIdentity(fixture.Entry.Id), Is.EqualTo(fixture.Target2.Identity));
+
+        await resumed.UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, fixture.Install);
+        string storage = fixture.Fs.Path.Combine(fixture.Root, $".redux-fullsource-{fixture.Entry.Id:N}");
+        string retainedBackup = fixture.Fs.Directory.EnumerateFiles(storage, "*-released-stock.zip").Single();
+        Assert.That(fixture.Fs.File.ReadAllBytes(retainedBackup), Is.EqualTo(originalBackup));
+        Assert.That(fixture.Fs.File.Exists(fixture.Archive), Is.False);
+    }
+
+    [Test]
+    public async Task StockHandoff_RetargetedProfileKeepsBothRootsIndependent()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        await fixture.Service().UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, fixture.Install);
+        string storage = fixture.Fs.Path.Combine(fixture.Root, $".redux-fullsource-{fixture.Entry.Id:N}");
+        string firstBackup = fixture.Fs.Directory.EnumerateFiles(storage, "*-released-stock.zip").Single();
+        byte[] firstBackupBytes = fixture.Fs.File.ReadAllBytes(firstBackup);
+
+        string secondRoot = fixture.Fs.Path.Combine(fixture.Root, "another-game");
+        foreach (string path in fixture.Stock.Stock.Directories)
+            fixture.Fs.Directory.CreateDirectory(At(fixture.Fs, secondRoot, path));
+        foreach (StockBaselineFile file in fixture.Stock.Stock.Files)
+            Put(fixture.Fs, secondRoot, file.Path, fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Stock.SourceRoot, file.Path)));
+        Put(fixture.Fs, secondRoot, RETAINED, "explicit retained bytes");
+        fixture.Entry.ExePath = fixture.Fs.Path.Combine(secondRoot, Ksp2Install.KSP2_EXE_NAME);
+        var retargeted = fixture with { Install = secondRoot };
+
+        await Apply(retargeted);
+        Assert.That(retargeted.Service().GetPublishedIdentity(fixture.Entry.Id), Is.EqualTo(fixture.Target2.Identity));
+        await retargeted.Service().UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, secondRoot);
+
+        Assert.That(fixture.Fs.Directory.EnumerateFiles(storage, "*-released-stock.zip").Count(), Is.EqualTo(2));
+        Assert.That(fixture.Fs.File.ReadAllBytes(firstBackup), Is.EqualTo(firstBackupBytes));
+        Assert.That(fixture.Fs.File.Exists(retargeted.Archive), Is.False);
+    }
+
+    [Test]
+    public async Task StockHandoff_WindowsCaseOnlyRootRenameReusesStockEvidence()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        await fixture.Service().UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, fixture.Install);
+        string storage = fixture.Fs.Path.Combine(fixture.Root, $".redux-fullsource-{fixture.Entry.Id:N}");
+        string retainedBackup = fixture.Fs.Directory.EnumerateFiles(storage, "*-released-stock.zip").Single();
+        byte[] expected = fixture.Fs.File.ReadAllBytes(retainedBackup);
+
+        string intermediate = fixture.Fs.Path.Combine(fixture.Root, "game-renaming");
+        string recased = fixture.Fs.Path.Combine(fixture.Root, "Game");
+        fixture.Fs.Directory.Move(fixture.Install, intermediate);
+        fixture.Fs.Directory.Move(intermediate, recased);
+        fixture.Entry.ExePath = fixture.Fs.Path.Combine(recased, Ksp2Install.KSP2_EXE_NAME);
+        var corrected = fixture with { Install = recased };
+
+        await Apply(corrected);
+        Assert.That(fixture.Fs.File.ReadAllBytes(corrected.Archive), Is.EqualTo(expected));
+        Assert.That(fixture.Fs.File.Exists(retainedBackup), Is.False);
+        await corrected.Service().UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, recased);
+        Assert.That(fixture.Fs.Directory.EnumerateFiles(storage, "*-released-stock.zip").Single(), Is.EqualTo(retainedBackup));
     }
 }

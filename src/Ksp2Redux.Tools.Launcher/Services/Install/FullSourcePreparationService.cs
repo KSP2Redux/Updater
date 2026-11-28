@@ -115,7 +115,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     {
         EnsureSupported();
         AuthorityRelease release = await ResolveAsync(releaseId, channel, ct, feed);
-        return await PrepareTargetAsync(release, ct, downloadProgress, repairInstallationId: installationId);
+        return await PrepareTargetAsync(release, ct, downloadProgress, installationId, repair: true);
     }
 
     /// <inheritdoc />
@@ -138,6 +138,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             FullSourceReleaseId = releaseId, FullSourceChannel = channel,
             FullSourceVersion = release.Descriptor.Version,
             FullSourceManifestSha256 = release.Descriptor.GetNormalizedTargetManifestSha256(),
+            FullSourcePublishedManifestSha256 = release.Descriptor.TargetManifestSha256,
             FullSourceFeed = release.Feed.SnapshotAuthority()
         };
     }
@@ -155,22 +156,20 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         if (!hasCatalog)
             return await PrepareInitialInstallAsync(release, installationId, ct, downloadProgress);
         if (plan.IsFullSourceRepair)
-            return (await PrepareTargetAsync(release, ct, downloadProgress, repairInstallationId: installationId), null);
-        if (installedRelease is not null)
-            return (await PrepareTargetAsync(release, ct, downloadProgress, installationId, installedRelease), null);
-        return (await PrepareTargetAsync(release, ct, downloadProgress), null);
+            return (await PrepareTargetAsync(release, ct, downloadProgress, installationId, repair: true), null);
+        return (await PrepareTargetAsync(release, ct, downloadProgress, installationId, installedRelease), null);
     }
 
     private async Task<(FullSourcePreparedTarget Target, FullSourceStockPreparation Stock)> PrepareInitialInstallAsync(
         AuthorityRelease release, Guid installationId, CancellationToken ct, Action<long, long>? downloadProgress)
     {
         var stock = await PrepareStockAsync(installationId, [release], ct);
-        return (await PrepareTargetAsync(release, ct, downloadProgress), stock);
+        return (await PrepareTargetAsync(release, ct, downloadProgress, installationId), stock);
     }
 
     private async Task<FullSourcePreparedTarget> PrepareTargetAsync(AuthorityRelease release, CancellationToken ct,
         Action<long, long>? downloadProgress,
-        Guid? installationId = null, FullSourceReleaseIdentity? installedRelease = null, Guid? repairInstallationId = null)
+        Guid? installationId = null, FullSourceReleaseIdentity? installedRelease = null, bool repair = false)
     {
         await _gate.WaitAsync(ct);
         try
@@ -188,7 +187,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 ReleaseRecipePipeline.ValidateUpdateFeedArtifact(artifact.Manifest, descriptor.TargetManifest, update);
                 var installed = ReleaseRecipePipeline.GetSourceContract(artifact.Manifest, update.SourceDigest);
                 if (await VerifyInstalledRecipeSourceAsync(id, installed, installedRelease, update.SourceDigest, ct) is { } installedSource)
-                    return await PrepareArtifactAsync(release, artifact, installedSource, markerBytes, downloadProgress, ct);
+                    return await PrepareArtifactAsync(release, artifact, installedSource, markerBytes, downloadProgress, ct, installationId);
             }
 
             var stock = await InspectArtifactAsync(release, ArtifactUrl(descriptor.R2ArtifactUrl, descriptor.GitHubArtifactUrl),
@@ -200,13 +199,12 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             {
                 var contract = ReleaseRecipePipeline.GetSourceContract(stock.Manifest, sourceDigest);
                 if (await VerifyInstalledRecipeSourceAsync(inlineId, contract, installedRelease, sourceDigest, ct) is { } installedSource)
-                    return await PrepareArtifactAsync(release, stock, installedSource, markerBytes, downloadProgress, ct);
+                    return await PrepareArtifactAsync(release, stock, installedSource, markerBytes, downloadProgress, ct, installationId);
             }
 
             // Without a verified direct source, the stock recipe can skip target files the installation already supplies.
-            Guid? retentionId = repairInstallationId ?? (installedRelease is not null ? installationId : null);
             FullSourceTargetRetention? retention = null;
-            if (retentionId is { } retainingId && _os.IsWindows())
+            if ((repair || installedRelease is not null) && installationId is { } retainingId && _os.IsWindows())
             {
                 string root = InstallRoot(Entry(retainingId));
                 var paths = new HashSet<string>(StringComparer.Ordinal);
@@ -220,7 +218,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             var source = ReleaseManifestValidator.GetPrepatchBaseline(descriptor) is { } prepatch
                 ? await PreparePrepatchSourceAsync(descriptor, prepatch, ct)
                 : await SelectBaselineAsync(descriptor.Baselines, ct, stock.Manifest, retention?.Paths);
-            return await PrepareArtifactAsync(release, stock, source, markerBytes, downloadProgress, ct, retention);
+            return await PrepareArtifactAsync(release, stock, source, markerBytes, downloadProgress, ct, installationId, retention);
         }
         finally
         {
@@ -243,54 +241,78 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
 
     private async Task<FullSourcePreparedTarget> PrepareArtifactAsync(AuthorityRelease release, RecipeArtifact artifact,
         RecipeSource selection, long markerBytes, Action<long, long>? downloadProgress,
-        CancellationToken ct, FullSourceTargetRetention? retention = null)
+        CancellationToken ct, Guid? installationId, FullSourceTargetRetention? retention = null)
     {
         FullSourceReleaseDescriptor descriptor = release.Descriptor;
         var (contract, source, installedId, projected) = selection;
         ReleaseRecipeManifest manifest = artifact.Manifest;
+        var targetContract = StockBaselineManifest.FromJson(descriptor.TargetManifest);
+        var historicalBoot = descriptor.BootConfigSettings is null ? targetContract.DroppedBootConfig : null;
+        byte[]? bootBytes = null;
+        RecipeArtifact bootArtifact = artifact;
+        int[]? bootPacks = null;
+        if (historicalBoot is not null)
+        {
+            if (historicalBoot.Length > BootConfigFile.MAX_BYTES)
+                throw new InvalidDataException("Historical release boot.config exceeds the settings size limit.");
+            bootPacks = ReleaseRecipePipeline.GetHistoricalBootPackIndices(manifest);
+            if (bootPacks is null)
+            {
+                bootBytes = TryReadHistoricalBootFromSource(source, historicalBoot, ct);
+                if (bootBytes is null && installationId is { } selectedId)
+                {
+                    // A normalized recipe cache may omit the file even when the selected game still has it.
+                    string install = InstallRoot(Entry(selectedId));
+                    if (install != source)
+                        bootBytes = TryReadHistoricalBootFromSource(install, historicalBoot, ct);
+                }
+                if (bootBytes is null && artifact.PackPrefix.Length != 0)
+                {
+                    // A separate update might copy or reuse bytes from a boot.config which the player has since edited.
+                    // The stock artifact describes the same authenticated target and can supply independent literals.
+                    bootArtifact = await InspectArtifactAsync(release, ArtifactUrl(descriptor.R2ArtifactUrl, descriptor.GitHubArtifactUrl),
+                        release.Patch.Size, release.Patch.ChecksumSha256, "", markerBytes, descriptor.DownloadBytes, downloadProgress, ct);
+                    markerBytes += release.Patch.Size;
+                    ReleaseRecipePipeline.ValidateFeedArtifact(bootArtifact.Manifest, descriptor, release.Patch.Size);
+                    bootPacks = ReleaseRecipePipeline.GetHistoricalBootPackIndices(bootArtifact.Manifest);
+                }
+                if (bootBytes is null && bootPacks is null)
+                    throw new InvalidDataException("The historical release boot.config cannot be reconstructed from verified inputs.");
+            }
+        }
+
         int[] requiredPacks = ReleaseRecipePipeline.GetRequiredPackIndices(manifest, contract, retention?.Paths);
-        long totalBytes = markerBytes + requiredPacks.Sum(index => (long)manifest.Packs[index].Length);
+        bool separateBootArtifact = !ReferenceEquals(bootArtifact, artifact);
+        if (bootPacks is not null && !separateBootArtifact)
+            requiredPacks = requiredPacks.Union(bootPacks).Order().ToArray();
+        int[] extraPacks = separateBootArtifact ? bootPacks! : [];
+        var mainPacks = requiredPacks.Select(index => manifest.Packs[index]).ToArray();
+        var bootOnlyPacks = extraPacks.Select(index => bootArtifact.Manifest.Packs[index]).ToArray();
+        long mainBytes = markerBytes + mainPacks.Sum(pack => (long)pack.Length);
+        long totalBytes = mainBytes + bootOnlyPacks.Sum(pack => (long)pack.Length);
         string stages = At(CacheRoot(), "stages");
         CreateDirectory(stages);
-        var targetContract = StockBaselineManifest.FromJson(descriptor.TargetManifest);
         var installed = installedId is { } id && _os.IsWindows()
             ? new FullSourceInstalledBaseline(id, contract) { PublishedSourceSha256 = selection.PublishedSourceSha256 }
             : null;
         var staged = installed is not null ? ReleaseRecipePipeline.UpdateStageContract(targetContract, contract)
             : retention is null ? targetContract : ReleaseRecipePipeline.RetainedStageContract(targetContract, retention.Paths);
         // Windows preparation keeps its stages and pack cache under the same controlled root.
-        long cacheGrowth = _os.IsWindows() ? EstimatePackCacheGrowth(manifest, requiredPacks, ct) : 0;
+        long cacheGrowth = _os.IsWindows() ? EstimatePackCacheGrowth(mainPacks.Concat(bootOnlyPacks), ct) : 0;
         EnsureSpace(stages, checked(staged.TotalBytes + cacheGrowth));
 
-        // Keep pending transport tasks bounded as well as active transfer buffers.
-        int batchSize = Math.Clamp(_configuration.Config.MaxConcurrentChunkDownloads, 1, 8);
-        var downloadedPacks = new string?[manifest.Packs.Count];
-        long completedBytes = markerBytes;
-        downloadProgress?.Invoke(completedBytes, totalBytes);
-        for (int first = 0; first < requiredPacks.Length; first += batchSize)
+        string?[] downloadedPacks = await DownloadPacksAsync(release, artifact, requiredPacks, markerBytes, totalBytes, downloadProgress, ct);
+        if (bootPacks is not null)
         {
-            var requests = new List<PatchDownloadRequest>();
-            int count = Math.Min(batchSize, requiredPacks.Length - first);
-            for (int offset = 0; offset < count; offset++)
-            {
-                int index = requiredPacks[first + offset];
-                var pack = manifest.Packs[index];
-                requests.Add(Request(release.Feed, new Uri(new Uri(artifact.Url), $"{artifact.PackPrefix}pack-{index:D6}.bin").AbsoluteUri,
-                    pack.Length, pack.Sha256, descriptor.Version));
-            }
-            long batchStart = completedBytes;
-            IReadOnlyList<Task<string>> tasks = _downloads.EnqueueAll(requests, _configuration.Config.PatchDownloadSource,
-                batchSize, _ => { }, (bytes, _) => downloadProgress?.Invoke(batchStart + bytes, totalBytes), ct);
-            string[] paths = await Task.WhenAll(tasks);
-            completedBytes += requests.Sum(request => request.Patch.Size);
-            downloadProgress?.Invoke(completedBytes, totalBytes);
-            for (int offset = 0; offset < count; offset++)
-            {
-                downloadedPacks[requiredPacks[first + offset]] = paths[offset];
-            }
+            var evidencePacks = separateBootArtifact
+                ? await DownloadPacksAsync(release, bootArtifact, extraPacks, mainBytes, totalBytes, downloadProgress, ct)
+                : downloadedPacks;
+            bootBytes = _pipeline.ReadHistoricalBootConfig(bootArtifact.Manifest, evidencePacks, ct);
         }
+        var bootSettings = historicalBoot is null ? descriptor.BootConfigSettings
+            : ReadHistoricalBootSettings(historicalBoot, bootBytes);
         // Pack downloads can consume space on the staging volume.
-        if (requiredPacks.Length != 0)
+        if (requiredPacks.Length != 0 || extraPacks.Length != 0)
             EnsureSpace(stages, staged.TotalBytes);
         string stage = At(stages, Guid.NewGuid().ToString("N"));
         StockBaselineManifest target = await Task.Run(() =>
@@ -307,21 +329,85 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         return new FullSourcePreparedTarget(Identity(release), target, stage, release.Feed.SnapshotAuthority())
         {
             InstalledBaseline = installed, TargetRetention = retention,
-            BootConfigSettings = descriptor.BootConfigSettings?.ToFrozenDictionary(StringComparer.Ordinal)
+            BootConfigSettings = bootSettings?.ToFrozenDictionary(StringComparer.Ordinal),
+            HistoricalBootConfig = bootBytes
         };
     }
 
-    private long EstimatePackCacheGrowth(ReleaseRecipeManifest manifest, int[] requiredPacks, CancellationToken ct)
+    private async Task<string?[]> DownloadPacksAsync(AuthorityRelease release, RecipeArtifact artifact, int[] requiredPacks,
+        long completedBytes, long totalBytes, Action<long, long>? downloadProgress, CancellationToken ct)
     {
-        if (requiredPacks.Length == 0)
-            return 0;
+        // Keep pending transport tasks bounded as well as active transfer buffers.
+        int batchSize = Math.Clamp(_configuration.Config.MaxConcurrentChunkDownloads, 1, 8);
+        var manifest = artifact.Manifest;
+        var downloadedPacks = new string?[manifest.Packs.Count];
+        downloadProgress?.Invoke(completedBytes, totalBytes);
+        for (int first = 0; first < requiredPacks.Length; first += batchSize)
+        {
+            var requests = new List<PatchDownloadRequest>();
+            int count = Math.Min(batchSize, requiredPacks.Length - first);
+            for (int offset = 0; offset < count; offset++)
+            {
+                int index = requiredPacks[first + offset];
+                var pack = manifest.Packs[index];
+                requests.Add(Request(release.Feed, new Uri(new Uri(artifact.Url), $"{artifact.PackPrefix}pack-{index:D6}.bin").AbsoluteUri,
+                    pack.Length, pack.Sha256, release.Descriptor.Version));
+            }
+            long batchStart = completedBytes;
+            IReadOnlyList<Task<string>> tasks = _downloads.EnqueueAll(requests, _configuration.Config.PatchDownloadSource,
+                batchSize, _ => { }, (bytes, _) => downloadProgress?.Invoke(batchStart + bytes, totalBytes), ct);
+            string[] paths = await Task.WhenAll(tasks);
+            completedBytes += requests.Sum(request => request.Patch.Size);
+            downloadProgress?.Invoke(completedBytes, totalBytes);
+            for (int offset = 0; offset < count; offset++)
+            {
+                downloadedPacks[requiredPacks[first + offset]] = paths[offset];
+            }
+        }
+        return downloadedPacks;
+    }
 
-        string patches = At(CacheRoot(), "downloads/patches");
+    private byte[]? TryReadHistoricalBootFromSource(string source, StockBaselineFile expected, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        string path = At(source, expected.Path);
+        _paths.ValidateControlledPath(path);
+        if (!_fs.File.Exists(path))
+            return null;
+        try
+        {
+            using Stream input = _fs.File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (input.Length != expected.Length)
+                return null;
+            byte[] bytes = new byte[(int)expected.Length];
+            input.ReadExactly(bytes);
+            return Digest(bytes).Equals(expected.Sha256, StringComparison.OrdinalIgnoreCase) ? bytes : null;
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static Dictionary<string, string> ReadHistoricalBootSettings(StockBaselineFile expected, byte[]? bytes)
+    {
+        if (bytes is null || bytes.Length > BootConfigFile.MAX_BYTES || bytes.Length != expected.Length ||
+            !Digest(bytes).Equals(expected.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Prepared historical boot.config differs from the fresh authenticated target contract.");
+        var settings = BootConfigFile.ReadSettings(bytes);
+        if (settings.Count > BootConfigFile.MAX_SETTINGS)
+            throw new InvalidDataException("Historical release boot.config exceeds the settings count limit.");
+        return settings;
+    }
+
+    private long EstimatePackCacheGrowth(IEnumerable<ReleaseRecipePack> requiredPacks, CancellationToken ct)
+    {
+        string? patches = null;
         long total = 0;
-        foreach (var pack in requiredPacks.Select(index => manifest.Packs[index])
-                     .DistinctBy(pack => pack.Sha256, StringComparer.OrdinalIgnoreCase))
+        foreach (var pack in requiredPacks.DistinctBy(pack => pack.Sha256, StringComparer.OrdinalIgnoreCase))
         {
             ct.ThrowIfCancellationRequested();
+            patches ??= At(CacheRoot(), "downloads/patches");
             string completed = At(patches, $"{pack.Sha256.ToUpperInvariant()}.patch");
             // The downloader can resume partial bytes or reclaim a rejected cache file before replacing it.
             long stored = Math.Min(pack.Length, CacheFileLength(completed));
@@ -544,11 +630,14 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         if (target.AuthorityFeed is null)
             throw new InvalidDataException("Production target preparation requires its independently selected configured authority.");
         AuthorityRelease release = await ResolveAsync(target.Identity.ReleaseId, target.Identity.Channel, ct, target.AuthorityFeed);
+        var publishedTarget = StockBaselineManifest.FromJson(release.Descriptor.TargetManifest);
         if (target.Identity != Identity(release) ||
-            !target.Manifest.ToJson().AsSpan().SequenceEqual(release.Descriptor.GetNormalizedTargetManifest()))
+            !target.Manifest.ToJson().AsSpan().SequenceEqual(publishedTarget.ToJson()))
             throw new InvalidDataException("Prepared release differs from fresh configured authority metadata.");
         var preparedSettings = target.BootConfigSettings;
         var publishedSettings = release.Descriptor.BootConfigSettings;
+        if (publishedSettings is null && publishedTarget.DroppedBootConfig is { } historical)
+            publishedSettings = ReadHistoricalBootSettings(historical, target.HistoricalBootConfig);
         if ((preparedSettings?.Count ?? 0) != (publishedSettings?.Count ?? 0) ||
             (preparedSettings is { Count: > 0 } && preparedSettings.Except(publishedSettings!).Any()))
             throw new InvalidDataException("Prepared release boot settings differ from fresh configured authority metadata. Prepare the release again.");

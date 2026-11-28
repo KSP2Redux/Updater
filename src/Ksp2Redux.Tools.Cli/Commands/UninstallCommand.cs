@@ -10,6 +10,8 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class UninstallCommand : ReduxCommand<UninstallSettings>
 {
+    protected override bool ChangesConfig => true;
+
     /// <inheritdoc />
     protected override async Task<int> RunAsync(
         CliContext context,

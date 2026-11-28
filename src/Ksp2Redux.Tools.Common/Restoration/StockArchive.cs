@@ -515,7 +515,7 @@ public partial class StockArchive
     private async Task<Dictionary<string, IZipArchiveEntry>> VerifyOpenArchiveAsync(IZipArchive archive,
         StockBaselineManifest expected, byte[] manifestBytes, CancellationToken ct)
     {
-        var entries = InspectCanonicalEntries(archive, expected, manifestBytes, ct);
+        var entries = InspectCanonicalEntries(archive, expected, manifestBytes, ct, out _);
         var buffer = new byte[_limits.BufferBytes];
         foreach (StockBaselineFile file in expected.Files)
         {
@@ -535,7 +535,8 @@ public partial class StockArchive
         IZipArchive archive = _zipFileService.NewArchive(input, ZipArchiveMode.Read, true);
         try
         {
-            return new PinnedEntries(archive, InspectCanonicalEntries(archive, expected, manifestBytes, ct));
+            var entries = InspectCanonicalEntries(archive, expected, manifestBytes, ct, out var legacyBootConfig);
+            return new PinnedEntries(archive, entries, legacyBootConfig);
         }
         catch
         {
@@ -544,19 +545,21 @@ public partial class StockArchive
         }
     }
 
-    internal sealed class PinnedEntries(IZipArchive archive, Dictionary<string, IZipArchiveEntry> entries) : IDisposable
+    internal sealed class PinnedEntries(IZipArchive archive, Dictionary<string, IZipArchiveEntry> entries,
+        StockBaselineFile? legacyBootConfig) : IDisposable
     {
         internal Stream Open(StockBaselineFile file) => entries[file.Path].Open();
 
         internal Dictionary<string, string>? ReadBootConfig()
         {
-            if (!entries.TryGetValue(BootConfigFile.RELATIVE_PATH, out var entry) || entry.Length > BootConfigFile.MAX_BYTES)
+            if (legacyBootConfig is null || legacyBootConfig.Length > BootConfigFile.MAX_BYTES)
                 return null;
-            using Stream content = entry.Open();
-            var bytes = new byte[(int)entry.Length];
+            using Stream content = Open(legacyBootConfig);
+            var bytes = new byte[(int)legacyBootConfig.Length];
             content.ReadExactly(bytes);
-            return content.ReadByte() == -1 ? BootConfigFile.ReadSettings(bytes)
-                : throw new InvalidDataException("Archived boot.config differs from its declared length.");
+            if (content.ReadByte() != -1 || Convert.ToHexString(SHA256.HashData(bytes)) != legacyBootConfig.Sha256)
+                throw new InvalidDataException("Archived boot.config differs from its legacy manifest.");
+            return BootConfigFile.ReadSettings(bytes);
         }
 
         public void Dispose() => archive.Dispose();
@@ -569,6 +572,7 @@ public partial class StockArchive
     /// <param name="expected">The independently pinned stock contract.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The archived settings, or null when the legacy entry is absent or oversized.</returns>
+    /// <exception cref="InvalidDataException">Thrown when the entry differs from its legacy manifest.</exception>
     public Dictionary<string, string>? ReadArchivedBootConfig(string archivePath, StockBaselineManifest expected,
         CancellationToken ct)
     {
@@ -580,8 +584,9 @@ public partial class StockArchive
     }
 
     private Dictionary<string, IZipArchiveEntry> InspectCanonicalEntries(IZipArchive archive,
-        StockBaselineManifest expected, byte[] manifestBytes, CancellationToken ct)
+        StockBaselineManifest expected, byte[] manifestBytes, CancellationToken ct, out StockBaselineFile? legacyBootConfig)
     {
+        legacyBootConfig = null;
         IReadOnlyList<IZipArchiveEntry> allEntries = archive.Entries;
         int expectedCount = expected.Files.Count + expected.Directories.Count + 1;
         // An archive written before boot.config left every contract also holds that file and lists it in its embedded
@@ -627,7 +632,7 @@ public partial class StockArchive
             if (content.ReadByte() != -1)
                 throw new InvalidDataException("Archive manifest differs from the expected contract.");
             if (legacy)
-                RequireLegacyManifest(actual, manifestBytes, entries);
+                legacyBootConfig = RequireLegacyManifest(actual, manifestBytes, entries);
             else if (!actual.AsSpan().SequenceEqual(manifestBytes))
                 throw new InvalidDataException("Archive manifest differs from the expected contract.");
         }
@@ -654,13 +659,14 @@ public partial class StockArchive
 
     // The embedded manifest must be the older form of exactly the expected contract: the same files and
     // directories plus the one boot.config entry the archive holds.
-    private void RequireLegacyManifest(byte[] actual, byte[] expected, Dictionary<string, IZipArchiveEntry> entries)
+    private StockBaselineFile RequireLegacyManifest(byte[] actual, byte[] expected, Dictionary<string, IZipArchiveEntry> entries)
     {
         StockBaselineManifest embedded = StockBaselineManifest.FromJson(actual, _limits);
         if (embedded.DroppedBootConfig is not { } bootConfig || !embedded.IsLegacyForm(actual) ||
             !embedded.ToJson(_limits.MaxManifestBytes).AsSpan().SequenceEqual(expected) ||
             entries[bootConfig.Path].Length != bootConfig.Length)
             throw new InvalidDataException("Archive manifest differs from the expected contract.");
+        return bootConfig;
     }
 
     private static async Task CopyVerifiedAsync(Stream input, Stream? output, StockBaselineFile expected,

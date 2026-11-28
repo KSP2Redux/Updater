@@ -153,11 +153,11 @@ public partial class FullSourcePreparationServiceTest
         internal ReleaseManifest Feed() => SuppliedFeed ?? new() { SchemaVersion = 3, Channel = FullPlayer?.Channel ?? FeedChannel, GeneratedAt = DateTime.UtcNow, Patches = [Patch] };
 
         internal FullSourceInstallationService Coordinator(Action<string, bool>? fault = null,
-            Action<string, bool>? engineFault = null) => new(Fs,
+            Action<string, bool>? engineFault = null, IBootConfigSettingsService? bootConfig = null) => new(Fs,
             Configuration.Object, new ZipFileService(Fs), Space.Object, Preparation, Os.Object, Mock.Of<ILogService>(),
             Mock.Of<IGameProcessService>(), new InstallFileLockService(Fs, Os.Object), fault,
             new InstallTransactionEngine(Fs, Space.Object.GetAvailableFreeSpace, engineFault,
-                validateFileStreams: Fs is MockFileSystem ? _ => { } : null));
+                validateFileStreams: Fs is MockFileSystem ? _ => { } : null), bootConfig);
 
         internal HttpResponseMessage Response(string url, long offset, string? artifactRoot = null, string? filename = null)
         {

@@ -14,7 +14,11 @@ namespace Ksp2Redux.Tools.Common.ReleasePreparation;
 /// <param name="Packs">The independently hashed literal packs in numeric filename order.</param>
 /// <param name="Chunks">The unique bounded literal records.</param>
 public record ReleaseRecipeManifest(int Version, string PackProfile, byte[] TargetManifest,
-    List<ReleaseRecipeVariant> Variants, List<ReleaseRecipePack> Packs, List<ReleaseRecipeChunk> Chunks);
+    List<ReleaseRecipeVariant> Variants, List<ReleaseRecipePack> Packs, List<ReleaseRecipeChunk> Chunks)
+{
+    // A historical output we can read without any variant inputs. It never enters the staging recipes.
+    internal ReleaseFileRecipe? HistoricalBootRecipe { get; init; }
+}
 
 /// <summary>
 /// A complete recipe set for one expected stock source contract.

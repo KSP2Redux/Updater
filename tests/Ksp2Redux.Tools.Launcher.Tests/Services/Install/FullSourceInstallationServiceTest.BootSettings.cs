@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json.Nodes;
+using Ksp2Redux.Tools.Cli.Commands;
 using Ksp2Redux.Tools.Cli.Infrastructure;
+using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Common.Transactions;
 using Ksp2Redux.Tools.Launcher.Models;
@@ -121,31 +123,91 @@ public partial class FullSourceInstallationServiceTest
     }
 
     /// <summary>
-    /// A catalog written before the settings were recorded still reads, is not rewritten by the read, and leaves the
-    /// configuration record as it is.
+    /// A catalog written before the settings were recorded clears stale release settings without rewriting the catalog.
     /// </summary>
     /// <returns>The verification task.</returns>
     [Test]
-    public async Task CatalogWithoutRecordedSettings_ReadsAndLeavesTheConfigurationRecord()
+    public async Task CatalogWithoutRecordedSettings_ClearsStaleConfigurationSettings()
     {
         Fixture fixture = Create();
         await Apply(fixture, target: WithBootSettings(fixture, fixture.Target2, new() { ["enable-directstorage"] = "True" }));
         Rewrite(fixture, fixture.Head, catalog => catalog.Remove("ReleaseBootConfig"));
         byte[] head = fixture.Fs.File.ReadAllBytes(fixture.Head);
-        fixture.Entry.BootConfigReleaseSettings = new() { ["kept"] = "1" };
+        fixture.Entry.BootConfigReleaseSettings = new() { ["stale"] = "1" };
+        fixture.Entry.BootConfigOriginals = new() { ["stale"] = null };
+        string boot = At(fixture.Fs, fixture.Install, BOOT);
+        fixture.Fs.File.AppendAllText(boot, "stale=1\r\n");
         var (installs, _) = Installs(fixture);
         installs.TryLoadKsp2Install();
 
         Assert.That(fixture.Service().GetPublishedBootConfigSettings(fixture.Entry.Id), Is.Null);
         installs.ApplyActiveInstallBootConfig();
 
-        Assert.That(fixture.Entry.BootConfigReleaseSettings, Is.EqualTo(new Dictionary<string, string> { ["kept"] = "1" }));
+        Assert.That(fixture.Entry.BootConfigReleaseSettings, Is.Null);
+        Assert.That(fixture.Fs.File.ReadAllText(boot), Is.EqualTo(STOCK_BOOT + "gfx-enable-gfx-jobs=0\r\n"));
         Assert.That(fixture.Fs.File.ReadAllBytes(fixture.Head), Is.EqualTo(head));
         fixture.Service().AcquireLaunchLease(fixture.Install)?.Dispose();
         string configurationPath = fixture.Configuration.Config.StoragePath;
         fixture.Fs.File.WriteAllBytes(configurationPath, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(fixture.Configuration.Config));
         Assert.DoesNotThrow(() => new InstallationStateService(fixture.Fs, new ZipFileService(fixture.Fs))
             .EnsureSelfUpdateAllowedFromFile(configurationPath));
+    }
+
+    [Test]
+    public async Task RefusedLegacyRecovery_StartupLeavesBootEvidenceIntact()
+    {
+        Fixture fixture = Create();
+        await LegacyPending(fixture, "engine-apply", false);
+        Put(fixture.Fs, fixture.Install, ".redux-transaction.active", "legacy engine marker");
+        Put(fixture.Fs, fixture.Install, "Redux/legacy-player-marker.txt", "legacy Redux player");
+        string boot = At(fixture.Fs, fixture.Install, BOOT);
+        fixture.Fs.File.AppendAllText(boot, "gfx-enable-gfx-jobs=1\r\n");
+        byte[] evidence = fixture.Fs.File.ReadAllBytes(boot);
+        var (installs, guard) = Installs(fixture);
+        Assert.Throws<InvalidDataException>(() => guard.EnsureLaunchAllowed(fixture.Install));
+
+        installs.TryLoadKsp2Install();
+        Assert.That(installs.Ksp2?.Distribution, Is.EqualTo(Ksp2Redux.Tools.Launcher.Models.Distribution.Redux));
+        installs.ApplyActiveInstallBootConfig();
+
+        Assert.That(fixture.Fs.File.ReadAllBytes(boot), Is.EqualTo(evidence));
+        Assert.That(fixture.Entry.BootConfigOriginals, Is.Empty);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CliLaunch_UsesBootSettingsOfTheSelectedNonActiveProfile(bool managed)
+    {
+        Fixture fixture = Create();
+        if (managed)
+        {
+            FullSourcePreparedTarget target = WithBootSettings(fixture, fixture.Target2,
+                new() { ["enable-directstorage"] = "True" });
+            await Apply(fixture, target: target);
+        }
+        else
+        {
+            Put(fixture.Fs, fixture.Install, "Redux/legacy-player-marker.txt", "legacy Redux player");
+        }
+
+        string activeRoot = At(fixture.Fs, fixture.Root, "active-game");
+        Put(fixture.Fs, activeRoot, Ksp2Install.KSP2_EXE_NAME, "active player");
+        Put(fixture.Fs, activeRoot, BOOT, STOCK_BOOT);
+        var active = new Ksp2InstallEntry { ExePath = At(fixture.Fs, activeRoot, Ksp2Install.KSP2_EXE_NAME) };
+        fixture.Configuration.Config.Ksp2Installs.Add(active);
+        fixture.Configuration.Config.ActiveKsp2InstallId = active.Id;
+        fixture.Entry.LaunchThroughSteam = true;
+        fixture.GameProcesses.Setup(service => service.WaitForStartAsync(fixture.Install, It.IsAny<TimeSpan>(),
+            It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        using var output = new StringWriter();
+        int result = await new LaunchCommand().RunWithContextAsync(Context(fixture, output, bootSettings: true),
+            new LaunchSettings { Install = fixture.Entry.Id.ToString(), NoBanner = true });
+
+        Assert.That(result, Is.EqualTo(ExitCode.SUCCESS));
+        string expected = STOCK_BOOT + (managed ? "enable-directstorage=True\r\n" : "") + "gfx-enable-gfx-jobs=0\r\n";
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, fixture.Install, BOOT)), Is.EqualTo(expected));
+        Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, activeRoot, BOOT)), Is.EqualTo(STOCK_BOOT));
     }
 
     /// <summary>
@@ -163,7 +225,7 @@ public partial class FullSourceInstallationServiceTest
     }
 
     private const string ARCHIVED_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=3\r\nbuild-guid=stock-guid\r\nextra=5\r\n";
-    private const string REDUX_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=1\r\ngc-max-time-slice=3\r\nbuild-guid=redux-guid\r\nextra=9\r\nredux-only=1\r\n";
+    private const string REDUX_BOOT = "wait-for-native-debugger=0\r\nhdr-display-enabled=1\r\ngc-max-time-slice=3\r\nbuild-guid=redux-guid\r\nextra=9\r\nredux-only=1\r\ngfx-threading-mode=6\r\ngfx-enable-gfx-jobs=1\r\nenable-directstorage=True\r\n";
 
     [TestCase("catalog-ownership:publish", true, false)]
     [TestCase("engine-apply", true, false)]
@@ -197,7 +259,8 @@ public partial class FullSourceInstallationServiceTest
         if (committed)
         {
             Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id), Is.Null);
-            Assert.That(fixture.Fs.File.ReadAllText(boot), Does.Contain("hdr-display-enabled=0").And.Contain("extra=5"));
+            Assert.That(fixture.Fs.File.ReadAllText(boot), Does.Contain("hdr-display-enabled=0").And.Contain("extra=5")
+                .And.Contain("redux-only=1").And.Not.Contain("gfx-threading-mode=").And.Not.Contain("enable-directstorage="));
             Assert.That(Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["StockBootConfigRestore"], Is.Null);
             await fixture.Service().RetireCompletedPayloadsAsync(fixture.Entry.Id, CancellationToken.None);
         }
@@ -211,14 +274,16 @@ public partial class FullSourceInstallationServiceTest
 
     /// <summary>
     /// Uninstalling an installation an earlier launcher converted restores the keys of the original boot.config in its
-    /// backup, even though the settings step never recorded them, and never changes the build identity. An entry that
-    /// is missing, too large or has no usable line changes nothing, and the uninstall still works.
+    /// backup and removes known Redux-only keys the archive did not list. It leaves unrelated keys and the build
+    /// identity alone. An entry that is missing, too large or has no usable line changes nothing.
     /// </summary>
     /// <param name="archived">The boot.config in the earlier launcher's backup, or null for a backup without one.</param>
     /// <param name="expected">The boot.config after the uninstall.</param>
     /// <returns>The verification task.</returns>
     [TestCase(ARCHIVED_BOOT,
         "wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=3\r\nbuild-guid=redux-guid\r\nextra=5\r\nredux-only=1\r\n")]
+    [TestCase(ARCHIVED_BOOT + "gfx-threading-mode=3\r\n",
+        "wait-for-native-debugger=0\r\nhdr-display-enabled=0\r\ngc-max-time-slice=3\r\nbuild-guid=redux-guid\r\nextra=5\r\nredux-only=1\r\ngfx-threading-mode=3\r\n")]
     [TestCase(null, REDUX_BOOT)]
     [TestCase("oversized", REDUX_BOOT)]
     [TestCase("unusable", REDUX_BOOT)]

@@ -289,7 +289,8 @@ public class InstallationStateService(IFileSystem fileSystem, IZipFileService zi
             JsonElement head = catalog.RootElement;
             string[] names = ["FormatVersion", "InstallationId", "InstallRoot", "StorageRoot", "Stock", "Ownership",
                 "Release", "Archive", "RetainedFiles", "UnownedDirectories", "RetentionPolicy", "Pending", "LastResult", "LastTransaction"];
-            string[] known = [.. names, "ReleaseBootConfig", "ReleaseIdentityMigrationPending", "StockBootConfigRestore"];
+            string[] known = [.. names, "ExistingBackup", "RecoverySources", "ReleaseBootConfig",
+                "ReleaseIdentityMigrationPending", "StockBootConfigRestore"];
             if (head.GetProperty("FormatVersion").GetInt32() != 1 ||
                 names.Any(name => !head.TryGetProperty(name, out _)) || head.EnumerateObject().Any(property => !known.Contains(property.Name)) ||
                 head.EnumerateObject().Select(property => property.Name).Distinct(StringComparer.Ordinal).Count() != head.EnumerateObject().Count() ||

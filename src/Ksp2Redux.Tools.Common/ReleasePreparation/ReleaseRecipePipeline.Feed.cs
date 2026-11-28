@@ -54,9 +54,58 @@ public partial class ReleaseRecipePipeline
         if (manifest.TargetManifest is null || !EqualHash(Digest(manifest.TargetManifest), expectedTargetSha256))
             throw new InvalidDataException("Release target contract digest mismatch.");
         target = StockBaselineManifest.FromJson(manifest.TargetManifest);
-        manifest = WithoutBootConfig(manifest);
-        ValidateManifest(manifest, target);
-        return manifest;
+        var normalized = WithoutBootConfig(manifest);
+        ValidateManifest(normalized, target);
+        return target.DroppedBootConfig is { Length: <= BootConfigFile.MAX_BYTES } historical
+            ? normalized with { HistoricalBootRecipe = FindHistoricalBootRecipe(manifest, historical) }
+            : normalized;
+    }
+
+    private static ReleaseFileRecipe? FindHistoricalBootRecipe(ReleaseRecipeManifest manifest, StockBaselineFile expected)
+    {
+        // Stock and installed-source variants describe the exact same target. Prefer an independent literal recipe
+        // whenever any variant provides one. An exact copy or a recipe that needs sources is not independent evidence.
+        foreach (var file in manifest.Variants.SelectMany(variant => variant.Files))
+        {
+            if (file is null || !BootConfigFile.IsExcluded(file.Path) ||
+                file.Recipe is not { Version: BundleRecipe.RAW_TARGET_VERSION } recipe ||
+                recipe.Entries is not { Count: 1 } || recipe.Entries[0]?.Segments is not { } segments ||
+                segments.Any(segment => segment is null || segment.Kind != BundleRecipeSegmentKind.Payload))
+                continue;
+            if (recipe.TargetLength != expected.Length || !EqualHash(recipe.TargetSha256, expected.Sha256) ||
+                recipe.PayloadLength > BootConfigFile.MAX_BYTES || file.PayloadChunks is null ||
+                file.PayloadChunks.Count > MAX_FILE_RECORDS ||
+                file.PayloadChunks.Any(index => index < 0 || index >= manifest.Chunks.Count) ||
+                file.PayloadChunks.Sum(index => (long)manifest.Chunks[index].Length) != recipe.PayloadLength)
+                throw new InvalidDataException("The historical release boot.config recipe differs from its target contract.");
+            recipe.ValidateStructure();
+            return file;
+        }
+        return null;
+    }
+
+    /// <summary>Get the pack indices needed for an independently reconstructible historical boot.config.</summary>
+    /// <param name="manifest">The authenticated artifact metadata returned by inspection.</param>
+    /// <returns>The pack indices in manifest order, or null when no literal recipe is available.</returns>
+    public static int[]? GetHistoricalBootPackIndices(ReleaseRecipeManifest manifest) =>
+        manifest.HistoricalBootRecipe?.PayloadChunks.Select(index => manifest.Chunks[index].PackIndex).Distinct().Order().ToArray();
+
+    /// <summary>Recover the authenticated historical boot.config output in memory.</summary>
+    /// <param name="manifest">The authenticated artifact metadata returned by inspection.</param>
+    /// <param name="packFiles">The verified pack paths in manifest order.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The exact bytes checked against the historical target identity.</returns>
+    public byte[] ReadHistoricalBootConfig(ReleaseRecipeManifest manifest, IReadOnlyList<string?> packFiles, CancellationToken ct)
+    {
+        var file = manifest.HistoricalBootRecipe
+            ?? throw new InvalidDataException("This artifact has no independent historical boot.config recipe.");
+        using var reader = new PackReader(this, manifest, index => packFiles[index]
+            ?? throw new InvalidDataException("The historical boot.config pack was not downloaded."));
+        using var payload = new ReleasePayloadStream(reader, manifest, file.PayloadChunks, ct);
+        using var output = new MemoryStream((int)file.Recipe.TargetLength);
+        ct.ThrowIfCancellationRequested();
+        file.Recipe.Reconstruct(new Stream?[file.Recipe.Sources.Count], payload, output);
+        return output.ToArray();
     }
 
     // A release published before boot.config left every contract also carries a recipe or an exact copy for that file,

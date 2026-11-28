@@ -39,7 +39,8 @@ public class Ksp2Install
         plan?.IsFullSource == true
             ? ManagedRelease is { } release && release.ReleaseId == plan.FullSourceReleaseId &&
                 release.Channel == plan.FullSourceChannel && release.Version == plan.FullSourceVersion &&
-                release.ManifestSha256.Equals(plan.FullSourceManifestSha256, StringComparison.OrdinalIgnoreCase)
+                (release.ManifestSha256.Equals(plan.FullSourceManifestSha256, StringComparison.OrdinalIgnoreCase) ||
+                 release.ManifestSha256.Equals(plan.FullSourcePublishedManifestSha256, StringComparison.OrdinalIgnoreCase))
             : version.Equals(GameVersion);
 
     public Exception? VersionDetectionException { get; private set; }

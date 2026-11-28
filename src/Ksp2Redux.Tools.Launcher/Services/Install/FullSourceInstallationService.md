@@ -198,8 +198,11 @@ redux-launcher-cli uninstall --install <configured-id> --yes
 ```
 
 Apply, update, downgrade and channel switching share the target-generation operation.
-Uninstall uses `StockArchive.RestoreToNewDirectoryAsync`, a new stock stage and the
-original stock target. It preserves `uninstall.zip`.
+Uninstall restores and verifies the original stock generation. The coordinator moves
+the pinned stock ZIP beside the game and retires its active catalog last, so the folder
+can launch stock or accept a legacy patch. The same profile, root and stock contract
+reuse that ZIP and the verified directory exclusions on the next full-source install.
+If the process stops after moving the ZIP, `full-source recover` can complete the handoff.
 
 Ordinary update rejects changed or absent owned files. Explicit repair observes bytes
 only at previously owned paths, supplies those actual bytes for verified undo, and
@@ -224,10 +227,10 @@ every apply. `build-guid` is never managed.
 
 The release's settings are also published in the catalog (`ReleaseBootConfig`), from the operation
 (`BootConfigSettings`) that committed the generation, so they survive a stop between the commit and
-the launcher configuration write. `Ksp2InstallService.ApplyActiveInstallBootConfig` copies them into
-the installation's record before it applies a Redux build. An empty catalog record means the release
-has no settings and clears a stale record. A catalog from an earlier launcher has none (null), and then
-the configuration record is left as it is.
+the launcher configuration write. The coordinator applies these settings with the installation lock
+held during startup, preference changes and launch. When the published generation has no settings
+record, the launcher clears any cached settings from another generation and applies its graphics jobs
+preference. Installations with unresolved recovery evidence keep their current boot.config.
 
 The step records each key's stock state on the installation the first time it manages the
 key, including keys that already hold the wanted value. A stock file has exactly
@@ -240,7 +243,8 @@ stock state, and leaves the record only after that write worked. Uninstall puts 
 recorded key back and clears the record. Full-source uninstall reads valid settings from the verified
 stock archive's legacy boot.config entry before the engine runs. The committed stock generation
 records them in `StockBootConfigRestore` so a restart can replay the restore. The archived values
-take precedence over the install profile's undo record. The coordinator clears the pending restore
+take precedence over the install profile's undo record. A readable legacy entry also establishes
+which known Redux boot keys were absent in stock so restoration can remove them. The coordinator clears the pending restore
 after the file is restored and any profile undo record is cleared. Changing an
 installation's folder clears the record. The step checks no hash and never fails for file content. It reads at most 64 KiB, skips a larger
 file with a log line, and replaces the file from a temporary file in its folder that it flushes first, so an
@@ -281,8 +285,8 @@ Data written before boot.config left the contracts is read without that entry:
 - A retained terminal operation that lists it is left alone. Payload retirement compares exact
   saved plan bytes, so that operation keeps its payloads.
 - An `uninstall.zip` that holds boot.config verifies with that entry ignored, when its embedded
-  manifest is the older form of exactly the expected contract. Restoring never extracts the
-  file. Every other entry and byte is checked as before.
+  manifest is the older form of exactly the expected contract. The separate stock settings
+  restore checks the archived boot file against its embedded hash before reading it.
 - Caches under `baselines` and `prepatch-backups` that an earlier build named by the digest of
   a contract listing boot.config are proven by that name and the boot.config they hold, or by the
   older embedded manifest of an archive. When one holds exactly the bytes of the current
@@ -292,14 +296,13 @@ Data written before boot.config left the contracts is read without that entry:
   `trash`. A tree or archive that fails its check stays where it is. Nothing outside `baselines`,
   `prepatch-backups` and `trash` is touched. The caches of the original stock are reclaimed when
   that original is next needed, not before.
-- A release published in the older form still reads: its artifact drops the boot.config recipe or
-  exact copy, and a source contract or update source digest may name either form. Every artifact the
-  CI built from 14 November 2026 also lists boot.config as a recipe source. That source is dropped on
-  reading and the other sources are renumbered, so such an artifact installs and repairs when no
-  recipe reads bytes from it. A recipe that does read from it is refused with "This release needs
-  boot.config as a recipe input and cannot be installed by this launcher." The pinned prepatch
-  contract is published as pinned, so `PrepatchManifestSha256` and the names derived from it do not
-  change. It is read without boot.config.
+- A release published in the older form can supply settings from the authenticated boot.config
+  payload in its recipe. The prepared target retains only the small verified bytes as evidence
+  for the settings. No boot file is staged or owned by the transaction. Older artifacts may list
+  boot.config as a source. The reader drops it and remaps the remaining source indices, and
+  refuses a game file recipe that still needs bytes from it. A source contract or update digest
+  may name either form. The pinned prepatch bytes are published unchanged and read without
+  boot.config, preserving `PrepatchManifestSha256` and the names derived from it.
 
 Journals keep their retired boot derivation fields so older ones still read.
 

@@ -56,6 +56,9 @@ public class InstallPlan
     /// </summary>
     public string? FullSourceManifestSha256 { get; init; }
 
+    // The published bytes recognise a legacy installation whose normalized digest is unavailable.
+    internal string? FullSourcePublishedManifestSha256 { get; init; }
+
     /// <summary>
     /// Gets the publisher-declared bounded artifact and pack download bytes.
     /// </summary>

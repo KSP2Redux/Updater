@@ -110,7 +110,7 @@ public class UpdateService : IUpdateService
     /// <summary>
     /// Checks for an update from the provided GitHub repository, and downloads and installs it later
     /// </summary>
-    /// <returns>A boolean whether to allow updating redux versions after this</returns>
+    /// <returns>Whether game installs and updates can remain enabled.</returns>
     public async Task<bool> CheckAndPerformUpdateAsync()
     {
         // Called on a 10-minute timer as well as at startup and from a manual button. If a check
@@ -124,23 +124,9 @@ public class UpdateService : IUpdateService
         _checkInProgress = true;
         try
         {
-            try
-            {
-                _installationStateService.EnsureSelfUpdateAllowed(_launcherConfigService.Config);
-            }
-            catch (IOException ex)
-            {
-                _log.Warn(ex.Message);
-                return false;
-            }
-            catch (InvalidDataException ex)
-            {
-                // The coordinator refuses an installation it cannot recover with this message, which says how to start
-                // over. It is shown once instead of the generic startup error, and the rest of the startup goes on.
-                _log.Warn(ex.Message);
-                ShowBlockedOnce(ex.Message);
-                return false;
-            }
+            if (!CanReplaceLauncher())
+                return true;
+
             return await CheckAndPerformUpdateCoreAsync();
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException)
@@ -151,6 +137,23 @@ public class UpdateService : IUpdateService
         finally
         {
             _checkInProgress = false;
+        }
+    }
+
+    private bool CanReplaceLauncher()
+    {
+        try
+        {
+            _installationStateService.EnsureSelfUpdateAllowed(_launcherConfigService.Config);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or FilesInUseException or UnauthorizedAccessException or NotSupportedException)
+        {
+            // Launcher replacement checks every profile. Install plans enforce recovery for their own target folder.
+            _log.Warn(ex.Message);
+            if (ex is InvalidDataException)
+                ShowBlockedOnce(ex.Message);
+            return false;
         }
     }
 
@@ -270,7 +273,8 @@ public class UpdateService : IUpdateService
 
             if (result != ButtonResult.Ok) return false;
 
-            _installationStateService.EnsureSelfUpdateAllowed(_launcherConfigService.Config);
+            if (!CanReplaceLauncher())
+                return true;
 
             _log.Info($"Selected update asset: {asset.Name}.");
             var expectedHash = asset.Digest[sha256Prefix.Length..].Trim().ToLowerInvariant();
@@ -293,7 +297,8 @@ public class UpdateService : IUpdateService
                 }
                 _log.Info($"Downloaded {bytes.Length} bytes for {asset.Name}, checksum verified.");
 
-                _installationStateService.EnsureSelfUpdateAllowed(_launcherConfigService.Config);
+                if (!CanReplaceLauncher())
+                    return true;
 
                 var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
                 _fileSystem.Directory.CreateDirectory(updateDir);
@@ -314,6 +319,9 @@ public class UpdateService : IUpdateService
                         throw new InvalidOperationException($"chmod +x on {updatePath} exited with code {chmod.ExitCode}.");
                     }
                 }
+
+                if (!CanReplaceLauncher())
+                    return true;
 
                 TriggerRestart(updatePath);
                 restartTriggered = true;
@@ -356,7 +364,6 @@ public class UpdateService : IUpdateService
 
     private void TriggerRestart(string newFilesPath)
     {
-        _installationStateService.EnsureSelfUpdateAllowed(_launcherConfigService.Config);
         var whereAmI = _environmentProvider.ProcessPath!;
         var args = $"--pid {_environmentProvider.ProcessId} --exe \"{_fileSystem.Path.GetFullPath(whereAmI)}\" {Program.RenderingFlags}".TrimEnd();
         var startInfo = new ProcessStartInfo(newFilesPath, args)

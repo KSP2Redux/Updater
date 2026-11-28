@@ -214,7 +214,18 @@ public partial class FullSourceInstallationServiceTest
         {
             byte[] journal = fixture.Fs.File.ReadAllBytes(committedOperation);
             fixture.Fs.File.Delete(committedOperation);
-            Assert.That(fixture.Service().GetPublishedIdentity(fixture.Entry.Id)!.ManifestSha256, Is.EqualTo(legacyDigest));
+            FullSourceReleaseIdentity unresolved = fixture.Service().GetPublishedIdentity(fixture.Entry.Id)!;
+            Assert.That(unresolved.ManifestSha256, Is.EqualTo(legacyDigest));
+            byte[] published = LegacyContract(fixture.Target2.Manifest.ToJson());
+            var (legacyFeed, legacyVersion) = await FeedOf(published, fixture.Target2.Identity.ReleaseId);
+            var legacyInstall = new Ksp2Install(fixture.Fs, Mock.Of<IModuleDefinitionService>(), fixture.Entry.ExePath, unresolved);
+            InstallPlan repair = legacyFeed.GetFullSourcePlan(legacyVersion, repair: true)!;
+            Assert.That(legacyInstall.IsInstalledVersion(legacyVersion, repair), Is.True);
+            Assert.Throws<InvalidDataException>(() => repair.RequireFullSourceMatch(unresolved));
+
+            byte[] changed = LegacyContract(fixture.Target2.Manifest.ToJson(), "different settings"u8.ToArray());
+            var (changedFeed, changedVersion) = await FeedOf(changed, fixture.Target2.Identity.ReleaseId);
+            Assert.That(legacyInstall.IsInstalledVersion(changedVersion, changedFeed.GetFullSourcePlan(changedVersion)), Is.False);
             fixture.Fs.File.WriteAllBytes(committedOperation, journal);
         }
         FullSourceReleaseIdentity expected = fixture.Target2.Identity with { PublishedManifestSha256 = legacyDigest };
@@ -229,7 +240,7 @@ public partial class FullSourceInstallationServiceTest
 
     // Add boot.config to a stock backup and give it the older embedded manifest, then pin the new bytes.
     private static void WriteLegacyArchive(Fixture fixture, bool corruptManifest = false, string? extraEntry = null,
-        byte[]? archivedBootConfig = null)
+        byte[]? archivedBootConfig = null, byte[]? declaredBootConfig = null)
     {
         archivedBootConfig ??= Encoding.UTF8.GetBytes(BOOT_CONFIG_FILE_BYTES);
         byte[] bytes = fixture.Fs.File.ReadAllBytes(fixture.Archive);
@@ -247,7 +258,7 @@ public partial class FullSourceInstallationServiceTest
                     canonical = copy.ToArray();
                 }
                 manifest.Delete();
-                byte[] legacy = LegacyContract(canonical, archivedBootConfig);
+                byte[] legacy = LegacyContract(canonical, declaredBootConfig ?? archivedBootConfig);
                 if (corruptManifest)
                     legacy = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(legacy).Replace("storefront/build-original", "storefront/other"));
                 using (Stream output = zip.CreateEntry(StockBaselineManifest.MANIFEST_PATH, CompressionLevel.NoCompression).Open())
@@ -299,6 +310,21 @@ public partial class FullSourceInstallationServiceTest
         await stockArchive.RestoreToNewDirectoryAsync(fixture.Archive, fixture.Stock.Stock, restoredTree);
         Assert.That(fixture.Fs.File.Exists(At(fixture.Fs, restoredTree, BOOT)), Is.False);
         Assert.That(fixture.Fs.File.ReadAllText(At(fixture.Fs, restoredTree, BUNDLE)), Is.EqualTo("original complete streaming asset"));
+    }
+
+    [Test]
+    public async Task LegacyBackupWithCorruptBootBytes_VerifiesStockButCannotSupplyBootSettings()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        WriteLegacyArchive(fixture, archivedBootConfig: "hdr-display-enabled=1\r\n"u8.ToArray(),
+            declaredBootConfig: "hdr-display-enabled=0\r\n"u8.ToArray());
+        var archive = new StockArchive(fixture.Fs, new ZipFileService(fixture.Fs));
+
+        await archive.VerifyAndPinAsync(fixture.Archive, fixture.Stock.Stock);
+
+        Assert.Throws<InvalidDataException>(() =>
+            archive.ReadArchivedBootConfig(fixture.Archive, fixture.Stock.Stock, CancellationToken.None));
     }
 
     /// <summary>

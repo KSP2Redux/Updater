@@ -109,7 +109,6 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             FullSourceReleaseIdentity? installedRelease = hasCatalog && !installPlan.IsFullSourceRepair
                 ? fullSource.GetPublishedIdentity(entry.Id)
                 : null;
-            IReadOnlyDictionary<string, string>? releaseSettings = null;
             if (!hasCatalog && IsLegacyBackup(install))
             {
                 await fullSource.UpgradeLegacyAsync(entry.Id,
@@ -125,7 +124,6 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         {
                             var result = await preparation.FetchSelectedPlanAsync(installPlan, entry.Id, false, null, ct, downloadProgress);
                             installPlan.RequireFullSourceMatch(result.Target.Identity);
-                            releaseSettings = result.Target.BootConfigSettings;
                             return (result.Target with { MayConsumeSource = true }, result.Stock);
                         }
                         catch (InvalidDataException failure) when (failure.Data.Contains("FullSourceStockMismatch"))
@@ -133,7 +131,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                             throw new InvalidDataException(Loc["Install.LegacyStockVerificationFailed"], failure);
                         }
                     }, patchLog, ct, install);
-                ApplyBootConfig(entry, releaseSettings);
+                ApplyPublishedBootConfig(entry.Id, install, patchLog);
                 stepsProgress(1, 1);
                 return;
             }
@@ -144,7 +142,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             patchLog("Verifying and applying the prepared release...");
             await Task.Run(() => fullSource.ApplyAsync(entry.Id, prepared with { MayConsumeSource = true },
                 stock, installPlan.IsFullSourceRepair, patchLog, ct, install), ct);
-            ApplyBootConfig(entry, prepared.BootConfigSettings);
+            ApplyPublishedBootConfig(entry.Id, install, patchLog);
             stepsProgress(1, 1);
             return;
         }
@@ -167,13 +165,13 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         return ApplyToFolder(uninstall, install, log, downloadProgress, (_, _) => { }, ct);
                     },
                     async () => (target, await preparation.FetchStockAsync(id, target, ct)), patchLog, ct, install);
-                ApplyBootConfig(entry, target.BootConfigSettings);
+                ApplyPublishedBootConfig(id, install, patchLog);
                 stepsProgress(1, 1);
                 return;
             }
             await Task.Run(() => fullSource.ApplyAsync(id, target, installPlan.FullSourceStock,
                 installPlan.IsFullSourceRepair, patchLog, ct, install), ct);
-            ApplyBootConfig(entry, target.BootConfigSettings);
+            ApplyPublishedBootConfig(id, install, patchLog);
             stepsProgress(1, 1);
             return;
         }
@@ -420,14 +418,24 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             if (!patched)
                 bootConfig?.Revert(legacyEntry);
             else
-                ApplyBootConfig(legacyEntry, null);
+            {
+                bootConfig?.SetReleaseSettings(legacyEntry, null);
+                bootConfig?.Apply(legacyEntry);
+            }
         }
     }
 
-    private void ApplyBootConfig(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string>? releaseSettings)
+    private void ApplyPublishedBootConfig(Guid id, string install, Action<string> log)
     {
-        bootConfig?.SetReleaseSettings(entry, releaseSettings);
-        bootConfig?.Apply(entry);
+        try
+        {
+            fullSource?.TryApplyPublishedBootConfig(id, install);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException)
+        {
+            // A later operation can take the coordinator lock as soon as the generation commits.
+            log($"Could not apply the published boot.config settings. They will be checked before launch. {failure.Message}");
+        }
     }
 
     // Installs never touch saves, but a save opened in another game version may not load in this one, so the

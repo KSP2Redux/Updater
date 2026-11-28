@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
@@ -13,6 +14,8 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
 {
     private const string DEFAULT_STEAM_APP_ID = "954850";
     private const string GAME_OUTPUT_LOG = "game-output.log";
+
+    protected override bool ChangesConfig => true;
 
     /// <inheritdoc />
     protected override async Task<int> RunAsync(
@@ -31,7 +34,7 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
             return context.FailInstallNotFound(settings.Install);
         }
 
-        var install = context.ReadInstall(entry.ExePath);
+        var install = context.InstallService.Ksp2;
         if (install is not { IsValid: true })
         {
             return context.Output.Fail(
@@ -43,15 +46,12 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
         {
             context.InstallationStateService.EnsureLaunchAllowed(install.InstallDir!);
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or FilesInUseException or NotSupportedException or UnauthorizedAccessException)
         {
             return context.Output.Fail(ExitCode.LAUNCH_FAILED, ex.Message);
         }
 
-        // Writes the graphics jobs setting the install was configured with. The launcher does this
-        // on startup, so a CLI launch has to do it too or the setting silently does not apply.
-        if (entry.Id == context.InstallService.ActiveEntry?.Id)
-            context.InstallService.ApplyActiveInstallBootConfig();
+        context.InstallService.ApplyActiveInstallBootConfig();
 
         // Steam on macOS cannot run KSP2, so LaunchThroughSteam is ignored there.
         if (context.OperatingSystemService.IsMacOS())

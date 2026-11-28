@@ -43,6 +43,7 @@ public interface IBootConfigSettingsService
     /// <remarks>
     /// For an installation an earlier launcher converted, whose stock archive still holds the original file and
     /// which never recorded the keys that launcher wrote. Archived values take precedence over the undo record.
+    /// A readable legacy archive also establishes that Redux boot keys it does not list were absent in stock.
     /// </remarks>
     /// <param name="entry">The configured installation.</param>
     /// <param name="stock">The keys and values of the original boot.config.</param>
@@ -65,6 +66,7 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
     : IBootConfigSettingsService
 {
     private const string GRAPHICS_JOBS_KEY = "gfx-enable-gfx-jobs";
+    private static readonly string[] LEGACY_REDUX_KEYS = [GRAPHICS_JOBS_KEY, "gfx-threading-mode", "enable-directstorage"];
     private readonly Lock _gate = new();
 
     /// <inheritdoc />
@@ -169,6 +171,13 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
                 {
                     if (BootConfigFile.IsValidSetting(key, value))
                         originals[key] = value;
+                }
+                // Older launchers copied the whole Unity boot file without keeping per-key undo records.
+                // The catalog keeps the archived settings until this succeeds, including after a restart.
+                if (stock.Count != 0)
+                {
+                    foreach (string key in LEGACY_REDUX_KEYS)
+                        originals.TryAdd(key, null);
                 }
             }
             if (originals.Count != 0 && PathOf(entry) is { } path)

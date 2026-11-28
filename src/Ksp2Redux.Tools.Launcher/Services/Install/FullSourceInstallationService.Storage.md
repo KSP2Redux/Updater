@@ -49,7 +49,8 @@ transition. An absent `SparseSourceStaging` flag preserves complete-source stagi
 | Root | Retained | Eligible payload |
 | --- | --- | --- |
 | Configured installation | All published files, user/unowned data, transaction lock, complete original uninstall.zip | None |
-| Launcher full-source-v1/installation-ID | installation.json, operation-ID.json, coordinator.lock, operation-ID-retirement.json and unpublished candidates | None |
+| Launcher full-source-v1/installation-ID | installation.json while managed, released stock receipt after handoff, operation journals, coordinator.lock, retirement receipts and unpublished candidates | None |
+| Owned storage beside the game folder | The verified stock archive while the folder is released to stock, keyed by the install root and stock contract | None. A matching full-source install moves the same archive back into the game folder. |
 | Owned operation-ID-work | Exact plan.json, original journal and recovery when present, payload-retirement.json and payload-retirement.complete | Only pinned numbered blobs within target, undo, removed and rollback, then those empty directories |
 | Owned operation-ID-source | Exact source contract persists in the operation/receipts | Only manifest files and directories, then the empty root |
 | Preparation cache | baselines, artifacts, downloads and stages | None in this API |

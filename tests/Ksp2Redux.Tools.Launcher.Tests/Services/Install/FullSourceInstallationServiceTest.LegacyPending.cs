@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Avalonia.Headless.NUnit;
@@ -101,6 +102,87 @@ public partial class FullSourceInstallationServiceTest
             Assert.That(head["Release"]!["ManifestSha256"]!.GetValue<string>(), Is.EqualTo(fixture.Target2.Identity.ManifestSha256));
             Generation(fixture, await Apply(fixture, target: fixture.Target3, initial: false));
         }
+    }
+
+    [TestCase("unstarted")]
+    [TestCase("candidate")]
+    [TestCase("temporary-archive")]
+    [TestCase("source")]
+    [TestCase("changed-backup")]
+    public async Task LegacyConversionWithPartialBackup_RollsBackOnlyBeforePromotion(string scenario)
+    {
+        Fixture fixture = Create();
+        await Assert.ThrowsAsync<IOException>(() => Apply(fixture, fixture.Service((name, after) =>
+        {
+            if (name == "catalog-pending:publish" && after)
+                throw new IOException("Process loss before backup promotion.");
+        })));
+        byte[] archiveBytes;
+        using (var stream = new MemoryStream())
+        {
+            using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, true))
+            using (Stream output = zip.CreateEntry(Ksp2Install.KSP2_EXE_NAME).Open())
+                output.Write(fixture.Fs.File.ReadAllBytes(fixture.Entry.ExePath));
+            archiveBytes = stream.ToArray();
+        }
+        fixture.Fs.File.WriteAllBytes(fixture.Archive, archiveBytes);
+        Rewrite(fixture, fixture.Head, catalog =>
+        {
+            LegacyBytes(catalog, "Stock");
+            LegacyBytes(catalog, "Ownership");
+            catalog["ExistingBackup"] = JsonSerializer.SerializeToNode(
+                new StockBaselineFile(fixture.Archive, archiveBytes.LongLength, Digest(archiveBytes)));
+        });
+        byte[] pendingHead = fixture.Fs.File.ReadAllBytes(fixture.Head);
+        JsonObject before = Decode(pendingHead);
+        Guid pending = before["Pending"]!.GetValue<Guid>();
+        before["Pending"] = null;
+        string operation = fixture.Fs.Path.Combine(fixture.Fs.Path.GetDirectoryName(fixture.Head)!, $"{pending:N}.json");
+        Rewrite(fixture, operation, journal =>
+        {
+            LegacyBytes(journal, "Current");
+            LegacyBytes(journal, "Target");
+            LegacyBytes(journal, "ReleaseManifest");
+            journal.Remove("BootConfigSettings");
+            journal["Release"]!["ManifestSha256"] = Digest(LegacyContract(fixture.Target2.Manifest.ToJson()));
+            journal["PreviousDigest"] = Digest(Json(before));
+        });
+        byte[] journalBytes = fixture.Fs.File.ReadAllBytes(operation);
+        string storage = fixture.Fs.Path.Combine(fixture.Root, $".redux-fullsource-{fixture.Entry.Id:N}");
+        switch (scenario)
+        {
+            case "candidate":
+                fixture.Fs.File.WriteAllBytes(fixture.Fs.Path.Combine(storage, $"{pending:N}-stock.zip"), archiveBytes);
+                break;
+            case "temporary-archive":
+                fixture.Fs.File.WriteAllBytes(fixture.Fs.Path.Combine(storage, $".stock-archive-{Guid.NewGuid():N}.tmp"), archiveBytes);
+                break;
+            case "source":
+                fixture.Fs.Directory.CreateDirectory(fixture.Fs.Path.Combine(storage, $"{pending:N}-source"));
+                break;
+            case "changed-backup":
+                fixture.Fs.File.WriteAllText(fixture.Archive, "changed backup");
+                break;
+        }
+        byte[] expectedArchive = fixture.Fs.File.ReadAllBytes(fixture.Archive);
+
+        if (scenario == "unstarted")
+        {
+            FullSourceInstallationStatus status = fixture.Service().Reconcile(fixture.Entry.Id)!;
+            Assert.That(status.TransactionResult, Is.EqualTo(InstallTransactionResult.RolledBack));
+            Assert.That(Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["Pending"], Is.Null);
+            ExpectCatalogMigrated(fixture);
+        }
+        else
+        {
+            var failure = Assert.Throws<InvalidDataException>(() => fixture.Service().Reconcile(fixture.Entry.Id));
+            Assert.That(failure!.Message, Does.Contain("uninstall the game in Steam or Epic"));
+            Assert.That(fixture.Fs.File.ReadAllBytes(fixture.Head), Is.EqualTo(pendingHead));
+        }
+        Assert.That(fixture.Fs.File.ReadAllBytes(operation), Is.EqualTo(journalBytes));
+        Assert.That(fixture.Fs.File.ReadAllBytes(fixture.Archive), Is.EqualTo(expectedArchive));
+        if (scenario == "unstarted")
+            Generation(fixture, await Apply(fixture, initial: false));
     }
 
     [TestCase("untouched")]
@@ -395,5 +477,27 @@ public partial class FullSourceInstallationServiceTest
         var kept = Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["RecoverySources"]!.Deserialize<StockArchiveSources>()!;
         Assert.That(kept.Journal, alsoBundle ? Is.EqualTo(journal) : Is.Null);
         Assert.That(kept.JournalRanges, Has.Length.EqualTo(alsoBundle ? 1 : 0));
+    }
+
+    [Test]
+    public async Task EarlySelfUpdate_AcceptsACompletedCatalogWithBackupRecoveryPins()
+    {
+        Fixture fixture = Create();
+        await Apply(fixture);
+        byte[] archive = fixture.Fs.File.ReadAllBytes(fixture.Archive);
+        Rewrite(fixture, fixture.Head, catalog =>
+        {
+            catalog["ExistingBackup"] = JsonSerializer.SerializeToNode(
+                new StockBaselineFile(fixture.Archive, archive.LongLength, Digest(archive)));
+            catalog["RecoverySources"] = JsonSerializer.SerializeToNode(new StockArchiveSources(true, null, [], []));
+        });
+        string config = fixture.Fs.Path.Combine(fixture.Storage, "early-update.json");
+        fixture.Fs.File.WriteAllText(config, JsonSerializer.Serialize(fixture.Configuration.Config));
+        var state = new InstallationStateService(fixture.Fs, new ZipFileService(fixture.Fs));
+
+        Assert.DoesNotThrow(() => state.EnsureSelfUpdateAllowedFromFile(config));
+
+        Rewrite(fixture, fixture.Head, catalog => catalog["Pending"] = Guid.NewGuid());
+        Assert.Throws<IOException>(() => state.EnsureSelfUpdateAllowedFromFile(config));
     }
 }

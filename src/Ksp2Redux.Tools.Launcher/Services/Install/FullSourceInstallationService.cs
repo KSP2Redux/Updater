@@ -93,18 +93,33 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         ReadPublished(installationId).ReleaseBootConfig;
 
     /// <inheritdoc />
-    public bool RestorePublishedStockBootConfig(Guid installationId)
+    public bool TryApplyPublishedBootConfig(Guid installationId, string expectedInstallRoot)
+    {
+        if (_bootConfig is null || !HasCatalog(expectedInstallRoot))
+            return false;
+        Ksp2InstallEntry entry = Entry(installationId, expectedInstallRoot);
+        using FileSystemStream lease = Lock(entry);
+        return ApplyPublishedBootConfigLocked(entry, ReadPublished(entry));
+    }
+
+    private bool ApplyPublishedBootConfigLocked(Ksp2InstallEntry entry, Catalog catalog)
     {
         if (_bootConfig is null)
             return false;
-        Ksp2InstallEntry entry = Entry(installationId);
-        using FileSystemStream lease = Lock(entry);
-        Catalog catalog = ReadPublished(entry);
+        Ksp2InstallEntry configured = _configuration.Config.Ksp2Installs.Single(candidate => candidate.Id == entry.Id);
+        ValidateExpectedRoot(Root(configured), Root(entry));
         if (catalog.Release is not null)
+        {
+            _bootConfig.SetReleaseSettings(configured, catalog.ReleaseBootConfig);
+            _bootConfig.Apply(configured);
             return true;
-        if (catalog.StockBootConfigRestore is not { } settings)
+        }
+        if (!catalog.Ownership.AsSpan().SequenceEqual(catalog.Stock))
             return false;
-        TryRestoreStockBootConfigLocked(entry, catalog, settings);
+        if (catalog.StockBootConfigRestore is { } settings)
+            TryRestoreStockBootConfigLocked(entry, catalog, settings);
+        else if (configured.BootConfigOriginals.Count != 0 || configured.BootConfigReleaseSettings is not null)
+            _bootConfig.Revert(configured);
         return true;
     }
 
@@ -148,7 +163,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         if (!Exists(HeadPath(entry)))
             return null;
         using FileSystemStream lease = Lock(entry);
-        return ReconcileLocked(entry);
+        return ResumeStockHandoffLocked(entry) ?? ReconcileLocked(entry);
     }
 
     /// <inheritdoc />
@@ -181,7 +196,11 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         try
         {
             if (EnsureReadyLocked(entry) is { } catalog)
+            {
                 VerifyTree(Root(entry), Manifest(catalog.Ownership), ct);
+                ct.ThrowIfCancellationRequested();
+                ApplyPublishedBootConfigLocked(entry, catalog);
+            }
             ct.ThrowIfCancellationRequested();
             return lease;
         }
@@ -319,7 +338,7 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
                 throw new IOException("Uncataloged transaction evidence exists. It has been preserved.");
             catalog = new Catalog(FORMAT_VERSION, entry.Id, Root(entry), StorageRoot(entry), stock.Stock.ToJson(),
                 stock.CurrentOwned.ToJson(), null, adoptComplete ? stock.ExistingArchive : null, stock.RetainedUnownedFiles.ToArray(),
-                stock.UnownedDirectories.ToArray(), RETENTION, null, null, null, stock.ExistingArchive, stock.RecoverySources);
+                GetReleasedStockUnownedDirectories(entry, stock), RETENTION, null, null, null, stock.ExistingArchive, stock.RecoverySources);
         }
         else if (stock is not null)
         {
@@ -530,22 +549,38 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
             if (Exists(_fs.Path.Combine(Root(entry), ".redux-transaction.active")) || Exists(operation.WorkRoot))
                 throw catalog.LegacyStored is not null ? LegacyPendingRefusal(entry) : new InvalidDataException(
                     "Engine evidence conflicts with preparation-only catalog authority. Evidence retained.");
-            // A backup promotion of an earlier build rewrites that build's own operation bytes, which this one cannot match.
-            if (catalog.LegacyStored is not null && catalog.ExistingBackup is not null && catalog.Archive is null)
-                throw LegacyPendingRefusal(entry);
+            bool legacyBackupIncomplete = catalog.LegacyStored is not null && catalog.ExistingBackup is not null &&
+                catalog.Archive is null;
+            if (legacyBackupIncomplete)
+            {
+                StockBaselineFile original = catalog.ExistingBackup!;
+                // An old promotion can rewrite its operation journal. Only roll back before any promotion work began.
+                if (legacyReady || operation.Archive is not null || Exists(operation.SourceRoot) ||
+                    Exists(BackupCandidatePath(entry, operation.TransactionId)) || Exists(PreservedBackupPath(entry, original)) ||
+                    _fs.Directory.EnumerateFileSystemEntries(StorageRoot(entry), ".stock-archive-*.tmp").Any())
+                    throw LegacyPendingRefusal(entry);
+                try
+                {
+                    RequireBackupPin(original, CancellationToken.None);
+                }
+                catch (Exception failure) when (failure is IOException or InvalidDataException or UnauthorizedAccessException)
+                {
+                    throw LegacyPendingRefusal(entry, failure);
+                }
+            }
             try
             {
                 VerifyTree(Root(entry), Manifest(operation.Current), CancellationToken.None);
             }
-            catch (InvalidDataException failure) when (legacyReady)
+            catch (InvalidDataException failure) when (legacyReady || legacyBackupIncomplete)
             {
                 throw LegacyPendingRefusal(entry, failure);
             }
-            if (catalog.ExistingBackup is not null)
+            if (catalog.ExistingBackup is not null && !legacyBackupIncomplete)
                 operation = CompletePendingBackupPromotion(entry, catalog, operation);
             result = InstallTransactionResult.RolledBack;
             archiveFailure = ArchiveHealth(catalog);
-            if (catalog.Archive is null && Exists(_fs.Path.Combine(Root(entry), "uninstall.zip")))
+            if (!legacyBackupIncomplete && catalog.Archive is null && Exists(_fs.Path.Combine(Root(entry), "uninstall.zip")))
             {
                 try
                 {
@@ -723,9 +758,11 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         StockBaselineManifest expected = Manifest(catalog.Stock);
         if (!Exists(path))
         {
+            EnsureMutationAllowed(entry);
+            if (TryReuseReleasedStockArchive(entry, catalog.Stock, ct) is { } retained)
+                return retained;
             if (stock is null)
                 throw new InvalidDataException("Verified original stock source preparation is required.");
-            EnsureMutationAllowed(entry);
             _boundary?.Invoke("archive-create", false);
             StockBaselineFile pin = await _archive.CreateWithPinAsync(stock.SourceRoot, path, expected, ct)
                 .ConfigureAwait(false);
