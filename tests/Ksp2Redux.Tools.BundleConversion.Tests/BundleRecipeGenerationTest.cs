@@ -1,3 +1,4 @@
+using System.Text;
 using AssetsTools.NET;
 using Ksp2Redux.Tools.BundleConversion.Bundles;
 
@@ -839,10 +840,12 @@ public class BundleRecipeGenerationTest
     }
 
     /// <summary>
-    /// Pins generated recipe bytes so CDC boundary changes require explicit profile handling.
+    /// Pins the CDC recipe for omitted and empty hints so boundary changes require explicit profile handling.
     /// </summary>
-    [Test]
-    public void CdcProfileProducesPinnedPersistedRecipeHash()
+    /// <param name="explicitEmptyHints">Whether to supply an empty hint collection.</param>
+    [TestCase(false)]
+    [TestCase(true)]
+    public void CdcProfileProducesPinnedPersistedRecipeHash(bool explicitEmptyHints)
     {
         byte[] data = Noise(350_000, 73);
         using var source = new MemoryStream(data);
@@ -851,9 +854,14 @@ public class BundleRecipeGenerationTest
         using var canonical = new MemoryStream();
         var descriptor = BundleRecipe.DescribeSource(source, BundleRecipeSourceKind.RawFile);
 
-        BundleRecipeGenerationResult result = BundleRecipe.Generate([descriptor], [source], target, pack, canonical);
+        BundleRecipeGenerationResult result = BundleRecipe.Generate([descriptor], [source], target, pack, canonical,
+            rangeHints: explicitEmptyHints ? [] : null);
 
-        Assert.That(Hex.Sha256(JsonCodec.Write(result.Recipe)), Is.EqualTo("377e2229dd239c5ff4b432b2ea770f1c7819ebe7b94787bce05a88e94302a762"));
+        // The indented serializer uses the host's line endings. Pin the remaining recipe bytes.
+        string json = Encoding.UTF8.GetString(JsonCodec.Write(result.Recipe)).Replace("\r\n", "\n", StringComparison.Ordinal);
+        Assert.That(Hex.Sha256(Encoding.UTF8.GetBytes(json)), Is.EqualTo("50d900900632bdf296641e217f0fc0ceb49442a00ced698efb3271418b17dc53"));
+        Assert.That(result.Metrics.HintedReusedBytes, Is.Zero);
+        Assert.That(result.Metrics.CdcReusedBytes, Is.EqualTo(result.Metrics.ReusedBytes));
     }
 
     /// <summary>
@@ -1066,26 +1074,6 @@ public class BundleRecipeGenerationTest
         Assert.That(pack.Length, Is.Zero);
         Assert.That(source.MaxReadRequest, Is.LessThanOrEqualTo(65536));
         Assert.That(target.MaxReadRequest, Is.LessThanOrEqualTo(131072));
-    }
-
-    /// <summary>
-    /// Keeps the original CDC recipe and profile byte-identical when hints are omitted or empty.
-    /// </summary>
-    [Test]
-    public void EmptyHintsKeepCdcOutputAndPersistedGoldenStable()
-    {
-        byte[] data = Noise(350_000, 73);
-        using var source = new MemoryStream(data);
-        using var target = new MemoryStream(SyntheticBundles.Bundle(false, ("shifted", new byte[] { 1, 2, 3 }.Concat(data).ToArray(), false)));
-        var descriptor = BundleRecipe.DescribeSource(source, BundleRecipeSourceKind.RawFile);
-        using var pack = new MemoryStream();
-        using var canonical = new MemoryStream();
-
-        BundleRecipeGenerationResult result = BundleRecipe.Generate([descriptor], [source], target, pack, canonical, rangeHints: []);
-
-        Assert.That(Hex.Sha256(JsonCodec.Write(result.Recipe)), Is.EqualTo("377e2229dd239c5ff4b432b2ea770f1c7819ebe7b94787bce05a88e94302a762"));
-        Assert.That(result.Metrics.HintedReusedBytes, Is.Zero);
-        Assert.That(result.Metrics.CdcReusedBytes, Is.EqualTo(result.Metrics.ReusedBytes));
     }
 
     /// <summary>
