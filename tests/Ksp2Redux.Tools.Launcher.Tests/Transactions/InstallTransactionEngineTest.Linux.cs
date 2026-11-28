@@ -21,12 +21,9 @@ public partial class InstallTransactionEngineTest
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             throw new PlatformNotSupportedException();
-        string root = SystemEnvironmentProvider.Instance.GetEnvironmentVariable("KSP2REDUX_LINUX_FIXTURE_ROOT")
-            ?? throw new InvalidOperationException("Run the maintained owned native Linux fixture workflow.");
-        var fs = new RealFileSystem();
-        if (!root.StartsWith("/home/", StringComparison.Ordinal) || fs.Path.Exists(root))
-            throw new InvalidDataException("The native fixture must be a fresh owned home-directory root.");
-        fs.Directory.CreateDirectory(root);
+        using var fixture = new NativeLinuxFixture();
+        string root = fixture.Root;
+        var fs = fixture.FileSystem;
         string install = fs.Path.Combine(root, "game");
         string source = fs.Path.Combine(root, "source");
         string stockRoot = fs.Path.Combine(root, "stock");
@@ -120,11 +117,9 @@ public partial class InstallTransactionEngineTest
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             throw new PlatformNotSupportedException();
-        string root = SystemEnvironmentProvider.Instance.GetEnvironmentVariable("KSP2REDUX_LINUX_FIXTURE_ROOT")!
-            + "-special-" + specialBit;
-        var fs = new RealFileSystem();
-        Assert.That(fs.Path.Exists(root), Is.False);
-        fs.Directory.CreateDirectory(root);
+        using var fixture = new NativeLinuxFixture($"-special-{specialBit}");
+        string root = fixture.Root;
+        var fs = fixture.FileSystem;
         string path = fs.Path.Combine(root, "unexecuted-witness.bin");
         byte[] original = Encoding.UTF8.GetBytes("owned special-permission witness, never executed");
         fs.File.WriteAllBytes(path, original);
@@ -160,10 +155,9 @@ public partial class InstallTransactionEngineTest
     [Test, Platform("Linux")]
     public async Task NativeLinux_GuardsAndAtomicPublicationAsync()
     {
-        string root = SystemEnvironmentProvider.Instance.GetEnvironmentVariable("KSP2REDUX_LINUX_FIXTURE_ROOT")! + "-guards";
-        var fs = new RealFileSystem();
-        Assert.That(fs.Path.Exists(root), Is.False);
-        fs.Directory.CreateDirectory(root);
+        using var fixture = new NativeLinuxFixture("-guards");
+        string root = fixture.Root;
+        var fs = fixture.FileSystem;
         var engine = new InstallTransactionEngine(fs, _ => long.MaxValue);
         LinuxPut(fs, root, "ordinary.bin", "original");
         Assert.Throws<InvalidDataException>(() => StockArchive.ApplyUnixPermissions(fs, fs.Path.Combine(root, "ordinary.bin"), 0));
@@ -189,9 +183,8 @@ public partial class InstallTransactionEngineTest
         Assert.That(((Win32Exception)collision.InnerException!).NativeErrorCode, Is.EqualTo(17));
         Assert.That(fs.File.ReadAllText(candidate), Is.EqualTo("candidate"));
         Assert.That(fs.File.ReadAllText(destination), Is.EqualTo("foreign destination"));
-        string otherMount = "/dev/shm/redux-native-launcher-" + Guid.NewGuid().ToString("N");
-        Assert.That(fs.Path.Exists(otherMount), Is.False);
-        fs.Directory.CreateDirectory(otherMount);
+        using var sharedMemory = new NativeLinuxFixture("-cross-mount", temporaryParent: "/dev/shm");
+        string otherMount = sharedMemory.Root;
         LinuxPut(fs, otherMount, "candidate.bin", "cross-mount candidate");
         string crossCandidate = fs.Path.Combine(otherMount, "candidate.bin");
         IOException crossMount = Assert.Throws<IOException>(() => StockArchive.PublishFile(fs, crossCandidate,
@@ -254,10 +247,9 @@ public partial class InstallTransactionEngineTest
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             throw new PlatformNotSupportedException();
-        string root = SystemEnvironmentProvider.Instance.GetEnvironmentVariable("KSP2REDUX_LINUX_FIXTURE_ROOT")! + (cancel ? "-cancel" : "-interrupt");
-        var fs = new RealFileSystem();
-        Assert.That(fs.Path.Exists(root), Is.False);
-        fs.Directory.CreateDirectory(root);
+        using var fixture = new NativeLinuxFixture(cancel ? "-cancel" : "-interrupt");
+        string root = fixture.Root;
+        var fs = fixture.FileSystem;
         string game = fs.Path.Combine(root, "game");
         string source = fs.Path.Combine(root, "source");
         string pristine = fs.Path.Combine(root, "stock");

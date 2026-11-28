@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,7 @@ using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Launcher.Tests.Transactions;
 using Moq;
 using Testably.Abstractions;
 
@@ -21,10 +23,9 @@ public partial class FullSourceInstallationServiceTest
     [Test, Platform("Linux")]
     public async Task NativeLinux_CoordinatorInstallChannelRepairUninstallAsync()
     {
-        string root = SystemEnvironmentProvider.Instance.GetEnvironmentVariable("KSP2REDUX_LINUX_FIXTURE_ROOT")! + "-coordinator";
-        var fs = new RealFileSystem();
-        Assert.That(fs.Path.Exists(root), Is.False);
-        fs.Directory.CreateDirectory(root);
+        using var fixture = new NativeLinuxFixture("-coordinator");
+        string root = fixture.Root;
+        var fs = fixture.FileSystem;
         string game = fs.Path.Combine(root, "game");
         string original = fs.Path.Combine(root, "stock");
         string source = fs.Path.Combine(root, "target");
@@ -85,7 +86,7 @@ public partial class FullSourceInstallationServiceTest
             InstallChannelRepairOfflineUninstall = true, CompleteFixtureArchiveIncludesStreamingAssets = true,
             ArchiveSha256 = Convert.ToHexString(SHA256.HashData(originalArchive)), UnknownUserBytesPreserved = true,
             FullGame = false, RealPublisherAuthentication = false, GameProcessCallsAreDoubles = true,
-            RuntimeQualification = "Installed .NET 8 compatibility target, not shipped .NET 10 launcher process"
+            Framework = RuntimeInformation.FrameworkDescription
         }));
     }
 

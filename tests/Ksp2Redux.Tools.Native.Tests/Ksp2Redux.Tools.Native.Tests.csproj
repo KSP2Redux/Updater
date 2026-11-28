@@ -21,6 +21,7 @@
     <Compile Include="../../src/Ksp2Redux.Tools.Common/Services/ZipFileService.cs" />
     <Compile Include="../../src/Ksp2Redux.Tools.Common/Wrappers/ZipArchiveWrapper.cs" />
     <Compile Include="../Ksp2Redux.Tools.Launcher.Tests/Transactions/InstallTransactionEngineTest.Linux.cs" />
+    <Compile Include="../Ksp2Redux.Tools.Launcher.Tests/Transactions/NativeLinuxFixture.cs" />
     <Compile Include="../Ksp2Redux.Tools.Launcher.Tests/Services/Install/FullSourceInstallationServiceTest.Linux.cs" />
     <Compile Include="../../src/Ksp2Redux.Tools.Common/Models/*.cs" />
     <Compile Include="../../src/Ksp2Redux.Tools.Launcher/Services/Install/FullSourceContracts.cs" />
