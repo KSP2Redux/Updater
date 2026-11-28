@@ -1,9 +1,9 @@
 using System.IO.Abstractions;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ksp2Redux.Tools.Common.Restoration;
+using Testably.Abstractions;
 
 namespace Ksp2Redux.Tools.Common.Transactions;
 
@@ -43,7 +43,8 @@ public partial class InstallTransactionEngine
         StockBaselineManifest source, string authorizationSha256, CancellationToken ct = default,
         bool engineStorageWasAbsent = false)
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        // A virtual Windows filesystem can exercise retirement without enabling it on native Unix disks.
+        if (_fileSystem is RealFileSystem && !IsNativeWindows)
             throw new PlatformNotSupportedException("Payload retirement is verified only on Windows.");
         if (!Enum.IsDefined(result) || authorizationSha256.Length != 64 ||
             !authorizationSha256.All(Uri.IsHexDigit) || authorizationSha256 != authorizationSha256.ToUpperInvariant())

@@ -62,6 +62,15 @@ public partial class InstallTransactionEngineTest
         return (fs, plan);
     }
 
+    [Test, Platform("Linux,MacOsX")]
+    public void Retirement_NativeUnixRejectsBeforeUsingTheWindowsPlan()
+    {
+        var (_, plan) = Fixture();
+        var engine = new InstallTransactionEngine(new RealFileSystem());
+        Assert.That(() => engine.RetireTerminalPayloads(plan, InstallTransactionResult.Committed,
+            plan.Target, new string('A', 64)), Throws.TypeOf<PlatformNotSupportedException>());
+    }
+
     private static StockBaselineManifest Manifest(string identity, Dictionary<string, string> files, string[]? directories = null)
         => new(identity, "synthetic transaction fixture", files.Select(file =>
             new StockBaselineFile(file.Key, Encoding.UTF8.GetByteCount(file.Value), Digest(Encoding.UTF8.GetBytes(file.Value)))), directories);
