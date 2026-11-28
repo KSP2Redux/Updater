@@ -21,7 +21,7 @@ public class InstallPlanServiceBundleConversionTest
     private const string PatchPath = @"C:\downloads\corrupt.patch";
 
     private static (InstallPlanService Service, Mock<ICacheService> CacheService, Mock<IBundleConversionService> Conversion, List<string> Calls, MockFileSystem Fs)
-        MakeService(IInstallFileLockService? lockService = null, bool patchesApply = false)
+        MakeService(IInstallFileLockService? lockService = null, bool patchesApply = false, Ksp2InstallEntry? entry = null)
     {
         var fs = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
         fs.Directory.CreateDirectory(InstallDir);
@@ -63,11 +63,15 @@ public class InstallPlanServiceBundleConversionTest
                 It.IsAny<int>(), It.IsAny<Action<LogMessage>>(), It.IsAny<Action<long, long>>(), It.IsAny<CancellationToken>()))
             .Returns([]);
         var configService = new Mock<ILauncherConfigService>();
-        configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
+        var config = new LauncherConfig("config.json");
+        if (entry is not null)
+            config.Ksp2Installs.Add(entry);
+        configService.SetupGet(service => service.Config).Returns(config);
+        var bootConfig = new BootConfigSettingsService(configService.Object, fs, Mock.Of<ILogService>());
 
         var service = new InstallPlanService(fs, cacheService.Object, new MockEnvironmentProvider(),
             assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object, diskSpace.Object, patchDownloadService.Object, configService.Object,
-            Mock.Of<IInstallationStateService>(), conversion.Object, lockService);
+            Mock.Of<IInstallationStateService>(), conversion.Object, lockService, bootConfig: bootConfig);
         return (service, cacheService, conversion, calls, fs);
     }
 
@@ -141,6 +145,29 @@ public class InstallPlanServiceBundleConversionTest
         await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None);
 
         Assert.That(calls, Is.EqualTo(new[] { "revert", "restore" }));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LegacySnapshotRestore_PreservesOriginalBootConfig(bool uninstall)
+    {
+        const string stock = "gfx-enable-gfx-jobs=1\r\nbuild-guid=stock\r\n";
+        var entry = new Ksp2InstallEntry { ExePath = InstallDir + @"\KSP2_x64.exe", BootConfigOriginals = { ["gfx-enable-gfx-jobs"] = null } };
+        var (service, cache, _, _, fs) = MakeService(entry: entry);
+        var bootPath = fs.Path.Combine(InstallDir, "KSP2_x64_Data", "boot.config");
+        fs.Directory.CreateDirectory(fs.Path.GetDirectoryName(bootPath)!);
+        cache.Setup(item => item.RecursivelyRestoreCache(InstallDir, !uninstall))
+            .Callback(() => fs.File.WriteAllText(bootPath, stock));
+        var plan = new InstallPlan();
+        if (uninstall)
+            plan.Uninstall();
+        else
+            plan.RevertToStock();
+
+        await service.ApplyToFolder(plan, InstallDir, _ => { }, (_, _) => { }, (_, _) => { }, CancellationToken.None);
+
+        Assert.That(fs.File.ReadAllText(bootPath), Is.EqualTo(stock));
+        Assert.That(entry.BootConfigOriginals, Is.Empty);
     }
 
     [Test]

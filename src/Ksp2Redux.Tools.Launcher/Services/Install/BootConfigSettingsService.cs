@@ -59,6 +59,11 @@ public interface IBootConfigSettingsService
     /// </remarks>
     /// <param name="entry">The configured installation.</param>
     void Revert(Ksp2InstallEntry entry);
+
+    /// <summary>
+    /// Clear saved boot settings after a legacy snapshot restores the entire stock file.
+    /// </summary>
+    void ForgetRestoredStockSettings(Ksp2InstallEntry entry);
 }
 
 /// <inheritdoc />
@@ -159,6 +164,20 @@ public class BootConfigSettingsService(ILauncherConfigService configuration, IFi
 
     /// <inheritdoc />
     public void Revert(Ksp2InstallEntry entry) => Revert(entry, null);
+
+    /// <inheritdoc />
+    public void ForgetRestoredStockSettings(Ksp2InstallEntry entry)
+    {
+        lock (_gate)
+        {
+            if (entry.BootConfigOriginals.Count == 0 && entry.BootConfigReleaseSettings is null)
+                return;
+
+            entry.BootConfigOriginals = [];
+            entry.BootConfigReleaseSettings = null;
+            configuration.Save();
+        }
+    }
 
     private bool Revert(Ksp2InstallEntry entry, IReadOnlyDictionary<string, string>? stock)
     {
