@@ -254,33 +254,44 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
         if (ReadCatalog(entry) is not null)
             throw new InvalidDataException(Localization.LocalizationService.Default["Install.LegacyCatalogChanged"]);
         ct.ThrowIfCancellationRequested();
+        // Decide before legacy uninstall removes its rollback ZIP. A retry may no longer enter this path.
+        bool preserveRedux = HasRetainedReduxDirectory(entry);
         await uninstall();
         ct.ThrowIfCancellationRequested();
-        foreach (string relative in new[] { "Redux", "pm_cache", "prepatched.nodelete", "pm_summary.log" })
-        {
-            string path = At(Root(entry), relative);
-            _engine.ValidateControlledPath(path);
-            if (_fs.Directory.Exists(path))
-            {
-                foreach (string child in _fs.Directory.EnumerateFileSystemEntries(path, "*", SearchOption.AllDirectories))
-                    _engine.ValidateControlledPath(child);
-                _fs.Directory.Delete(path, true);
-            }
-            else if (_fs.File.Exists(path))
-                _fs.File.Delete(path);
-        }
+        string root = Root(entry);
+        if (!preserveRedux)
+            RemoveLegacyConversionArtifact(root, "Redux");
+        foreach (string relative in new[] { "pm_cache", "prepatched.nodelete", "pm_summary.log" })
+            RemoveLegacyConversionArtifact(root, relative);
         var (target, stock) = await prepare();
-        if (stock is null || stock.ExistingArchive is not null || stock.SourceRoot != Root(entry))
+        if (stock is null || stock.ExistingArchive is not null || stock.SourceRoot != root)
             throw new InvalidDataException(Localization.LocalizationService.Default["Install.LegacyStockVerificationFailed"]);
         try
         {
-            VerifyTree(Root(entry), stock.Stock, ct);
+            VerifyTree(root, stock.Stock, ct);
         }
         catch (InvalidDataException failure)
         {
             throw new InvalidDataException(Localization.LocalizationService.Default["Install.LegacyStockVerificationFailed"], failure);
         }
+
         return await ApplyLockedAsync(entry, target, stock, false, log, ct);
+    }
+
+    private void RemoveLegacyConversionArtifact(string root, string relative)
+    {
+        string path = At(root, relative);
+        _engine.ValidateControlledPath(path);
+        if (_fs.Directory.Exists(path))
+        {
+            foreach (string child in _fs.Directory.EnumerateFileSystemEntries(path, "*", SearchOption.AllDirectories))
+                _engine.ValidateControlledPath(child);
+            _fs.Directory.Delete(path, true);
+        }
+        else if (_fs.File.Exists(path))
+        {
+            _fs.File.Delete(path);
+        }
     }
 
     private async Task<FullSourceInstallationStatus> ApplyLockedAsync(Ksp2InstallEntry entry,

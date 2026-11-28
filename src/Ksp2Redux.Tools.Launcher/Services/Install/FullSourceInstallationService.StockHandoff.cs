@@ -8,6 +8,8 @@ namespace Ksp2Redux.Tools.Launcher.Services.Install;
 
 public partial class FullSourceInstallationService
 {
+    private const string RELEASED_STOCK_HEAD_SUFFIX = "-released-stock.json";
+
     /// <inheritdoc />
     public async Task<FullSourceInstallationStatus> UninstallToStockAsync(Guid installationId, Action<string> log,
         CancellationToken ct, string expectedInstallRoot)
@@ -124,7 +126,7 @@ public partial class FullSourceInstallationService
         _fs.Path.Combine(StorageRoot(entry), $"{ReleasedStockKey(entry, stock)}-released-stock.zip");
 
     private string ReleasedStockHeadPath(Ksp2InstallEntry entry, byte[] stock) =>
-        _fs.Path.Combine(CatalogRoot(entry), $"{ReleasedStockKey(entry, stock)}-released-stock.json");
+        _fs.Path.Combine(CatalogRoot(entry), $"{ReleasedStockKey(entry, stock)}{RELEASED_STOCK_HEAD_SUFFIX}");
 
     private string ReleasedStockKey(Ksp2InstallEntry entry, byte[] stock)
     {
@@ -140,6 +142,12 @@ public partial class FullSourceInstallationService
             return null;
 
         Catalog previous = Read<Catalog>(path);
+        ValidateReleasedStockHead(entry, stock, previous);
+        return previous;
+    }
+
+    private void ValidateReleasedStockHead(Ksp2InstallEntry entry, byte[] stock, Catalog previous)
+    {
         string root = Root(entry);
         StringComparison pathComparison = _os.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         if (previous.FormatVersion != FORMAT_VERSION || previous.InstallationId != entry.Id ||
@@ -154,7 +162,33 @@ public partial class FullSourceInstallationService
         if (archive.Path != _fs.Path.Combine(previous.InstallRoot, "uninstall.zip"))
             throw new InvalidDataException("Released stock archive reference does not match its recorded root. Evidence retained.");
         ValidateArchiveReference(entry, archive with { Path = _fs.Path.Combine(root, "uninstall.zip") });
-        return previous;
+    }
+
+    private bool HasRetainedReduxDirectory(Ksp2InstallEntry entry)
+    {
+        static bool IsReduxDirectory(string path) => path.Equals("Redux", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("Redux/", StringComparison.OrdinalIgnoreCase);
+
+        string root = Root(entry);
+        Ksp2InstallEntry configured = _configuration.Config.Ksp2Installs.Single(candidate => candidate.Id == entry.Id);
+        ValidateExpectedRoot(Root(configured), root);
+        if (configured.FullSourceUnownedDirectories.Any(IsReduxDirectory))
+            return true;
+
+        // Legacy can snapshot settings left by a previous stock handoff. Do not treat those bytes as debris.
+        StringComparison pathComparison = _os.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (string path in _fs.Directory.EnumerateFileSystemEntries(CatalogRoot(entry), $"*{RELEASED_STOCK_HEAD_SUFFIX}"))
+        {
+            Catalog previous = Read<Catalog>(path);
+            if (!string.Equals(previous.InstallRoot, root, pathComparison))
+                continue;
+            if (previous.Stock is not { } stock || !string.Equals(path, ReleasedStockHeadPath(entry, stock), pathComparison))
+                throw new InvalidDataException("Released stock metadata conflicts with its recorded path. Evidence retained.");
+            ValidateReleasedStockHead(entry, stock, previous);
+            if (previous.UnownedDirectories.Any(IsReduxDirectory))
+                return true;
+        }
+        return false;
     }
 
     private string[] GetReleasedStockUnownedDirectories(Ksp2InstallEntry entry, FullSourceStockPreparation stock)
