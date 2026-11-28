@@ -6,6 +6,7 @@ using MsBox.Avalonia.Base;
 using MsBox.Avalonia.Dto;
 using MsBox.Avalonia.Enums;
 
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Views;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
@@ -34,7 +35,7 @@ public interface IMessageBoxService
     void ShowSnackbar(string message);
 }
 
-public class MessageBoxService : IMessageBoxService
+public class MessageBoxService(ILocalizationService localization) : IMessageBoxService
 {
 #pragma warning disable RS0030
     private static Window? OwnerWindow =>
@@ -50,7 +51,15 @@ public class MessageBoxService : IMessageBoxService
         object? context = null,
         WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen)
     {
-        IMsBox<ButtonResult> box = MessageBoxManager.GetMessageBoxStandard(title, text, @enum, icon, context, windowStartupLocation);
+        var box = CreateMessageBox(new MessageBoxStandardParams
+        {
+            ContentTitle = title,
+            ContentMessage = text,
+            ButtonDefinitions = @enum,
+            Icon = icon,
+            Context = context,
+            WindowStartupLocation = windowStartupLocation
+        });
         return await ShowAsOwnedAsync(box);
     }
 
@@ -61,7 +70,7 @@ public class MessageBoxService : IMessageBoxService
         ButtonEnum @enum = ButtonEnum.Ok,
         WindowStartupLocation windowStartupLocation = WindowStartupLocation.CenterScreen)
     {
-        IMsBox<ButtonResult> box = MessageBoxManager.GetMessageBoxStandard(
+        var box = CreateMessageBox(
             ScrollableParams(title, text, maxHeight, @enum, windowStartupLocation));
         return await ShowAsOwnedAsync(box);
     }
@@ -79,6 +88,16 @@ public class MessageBoxService : IMessageBoxService
         MaxHeight = maxHeight,
         WindowStartupLocation = windowStartupLocation
     };
+
+    internal IMsBox<ButtonResult> CreateMessageBox(MessageBoxStandardParams parameters)
+    {
+        if (LanguageFonts.BodyFontFor(localization.Culture.Name) is { } fontFamily)
+        {
+            parameters.FontFamily = fontFamily;
+        }
+
+        return MessageBoxManager.GetMessageBoxStandard(parameters);
+    }
 
     private async Task<T> ShowAsOwnedAsync<T>(IMsBox<T> box)
     {
