@@ -1,4 +1,4 @@
-﻿using System.IO.Abstractions;
+using System.IO.Abstractions;
 using System.Runtime.ExceptionServices;
 using Ksp2Redux.Tools.Common.Patching;
 using Ksp2Redux.Tools.Common.Services;
@@ -233,6 +233,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
         var i = 0;
         bool mutationStarted = false;
+        bool restoredLegacySnapshot = false;
         foreach (var step in installPlan.Steps)
         {
             installationStateService.EnsureLegacyMutationAllowed(install);
@@ -248,6 +249,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                     await RevertBundleConversion(install, log, ct);
                     mutationStarted = true;
                     cacheService.RecursivelyRestoreCache(install);
+                    restoredLegacySnapshot = true;
                     break;
                 case RevertToStockStep:
                     // When patching follows, the conversion after it brings the bundles up to the new shader
@@ -262,6 +264,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         log(Loc.Message("Install.RevertingForRepatch"));
                         mutationStarted = true;
                         cacheService.RecursivelyRestoreCache(install, true);
+                        restoredLegacySnapshot = true;
                     }
                     else
                     {
@@ -415,12 +418,18 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         if (installPlan.Steps.Count != 0 &&
             launcherConfigService.Config.Ksp2Installs.FirstOrDefault(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install) is { } legacyEntry)
         {
-            if (!patched)
-                bootConfig?.Revert(legacyEntry);
-            else
+            if (patched)
             {
                 bootConfig?.SetReleaseSettings(legacyEntry, null);
                 bootConfig?.Apply(legacyEntry);
+            }
+            else if (restoredLegacySnapshot)
+            {
+                bootConfig?.ForgetRestoredStockSettings(legacyEntry);
+            }
+            else
+            {
+                bootConfig?.Revert(legacyEntry);
             }
         }
     }
@@ -524,6 +533,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         try
         {
             cacheService.RecursivelyRestoreCache(install, true);
+            if (launcherConfigService.Config.Ksp2Installs.FirstOrDefault(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install) is { } entry)
+                bootConfig?.ForgetRestoredStockSettings(entry);
         }
         catch (Exception rollbackEx)
         {

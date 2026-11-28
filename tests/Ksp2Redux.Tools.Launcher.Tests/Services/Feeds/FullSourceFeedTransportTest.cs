@@ -61,6 +61,30 @@ public partial class FullSourceFeedTransportTest
         Assert.That(configured.HasSameAuthority(configured.SnapshotAuthority()), Is.True);
     }
 
+    [Test]
+    public async Task LegacyPrivateFeed_AddsInternalToTheGuiChannelList()
+    {
+        var configured = new FeedInfo { Repository = "example/testing", Filename = "Manifest.Develop.json", Token = "fixture-token" };
+        var handler = new Handler
+        {
+            Respond = request =>
+            {
+                Assert.That(request.RequestUri!.AbsolutePath, Is.EqualTo("/repos/example/testing/contents/Manifest.Develop.v3.json"));
+                Assert.That(request.Headers.Authorization?.Parameter, Is.EqualTo("fixture-token"));
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""{"schemaVersion":3,"channel":"internal","generatedAt":"2026-10-14T00:00:00Z","patches":[]}""")
+                };
+            }
+        };
+        var feed = new ManifestReleasesFeed(Service(handler), Mock.Of<ILogService>(), "downloads", configured);
+        var channels = new ReleasesFeedService();
+        Assert.That(await feed.UpdateManifest(), Is.True, feed.LastUpdateException?.Message);
+        channels.Add(feed);
+        Assert.That(channels.ReleasesFeed.Keys, Does.Contain("internal"));
+        Assert.That(configured.Repository, Is.EqualTo("example/testing"));
+    }
+
     private class Handler : HttpMessageHandler
     {
         internal Func<HttpRequestMessage, HttpResponseMessage> Respond = _ => new HttpResponseMessage(HttpStatusCode.OK)
@@ -172,12 +196,14 @@ public partial class FullSourceFeedTransportTest
     /// </summary>
     /// <param name="url">The requested download location.</param>
     /// <param name="authenticated">True only for the configured GitHub asset API.</param>
+    /// <param name="repository">The configured GitHub repository.</param>
     /// <returns>The verification task.</returns>
-    [TestCase("https://publisher.test/pack.bin", false)]
-    [TestCase("https://api.github.com/repos/another/repository/releases/assets/1", false)]
-    [TestCase("http://api.github.com/repos/fixture/authority/releases/assets/1", false)]
-    [TestCase("https://api.github.com/repos/fixture/authority/releases/assets/1", true)]
-    public async Task AssetDownload_RestrictsAuthorizationHeader(string url, bool authenticated)
+    [TestCase("https://publisher.test/pack.bin", false, "fixture/authority")]
+    [TestCase("https://api.github.com/repos/another/repository/releases/assets/1", false, "fixture/authority")]
+    [TestCase("http://api.github.com/repos/fixture/authority/releases/assets/1", false, "fixture/authority")]
+    [TestCase("https://api.github.com/repos/fixture/authority/releases/assets/1", true, "https://github.com/fixture/authority")]
+    [TestCase("https://api.github.com/repos/fixture/authority/releases/assets/1", true, "fixture/authority")]
+    public async Task AssetDownload_RestrictsAuthorizationHeader(string url, bool authenticated, string repository)
     {
         var handler = new Handler
         {
@@ -189,7 +215,7 @@ public partial class FullSourceFeedTransportTest
         };
         using var response = await Service(handler).DownloadFileAsync(new FeedInfo
         {
-            Repository = "https://github.com/fixture/authority", Token = "fixture-secret"
+            Repository = repository, Token = "fixture-secret"
         }, url, 0, CancellationToken.None);
         Assert.That(response.IsSuccessStatusCode, Is.True);
     }
@@ -197,9 +223,11 @@ public partial class FullSourceFeedTransportTest
     /// <summary>
     /// The configured GitHub content authority uses its token only on the API request.
     /// </summary>
+    /// <param name="repository">The configured GitHub repository.</param>
     /// <returns>The verification task.</returns>
-    [Test]
-    public async Task ConfiguredGitHubAuthority_UsesExpectedRepositoryContentApi()
+    [TestCase("https://github.com/fixture/authority")]
+    [TestCase("fixture/authority")]
+    public async Task ConfiguredGitHubAuthority_UsesExpectedRepositoryContentApi(string repository)
     {
         var handler = new Handler();
         var original = handler.Respond;
@@ -211,7 +239,7 @@ public partial class FullSourceFeedTransportTest
         };
         var trusted = await Service(handler).GetTrustedManifestAsync(new FeedInfo
         {
-            Repository = "https://github.com/fixture/authority", Filename = "manifest-beta.json", Token = "fixture-secret"
+            Repository = repository, Filename = "manifest-beta.json", Token = "fixture-secret"
         }, CancellationToken.None);
         Assert.That(trusted.Authority, Does.Not.Contain("fixture-secret").And.StartWith("online-https:"));
     }
