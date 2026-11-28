@@ -95,6 +95,8 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
         serviceCollection.AddSingleton<IFileSystem>(FileSystem);
+        serviceCollection.AddSingleton<IInstallationStateService>(
+            new InstallationStateService(FileSystem, new ZipFileService(FileSystem)));
         serviceCollection.AddSingleton<ICacheService, CacheService>();
         serviceCollection.AddSingleton<INewsService, NewsService>();
         serviceCollection.AddSingleton<IEnvironmentProvider>(EnvironmentProvider);

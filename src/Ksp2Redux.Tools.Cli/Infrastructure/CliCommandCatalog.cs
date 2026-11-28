@@ -47,6 +47,7 @@ public static class CliCommandCatalog
         new("install", typeof(InstallSettings)),
         new("update", typeof(UpdateSettings)),
         new("uninstall", typeof(UninstallSettings)),
+        new("full-source", typeof(FullSourceSettings)),
         new("launch", typeof(LaunchSettings)),
         new("kill", typeof(KillSettings), "stop"),
         new("doctor", typeof(DoctorSettings)),

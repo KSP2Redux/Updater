@@ -1,6 +1,7 @@
 using System.Globalization;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
+using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
 using Ksp2Redux.Tools.Launcher.Services.Game;
@@ -48,7 +49,7 @@ public class InstallLogLanguageTest
         var viewModel = new HomeTabViewModel(installs.Object, Mock.Of<ILauncherConfigService>(), Mock.Of<IReleasesFeedService>(),
             Mock.Of<IInstallPlanService>(), Mock.Of<IUpdateService>(), Mock.Of<IOperatingSystemService>(), Mock.Of<IMessageBoxService>(),
             Mock.Of<IEnvironmentProvider>(), new MockFileSystem(), log.Object, Mock.Of<IWineRuntimeService>(),
-            Mock.Of<IGameProcessService>(), localization);
+            Mock.Of<IGameProcessService>(), Mock.Of<IInstallationStateService>(), localization);
         var failure = new LogMessage("disk full", "Platte voll").ToException(text => new IOException(text));
 
         // Act

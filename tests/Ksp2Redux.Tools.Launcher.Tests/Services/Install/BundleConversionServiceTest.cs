@@ -27,7 +27,8 @@ public class BundleConversionServiceTest
         var (fs, bundlePath, journalPath) = MakeConvertedInstall();
 
         // The installed build ships no Redux/ShaderBundles manifest.
-        await new BundleConversionService(fs).ConvertAsync(InstallDir, _ => { }, CancellationToken.None);
+        await new BundleConversionService(fs, new InstallationStateService(fs, new Ksp2Redux.Tools.Common.Services.ZipFileService(fs)))
+            .ConvertAsync(InstallDir, _ => { }, CancellationToken.None);
 
         var expected = new byte[64];
         StockBytes.CopyTo(expected, EditOffset);
@@ -42,7 +43,9 @@ public class BundleConversionServiceTest
         using var editor = fs.File.Open(bundlePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         // An uninstall that carried on would delete the journal, and the bundle would stay converted for good.
-        await Assert.ThrowsAsync<IOException>(() => new BundleConversionService(fs).RevertAsync(InstallDir, _ => { }, CancellationToken.None));
+        await Assert.ThrowsAsync<IOException>(() => new BundleConversionService(fs,
+            new InstallationStateService(fs, new Ksp2Redux.Tools.Common.Services.ZipFileService(fs)))
+            .RevertAsync(InstallDir, _ => { }, CancellationToken.None));
 
         Assert.That(fs.File.Exists(journalPath), Is.True);
     }
@@ -55,7 +58,7 @@ public class BundleConversionServiceTest
         var downloader = StockDownloader(game, stock, out var restored);
 
         // Act
-        await new BundleConversionService(game.FileSystem, SignedIn().Object, downloader.Object).RevertAsync(TestGame.ROOT, _ => { }, CancellationToken.None);
+        await new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), SignedIn().Object, downloader.Object).RevertAsync(TestGame.ROOT, _ => { }, CancellationToken.None);
 
         // Assert
         Assert.That(restored, Is.EqualTo(new[] { $"{BundleConversionLayout.BUNDLE_ROOT}/{CONTENT}" }));
@@ -73,7 +76,7 @@ public class BundleConversionServiceTest
         session.SetupGet(steam => steam.HasSavedLogin).Returns(false);
 
         // Act / Assert: carrying on would hand a build without the URP shaders magenta bundles.
-        await Assert.ThrowsAsync<IOException>(() => new BundleConversionService(game.FileSystem, session.Object, new Mock<ISteamDepotDownloader>().Object)
+        await Assert.ThrowsAsync<IOException>(() => new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), session.Object, new Mock<ISteamDepotDownloader>().Object)
             .RevertAsync(TestGame.ROOT, _ => { }, CancellationToken.None));
         Assert.That(game.Read(CONTENT), Is.EqualTo(converted));
     }
@@ -87,7 +90,7 @@ public class BundleConversionServiceTest
         var downloader = StockDownloader(game, stock, out _);
 
         // Act
-        await new BundleConversionService(game.FileSystem, SignedIn().Object, downloader.Object).ConvertAsync(TestGame.ROOT, _ => { }, CancellationToken.None);
+        await new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), SignedIn().Object, downloader.Object).ConvertAsync(TestGame.ROOT, _ => { }, CancellationToken.None);
 
         // Assert: converted again, and this time a revert can find every edit.
         Assert.That(game.Journal()!.InPlace.Select(entry => entry.File), Is.EqualTo(new[] { CONTENT }));
@@ -105,7 +108,7 @@ public class BundleConversionServiceTest
         List<LogMessage> log = [];
 
         // Act
-        await new BundleConversionService(game.FileSystem, session.Object, new Mock<ISteamDepotDownloader>().Object)
+        await new BundleConversionService(game.FileSystem, new InstallationStateService(game.FileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(game.FileSystem)), session.Object, new Mock<ISteamDepotDownloader>().Object)
             .ConvertAsync(TestGame.ROOT, log.Add, CancellationToken.None);
 
         // Assert

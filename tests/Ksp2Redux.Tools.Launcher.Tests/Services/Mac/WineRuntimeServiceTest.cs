@@ -1,4 +1,5 @@
-﻿using Ksp2Redux.Tools.Launcher.Localization;
+﻿using EnvironmentAbstractions;
+using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Mac;

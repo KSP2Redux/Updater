@@ -123,6 +123,8 @@ internal static class BundleRewriter
     /// <param name="source">The header to copy the format and Unity version from.</param>
     /// <param name="entries">The directory entries, with streams holding their contents.</param>
     /// <param name="compress">True for LZ4HC blocks, false to store every block uncompressed.</param>
+    /// <param name="useK4os">True for standalone pinned HC6 encoding, false for legacy AssetsTools encoding.</param>
+    /// <param name="workers">Worker count from one to 64, or zero to use at most 32 logical cores.</param>
     // Laid out the way Unity writes bundles: header, block list at the front padded to 16 bytes,
     // then 128 KiB blocks. The block list itself is stored uncompressed so its size is known before
     // the data is written, which lets it be patched in place afterwards instead of buffering the data.
@@ -130,7 +132,7 @@ internal static class BundleRewriter
         Stream output,
         AssetBundleHeader source,
         IReadOnlyList<KeyValuePair<AssetBundleDirectoryInfo, Stream>> entries,
-        bool compress)
+        bool compress, bool useK4os = false, int workers = 0)
     {
         long total = 0;
         List<AssetBundleDirectoryInfo> directory = [];
@@ -193,6 +195,37 @@ internal static class BundleRewriter
             throw new InvalidOperationException("The bundle data offset does not match the header layout.");
         }
 
+        // Read shared source streams serially. Only independent block encoding runs in parallel.
+        int concurrency = workers > 0 ? workers : Math.Min(Environment.ProcessorCount, 32);
+        if (concurrency < 1 || concurrency > 64)
+            throw new ArgumentOutOfRangeException(nameof(workers));
+        var pending = new Queue<(byte[] Bytes, AssetBundleBlockInfo Block)>();
+        void FlushBlocks()
+        {
+            var batch = pending.ToArray();
+            var encoded = new byte[batch.Length][];
+            using (RecipePerformance.Measure("hc6-batch-encode-wall"))
+            Parallel.For(0, batch.Length, new ParallelOptions { MaxDegreeOfParallelism = concurrency },
+                index => encoded[index] = Encode(batch[index].Bytes, batch[index].Bytes.Length, useK4os));
+            for (int index = 0; index < batch.Length; index++)
+            {
+                WriteEncoded(output, batch[index].Bytes, batch[index].Bytes.Length, batch[index].Block, encoded[index]);
+            }
+            pending.Clear();
+        }
+        void Emit(byte[] bytes, int length, AssetBundleBlockInfo block)
+        {
+            if (!compress || !useK4os)
+            {
+                WriteBlock(output, bytes, length, block, compress);
+                return;
+            }
+            var copy = new byte[length];
+            Buffer.BlockCopy(bytes, 0, copy, 0, length);
+            pending.Enqueue((copy, block));
+            if (pending.Count == concurrency * 2)
+                FlushBlocks();
+        }
         var buffer = new byte[BLOCK_SIZE];
         var filled = 0;
         var blockIndex = 0;
@@ -206,7 +239,7 @@ internal static class BundleRewriter
                 filled += read;
                 if (filled == BLOCK_SIZE)
                 {
-                    WriteBlock(output, buffer, filled, blocks[blockIndex++], compress);
+                    Emit(buffer, filled, blocks[blockIndex++]);
                     filled = 0;
                 }
             }
@@ -214,8 +247,10 @@ internal static class BundleRewriter
 
         if (filled > 0)
         {
-            WriteBlock(output, buffer, filled, blocks[blockIndex++], compress);
+            Emit(buffer, filled, blocks[blockIndex++]);
         }
+
+        FlushBlocks();
 
         if (blockIndex != blockCount)
         {
@@ -243,8 +278,31 @@ internal static class BundleRewriter
 
     private static void WriteBlock(Stream output, byte[] buffer, int length, AssetBundleBlockInfo block, bool compress)
     {
-        var compressed = compress ? LZ4Codec.Encode32HC(buffer, 0, length) : [];
-        if (compress && compressed.Length < length)
+        var compressed = compress ? Encode(buffer, length, false) : [];
+        WriteEncoded(output, buffer, length, block, compressed);
+    }
+
+    private static byte[] Encode(byte[] bytes, int length, bool useK4os)
+    {
+        if (!useK4os)
+            return LZ4Codec.Encode32HC(bytes, 0, length);
+#if UNITY_EDITOR
+        throw new NotSupportedException("HC6 publication requires the standalone .NET tools.");
+#else
+        var result = new byte[K4os.Compression.LZ4.LZ4Codec.MaximumOutputSize(length)];
+        int size = K4os.Compression.LZ4.LZ4Codec.Encode(bytes, 0, length, result, 0, result.Length,
+            K4os.Compression.LZ4.LZ4Level.L06_HC);
+        if (size <= 0)
+            throw new InvalidDataException("HC6 block encoding failed.");
+        Array.Resize(ref result, size);
+        return result;
+#endif
+    }
+
+    private static void WriteEncoded(Stream output, byte[] buffer, int length, AssetBundleBlockInfo block, byte[] compressed)
+    {
+        using var writeTime = RecipePerformance.Measure("bundle-output-write-io");
+        if (compressed.Length > 0 && compressed.Length < length)
         {
             output.Write(compressed, 0, compressed.Length);
             block.CompressedSize = (uint)compressed.Length;

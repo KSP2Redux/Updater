@@ -20,6 +20,15 @@ public sealed class BundlesRevertCommand : ReduxCommand<BundlesRevertSettings>
             return exitCode;
         }
 
+        try
+        {
+            context.InstallationStateService.EnsureLegacyMutationAllowed(game);
+        }
+        catch (IOException ex)
+        {
+            return context.Output.Fail(ExitCode.BUNDLE_CONVERSION_FAILED, ex.Message);
+        }
+
         var result = await BundleCommandSupport.RunAsync(
             context,
             game,

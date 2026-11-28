@@ -37,7 +37,7 @@ public class InstallPlanServiceDiskSpaceTest
 
         var service = new InstallPlanService(fs, cacheService.Object, environmentProvider, assemblyService.Object,
             moduleDefinitionService.Object, zipFileService.Object, diskSpace.Object,
-            patchDownloadService.Object, configService.Object);
+            patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>());
         return (service, diskSpace, fs);
     }
 

@@ -45,7 +45,7 @@ public class InstallPlanServiceSaveBackupTest
 
         var service = new InstallPlanService(fs, new Mock<ICacheService>().Object, new MockEnvironmentProvider(),
             new Mock<IAssemblyService>().Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object,
-            diskSpace.Object, patchDownloadService.Object, configService.Object, saveBackupService: saveBackups.Object);
+            diskSpace.Object, patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>(), saveBackupService: saveBackups.Object);
         var plan = new InstallPlan();
         plan.ApplyPatchFile((_, _, _) => Task.FromResult(PatchPath), LogMessage.Literal("update"));
 

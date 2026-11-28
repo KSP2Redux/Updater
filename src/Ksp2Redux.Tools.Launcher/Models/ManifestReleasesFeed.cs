@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Ksp2Redux.Tools.Common.Models;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
@@ -103,8 +104,11 @@ public class ManifestReleasesFeed(
         string startVersion = ToVersionString(fromGameVersion);
         string targetVersion = ToVersionString(toGameVersion);
 
+        if (GetFullSourcePlan(toGameVersion) is { } fullSource)
+            return fullSource;
+
         var patchesByOutput = _manifest.Patches
-            .Where(p => !string.IsNullOrWhiteSpace(p.Version))
+            .Where(p => !string.IsNullOrWhiteSpace(p.Version) && p.FullSource is null)
             .GroupBy(p => p.Version, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
@@ -173,4 +177,45 @@ public class ManifestReleasesFeed(
         }
     }
 
+    /// <summary>
+    /// Read a selected recipe contract without searching the legacy patch graph.
+    /// </summary>
+    /// <param name="version">The selected published version.</param>
+    /// <returns>The deferred authority-bound recipe plan, or null for a legacy or unknown version.</returns>
+    public InstallPlan? GetFullSourcePlan(GameVersion version) => GetFullSourcePlan(version, repair: false);
+
+    internal InstallPlan? GetFullSourcePlan(GameVersion version, bool repair)
+    {
+        string targetVersion = $"{version.VersionNumber}.{version.BuildNumber}";
+        var descriptor = _manifest?.Patches.SingleOrDefault(patch => patch.Version == targetVersion && patch.FullSource is not null)?.FullSource;
+        return descriptor is null ? null : new InstallPlan
+        {
+            FullSourceReleaseId = descriptor.ReleaseId, FullSourceChannel = CurrentChannel,
+            FullSourceVersion = targetVersion, FullSourceDownloadBytes = descriptor.DownloadBytes,
+            FullSourceFeed = feed.SnapshotAuthority(), FullSourceManifestSha256 = IdentityDigest(descriptor),
+            FullSourcePublishedManifestSha256 = descriptor.TargetManifestSha256,
+            IsFullSourceRepair = repair
+        };
+    }
+
+    // The digest the installed release is compared by. A descriptor whose contract cannot be read cannot match any
+    // installation, and the preparation that would use it rejects it, so the list only needs to keep working.
+    // Parsing and hashing the contract takes a moment and the button state asks for it several times, so the answer is
+    // kept for as long as the descriptor lives. A refreshed feed has new descriptors.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<FullSourceReleaseDescriptor, string> IDENTITY_DIGESTS = [];
+
+    private static string IdentityDigest(FullSourceReleaseDescriptor descriptor) =>
+        IDENTITY_DIGESTS.GetValue(descriptor, ReadIdentityDigest);
+
+    private static string ReadIdentityDigest(FullSourceReleaseDescriptor descriptor)
+    {
+        try
+        {
+            return descriptor.GetNormalizedTargetManifestSha256();
+        }
+        catch (Exception failure) when (failure is InvalidDataException or JsonException or ArgumentException or InvalidOperationException)
+        {
+            return descriptor.TargetManifestSha256;
+        }
+    }
 }

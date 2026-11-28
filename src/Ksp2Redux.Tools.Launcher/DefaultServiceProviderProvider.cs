@@ -43,6 +43,13 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();
         serviceCollection.AddSingleton<IFileSystem, RealFileSystem>();
+        serviceCollection.AddSingleton<IInstallationStateService, InstallationStateService>();
+        serviceCollection.AddSingleton<IFullSourcePreparationService>(provider => new FullSourcePreparationService(
+            provider.GetRequiredService<IFileSystem>(), provider.GetRequiredService<ILauncherConfigService>(),
+            provider.GetRequiredService<IManifestReleasesFeedProviderService>(), provider.GetRequiredService<IPatchDownloadService>(),
+            () => provider.GetRequiredService<ISteamDepotDownloader>(), provider.GetRequiredService<IZipFileService>(),
+            provider.GetRequiredService<IDiskSpaceService>(), provider.GetRequiredService<IOperatingSystemService>()));
+        serviceCollection.AddSingleton<IFullSourceInstallationService, FullSourceInstallationService>();
         serviceCollection.AddSingleton<ICacheService, CacheService>();
         serviceCollection.AddSingleton<INewsService, NewsService>();
         serviceCollection.AddSingleton(SystemEnvironmentProvider.Instance);
@@ -50,6 +57,7 @@ public static class DefaultServiceProviderProvider
         serviceCollection.AddSingleton<IBundleConversionService, BundleConversionService>();
         serviceCollection.AddSingleton<IInstallFileLockService, InstallFileLockService>();
         serviceCollection.AddSingleton<ISaveBackupService, SaveBackupService>();
+        serviceCollection.AddSingleton<IBootConfigSettingsService, BootConfigSettingsService>();
         serviceCollection.AddSingleton<IInstallPlanService, InstallPlanService>();
         serviceCollection.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         serviceCollection.AddSingleton<INewsProviderService, NewsProviderService>();

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
 using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
 
 namespace Ksp2Redux.Tools.Cli.Commands;
@@ -13,6 +14,8 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
 {
     private const string DEFAULT_STEAM_APP_ID = "954850";
     private const string GAME_OUTPUT_LOG = "game-output.log";
+
+    protected override bool ChangesConfig => true;
 
     /// <inheritdoc />
     protected override async Task<int> RunAsync(
@@ -39,8 +42,15 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
                 $"'{entry.Name}' does not point at a valid KSP2 install: {entry.ExePath}");
         }
 
-        // Writes the graphics jobs setting the install was configured with. The launcher does this
-        // on startup, so a CLI launch has to do it too or the setting silently does not apply.
+        try
+        {
+            context.InstallationStateService.EnsureLaunchAllowed(install.InstallDir!);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or FilesInUseException or NotSupportedException or UnauthorizedAccessException)
+        {
+            return context.Output.Fail(ExitCode.LAUNCH_FAILED, ex.Message);
+        }
+
         context.InstallService.ApplyActiveInstallBootConfig();
 
         // Steam on macOS cannot run KSP2, so LaunchThroughSteam is ignored there.
@@ -51,7 +61,7 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
 
         if (entry.LaunchThroughSteam)
         {
-            return LaunchThroughSteam(context, entry);
+            return await LaunchThroughSteamAsync(context, entry, cancellationToken);
         }
 
         if (context.OperatingSystemService.IsLinux())
@@ -67,7 +77,7 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
             startInfo.Arguments = entry.LaunchArguments;
         }
 
-        return await StartAndReportAsync(context, startInfo, install.ExePath, settings, null, cancellationToken, null);
+        return await StartAndReportAsync(context, startInfo, install.InstallDir, install.ExePath, settings, null, cancellationToken, null);
     }
 
     private static async Task<int> LaunchThroughWineAsync(
@@ -111,23 +121,37 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
             gameOutput);
 
         var runtimeName = runtime.Kind == WineRuntimeKind.Bundled ? "the launcher's Wine runtime" : "CrossOver";
-        return await StartAndReportAsync(context, startInfo, $"{install.ExePath} through {runtimeName}", settings, runtime.DisplayName, cancellationToken,
+        return await StartAndReportAsync(context, startInfo, install.InstallDir, $"{install.ExePath} through {runtimeName}", settings, runtime.DisplayName, cancellationToken,
             $"  Wine and game output goes to {gameOutput}");
     }
 
     private static async Task<int> StartAndReportAsync(
         CliContext context,
         ProcessStartInfo startInfo,
+        string installRoot,
         string description,
         LaunchSettings settings,
         string? runtime,
         CancellationToken cancellationToken,
         string? detail)
     {
+        bool handedOff = false;
         try
         {
-            using Process process = new() { StartInfo = startInfo };
-            process.Start();
+            using IDisposable? lease = context.InstallationStateService.AcquireLaunchLease(installRoot, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            using Process process = context.GameProcesses.StartTracked(startInfo)
+                ?? throw new InvalidOperationException("The direct game launch returned no process handle.");
+            handedOff = true;
+            if (lease is not null)
+            {
+                bool appeared = await context.GameProcesses.WaitForStartAsync(installRoot,
+                    TimeSpan.FromSeconds(runtime is null ? 30 : 120), cancellationToken);
+                // Release before an optional session wait. Mutation now checks the observed game process.
+                lease.Dispose();
+                if (!appeared)
+                    context.Output.Detail("The startup reservation expired before KSP2 appeared. A later external start cannot be excluded.");
+            }
             context.Output.Heading($"Started {description} (pid {process.Id}).");
             if (detail is not null)
             {
@@ -151,7 +175,9 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
         }
         catch (OperationCanceledException)
         {
-            return context.Output.Fail(ExitCode.CANCELLED, "Stopped waiting for the game to exit. The game is still running.");
+            return context.Output.Fail(ExitCode.CANCELLED, handedOff
+                ? "Stopped waiting for the game to exit. The game is still running."
+                : "cancelled.");
         }
         catch (Exception e)
         {
@@ -161,18 +187,32 @@ public sealed class LaunchCommand : ReduxCommand<LaunchSettings>
         }
     }
 
-    // Steam owns the process it starts, so there is no pid to report and nothing to wait on here.
-    private static int LaunchThroughSteam(CliContext context, Ksp2InstallEntry entry)
+    // Steam owns the game process, so there is no pid or process-exit handle to report here.
+    private static async Task<int> LaunchThroughSteamAsync(CliContext context, Ksp2InstallEntry entry,
+        CancellationToken cancellationToken)
     {
         var appId = string.IsNullOrWhiteSpace(entry.SteamAppId) ? DEFAULT_STEAM_APP_ID : entry.SteamAppId;
+        bool handedOff = false;
         try
         {
+            string root = context.FileSystem.Path.GetDirectoryName(entry.ExePath)!;
+            using IDisposable? lease = context.InstallationStateService.AcquireLaunchLease(root, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             var startInfo = new ProcessStartInfo
             {
                 FileName = $"steam://rungameid/{appId}",
                 UseShellExecute = true,
             };
-            Process.Start(startInfo);
+            context.GameProcesses.Start(startInfo);
+            handedOff = true;
+            if (lease is not null && !await context.GameProcesses.WaitForStartAsync(root, TimeSpan.FromSeconds(120), cancellationToken))
+                context.Output.Detail("The startup reservation expired before KSP2 appeared. A later Steam start cannot be excluded.");
+        }
+        catch (OperationCanceledException)
+        {
+            return context.Output.Fail(ExitCode.CANCELLED, handedOff
+                ? "Stopped waiting for Steam startup. Steam may still start the game later."
+                : "cancelled.");
         }
         catch (Exception e)
         {

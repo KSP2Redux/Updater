@@ -24,6 +24,25 @@ public class Ksp2Install
     /// </summary>
     public GameVersion? GameVersion { get; private set; }
 
+    /// <summary>
+    /// Gets the reconciled full-source generation identity, or null for stock and legacy installations.
+    /// </summary>
+    public FullSourceReleaseIdentity? ManagedRelease { get; }
+
+    /// <summary>
+    /// Compare a selected version and recipe contract with the published installation generation.
+    /// </summary>
+    /// <param name="version">The selected feed version.</param>
+    /// <param name="plan">The selected plan, or null for an installed or legacy version.</param>
+    /// <returns>True if the selected release is installed, false otherwise.</returns>
+    public bool IsInstalledVersion(GameVersion version, InstallPlan? plan = null) =>
+        plan?.IsFullSource == true
+            ? ManagedRelease is { } release && release.ReleaseId == plan.FullSourceReleaseId &&
+                release.Channel == plan.FullSourceChannel && release.Version == plan.FullSourceVersion &&
+                (release.ManifestSha256.Equals(plan.FullSourceManifestSha256, StringComparison.OrdinalIgnoreCase) ||
+                 release.ManifestSha256.Equals(plan.FullSourcePublishedManifestSha256, StringComparison.OrdinalIgnoreCase))
+            : version.Equals(GameVersion);
+
     public Exception? VersionDetectionException { get; private set; }
 
     public string InstallDir { get; }
@@ -54,14 +73,23 @@ public class Ksp2Install
         "BundleConversion",
     };
 
-    public Ksp2Install(IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, string exePath)
+    /// <summary>
+    /// Inspect an installation, using a reconciled launcher release identity for managed full-source builds.
+    /// </summary>
+    /// <param name="fileSystem">The filesystem abstraction.</param>
+    /// <param name="moduleDefinitionService">The legacy assembly metadata reader.</param>
+    /// <param name="exePath">The configured game executable.</param>
+    /// <param name="managedRelease">The reconciled catalog release identity, or null for legacy and stock installs.</param>
+    public Ksp2Install(IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, string exePath,
+        FullSourceReleaseIdentity? managedRelease = null)
     {
         _fileSystem = fileSystem;
         _moduleDefinitionService = moduleDefinitionService;
         ExePath = exePath;
+        ManagedRelease = managedRelease;
 
         IsValid = _fileSystem.File.Exists(exePath) && _fileSystem.Path.GetFileName(exePath) == KSP2_EXE_NAME;
-        if (IsValid)
+        if (IsValid || managedRelease is not null)
         {
             InstallDir = _fileSystem.Path.GetDirectoryName(exePath)!;
             var isSteam = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, SteamworksText));
@@ -72,7 +100,16 @@ public class Ksp2Install
                     .Any(p => !KeptReduxFolders.Contains(_fileSystem.Path.GetFileName(p)));
             var isPrepatch = _fileSystem.Path.Exists(_fileSystem.Path.Combine(InstallDir, PrepatchMarker));
 
-            var gameCodeIsRedux = TryDetectGameVersionFromMainAssembly(InstallDir);
+            bool? gameCodeIsRedux = managedRelease is not null ? true : TryDetectGameVersionFromMainAssembly(InstallDir);
+            if (managedRelease is not null)
+            {
+                string[] components = managedRelease.Version.Split('.');
+                GameVersion = new GameVersion
+                {
+                    VersionNumber = Version.Parse(string.Join('.', components[..4])), BuildNumber = components[4],
+                    Channel = managedRelease.Channel
+                };
+            }
 
             // Verifying the game files through the store puts the stock game code back but leaves everything Redux
             // added, so the Redux folder alone is not proof. When the game code was read, it decides.

@@ -214,6 +214,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _log.Info("MainWindow initialization complete.");
 
         // Player prompts come last so they cannot hold back loading the channels.
+        if (Program.SelfUpdateBlockReason is { } updateBlockReason)
+        {
+            _log.Warn(updateBlockReason);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Launcher Update Blocked", updateBlockReason,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
         if (Program.PartialUpdate)
         {
             _log.Warn("Partial update detected from a prior launch.");

@@ -36,6 +36,7 @@ public interface IBundleConversionService
 // magenta, so both directions look for them and put Steam's copies of those bundles back.
 public class BundleConversionService(
     IFileSystem fileSystem,
+    IInstallationStateService installationStateService,
     ISteamSessionService? steamSession = null,
     ISteamDepotDownloader? steamDownloader = null) : IBundleConversionService
 {
@@ -47,6 +48,7 @@ public class BundleConversionService(
     /// <inheritdoc />
     public async Task ConvertAsync(string install, Action<LogMessage> log, CancellationToken ct)
     {
+        installationStateService.EnsureLegacyMutationAllowed(install);
         var manifestPath = fileSystem.Path.Combine(install, SHADER_MANIFEST);
         if (!fileSystem.File.Exists(manifestPath))
         {
@@ -94,6 +96,7 @@ public class BundleConversionService(
     /// <inheritdoc />
     public async Task RevertAsync(string install, Action<LogMessage> log, CancellationToken ct)
     {
+        installationStateService.EnsureLegacyMutationAllowed(install);
         var converter = new BundleConverter(fileSystem, install, new BundleConversionOptions { Progress = ConverterProgress(log) });
         var result = RevertJournal(converter, log, ct);
 
@@ -181,6 +184,7 @@ public class BundleConversionService(
     // Steam's copies are the only stock bytes there are for an edit nobody recorded.
     private async Task RestoreFromSteamAsync(string install, IReadOnlyList<string> bundles, Action<LogMessage> log, CancellationToken ct)
     {
+        installationStateService.EnsureLegacyMutationAllowed(install);
         log(Loc.Message("Bundles.Unrecorded", bundles.Count, string.Join(", ", bundles)));
         var help = Loc.Message("Bundles.SteamHelp");
         if (steamSession is null || steamDownloader is null || !steamSession.HasSavedLogin)

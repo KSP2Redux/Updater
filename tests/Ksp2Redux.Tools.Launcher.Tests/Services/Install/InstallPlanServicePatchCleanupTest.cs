@@ -79,7 +79,7 @@ public class InstallPlanServicePatchCleanupTest
             zipFileService.Object,
             diskSpace.Object,
             patchDownloadService.Object,
-            configService.Object);
+            configService.Object, Mock.Of<IInstallationStateService>());
         var plan = new InstallPlan();
         plan.ApplyPatchFile((_, _, _) => Task.FromResult(PATCH_PATH), LogMessage.Literal("downloaded patch"));
 
@@ -116,7 +116,7 @@ public class InstallPlanServicePatchCleanupTest
             .Returns([]);
         var service = new InstallPlanService(fileSystem, Mock.Of<ICacheService>(c => c.IgnoredDirectories == new List<string>()), new MockEnvironmentProvider(),
             assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object, diskSpace.Object,
-            patchDownloadService.Object, configService.Object);
+            patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>());
         var plan = new InstallPlan();
         plan.Prepatch();
 

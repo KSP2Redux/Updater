@@ -4,6 +4,12 @@ namespace Ksp2Redux.Tools.Common.Models;
 
 public sealed record ReleasePatch
 {
+    /// <summary>
+    /// Gets exact full-source preparation metadata, or null for a legacy patch.
+    /// </summary>
+    [JsonPropertyName("fullSource"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public FullSourceReleaseDescriptor? FullSource { get; init; }
+
     [JsonPropertyName("version")]
     public required string Version { get; init; }
 

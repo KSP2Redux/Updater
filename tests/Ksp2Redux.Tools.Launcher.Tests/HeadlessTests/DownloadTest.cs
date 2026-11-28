@@ -277,7 +277,14 @@ public class DownloadTest
             .Returns(zippedPatch.Object);
         
         Mock<IZipArchive> cacheArchive = new(); // mock for CacheService.RecursivelyCreateCache
+        Stream? cacheStream = null;
+        cacheArchive.Setup(archive => archive.Dispose()).Callback(() =>
+        {
+            // The mocked snapshot still needs a valid ZIP directory for the next plan step's inspection.
+            using var emptyArchive = new ZipArchive(cacheStream!, ZipArchiveMode.Create, leaveOpen: true);
+        });
         TestAppBuilder.ZipFileService.Setup(z => z.NewArchive(It.IsAny<Stream>(), ZipArchiveMode.Create, false))
+            .Callback((Stream stream, ZipArchiveMode _, bool _) => cacheStream = stream)
             .Returns(cacheArchive.Object);
         
         Console.WriteLine();

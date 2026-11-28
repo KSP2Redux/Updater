@@ -17,13 +17,19 @@ public enum Ksp2GameRemovalKind
     Missing,
 
     /// <summary>The folder does not look like a KSP2 install.</summary>
-    NotAGameFolder
+    NotAGameFolder,
+
+    /// <summary>
+    /// Transaction or backup evidence prevents removal through legacy paths.
+    /// </summary>
+    Protected
 }
 
 /// <summary>The outcome of inspecting a KSP2 install for removal.</summary>
 /// <param name="Kind">How the game can be removed.</param>
 /// <param name="Folder">The install folder, the one holding KSP2_x64.exe.</param>
-public sealed record Ksp2GameRemoval(Ksp2GameRemovalKind Kind, string Folder);
+/// <param name="ProtectionReason">The reason protected evidence prevents removal, or null.</param>
+public sealed record Ksp2GameRemoval(Ksp2GameRemovalKind Kind, string Folder, string? ProtectionReason = null);
 
 public interface IKsp2GameUninstallService
 {
@@ -42,7 +48,8 @@ public interface IKsp2GameUninstallService
 /// <summary>
 /// Removes KSP2 installs from disk. Saves live in the game data folder and are kept.
 /// </summary>
-public class Ksp2GameUninstallService(IFileSystem fileSystem, ILogService log) : IKsp2GameUninstallService
+public class Ksp2GameUninstallService(IFileSystem fileSystem, ILogService log,
+    IInstallationStateService installationStateService) : IKsp2GameUninstallService
 {
     private const string DATA_FOLDER_NAME = "KSP2_x64_Data";
     private const string STEAM_APP_MANIFEST = "appmanifest_954850.acf";
@@ -73,11 +80,14 @@ public class Ksp2GameUninstallService(IFileSystem fileSystem, ILogService log) :
             return new Ksp2GameRemoval(Ksp2GameRemovalKind.NotAGameFolder, folder);
         }
 
+        if (installationStateService.Inspect(folder).LegacyMutationBlockReason is { } reason)
+            return new Ksp2GameRemoval(Ksp2GameRemovalKind.Protected, folder, reason);
         return new Ksp2GameRemoval(IsInSteamLibrary(folder) ? Ksp2GameRemovalKind.UninstallThroughSteam : Ksp2GameRemovalKind.DeleteFolder, folder);
     }
 
     public async Task DeleteAsync(Ksp2GameRemoval removal)
     {
+        installationStateService.EnsureLegacyMutationAllowed(removal.Folder);
         if (removal.Kind != Ksp2GameRemovalKind.DeleteFolder)
         {
             throw new InvalidOperationException($"A {removal.Kind} removal cannot be deleted by the launcher.");

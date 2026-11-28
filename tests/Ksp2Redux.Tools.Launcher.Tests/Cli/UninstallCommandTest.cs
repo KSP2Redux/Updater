@@ -1,6 +1,9 @@
 using Ksp2Redux.Tools.Cli.Commands;
 using Ksp2Redux.Tools.Cli.Infrastructure;
 using Ksp2Redux.Tools.Cli.Settings;
+using Ksp2Redux.Tools.Launcher.Models;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Moq;
 
 namespace Ksp2Redux.Tools.Launcher.Tests.Cli;
 
@@ -41,5 +44,23 @@ public class UninstallCommandTest
 
         Assert.That(exit, Is.EqualTo(ExitCode.SUCCESS));
         Assert.That(harness.Json.GetProperty("removed").GetBoolean(), Is.True);
+    }
+
+    [Test]
+    public async Task Uninstall_ManagedStockWithoutLiveArchive_RunsUninstallPlan()
+    {
+        var fullSource = new Mock<IFullSourceInstallationService>();
+        fullSource.Setup(service => service.HasCatalog(GAME)).Returns(true);
+        var harness = new CliCommandHarness(fullSource.Object);
+        harness.Installs.AddInstall(harness.CreateGame(GAME), "Testing");
+
+        var exit = await new UninstallCommand().RunWithContextAsync(harness.Context, new UninstallSettings { AssumeYes = true });
+
+        Assert.That(exit, Is.EqualTo(ExitCode.SUCCESS));
+        Assert.That(harness.Json.GetProperty("removed").GetBoolean(), Is.True);
+        var apply = harness.InstallPlan.Invocations.Single(call => call.Method.Name == nameof(IInstallPlanService.ApplyToFolder));
+        Assert.That(apply.Arguments[1], Is.EqualTo(GAME));
+        Assert.That(apply.Arguments[0], Is.TypeOf<InstallPlan>());
+        Assert.That(((InstallPlan)apply.Arguments[0]!).Steps.Single() is InstallPlan.UninstallStep, Is.True);
     }
 }

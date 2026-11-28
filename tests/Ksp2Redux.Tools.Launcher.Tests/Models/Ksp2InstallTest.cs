@@ -51,6 +51,26 @@ public class Ksp2InstallTest
     }
 
     [Test]
+    public void ManagedInstallWithoutExecutableStillIdentifiesTheRepairTarget()
+    {
+        var fs = MakeSteamInstall();
+        string executable = fs.Path.Combine(InstallDir, Ksp2Install.KSP2_EXE_NAME);
+        fs.File.Delete(executable);
+        var modules = new Mock<IModuleDefinitionService>(MockBehavior.Strict);
+        var release = new FullSourceReleaseIdentity("fixture", "stable", "1.2.3.4.5", new string('0', 64), "fixture-authentication");
+
+        var install = new Ksp2Install(fs, modules.Object, executable, release);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(install.IsValid, Is.False);
+            Assert.That(install.InstallDir, Is.EqualTo(InstallDir));
+            Assert.That(install.Distribution, Is.EqualTo(InstallDistribution.Redux));
+            Assert.That(install.GameVersion?.ToString(), Is.EqualTo("1.2.3.4.5 (stable)"));
+        });
+    }
+
+    [Test]
     public void AReduxBuildWithTheGameInAssemblyCSharpIsReadFromIt()
     {
         var fs = MakeReduxInstall();

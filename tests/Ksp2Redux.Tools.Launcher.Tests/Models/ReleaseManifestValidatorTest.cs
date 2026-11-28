@@ -24,7 +24,7 @@ public class ReleaseManifestValidatorTest
     public void Validate_FutureSchema_RequestsLauncherUpdate()
     {
         var manifest = CreateManifest(CreateLegacyPatch());
-        manifest.SchemaVersion = 3;
+        manifest.SchemaVersion = 4;
         Assert.That(() => ReleaseManifestValidator.Validate(manifest),
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("Update"));
     }

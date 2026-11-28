@@ -236,6 +236,12 @@ public sealed class PatchDownloadService(
                     fileSystem.File.Delete(partialPath);
                     offset = 0;
                 }
+                if (offset == expectedSize && await MatchesChecksumAsync(partialPath, expectedSize, expectedHash, ct))
+                {
+                    fileSystem.File.Move(partialPath, completedPath);
+                    aggregate.Complete(progressKey, expectedSize);
+                    return completedPath;
+                }
                 aggregate.Report(progressKey, offset);
 
                 using var response = await provider.DownloadFileAsync(feed, url, offset, ct);
@@ -388,6 +394,7 @@ public sealed class PatchDownloadService(
     private sealed class AggregateDownloadProgress(long totalBytes, Action<long, long> callback)
     {
         private readonly ConcurrentDictionary<string, long> _bytesByItem = new();
+        private readonly Lock _reportLock = new();
         private long _lastReported;
 
         public long TotalBytes { get; } = totalBytes;
@@ -396,9 +403,11 @@ public sealed class PatchDownloadService(
         {
             _bytesByItem.AddOrUpdate(key, bytes, (_, previous) => Math.Max(previous, bytes));
             long current = Math.Min(TotalBytes, _bytesByItem.Values.Sum());
-            long monotonic = Math.Max(Interlocked.Read(ref _lastReported), current);
-            Interlocked.Exchange(ref _lastReported, monotonic);
-            callback(monotonic, TotalBytes);
+            lock (_reportLock)
+            {
+                _lastReported = Math.Max(_lastReported, current);
+                callback(_lastReported, TotalBytes);
+            }
         }
 
         public void Complete(string key, long bytes) => Report(key, bytes);
@@ -414,12 +423,13 @@ public sealed class PatchDownloadService(
             if (bytes <= 0)
                 return new Reservation(this, 0);
 
+            long required = checked(bytes + SAFETY_BYTES);
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
-                long? available = diskSpaceService.GetAvailableFreeSpace(path);
                 long reserved = Interlocked.Read(ref _reservedBytes);
-                if (available is null || available.Value - reserved >= bytes + SAFETY_BYTES)
+                long? available = diskSpaceService.GetAvailableFreeSpace(path);
+                if (available is null || available.Value - reserved >= required)
                 {
                     if (Interlocked.CompareExchange(ref _reservedBytes, reserved + bytes, reserved) == reserved)
                         return new Reservation(this, bytes);
@@ -428,11 +438,11 @@ public sealed class PatchDownloadService(
 
                 // Other downloads only fill the drive, so waiting for them helps only while their reservations are
                 // what stands in the way. Once the part would not fit even with none, waiting would never end.
-                if (available.Value < bytes + SAFETY_BYTES)
+                if (available.Value < required)
                 {
                     throw Loc.Message("Install.Disk.Download.NotEnough",
-                            InstallPlanService.FormatBytes(bytes + SAFETY_BYTES), InstallPlanService.FormatBytes(available.Value))
-                        .ToException(message => new InsufficientDiskSpaceException(message, path, bytes + SAFETY_BYTES, available.Value));
+                            InstallPlanService.FormatBytes(required), InstallPlanService.FormatBytes(available.Value))
+                        .ToException(message => new InsufficientDiskSpaceException(message, path, required, available.Value));
                 }
                 await Task.Delay(500, ct);
             }

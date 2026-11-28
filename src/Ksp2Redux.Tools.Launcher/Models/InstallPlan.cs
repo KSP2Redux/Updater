@@ -1,4 +1,5 @@
 ﻿using Ksp2Redux.Tools.Launcher.Localization;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 
 namespace Ksp2Redux.Tools.Launcher.Models;
 
@@ -29,6 +30,72 @@ public class InstallPlan
     public union Step(UninstallStep, RevertToStockStep, PrepatchStep, ApplyPatchStep);
 
     public List<Step> Steps { get; init; } = [];
+
+    /// <summary>
+    /// Gets the feed-selected full-source release to authenticate during execution.
+    /// </summary>
+    public string? FullSourceReleaseId { get; init; }
+
+    /// <summary>
+    /// Gets the explicitly selected full-source channel.
+    /// </summary>
+    public string? FullSourceChannel { get; init; }
+
+    /// <summary>
+    /// Gets the exact version selected from the feed.
+    /// </summary>
+    public string? FullSourceVersion { get; init; }
+
+    /// <summary>
+    /// Gets the nonsecret list-time authority selection requiring fresh configured metadata.
+    /// </summary>
+    public FeedInfo? FullSourceFeed { get; init; }
+
+    /// <summary>
+    /// Gets the selected complete target digest to compare during execution.
+    /// </summary>
+    public string? FullSourceManifestSha256 { get; init; }
+
+    // The published bytes recognise a legacy installation whose normalized digest is unavailable.
+    internal string? FullSourcePublishedManifestSha256 { get; init; }
+
+    /// <summary>
+    /// Gets the publisher-declared bounded artifact and pack download bytes.
+    /// </summary>
+    public long FullSourceDownloadBytes { get; init; }
+
+    /// <summary>
+    /// Gets whether a full-source generation is selected or already prepared.
+    /// </summary>
+    public bool IsFullSource => FullSourceReleaseId is not null || FullSourceTarget is not null;
+
+    /// <summary>
+    /// Gets the configured identity for an explicit full-source operation.
+    /// </summary>
+    public Guid? FullSourceInstallationId { get; init; }
+
+    /// <summary>
+    /// Gets the independently prepared release target for a full-source generation change.
+    /// </summary>
+    public Ksp2Redux.Tools.Launcher.Services.Install.FullSourcePreparedTarget? FullSourceTarget { get; init; }
+
+    /// <summary>
+    /// Gets independently verified original stock preparation for initial conversion.
+    /// </summary>
+    public Ksp2Redux.Tools.Launcher.Services.Install.FullSourceStockPreparation? FullSourceStock { get; init; }
+
+    /// <summary>
+    /// Gets whether this explicit full-source operation observes damaged owned files for repair.
+    /// </summary>
+    public bool IsFullSourceRepair { get; init; }
+
+    internal void RequireFullSourceMatch(FullSourceReleaseIdentity identity)
+    {
+        if (identity.Version != FullSourceVersion || identity.Channel != FullSourceChannel ||
+            identity.ReleaseId != FullSourceReleaseId ||
+            (FullSourceManifestSha256 is { } digest && !digest.Equals(identity.ManifestSha256, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("The selected release changed in the configured feed. Refresh the release list and select it again.");
+    }
 
     public void Uninstall()
     {
@@ -70,7 +137,7 @@ public class InstallPlan
         Steps.Select(step => step is ApplyPatchStep { DownloadRequest: { } request } ? request : null).OfType<PatchDownloadRequest>();
 
     // Cost is the total download size in bytes across all steps.
-    public long Cost => Steps.Sum(step => step is ApplyPatchStep apply ? apply.DownloadSize : 0);
+    public long Cost => FullSourceDownloadBytes + Steps.Sum(step => step is ApplyPatchStep apply ? apply.DownloadSize : 0);
 
     public bool Patches => Steps.Any(step => step is PrepatchStep or ApplyPatchStep);
 

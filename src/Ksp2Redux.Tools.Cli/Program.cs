@@ -128,6 +128,10 @@ public static class Program
             config.AddCommand<UninstallCommand>("uninstall")
                 .WithDescription("Remove Redux from a KSP2 install, returning it to stock.");
 
+            config.AddCommand<FullSourceCommand>("full-source")
+                .WithDescription("Apply, repair, uninstall or recover a verified full-source generation.")
+                .WithExample("full-source", "recover", "--install", "Testing");
+
             config.AddCommand<LaunchCommand>("launch")
                 .WithDescription("Start KSP2 using the install's configured launch settings.");
 

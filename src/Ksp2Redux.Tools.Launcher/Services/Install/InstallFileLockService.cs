@@ -18,6 +18,13 @@ public interface IInstallFileLockService
     /// </summary>
     /// <param name="install">The KSP2 folder.</param>
     void EnsureNoFilesInUse(string install);
+
+    /// <summary>
+    /// Check installation files including folders that a complete full-source generation may own.
+    /// </summary>
+    /// <param name="install">The configured installation folder.</param>
+    /// <param name="includeSkippedFolders">True to include legacy mods and uninstall staging folders.</param>
+    void EnsureNoFilesInUse(string install, bool includeSkippedFolders);
 }
 
 /// <inheritdoc />
@@ -34,8 +41,12 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
 
     /// <inheritdoc />
     public void EnsureNoFilesInUse(string install)
+        => EnsureNoFilesInUse(install, false);
+
+    /// <inheritdoc />
+    public void EnsureNoFilesInUse(string install, bool includeSkippedFolders)
     {
-        var held = FindHeldFiles(EnumerateGameFiles(install));
+        var held = FindHeldFiles(EnumerateGameFiles(install, includeSkippedFolders));
         if (held.Count > 0)
         {
             Thread.Sleep(RecheckDelay);
@@ -53,7 +64,7 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
             new FilesInUseException(message, relative, programs.Select(program => program.English).ToList()));
     }
 
-    private IEnumerable<string> EnumerateGameFiles(string install)
+    private IEnumerable<string> EnumerateGameFiles(string install, bool includeSkippedFolders)
     {
         foreach (var file in fileSystem.Directory.EnumerateFiles(install))
         {
@@ -62,7 +73,7 @@ public class InstallFileLockService(IFileSystem fileSystem, IOperatingSystemServ
 
         foreach (var folder in fileSystem.Directory.EnumerateDirectories(install))
         {
-            if (SkippedFolders.Contains(fileSystem.Path.GetFileName(folder), StringComparer.OrdinalIgnoreCase))
+            if (!includeSkippedFolders && SkippedFolders.Contains(fileSystem.Path.GetFileName(folder), StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }

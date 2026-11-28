@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using Ksp2Redux.Tools.Common.Services;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
@@ -51,6 +52,13 @@ public static class CliServiceProvider
         services.AddSingleton<IModuleDefinitionService, ModuleDefinitionService>();
         services.AddSingleton<IOperatingSystemService, OperatingSystemService>();
         services.AddSingleton<IZipFileService, ZipFileService>();
+        services.AddSingleton<IInstallationStateService, InstallationStateService>();
+        services.AddSingleton<IFullSourcePreparationService>(provider => new FullSourcePreparationService(
+            provider.GetRequiredService<IFileSystem>(), provider.GetRequiredService<ILauncherConfigService>(),
+            provider.GetRequiredService<IManifestReleasesFeedProviderService>(), provider.GetRequiredService<IPatchDownloadService>(),
+            () => provider.GetRequiredService<ISteamDepotDownloader>(), provider.GetRequiredService<IZipFileService>(),
+            provider.GetRequiredService<IDiskSpaceService>(), provider.GetRequiredService<IOperatingSystemService>()));
+        services.AddSingleton<IFullSourceInstallationService, FullSourceInstallationService>();
         services.AddSingleton<ICacheService, CacheService>();
         services.AddSingleton<IDiskSpaceService, DiskSpaceService>();
         services.AddSingleton<IKsp2DetectorService, Ksp2DetectorService>();
@@ -63,9 +71,11 @@ public static class CliServiceProvider
         services.AddSingleton<IBundleConversionService, BundleConversionService>();
         services.AddSingleton<IInstallFileLockService, InstallFileLockService>();
         services.AddSingleton<ISaveBackupService, SaveBackupService>();
+        services.AddSingleton<IBootConfigSettingsService, BootConfigSettingsService>();
         services.AddSingleton<IInstallPlanService, InstallPlanService>();
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IWineRuntimeService, WineRuntimeService>();
+        services.AddSingleton<IGameProcessService, GameProcessService>();
         services.AddSingleton<ISteamLoginStore, SteamLoginStore>();
         services.AddSingleton<ISteamSessionService, SteamSessionService>();
         services.AddSingleton<ISteamDepotDownloader, SteamDepotDownloader>();

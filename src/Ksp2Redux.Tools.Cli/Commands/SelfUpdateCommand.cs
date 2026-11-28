@@ -26,6 +26,14 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
         SelfUpdateSettings settings,
         CancellationToken cancellationToken)
     {
+        try
+        {
+            context.InstallationStateService.EnsureSelfUpdateAllowed(context.ConfigService.Config);
+        }
+        catch (IOException ex)
+        {
+            return context.Output.Fail(ExitCode.SELF_UPDATE_FAILED, ex.Message);
+        }
         var executable = context.EnvironmentProvider.ProcessPath;
         if (string.IsNullOrWhiteSpace(executable))
         {
@@ -101,6 +109,7 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
 
         try
         {
+            context.InstallationStateService.EnsureSelfUpdateAllowed(context.ConfigService.Config);
             var bytes = await context.Output.StatusAsync(
                 $"Downloading {latest.AssetName}",
                 _ => releases.DownloadAsync(latest, cancellationToken));
@@ -136,6 +145,7 @@ public sealed class SelfUpdateCommand : ReduxCommand<SelfUpdateSettings>
     // the rename replaces the directory entry while the running process keeps its open inode.
     private static async Task ReplaceAsync(CliContext context, string executable, byte[] bytes)
     {
+        context.InstallationStateService.EnsureSelfUpdateAllowed(context.ConfigService.Config);
         var fileSystem = context.FileSystem;
         var staging = $"{executable}.new";
 

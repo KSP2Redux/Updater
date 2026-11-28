@@ -74,7 +74,16 @@ public partial class Ksp2InstallRowViewModel : ViewModelBase
     partial void OnExePathChanged(string value)
     {
         ExePathError = ValidateExePath(value);
-        _ksp2InstallService.UpdateInstallExePath(_entry.Id, value);
+        try
+        {
+            _ksp2InstallService.UpdateInstallExePath(_entry.Id, value);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            if (ExePath != _entry.ExePath)
+                ExePath = _entry.ExePath;
+            ExePathError = ex.Message;
+        }
     }
     partial void OnReleaseChannelChanged(string value)
     {

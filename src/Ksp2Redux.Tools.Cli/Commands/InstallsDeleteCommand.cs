@@ -30,6 +30,8 @@ public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
         var removal = context.GameUninstallService.Inspect(entry.ExePath);
         switch (removal.Kind)
         {
+            case Ksp2GameRemovalKind.Protected:
+                return context.Output.Fail(ExitCode.INSTALL_FAILED, removal.ProtectionReason!);
             case Ksp2GameRemovalKind.NotAGameFolder:
                 return context.Output.Fail(
                     ExitCode.INSTALL_NOT_FOUND,
@@ -49,6 +51,7 @@ public sealed class InstallsDeleteCommand : ReduxCommand<InstallsDeleteSettings>
 
                 try
                 {
+                    context.InstallationStateService.EnsureLegacyMutationAllowed(removal.Folder);
                     Process.Start(new ProcessStartInfo(STEAM_UNINSTALL_URL) { UseShellExecute = true });
                 }
                 catch (Exception e)

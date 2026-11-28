@@ -39,7 +39,7 @@ public class InstallPlanServiceRollbackTest
 
         var service = new InstallPlanService(fs, cacheService.Object, environmentProvider, assemblyService.Object,
             moduleDefinitionService.Object, zipFileService.Object, diskSpace.Object,
-            patchDownloadService.Object, configService.Object, installFileLockService: fileLock);
+            patchDownloadService.Object, configService.Object, Mock.Of<IInstallationStateService>(), installFileLockService: fileLock);
         return (service, cacheService, fs);
     }
 

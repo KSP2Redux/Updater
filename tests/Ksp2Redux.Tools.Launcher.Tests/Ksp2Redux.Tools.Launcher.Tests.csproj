@@ -29,6 +29,7 @@
 
     <ItemGroup>
         <Using Include="NUnit.Framework"/>
+        <Compile Include="..\FullPlayerProbeBinding.cs" Link="FullPlayerProbeBinding.cs" />
     </ItemGroup>
 
     <!-- Real UnityFS bundles for the conversion service tests, from the converter's own test helpers. -->

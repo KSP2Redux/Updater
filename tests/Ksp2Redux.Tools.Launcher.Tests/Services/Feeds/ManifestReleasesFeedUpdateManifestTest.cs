@@ -79,4 +79,36 @@ public class ManifestReleasesFeedUpdateManifestTest
             Assert.That(feed.GetAllVersions(), Is.Empty);
         });
     }
+
+    [Test]
+    public async Task RepairPlanUsesSelectedFeedReleaseAndKeepsTheNormalPlanSeparate()
+    {
+        var (feed, provider) = MakeFeed();
+        var manifest = MakeManifest("beta", "1.2.3.4.6");
+        var digest = new string('A', 64);
+        manifest.SchemaVersion = 3;
+        manifest.Patches[0] = manifest.Patches[0] with
+        {
+            FullSource = new FullSourceReleaseDescriptor("current-beta", "beta", "1.2.3.4.6", [], digest,
+                "https://fixture.test/release.json", "https://fixture-backup.test/release.json", [], 1)
+        };
+        provider.Setup(p => p.GetManifest(It.IsAny<FeedInfo>())).ReturnsAsync(manifest);
+        Assert.That(await feed.UpdateManifest(), Is.True);
+
+        var selected = feed.GetAllVersions().Single();
+        var repair = feed.GetFullSourcePlan(selected, repair: true)!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(repair.IsFullSourceRepair, Is.True);
+            Assert.That(repair.FullSourceReleaseId, Is.EqualTo("current-beta"));
+            Assert.That(repair.FullSourceVersion, Is.EqualTo("1.2.3.4.6"));
+            Assert.That(repair.FullSourceManifestSha256, Is.EqualTo(digest));
+            Assert.That(feed.GetFullSourcePlan(selected)!.IsFullSourceRepair, Is.False);
+            Assert.That(feed.GetFullSourcePlan(new GameVersion
+            {
+                VersionNumber = new Version(1, 2, 3, 4), BuildNumber = "5", Channel = "beta"
+            }, repair: true), Is.Null);
+        });
+    }
 }

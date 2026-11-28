@@ -1,5 +1,6 @@
 ﻿using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Steam;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 using Moq;
 using SteamKit2;
 using Testably.Abstractions.Testing;
@@ -126,7 +127,8 @@ public class SteamDepotDownloaderTest
     private static SteamDepotDownloader Build(out MockFileSystem fileSystem)
     {
         fileSystem = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.MacOS));
-        return new SteamDepotDownloader(new Mock<ISteamSessionService>().Object, fileSystem, new Mock<ILogService>().Object);
+        return new SteamDepotDownloader(new Mock<ISteamSessionService>().Object, fileSystem, new Mock<ILogService>().Object,
+            new InstallationStateService(fileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(fileSystem)));
     }
 
     [TestCase(@"C:\Games", @"C:\Games\Kerbal Space Program 2")]

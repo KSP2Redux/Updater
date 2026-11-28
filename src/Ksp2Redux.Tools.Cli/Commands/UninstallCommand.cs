@@ -10,6 +10,8 @@ namespace Ksp2Redux.Tools.Cli.Commands;
 /// </summary>
 public sealed class UninstallCommand : ReduxCommand<UninstallSettings>
 {
+    protected override bool ChangesConfig => true;
+
     /// <inheritdoc />
     protected override async Task<int> RunAsync(
         CliContext context,
@@ -30,15 +32,24 @@ public sealed class UninstallCommand : ReduxCommand<UninstallSettings>
                 $"'{entry.Name}' does not point at a valid KSP2 install: {entry.ExePath}");
         }
 
-        var hasSnapshot = context.FileSystem.File.Exists(context.FileSystem.Path.Combine(install.InstallDir, "uninstall.zip"));
-        if (!hasSnapshot && install.Distribution == Distribution.Redux)
+        bool hasUninstallState;
+        try
+        {
+            hasUninstallState = context.FileSystem.File.Exists(context.FileSystem.Path.Combine(install.InstallDir, "uninstall.zip")) ||
+                context.FullSourceInstallationService?.HasCatalog(install.InstallDir) == true;
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return context.Output.Fail(ExitCode.INSTALL_FAILED, e.Message);
+        }
+        if (!hasUninstallState && install.Distribution == Distribution.Redux)
         {
             return context.Output.Fail(
                 ExitCode.INSTALL_FAILED,
                 $"'{entry.Name}' has no uninstall.zip to restore the stock files from. Verify the game files in Steam or Epic to return it to stock.");
         }
 
-        if (!hasSnapshot)
+        if (!hasUninstallState)
         {
             context.Output.Heading($"{entry.Name} is already {install.Distribution}, nothing to remove.");
             context.Output.Payload(new { ok = true, removed = false, distribution = install.Distribution.ToString() },

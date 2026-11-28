@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using System.IO.Compression;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using CodeHollow.FeedReader;
@@ -24,7 +25,10 @@ public class UninstallFailureTest
         TestHelpers.MockMessageBoxAcceptAll();
 
         const string installDir = @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program 2";
-        TestAppBuilder.FileSystem.File.WriteAllBytes(TestAppBuilder.FileSystem.Path.Combine(installDir, "uninstall.zip"), [0x00]);
+        using (var stream = TestAppBuilder.FileSystem.File.Create(TestAppBuilder.FileSystem.Path.Combine(installDir, "uninstall.zip")))
+        {
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+        }
         TestAppBuilder.ZipFileService
             .Setup(z => z.OpenRead(TestAppBuilder.FileSystem.Path.Combine(installDir, "uninstall.zip")))
             .Throws(new IOException("uninstall.zip is locked by another process"));

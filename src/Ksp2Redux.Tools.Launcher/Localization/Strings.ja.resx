@@ -1146,4 +1146,11 @@ softwareupdate --install-rosetta --agree-to-license</value>
   <data name="Bundles.PutBack" xml:space="preserve">
     <value>Steam版の {0} 件のバニラゲームのバンドルを元に戻しています。</value>
   </data>
+  <data name="Install.LegacyStockVerificationFailed" xml:space="preserve">
+    <value>Redux was uninstalled, but the game does not match the original stock files. Run Steam's Verify integrity of game files or Epic's Verify, then retry. No stock files were downloaded.</value>
+  </data>
+  <data name="Install.LegacyCatalogChanged" xml:space="preserve">
+    <value>The installation changed before the legacy upgrade started. Refresh the release list and retry.</value>
+    <comment>Shown when another installation job created a full-source catalog before a queued legacy upgrade acquired its reservation.</comment>
+  </data>
 </root>

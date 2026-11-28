@@ -29,8 +29,8 @@ x64/
 *.pgc
 *.pgd
 *.rsp
-# Unity's compiler options for the bundle converter package (Source/package.json). Its .meta files stay ignored,
-# Unity writes them on each machine.
+# Unity's compiler options for the local bundle converter package (Source/package.json).
+# Keep its reviewed source metadata with the package to preserve Unity GUIDs.
 !src/Ksp2Redux.Tools.BundleConversion/Source/csc.rsp
 *.sbr
 *.tlb
@@ -150,3 +150,31 @@ design-system/dist/
 
 # macOS packaging output (packaging/macos/build-mac-app.sh)
 artifacts/
+
+# Reviewed Unity source metadata for the local bundle converter package.
+!/src/Ksp2Redux.Tools.BundleConversion/Source/BundleConversionLayout.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/BundleConverter.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles/BundleRecipe.Bounds.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles/BundleRecipe.Generation.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles/BundleRecipe.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles/BundleRewriter.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles/BundleScanner.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles/TypeTree.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Bundles/UnityFsBundle.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/ConversionJournal.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/ConversionPlan.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/ConversionPlanner.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/ConversionResults.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Hex.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/InPlaceEditor.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Ksp2Redux.Tools.BundleConversion.asmdef.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Polyfills.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/ShaderBundleIds.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/ShaderManifest.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Unity.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Unity/FileSystem.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Unity/GlobalUsings.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/Unity/JsonCodec.cs.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/csc.rsp.meta
+!/src/Ksp2Redux.Tools.BundleConversion/Source/package.json.meta

@@ -92,7 +92,7 @@ public sealed class InstallCommand : ReduxCommand<InstallSettings>
             return InstallWorkflow.Describe(context, plan, install.GameVersion, target);
         }
 
-        if (plan.Steps.Count == 0)
+        if (plan!.Steps.Count == 0 && !plan.IsFullSource)
         {
             return context.Output.Fail(
                 ExitCode.INSTALL_FAILED,

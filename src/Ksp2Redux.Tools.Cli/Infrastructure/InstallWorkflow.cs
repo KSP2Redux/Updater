@@ -29,7 +29,7 @@ public static class InstallWorkflow
                 dryRun = true,
                 from = current is null ? null : CliContext.FormatVersion(current),
                 to = target is null ? null : CliContext.FormatVersion(target),
-                changesNeeded = plan.Steps.Count > 0,
+                changesNeeded = plan.Steps.Count > 0 || plan.IsFullSource,
                 steps,
             },
             () => WriteSteps(context, steps, current, target));

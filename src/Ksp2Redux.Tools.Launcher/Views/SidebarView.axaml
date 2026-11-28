@@ -241,7 +241,7 @@
           </StackPanel>
         </StackPanel>
 
-        <Panel Grid.Row="3" DataContext="{Binding HomeTab}">
+        <StackPanel Grid.Row="3" DataContext="{Binding HomeTab}">
           <Panel x:DataType="home:HomeTabViewModel">
             <!-- Behind the Update button rather than inside it: the button clips its content, which cut
                  the halo off. Glows in the art's own yellow; see the motion styles above. -->
@@ -301,7 +301,9 @@
                 </Canvas>
             </Button>
           </Panel>
-        </Panel>
+          <Button x:DataType="home:HomeTabViewModel" Content="{loc:T Sidebar.RepairButton}" Command="{Binding RepairReduxCommand}"
+                  IsVisible="{Binding IsRepairAvailable}" HorizontalAlignment="Stretch" Margin="0,4,0,0" />
+        </StackPanel>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center"
                     VerticalAlignment="Bottom" Margin="0,3,0,0">

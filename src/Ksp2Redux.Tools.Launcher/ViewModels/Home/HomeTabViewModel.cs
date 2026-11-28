@@ -28,6 +28,7 @@ public partial class HomeTabViewModel : ViewModelBase
     private readonly IOperatingSystemService _operatingSystemService;
     private readonly IWineRuntimeService _wineRuntimeService;
     private readonly IGameProcessService _gameProcessService;
+    private readonly IInstallationStateService _installationStateService;
     private readonly IMessageBoxService _messageBoxService;
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly IFileSystem _fileSystem;
@@ -93,6 +94,9 @@ public partial class HomeTabViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool InstallationDisabled { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsRepairAvailable { get; set; }
 
     private readonly List<InstallLogEntry> _pendingLogEntries = [];
 
@@ -162,10 +166,28 @@ public partial class HomeTabViewModel : ViewModelBase
     public static Func<object, string> GameVersionGroupKeySelector { get; } =
         item => ReleaseChannels.DisplayName((item as GameVersionViewModel)?.Channel);
 
+    /// <summary>
+    /// Construct the home view using installation ownership and localized launcher messages.
+    /// </summary>
+    /// <param name="ksp2InstallService">The installation selection service.</param>
+    /// <param name="launcherConfigService">The launcher configuration.</param>
+    /// <param name="releasesFeedService">The release feeds.</param>
+    /// <param name="installPlanService">The installation plan executor.</param>
+    /// <param name="updateService">The launcher update service.</param>
+    /// <param name="operatingSystemService">The host platform service.</param>
+    /// <param name="messageBoxService">The confirmation and error dialogs.</param>
+    /// <param name="environmentProvider">The process environment.</param>
+    /// <param name="fileSystem">The filesystem abstraction.</param>
+    /// <param name="log">The English file log.</param>
+    /// <param name="wineRuntimeService">The existing Wine adapter.</param>
+    /// <param name="gameProcessService">The game lifecycle service.</param>
+    /// <param name="installationStateService">The installation ownership and launch leases.</param>
+    /// <param name="localization">The localized message source, or the shared service when omitted.</param>
     public HomeTabViewModel(IKsp2InstallService ksp2InstallService,
-        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService, IGameProcessService gameProcessService, ILocalizationService localization)
+        ILauncherConfigService launcherConfigService, IReleasesFeedService releasesFeedService, IInstallPlanService installPlanService, IUpdateService updateService, IOperatingSystemService operatingSystemService, IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, IFileSystem fileSystem, ILogService log, IWineRuntimeService wineRuntimeService, IGameProcessService gameProcessService, IInstallationStateService installationStateService, ILocalizationService? localization = null)
     {
-        _localization = localization;
+        _installationStateService = installationStateService;
+        _localization = localization ?? LocalizationService.Default;
         MainButtonTooltip = _localization["Home.Tooltip.Loading"];
         _gameProcessService = gameProcessService;
         _ksp2InstallService = ksp2InstallService;
@@ -333,8 +355,16 @@ public partial class HomeTabViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private Task RepairRedux() => RunPatchProcess(repair: true);
+
+    /// <summary>
+    /// Launch the selected game after cancellable owned-file verification.
+    /// </summary>
+    /// <returns>The startup and game-session tracking task.</returns>
+    [RelayCommand]
     public async Task LaunchGame()
     {
+        if (_cancelCurrentOperation is not null || _gameSession is not null) return;
         // Re-validate right before using it rather than trusting whatever was cached at the last
         // refresh - the install could have been moved, had its drive ejected, or been deleted in
         // the meantime if the app was left idle.
@@ -348,48 +378,80 @@ public partial class HomeTabViewModel : ViewModelBase
         var activeEntry = _ksp2InstallService.ActiveEntry;
         if (activeEntry is null) return;
 
-        // Before the Steam check: a config may still have LaunchThroughSteam set, and Steam on macOS cannot run KSP2.
-        if (_operatingSystemService.IsMacOS())
+        try
         {
-            await LaunchThroughWine(_ksp2InstallService.Ksp2, activeEntry.LaunchArguments);
+            _installationStateService.EnsureLaunchAllowed(_ksp2InstallService.Ksp2.InstallDir!);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or FilesInUseException)
+        {
+            _log.Warn(ex.Message);
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync("Couldn't Launch", ex.Message,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
             return;
         }
 
-        if (activeEntry.LaunchThroughSteam)
+        using var cancellation = new CancellationTokenSource();
+        _cancelCurrentOperation = cancellation;
+        UpdateMainButtonState();
+        try
         {
-            var appId = activeEntry.SteamAppId;
-            if (string.IsNullOrWhiteSpace(appId)) appId = "954850";
-            var steamLaunch = new ProcessStartInfo
+            // Before the Steam check: a config may still have LaunchThroughSteam set, and Steam on macOS cannot run KSP2.
+            if (_operatingSystemService.IsMacOS())
             {
-                FileName = $"steam://rungameid/{appId}",
-                UseShellExecute = true
-            };
-            if (!await TryStartGame(steamLaunch, "Failed to launch through Steam.",
-                    ex => _localization.Format("Home.LaunchFailed.Steam", ex.UserMessage()))) return;
-            await TrackRunningGame(SlowStartTimeout);
-            return;
-        }
+                await LaunchThroughWine(_ksp2InstallService.Ksp2, activeEntry.LaunchArguments, cancellation.Token);
+                return;
+            }
 
-        var directLaunch = new ProcessStartInfo
-        {
-            FileName = _ksp2InstallService.Ksp2.ExePath,
-            WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir
-        };
-        if (!string.IsNullOrWhiteSpace(activeEntry.LaunchArguments))
-        {
-            directLaunch.Arguments = activeEntry.LaunchArguments;
+            if (activeEntry.LaunchThroughSteam)
+            {
+                var appId = activeEntry.SteamAppId;
+                if (string.IsNullOrWhiteSpace(appId)) appId = "954850";
+                var steamLaunch = new ProcessStartInfo
+                {
+                    FileName = $"steam://rungameid/{appId}",
+                    UseShellExecute = true
+                };
+                if (!await TryStartGame(steamLaunch, "Failed to launch through Steam.",
+                        ex => _localization.Format("Home.LaunchFailed.Steam", ex.UserMessage()), SlowStartTimeout, cancellation.Token)) return;
+                return;
+            }
+
+            var directLaunch = new ProcessStartInfo
+            {
+                FileName = _ksp2InstallService.Ksp2.ExePath,
+                WorkingDirectory = _ksp2InstallService.Ksp2.InstallDir
+            };
+            if (!string.IsNullOrWhiteSpace(activeEntry.LaunchArguments))
+            {
+                directLaunch.Arguments = activeEntry.LaunchArguments;
+            }
+            if (!await TryStartGame(directLaunch, "Failed to launch KSP2.",
+                    ex => _localization.Format("Home.LaunchFailed.Direct", ex.UserMessage()), DirectStartTimeout, cancellation.Token)) return;
         }
-        if (!await TryStartGame(directLaunch, "Failed to launch KSP2.",
-                ex => _localization.Format("Home.LaunchFailed.Direct", ex.UserMessage()))) return;
-        await TrackRunningGame(DirectStartTimeout);
+        finally
+        {
+            _cancelCurrentOperation = null;
+            UpdateMainButtonState();
+        }
     }
 
-    private async Task<bool> TryStartGame(ProcessStartInfo startInfo, string failureLog, Func<Exception, string> failureMessage)
+    private async Task<bool> TryStartGame(ProcessStartInfo startInfo, string failureLog, Func<Exception, string> failureMessage,
+        TimeSpan startTimeout, CancellationToken cancellationToken)
     {
         try
         {
+            string root = _ksp2InstallService.Ksp2!.InstallDir!;
+            _ksp2InstallService.ApplyActiveInstallBootConfig();
+            using IDisposable? lease = await Task.Run(
+                () => _installationStateService.AcquireLaunchLease(root, cancellationToken), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             _gameProcessService.Start(startInfo);
+            await TrackRunningGame(startTimeout, root, lease);
             return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
         }
         catch (Exception ex)
         {
@@ -400,7 +462,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
-    private async Task TrackRunningGame(TimeSpan startTimeout)
+    private async Task TrackRunningGame(TimeSpan startTimeout, string root, IDisposable? launchLease)
     {
         _gameSession = new CancellationTokenSource();
         var token = _gameSession.Token;
@@ -408,7 +470,11 @@ public partial class HomeTabViewModel : ViewModelBase
         UpdateMainButtonState();
         try
         {
-            if (await _gameProcessService.WaitForStartAsync(startTimeout, token))
+            bool started = launchLease is null
+                ? await _gameProcessService.WaitForStartAsync(startTimeout, token)
+                : await _gameProcessService.WaitForStartAsync(root, startTimeout, token);
+            launchLease?.Dispose();
+            if (started)
             {
                 appeared = true;
                 GameLaunched?.Invoke(this, EventArgs.Empty);
@@ -424,6 +490,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
         finally
         {
+            launchLease?.Dispose();
             _gameSession.Dispose();
             _gameSession = null;
             _stoppingGame = false;
@@ -459,7 +526,7 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
-    private async Task LaunchThroughWine(Ksp2Install ksp2, string? launchArguments)
+    private async Task LaunchThroughWine(Ksp2Install ksp2, string? launchArguments, CancellationToken cancellationToken)
     {
         if (_wineRuntimeService.Detect() is not { } runtime)
         {
@@ -476,14 +543,21 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        MainButtonEnabled = false;
         try
         {
-            await _wineRuntimeService.PrepareAsync(runtime, line => AppendToInstallLog(line.Localized), CancellationToken.None);
+            await _wineRuntimeService.PrepareAsync(runtime, line => AppendToInstallLog(line.Localized), cancellationToken);
 
             var startInfo = _wineRuntimeService.CreateLaunchInfo(runtime, ksp2.ExePath, ksp2.InstallDir!, launchArguments);
+            _ksp2InstallService.ApplyActiveInstallBootConfig();
+            using IDisposable? lease = await Task.Run(
+                () => _installationStateService.AcquireLaunchLease(ksp2.InstallDir!, cancellationToken), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             _log.Info($"Launching KSP2 through {runtime.DisplayName} ({runtime.WineBinary}).");
             _gameProcessService.Start(startInfo);
+            await TrackRunningGame(SlowStartTimeout, ksp2.InstallDir!, lease);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -495,7 +569,6 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        await TrackRunningGame(SlowStartTimeout);
     }
 
     [RelayCommand]
@@ -530,21 +603,28 @@ public partial class HomeTabViewModel : ViewModelBase
 
     private void UpdateMainButtonState()
     {
-        if (_cancelCurrentOperation is not null)
-        {
-            return;
-        }
 
         if (_gameSession is not null)
         {
+            IsRepairAvailable = false;
             MainButtonShown = MainButtonState.Cancel;
             MainButtonEnabled = !_stoppingGame;
             MainButtonTooltip = _localization[_stoppingGame ? "Home.Tooltip.Stopping" : "Home.Tooltip.Stop"];
             return;
         }
 
+        if (_cancelCurrentOperation is not null)
+        {
+            IsRepairAvailable = false;
+            MainButtonShown = MainButtonState.Cancel;
+            MainButtonEnabled = true;
+            MainButtonTooltip = null;
+            return;
+        }
+
         _ksp2InstallService.TryLoadKsp2Install();
         var ksp2 = _ksp2InstallService.Ksp2;
+        IsRepairAvailable = GetRepairPlan(ksp2, SelectedVersion) is not null;
         if (ksp2 is null || !ksp2.IsValid)
         {
             MainButtonEnabled = false;
@@ -585,7 +665,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             MainButtonEnabled = true;
             MainButtonTooltip = null;
-            if (selectedVersion.Version.Equals(ksp2.GameVersion) || selectedVersion.Channel == "installed")
+            if (selectedVersion.Channel == "installed" || IsInstalledSelection(ksp2, selectedVersion))
             {
                 MainButtonShown = MainButtonState.Launch;
                 if (linuxLaunchBlocked)
@@ -603,7 +683,7 @@ public partial class HomeTabViewModel : ViewModelBase
             return;
         }
 
-        if (selectedVersion.Version.Equals(ksp2.GameVersion) || selectedVersion.Channel == "installed")
+        if (selectedVersion.Channel == "installed" || IsInstalledSelection(ksp2, selectedVersion))
         {
             MainButtonEnabled = true;
             MainButtonShown = MainButtonState.Launch;
@@ -622,6 +702,27 @@ public partial class HomeTabViewModel : ViewModelBase
         }
     }
 
+    private bool IsInstalledSelection(Ksp2Install install, GameVersionViewModel selection)
+    {
+        InstallPlan? plan = _releasesFeedService.ReleasesFeed.TryGetValue(selection.Channel, out var feed)
+            ? feed.GetFullSourcePlan(selection.Version) : null;
+        return install.IsInstalledVersion(selection.Version, plan);
+    }
+
+    private InstallPlan? GetRepairPlan(Ksp2Install? install, GameVersionViewModel? selection)
+    {
+        if (InstallationDisabled || !_operatingSystemService.IsWindows() || install?.ManagedRelease is not { } installed || selection is null)
+            return null;
+
+        bool repairInstalled = selection.Channel == "installed";
+        string channel = repairInstalled ? installed.Channel : selection.Channel;
+        if (!_releasesFeedService.ReleasesFeed.TryGetValue(channel, out var feed))
+            return null;
+
+        var plan = feed.GetFullSourcePlan(selection.Version, repair: true);
+        return repairInstalled && (plan is null || !install.IsInstalledVersion(selection.Version, plan)) ? null : plan;
+    }
+
     private void RebuildVersionsCollection()
     {
         // We want to do this for the moment, we could fix this logic later at some point
@@ -634,7 +735,7 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             // Promoted builds can still embed the beta channel. Published metadata
             // supplies the current channel and label, with stable taking precedence.
-            var publishedVersion = _releasesFeedService.ReleasesFeed.Values
+            var publishedVersion = _ksp2InstallService.Ksp2.ManagedRelease is not null ? null : _releasesFeedService.ReleasesFeed.Values
                 .SelectMany(feed => feed.GetAllVersions())
                 .Where(version => version.Equals(installedVersion))
                 .OrderByDescending(version => version.Channel == ReleaseChannels.STABLE)
@@ -667,8 +768,8 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             _appliedLaunchVersionDefault = true;
             var latest = value.GetLatestVersion();
-            var installed = _ksp2InstallService.Ksp2?.GameVersion;
-            if (latest is not null && (installed is null || !latest.Equals(installed)))
+            if (latest is not null && (_ksp2InstallService.Ksp2 is not { } active ||
+                !IsInstalledSelection(active, new GameVersionViewModel(latest))))
             {
                 defaultVersion = Versions.FirstOrDefault(v =>
                     v.Channel == activeChannel && v.Version.Equals(latest)) ?? currentVersion;
@@ -677,44 +778,31 @@ public partial class HomeTabViewModel : ViewModelBase
         SelectedVersion = defaultVersion;
     }
 
-    private async Task RunPatchProcess()
+    private async Task RunPatchProcess(bool repair = false)
     {
-        // // lock main window tabs?
-
-        // Bail before any UI/log setup if the launcher is running from inside the target install
-        // folder - the plan would try to overwrite or lock the running executable and fail.
-        _ksp2InstallService.TryLoadKsp2Install();
-        if (_ksp2InstallService.Ksp2 is { } target && await BlockIfLauncherInsideInstallDir(target))
-        {
+        if (_cancelCurrentOperation is not null || _gameSession is not null || InstallationDisabled)
             return;
-        }
 
-        ResetProgress();
-        
-        // gather process dependencies.
-        
         _ksp2InstallService.TryLoadKsp2Install();
         var ksp2 = _ksp2InstallService.Ksp2;
-        if (ksp2 is null || SelectedVersion is null)
-        {
+        var selectedVersion = SelectedVersion;
+        if (ksp2 is null || await BlockIfLauncherInsideInstallDir(ksp2) || selectedVersion is null)
             return;
-        }
+        var repairPlan = repair ? GetRepairPlan(ksp2, selectedVersion) : null;
+        if (repair && repairPlan is null)
+            return;
 
-        // The main button should already be disabled whenever this is null (see
-        // UpdateMainButtonState), but guard here too rather than pass a null "from" version into
-        // GetPatchListToVersion, which assumes a real GameVersion and would throw or search a
-        // patch graph that was never meant to be reached from "unknown".
-        if (ksp2.GameVersion is null)
+        if (!repair && ksp2.GameVersion is null)
         {
             Log(_localization.Message("Home.Log.VersionUnknown"));
             return;
         }
 
+        ResetProgress();
+
         // Set up process cancellation trigger.
-        MainButtonShown = MainButtonState.Cancel;
-        MainButtonEnabled = true;
-        MainButtonTooltip = null;
         _cancelCurrentOperation = new CancellationTokenSource();
+        UpdateMainButtonState();
 
         Log(_localization.Message("Home.Log.CreatingPlan"));
 
@@ -722,15 +810,14 @@ public partial class HomeTabViewModel : ViewModelBase
         {
             while (true)
             {
-                var plan = _releasesFeedService.ReleasesFeed[SelectedVersion.Channel]
-                    .GetPatchListToVersion(ksp2.GameVersion, SelectedVersion.Version);
-                if (plan.Steps.Count == 0)
+                var plan = repairPlan ?? _releasesFeedService.ReleasesFeed[selectedVersion.Channel]
+                    .GetPatchListToVersion(ksp2.GameVersion!, selectedVersion.Version);
+                if (plan.Steps.Count == 0 && !plan.IsFullSource)
                 {
-                    LogError(_localization.Message("Home.Log.NoRoute", SelectedVersion.Version));
+                    LogError(_localization.Message("Home.Log.NoRoute", selectedVersion.Version));
                     LogOutcome(_localization.Message("Home.Log.NothingChanged"), InstallLogKind.Notice);
                     return;
                 }
-
                 try
                 {
                     await RunPlanOnInstall(plan, ksp2);
@@ -816,7 +903,7 @@ public partial class HomeTabViewModel : ViewModelBase
 
     public async Task InstallFromPatchFile(string path)
     {
-        if (IsOperationRunning) return;
+        if (IsOperationRunning || _gameSession is not null) return;
         _ksp2InstallService.TryLoadKsp2Install();
         if (_ksp2InstallService.Ksp2 is { } target && await BlockIfLauncherInsideInstallDir(target))
         {
@@ -837,11 +924,9 @@ public partial class HomeTabViewModel : ViewModelBase
             IsProgressVisible = false;
             return;
         }
-
-        MainButtonShown = MainButtonState.Cancel;
-        MainButtonEnabled = true;
-        MainButtonTooltip = null;
+        
         _cancelCurrentOperation = new CancellationTokenSource();
+        UpdateMainButtonState();
         
         try
         {
@@ -883,9 +968,13 @@ public partial class HomeTabViewModel : ViewModelBase
     // Runs the same uninstall plan as the command line. The plan undoes the bundle conversion before it restores
     // the stock files, because the restore deletes the conversion journal and the converted bundles in
     // StreamingAssets would stay converted, which draws the main menu magenta.
+    /// <summary>
+    /// Restore stock through the installation plan and refresh the selected installation.
+    /// </summary>
+    /// <returns>A task that completes after restoration and launcher state refresh.</returns>
     public async Task UninstallRedux()
     {
-        if (IsOperationRunning) return;
+        if (IsOperationRunning || _gameSession is not null) return;
         _ksp2InstallService.TryLoadKsp2Install();
         if (_ksp2InstallService.Ksp2 is not { } ksp2)
         {
@@ -901,10 +990,8 @@ public partial class HomeTabViewModel : ViewModelBase
 
         ResetProgress();
 
-        MainButtonShown = MainButtonState.Cancel;
-        MainButtonEnabled = true;
-        MainButtonTooltip = null;
         _cancelCurrentOperation = new CancellationTokenSource();
+        UpdateMainButtonState();
 
         var plan = new InstallPlan();
         plan.Uninstall();

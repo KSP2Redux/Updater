@@ -39,9 +39,11 @@ public partial class SettingsTabViewModel : ViewModelBase
     private readonly IEnvironmentProvider _environmentProvider;
     private readonly ILogService _log;
     private readonly IKsp2GameUninstallService _gameUninstallService;
+    private readonly IInstallationStateService _installationStateService;
     private readonly IGameDataFolderService _gameDataFolderService;
     private readonly ISteamSessionService _steamSession;
     private readonly ISteamDialogService _steamDialogs;
+    private readonly IFullSourceInstallationService? _fullSource;
     private readonly IReleasesFeedService _releasesFeedService;
     private readonly IWineRuntimeService _wineRuntimeService;
     private readonly IDiskSpaceService _diskSpaceService;
@@ -207,16 +209,44 @@ public partial class SettingsTabViewModel : ViewModelBase
         _homeTabViewModel.RefreshMainButtonState();
     }
 
+    /// <summary>
+    /// Construct settings with installation safeguards and localized launcher messages.
+    /// </summary>
+    /// <param name="fileSystem">The filesystem abstraction.</param>
+    /// <param name="launcherConfigService">The launcher configuration.</param>
+    /// <param name="ksp2InstallService">The installation selection service.</param>
+    /// <param name="tabNavigatorService">The launcher navigation service.</param>
+    /// <param name="homeTabViewModel">The home view model.</param>
+    /// <param name="assemblyService">The installed assembly inspector.</param>
+    /// <param name="messageBoxService">The confirmation and error dialogs.</param>
+    /// <param name="environmentProvider">The process environment.</param>
+    /// <param name="log">The English file log.</param>
+    /// <param name="gameDataFolderService">The game data locator.</param>
+    /// <param name="steamSession">The existing Steam session.</param>
+    /// <param name="steamDialogs">The Steam sign-in dialogs.</param>
+    /// <param name="operatingSystemService">The host platform service.</param>
+    /// <param name="gameUninstallService">The legacy game uninstall service.</param>
+    /// <param name="installationStateService">The installation ownership boundary.</param>
+    /// <param name="localization">The localized message source.</param>
+    /// <param name="releasesFeedService">The release feeds.</param>
+    /// <param name="wineRuntimeService">The Wine runtime service.</param>
+    /// <param name="diskSpaceService">The disk space service.</param>
+    /// <param name="saveBackups">The save backup service.</param>
+    /// <param name="gameProcessService">The game process service.</param>
+    /// <param name="fullSource">The optional full-source coordinator.</param>
     public SettingsTabViewModel(IFileSystem fileSystem, ILauncherConfigService launcherConfigService,
         IKsp2InstallService ksp2InstallService,
         ITabNavigatorService tabNavigatorService, HomeTabViewModel homeTabViewModel, IAssemblyService assemblyService,
         IMessageBoxService messageBoxService, IEnvironmentProvider environmentProvider, ILogService log,
         IGameDataFolderService gameDataFolderService, ISteamSessionService steamSession, ISteamDialogService steamDialogs,
         IOperatingSystemService operatingSystemService, IKsp2GameUninstallService gameUninstallService,
+        IInstallationStateService installationStateService,
         ILocalizationService localization, IReleasesFeedService releasesFeedService, IWineRuntimeService wineRuntimeService,
         IDiskSpaceService diskSpaceService, ISaveBackupService saveBackups, IGameProcessService gameProcessService,
-        ITranslationUpdateService translationUpdates)
+        ITranslationUpdateService translationUpdates, IFullSourceInstallationService? fullSource = null)
     {
+        _fullSource = fullSource;
+        _installationStateService = installationStateService;
         _localization = localization;
         _translationUpdates = translationUpdates;
         _releasesFeedService = releasesFeedService;
@@ -631,7 +661,20 @@ public partial class SettingsTabViewModel : ViewModelBase
             ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes) return;
 
-        _ksp2InstallService.RemoveInstall(row.Id);
+        await RemoveProfileAsync(row.Id);
+    }
+
+    private async Task RemoveProfileAsync(Guid id)
+    {
+        try
+        {
+            _ksp2InstallService.RemoveInstall(id);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"], ex.Message,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
     }
 
     [RelayCommand]
@@ -736,6 +779,10 @@ public partial class SettingsTabViewModel : ViewModelBase
         var removal = _gameUninstallService.Inspect(row.ExePath);
         switch (removal.Kind)
         {
+            case Ksp2GameRemovalKind.Protected:
+                await _messageBoxService.ShowMessageBoxAsOwnedAsync("Can't Uninstall KSP2", removal.ProtectionReason!,
+                    icon: Icon.Warning, windowStartupLocation: WindowStartupLocation.CenterOwner);
+                return;
             case Ksp2GameRemovalKind.NotAGameFolder:
                 await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Settings.UninstallKsp2.NotAGameFolder.Title"],
                     _localization.Format("Settings.UninstallKsp2.NotAGameFolder.Message", removal.Folder, Ksp2Install.KSP2_EXE_NAME),
@@ -746,7 +793,7 @@ public partial class SettingsTabViewModel : ViewModelBase
                 if (await ConfirmAsync(_localization["Settings.UninstallKsp2.Missing.Title"],
                         _localization.Format("Settings.UninstallKsp2.Missing.Message", row.Name)))
                 {
-                    _ksp2InstallService.RemoveInstall(row.Id);
+                    await RemoveProfileAsync(row.Id);
                 }
                 return;
 
@@ -758,6 +805,7 @@ public partial class SettingsTabViewModel : ViewModelBase
                 }
                 try
                 {
+                    _installationStateService.EnsureLegacyMutationAllowed(removal.Folder);
                     Process.Start(new ProcessStartInfo("steam://uninstall/954850") { UseShellExecute = true });
                 }
                 catch (Exception ex)
@@ -767,7 +815,7 @@ public partial class SettingsTabViewModel : ViewModelBase
                         _localization.Format("Settings.UninstallKsp2.SteamFailed", ex.Message), windowStartupLocation: WindowStartupLocation.CenterOwner);
                     return;
                 }
-                _ksp2InstallService.RemoveInstall(row.Id);
+                await RemoveProfileAsync(row.Id);
                 return;
         }
 
@@ -807,7 +855,9 @@ public partial class SettingsTabViewModel : ViewModelBase
     public async Task UninstallRedux()
     {
         if (await RefuseWhileBusyAsync()) return;
-        var activeExe = _ksp2InstallService.ActiveEntry?.ExePath;
+        var active = _ksp2InstallService.ActiveEntry;
+        var activeId = active?.Id;
+        var activeExe = active?.ExePath;
         if (string.IsNullOrWhiteSpace(activeExe))
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
@@ -816,7 +866,21 @@ public partial class SettingsTabViewModel : ViewModelBase
             return;
         }
         var installDir = _fileSystem.Path.GetDirectoryName(activeExe);
-        if (string.IsNullOrEmpty(installDir) || !_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")))
+        bool hasUninstallState;
+        try
+        {
+            hasUninstallState = !string.IsNullOrEmpty(installDir) &&
+                (_fileSystem.File.Exists(_fileSystem.Path.Combine(installDir, "uninstall.zip")) ||
+                    _fullSource?.HasCatalog(installDir) == true);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.UninstallRedux.Failed", ex.UserMessage()),
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
+        if (!hasUninstallState)
         {
             await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
                 _localization["Settings.UninstallRedux.NotInstalled"], windowStartupLocation:WindowStartupLocation.CenterOwner);
@@ -827,6 +891,13 @@ public partial class SettingsTabViewModel : ViewModelBase
             _localization["Settings.UninstallRedux.Confirm"],
             ButtonEnum.YesNo, windowStartupLocation:WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes || await RefuseWhileBusyAsync()) return;
+        if (_ksp2InstallService.ActiveEntry is not { } selected || selected.Id != activeId || selected.ExePath != activeExe)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"],
+                _localization.Format("Settings.UninstallRedux.Failed", "The selected installation changed. Select it again."),
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+            return;
+        }
 
         _tabNavigatorService.GoToHome();
 

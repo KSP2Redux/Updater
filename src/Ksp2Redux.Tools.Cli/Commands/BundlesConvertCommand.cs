@@ -27,6 +27,18 @@ public sealed class BundlesConvertCommand : ReduxCommand<BundlesConvertSettings>
             return context.Output.Fail(ExitCode.USAGE_ERROR, "--shader-manifest is required: the manifest.json of the replacement shader bundles.");
         }
 
+        if (!settings.IsDryRun)
+        {
+            try
+            {
+                context.InstallationStateService.EnsureLegacyMutationAllowed(game);
+            }
+            catch (IOException ex)
+            {
+                return context.Output.Fail(ExitCode.BUNDLE_CONVERSION_FAILED, ex.Message);
+            }
+        }
+
         var manifestPath = context.FileSystem.Path.GetFullPath(settings.ShaderManifest.Trim().Trim('"'));
         if (!context.FileSystem.File.Exists(manifestPath))
         {

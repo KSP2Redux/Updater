@@ -1,20 +1,48 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text;
 using System.Text.RegularExpressions;
 using Ksp2Redux.Tools.Common.Distribution;
 using Ksp2Redux.Tools.Common.Models;
+using Ksp2Redux.Tools.Common.ReleasePreparation;
 using Ksp2Redux.Tools.Uploader;
 using Octokit;
 using Testably.Abstractions;
 using Tomlyn;
 
-if (args.Length != 1)
+if (args is ["capture-prepatch-baseline", string recoveryStock, string recoveryContract, string recoveryStockDigest,
+    string recoveryPatch, string recoveryPatchDigest, string recoveryRoot, string recoveryManifest, string recoveryBackup,
+    "--stock-recovery", string recoveryArchive])
+    return await FullSourcePublication.CapturePrepatchAsync(recoveryStock, recoveryContract, recoveryStockDigest,
+        recoveryPatch, recoveryPatchDigest, recoveryRoot, recoveryManifest, recoveryBackup, recoveryArchive);
+if (args is ["capture-prepatch-baseline", string stockInput, string stockContract, string stockDigest,
+    string prepatchInput, string prepatchDigest, string derivedRoot, string derivedContract, string originalBackup])
+    return await FullSourcePublication.CapturePrepatchAsync(stockInput, stockContract, stockDigest,
+        prepatchInput, prepatchDigest, derivedRoot, derivedContract, originalBackup);
+if (args is ["capture-full-source-target", string relocatedPlayer, string relocatedManifest, string relocatedId, "--relocated-receipt"])
+    return FullSourcePublication.CaptureTarget(relocatedPlayer, relocatedManifest, relocatedId, allowRelocatedReceipt: true);
+if (args is ["restore-stock", string restoredArchive, string restoredContract, string restoredDigest, string restoredDestination])
+    return await FullSourcePublication.RestoreStockAsync(restoredArchive, restoredContract, restoredDigest, restoredDestination);
+if (args is ["verify-prepared", string verifiedPublication, string verifiedSource, string verifiedSourceManifest, string verifiedStage])
+    return FullSourcePublication.VerifyPrepared(verifiedPublication, verifiedSource, verifiedSourceManifest, verifiedStage);
+if (args is ["inspect-player", string inspectedPlayer])
+    return FullSourcePublication.InspectPlayer(inspectedPlayer);
+if (args is ["prepare-full-source", string optionsPath])
+    return FullSourcePublication.Prepare(optionsPath);
+if (args is ["capture-full-source-target", string playerRoot, string targetManifest, string releaseId])
+    return FullSourcePublication.CaptureTarget(playerRoot, targetManifest, releaseId);
+
+bool validateFullSource = args is ["validate-full-source", _];
+if (args.Length != 1 && !validateFullSource)
 {
     Console.Error.WriteLine("Usage: Ksp2Redux.Tools.Uploader <upload-manifest.toml>");
+    Console.Error.WriteLine("       Ksp2Redux.Tools.Uploader capture-full-source-target <player-root> <target-manifest.json> <release-id>");
+    Console.Error.WriteLine("       Ksp2Redux.Tools.Uploader prepare-full-source <publication-options.json>");
+    Console.Error.WriteLine("       Ksp2Redux.Tools.Uploader validate-full-source <upload-manifest.toml>");
     return 1;
 }
 
-string manifestPath = args[0];
+string manifestPath = args[^1];
 var uploadManifest = TomlSerializer.Deserialize<UploadManifest>(
     File.ReadAllText(manifestPath), new TomlSerializerOptions { SourceName = manifestPath });
 if (uploadManifest is null)
@@ -22,14 +50,38 @@ if (uploadManifest is null)
 uploadManifest.ValidatePatchRequirements();
 
 string[] repositoryParts = uploadManifest.Repository.Split('/');
-if (repositoryParts.Length != 2)
+if (repositoryParts.Length != 2 || repositoryParts.Any(string.IsNullOrWhiteSpace))
     throw new InvalidOperationException("Repository must use the owner/name form.");
 string repoOwner = repositoryParts[0];
 string repoName = repositoryParts[1];
 string tag = $"v{uploadManifest.Version}";
 bool isMigration = uploadManifest.MigrateExisting;
-bool isDeleteOnly = !isMigration && uploadManifest.Patches is not { Count: > 0 };
+bool hasFullSource = !string.IsNullOrWhiteSpace(uploadManifest.FullSourcePublication);
+if (hasFullSource)
+    tag = $"recipe-v{uploadManifest.Version}";
+bool isDeleteOnly = !isMigration && !hasFullSource && uploadManifest.Patches is not { Count: > 0 };
 bool isPublicChannel = uploadManifest.Channel is "stable" or "beta";
+bool isRecipeFeed = uploadManifest.File.EndsWith(".v3.json", StringComparison.OrdinalIgnoreCase);
+if (isRecipeFeed)
+{
+    ReleaseManifestValidator.RequireRecipeFeedPath(uploadManifest.File);
+    if (!hasFullSource && !isDeleteOnly)
+        throw new InvalidOperationException("Legacy patch assets cannot be published to a recipe feed.");
+}
+if (hasFullSource && (isMigration || uploadManifest.Patches is { Count: > 0 }))
+    throw new InvalidOperationException("Upload a full-source publication separately from legacy patches and migration.");
+var fullSource = hasFullSource ? FullSourceUpload.Read(uploadManifest, manifestPath, repoOwner, repoName, tag) : null;
+if (validateFullSource)
+{
+    if (fullSource is null)
+        throw new InvalidOperationException("Set FullSourcePublication to the prepared publication directory.");
+    foreach (var asset in fullSource.Assets)
+    {
+        using var file = asset.OpenVerified();
+    }
+    Console.WriteLine($"Verified {fullSource.Assets.Count} local full-source release assets ({fullSource.Assets.Sum(asset => asset.Size)} bytes).");
+    return 0;
+}
 if (isMigration && !isPublicChannel)
     throw new InvalidOperationException("Historical migration is supported only for stable and beta feeds.");
 if (uploadManifest.StageOnly && !isMigration)
@@ -39,7 +91,7 @@ if (uploadManifest.R2ManifestOnly && !isMigration)
 if (uploadManifest.StageOnly && uploadManifest.R2ManifestOnly)
     throw new InvalidOperationException("StageOnly and R2ManifestOnly cannot both be enabled.");
 if (isPublicChannel && !HasR2Configuration(uploadManifest))
-    throw new InvalidOperationException("Stable and beta publication requires the EU R2 configuration.");
+    throw new InvalidOperationException("Stable and beta publication require the EU R2 configuration.");
 if (isDeleteOnly && string.IsNullOrWhiteSpace(uploadManifest.Label))
     throw new InvalidOperationException("The manifest has no patches and no label.");
 
@@ -48,20 +100,42 @@ Console.WriteLine(
 
 var github = new GitHubClient(new ProductHeaderValue("Ksp2Redux.Tools.Uploader"))
 {
-    Credentials = new Credentials(uploadManifest.Token)
+    Credentials = new Credentials(uploadManifest.ResolveToken(SystemEnvironmentProvider.Instance))
 };
 // Octokit enforces separate client and request timeouts. Keep both limits aligned for large uploads.
 github.SetRequestTimeout(TimeSpan.FromSeconds(600));
+if ((hasFullSource || isRecipeFeed) && !isPublicChannel && !(await github.Repository.Get(repoOwner, repoName)).Private)
+    throw new InvalidOperationException("Internal recipe publication requires a private repository.");
 string workingDirectory = Path.Combine(Path.GetTempPath(), $"ksp2redux-upload-{Guid.NewGuid():N}");
 Directory.CreateDirectory(workingDirectory);
 
 try
 {
-    var existingFeed = await github.Repository.Content.GetAllContentsByRef(
-        repoOwner, repoName, uploadManifest.File, uploadManifest.Branch);
-    var feedFile = existingFeed[0];
-    var feedJson = JsonSerializer.Deserialize<ReleaseManifest>(feedFile.Content)
+    RepositoryContent? feedFile;
+    try
+    {
+        feedFile = await GetFeedFileAsync(github, repoOwner, repoName, uploadManifest);
+    }
+    catch (NotFoundException) when (fullSource is not null)
+    {
+        feedFile = null;
+    }
+    string? existingJson = feedFile?.Content;
+    if (feedFile is null)
+        existingJson = JsonSerializer.Serialize(new ReleaseManifest
+        {
+            SchemaVersion = 3, Channel = uploadManifest.Channel!, GeneratedAt = DateTime.UtcNow, Patches = []
+        });
+    else if (string.IsNullOrEmpty(existingJson))
+    {
+        // Fetch the exact blob identified by the feed SHA used for the conditional update.
+        var blob = await github.Git.Blob.Get(repoOwner, repoName, feedFile.Sha);
+        existingJson = Encoding.UTF8.GetString(Convert.FromBase64String(blob.Content));
+    }
+    var feedJson = JsonSerializer.Deserialize<ReleaseManifest>(existingJson!)
                    ?? throw new InvalidDataException("Failed to parse the existing release manifest.");
+    uploadManifest.ValidateFeedDestination(feedJson);
+    string? preparedSourceFeed = fullSource?.PrepareFeed(feedJson, uploadManifest.RetainBetaReleases, uploadManifest.File);
     var additions = new List<ReleasePatch>();
     Release? release = null;
     List<ReleaseAsset> existingAssets = [];
@@ -81,8 +155,8 @@ try
 
     if (!isDeleteOnly)
     {
-        release = await GetOrCreateReleaseAsync(
-            github, repoOwner, repoName, tag, uploadManifest, ReadChangelogSection(uploadManifest.Changelog));
+        release = await GetOrCreateReleaseAsync(github, repoOwner, repoName, tag, uploadManifest,
+            ReadChangelogSection(uploadManifest.Changelog), stageRelease: hasFullSource);
         existingAssets = (await github.Repository.Release.GetAllAssets(repoOwner, repoName, release.Id)).ToList();
         Console.WriteLine($"Found {existingAssets.Count} existing GitHub release asset(s).");
 
@@ -96,6 +170,26 @@ try
     }
 
     DateTime releasedAt = DateTime.UtcNow;
+    if (fullSource is not null)
+    {
+        await UploadFullSourceAsync(github, release!, existingAssets, r2!, fullSource);
+        if (release!.Draft)
+        {
+            var publish = release.ToUpdate();
+            publish.Draft = false;
+            release = await github.Repository.Release.Edit(repoOwner, repoName, release.Id, publish);
+            if (release.Draft)
+                throw new InvalidOperationException("The verified GitHub release remained a draft.");
+            var published = (await github.Repository.Release.GetAllAssets(repoOwner, repoName, release.Id))
+                .ToDictionary(asset => asset.Name, StringComparer.Ordinal);
+            foreach (var asset in fullSource.Assets)
+            {
+                if (!published.TryGetValue(asset.Name, out var remote))
+                    throw new InvalidDataException($"Published GitHub release is missing {asset.Name}.");
+                VerifyFullSourceDownloadPath(remote, fullSource, asset);
+            }
+        }
+    }
     if (isMigration)
     {
         feedJson.Patches = await MigrateLegacyPatchesAsync(
@@ -147,18 +241,22 @@ try
         });
     }
 
-    var removed = uploadManifest.ApplyRetention(feedJson, additions);
-    feedJson.GeneratedAt = DateTime.UtcNow;
-    if (isPublicChannel || feedJson.Patches.Any(patch => patch.Chunks is not null))
-        feedJson.SchemaVersion = 2;
-    ReleaseManifestValidator.Validate(feedJson);
-    string feedContent = JsonSerializer.Serialize(feedJson, new JsonSerializerOptions { WriteIndented = true });
+    List<ReleasePatch> removed = [];
+    if (preparedSourceFeed is null)
+    {
+        removed = uploadManifest.ApplyRetention(feedJson, additions);
+        feedJson.GeneratedAt = DateTime.UtcNow;
+        if (isPublicChannel || feedJson.Patches.Any(patch => patch.Chunks is not null))
+            feedJson.SchemaVersion = Math.Max(feedJson.SchemaVersion, 2);
+        ReleaseManifestValidator.Validate(feedJson);
+        preparedSourceFeed = JsonSerializer.Serialize(feedJson, new JsonSerializerOptions { WriteIndented = true });
+    }
+    string feedContent = preparedSourceFeed;
 
     if (uploadManifest.StageOnly)
     {
-        var currentFeed = (await github.Repository.Content.GetAllContentsByRef(
-            repoOwner, repoName, uploadManifest.File, uploadManifest.Branch))[0];
-        if (!string.Equals(currentFeed.Sha, feedFile.Sha, StringComparison.Ordinal))
+        var currentFeed = await GetFeedFileAsync(github, repoOwner, repoName, uploadManifest);
+        if (!string.Equals(currentFeed.Sha, feedFile?.Sha, StringComparison.Ordinal))
             throw new InvalidOperationException(
                 $"The live manifest {uploadManifest.File} changed while chunks were being staged. It was left untouched; rerun staging to include the new content.");
 
@@ -170,9 +268,8 @@ try
 
     if (uploadManifest.R2ManifestOnly)
     {
-        var currentFeed = (await github.Repository.Content.GetAllContentsByRef(
-            repoOwner, repoName, uploadManifest.File, uploadManifest.Branch))[0];
-        if (!string.Equals(currentFeed.Sha, feedFile.Sha, StringComparison.Ordinal))
+        var currentFeed = await GetFeedFileAsync(github, repoOwner, repoName, uploadManifest);
+        if (!string.Equals(currentFeed.Sha, feedFile?.Sha, StringComparison.Ordinal))
             throw new InvalidOperationException(
                 $"The live GitHub manifest {uploadManifest.File} changed while the R2 manifest was prepared. Nothing was published; rerun to include the new content.");
 
@@ -181,9 +278,8 @@ try
         await PurgeManifestAsync(uploadManifest, r2ManifestUrl);
         await VerifyPublicManifestAsync(r2ManifestUrl, feedContent);
 
-        var unchangedGitHubFeed = (await github.Repository.Content.GetAllContentsByRef(
-            repoOwner, repoName, uploadManifest.File, uploadManifest.Branch))[0];
-        if (!string.Equals(unchangedGitHubFeed.Sha, feedFile.Sha, StringComparison.Ordinal))
+        var unchangedGitHubFeed = await GetFeedFileAsync(github, repoOwner, repoName, uploadManifest);
+        if (!string.Equals(unchangedGitHubFeed.Sha, feedFile?.Sha, StringComparison.Ordinal))
             throw new InvalidOperationException(
                 $"The GitHub manifest {uploadManifest.File} changed during R2 publication. Rerun R2-manifest-only publication so both feeds describe the same releases.");
 
@@ -193,12 +289,23 @@ try
         return 0;
     }
 
-    var updateRequest = new UpdateFileRequest(
-        isDeleteOnly ? $"Cleanup for label {uploadManifest.Label}" : $"Update for release {uploadManifest.Version}",
-        feedContent, feedFile.Sha, uploadManifest.Branch);
-    var updateResult = await github.Repository.Content.UpdateFile(
-        repoOwner, repoName, uploadManifest.File, updateRequest);
-    Console.WriteLine($"Updated GitHub release manifest with commit {updateResult.Commit.Sha}.");
+    uploadManifest.ValidateFeedDestination(feedJson);
+    string message = isDeleteOnly ? $"Cleanup for label {uploadManifest.Label}" : $"Update for release {uploadManifest.Version}";
+    string feedCommit;
+    if (feedFile is null)
+    {
+        ReleaseManifestValidator.RequireRecipeFeedPath(uploadManifest.File);
+        var created = await github.Repository.Content.CreateFile(repoOwner, repoName, uploadManifest.File,
+            new CreateFileRequest(message, feedContent, uploadManifest.Branch));
+        feedCommit = created.Commit.Sha;
+    }
+    else
+    {
+        var updated = await github.Repository.Content.UpdateFile(repoOwner, repoName, uploadManifest.File,
+            new UpdateFileRequest(message, feedContent, feedFile.Sha, uploadManifest.Branch));
+        feedCommit = updated.Commit.Sha;
+    }
+    Console.WriteLine($"Published GitHub recipe/patch manifest with commit {feedCommit}.");
 
     if (isPublicChannel)
     {
@@ -244,6 +351,60 @@ finally
 
 return 0;
 
+static async Task<RepositoryContent> GetFeedFileAsync(GitHubClient github, string owner, string repo, UploadManifest upload)
+{
+    string path = string.Join('/', upload.File.Split('/').Select(Uri.EscapeDataString));
+    var uri = new Uri($"repos/{Uri.EscapeDataString(owner)}/{Uri.EscapeDataString(repo)}/contents/{path}", UriKind.Relative);
+    var response = await github.Connection.Get<RepositoryContent>(uri,
+        new Dictionary<string, string> { ["ref"] = upload.Branch }, "application/vnd.github.object+json");
+    return response.Body;
+}
+
+static async Task UploadFullSourceAsync(GitHubClient github, Release release, List<ReleaseAsset> existingAssets,
+    R2Publisher? r2, FullSourceUpload publication)
+{
+    var existing = existingAssets.ToDictionary(asset => asset.Name, StringComparer.Ordinal);
+    if (existing.Count + publication.Assets.Count(asset => !existing.ContainsKey(asset.Name)) > ReleaseRecipePipeline.MAX_HOSTED_PACKS + 1)
+        throw new InvalidOperationException("This GitHub release has insufficient asset slots for the full-source artifact.");
+
+    foreach (var asset in publication.Assets)
+    {
+        if (existing.TryGetValue(asset.Name, out var remote))
+            await VerifyFullSourceAssetAsync(github, remote, publication, asset, release.Draft);
+    }
+    foreach (var asset in publication.Assets)
+    {
+        using var local = asset.OpenVerified();
+        if (r2 is not null)
+            await r2.UploadImmutableAsync(publication.R2Prefix + asset.Name, asset.Path, asset.Sha256, CancellationToken.None);
+        if (existing.ContainsKey(asset.Name))
+            continue;
+        var uploaded = await UploadExactAssetAsync(github, release, existingAssets, asset.Path, asset.Name, asset.Size);
+        await VerifyFullSourceAssetAsync(github, uploaded, publication, asset, release.Draft);
+    }
+}
+
+static async Task VerifyFullSourceAssetAsync(GitHubClient github, ReleaseAsset remote, FullSourceUpload publication,
+    FullSourceUpload.Asset local, bool draft)
+{
+    if (remote.Size != local.Size || remote.Name != local.Name)
+        throw new InvalidDataException($"GitHub release asset {local.Name} differs from the prepared name or length.");
+    if (!draft)
+        VerifyFullSourceDownloadPath(remote, publication, local);
+    if (!Uri.TryCreate(remote.Url, UriKind.Absolute, out var url) || url.Scheme != "https" || url.Host != "api.github.com")
+        throw new InvalidDataException("Unexpected GitHub asset metadata endpoint.");
+    var response = await github.Connection.Get<FullSourceAssetIdentity>(url, null);
+    if (!string.Equals(response.Body.Digest, $"sha256:{local.Sha256}", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidDataException($"GitHub release asset {local.Name} differs from the prepared SHA-256.");
+}
+
+static void VerifyFullSourceDownloadPath(ReleaseAsset remote, FullSourceUpload publication, FullSourceUpload.Asset local)
+{
+    if (remote.Size != local.Size ||
+        !string.Equals(remote.BrowserDownloadUrl, publication.GitHubPrefix + local.Name, StringComparison.OrdinalIgnoreCase))
+        throw new InvalidDataException($"GitHub release asset {local.Name} differs from the prepared path or length.");
+}
+
 static bool HasR2Configuration(UploadManifest manifest) =>
     !string.IsNullOrWhiteSpace(manifest.R2AccountId) &&
     !string.IsNullOrWhiteSpace(manifest.R2Endpoint) &&
@@ -272,7 +433,7 @@ static async Task<List<ReleasePatch>> MigrateLegacyPatchesAsync(
     using var http = new HttpClient();
     foreach (var patch in patches)
     {
-        if (patch.Chunks is not null)
+        if (patch.Chunks is not null || patch.FullSource is not null)
         {
             migrated.Add(patch);
             continue;
@@ -341,12 +502,14 @@ static string GetReleaseTag(string url)
 }
 
 static async Task<Release> GetOrCreateReleaseAsync(
-    GitHubClient github, string owner, string repo, string tag, UploadManifest manifest, string? changelog)
+    GitHubClient github, string owner, string repo, string tag, UploadManifest manifest, string? changelog, bool stageRelease)
 {
     try
     {
         var release = await github.Repository.Release.Get(owner, repo, tag);
         Console.WriteLine($"Found existing GitHub release: {release.HtmlUrl}");
+        if (stageRelease)
+            return release;
         var update = release.ToUpdate();
         bool change = false;
         if (!string.IsNullOrWhiteSpace(changelog))
@@ -369,11 +532,18 @@ static async Task<Release> GetOrCreateReleaseAsync(
     }
     catch (NotFoundException)
     {
+        if (stageRelease)
+        {
+            var releases = await github.Repository.Release.GetAll(owner, repo);
+            var draft = releases.SingleOrDefault(release => release.Draft && release.TagName == tag);
+            if (draft is not null)
+                return draft;
+        }
         var created = await github.Repository.Release.Create(owner, repo, new NewRelease(tag)
         {
             Name = $"KSP2 Redux {manifest.Version}",
             Body = changelog ?? "Automated upload for KSP2 Redux",
-            Draft = false,
+            Draft = stageRelease,
             Prerelease = manifest.Prerelease
         });
         Console.WriteLine($"Created GitHub release: {created.HtmlUrl}");

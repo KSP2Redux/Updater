@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using System.Text.Json;
 using Ksp2Redux.Tools.Launcher.Models;
 using Ksp2Redux.Tools.Launcher.Services.Feeds;
+using Ksp2Redux.Tools.Launcher.Services.Game;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 using Ksp2Redux.Tools.Launcher.Services.Install;
 using Ksp2Redux.Tools.Launcher.Services.Mac;
@@ -29,6 +30,7 @@ public sealed class CliContext
     private readonly IModuleDefinitionService _moduleDefinitions;
     private readonly IManifestReleasesFeedProviderService _feedProvider;
     private readonly ILogService _log;
+    private readonly IServiceProvider _services;
 
     /// <summary>
     /// Initializes the context by resolving the launcher services the commands need.
@@ -37,9 +39,13 @@ public sealed class CliContext
     /// <param name="output">The writer the commands report through.</param>
     public CliContext(IServiceProvider services, CliOutput output)
     {
+        _services = services;
         Output = output;
         ConfigService = services.GetRequiredService<ILauncherConfigService>();
         InstallService = services.GetRequiredService<IKsp2InstallService>();
+        InstallationStateService = services.GetRequiredService<IInstallationStateService>();
+        FullSourceInstallationService = services.GetService<IFullSourceInstallationService>()!;
+        FullSourcePreparationService = services.GetService<IFullSourcePreparationService>()!;
         FeedService = services.GetRequiredService<IReleasesFeedService>();
         InstallPlanService = services.GetRequiredService<IInstallPlanService>();
         DetectorService = services.GetRequiredService<IKsp2DetectorService>();
@@ -123,6 +129,11 @@ public sealed class CliContext
     public IWineRuntimeService WineRuntimeService { get; }
 
     /// <summary>
+    /// Gets the shared game process service for launch handoffs and installation-scoped detection.
+    /// </summary>
+    public IGameProcessService GameProcesses => _services.GetRequiredService<IGameProcessService>();
+
+    /// <summary>
     /// Gets the Steam sign-in, shared with the launcher through its saved login.
     /// </summary>
     public ISteamSessionService SteamSession { get; }
@@ -167,6 +178,21 @@ public sealed class CliContext
     /// Gets the service holding the configured KSP2 installs.
     /// </summary>
     public IKsp2InstallService InstallService { get; }
+
+    /// <summary>
+    /// Gets the shared boundary protecting installation evidence from legacy operations.
+    /// </summary>
+    public IInstallationStateService InstallationStateService { get; }
+
+    /// <summary>
+    /// Gets the registered full-source coordinator shared with GUI install plans.
+    /// </summary>
+    public IFullSourceInstallationService FullSourceInstallationService { get; private set; } = null!;
+
+    /// <summary>
+    /// Gets the independently authenticated release preparation boundary.
+    /// </summary>
+    public IFullSourcePreparationService FullSourcePreparationService { get; private set; } = null!;
 
     /// <summary>
     /// Gets the service holding the loaded release feeds, keyed by channel.
@@ -353,7 +379,7 @@ public sealed class CliContext
     }
 
     /// <summary>
-    /// Reads a KSP2 install off disk without touching the launcher config.
+    /// Read an installation after reconciling any configured full-source identity.
     /// </summary>
     /// <param name="exePath">The path to KSP2_x64.exe.</param>
     /// <returns>The install, or null when it could not be read at all.</returns>
@@ -361,7 +387,15 @@ public sealed class CliContext
     {
         try
         {
-            return new Ksp2Install(_fileSystem, _moduleDefinitions, exePath);
+            FullSourceReleaseIdentity? release = null;
+            string root = _fileSystem.Path.GetDirectoryName(exePath)!;
+            if (FullSourceInstallationService?.HasCatalog(root) == true)
+            {
+                FullSourceInstallationService.EnsureReady(root);
+                var entry = ConfigService.Config.Ksp2Installs.Single(item => item.ExePath == exePath);
+                release = FullSourceInstallationService.GetPublishedIdentity(entry.Id);
+            }
+            return new Ksp2Install(_fileSystem, _moduleDefinitions, exePath, release);
         }
         catch (Exception e)
         {

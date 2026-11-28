@@ -25,6 +25,7 @@ public interface IKsp2InstallService
     /// Loads <see cref="Ksp2"/> from another install for the rest of this session, without changing the active
     /// install in the config. Null goes back to the active install.
     /// </summary>
+    /// <param name="id">The selected installation identity, or null for the active installation.</param>
     void SetTargetInstall(Guid? id);
 
     /// <summary>
@@ -46,7 +47,10 @@ public interface IKsp2InstallService
     void ApplyActiveInstallBootConfig();
 }
 
-public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IModuleDefinitionService moduleDefinitionService, ILogService logService) : IKsp2InstallService
+public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem,
+    IModuleDefinitionService moduleDefinitionService, ILogService logService,
+    IInstallationStateService installationStateService, IFullSourceInstallationService? fullSource = null,
+    IBootConfigSettingsService? bootConfig = null) : IKsp2InstallService
 {
     private readonly HashSet<Guid> _checkedThisSession = [];
     private Guid? _targetId;
@@ -58,6 +62,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
             ? launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id)
             : null;
 
+    /// <inheritdoc />
     public Ksp2InstallEntry? TargetEntry =>
         (_targetId is { } id ? launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id) : null)
         ?? ActiveEntry;
@@ -67,6 +72,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
     public event EventHandler? ActiveInstallChanged;
     public event EventHandler? InstallsChanged;
 
+    /// <inheritdoc />
     public void SetTargetInstall(Guid? id)
     {
         if (_targetId == id) return;
@@ -76,10 +82,31 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
 
     public void TryLoadKsp2Install()
     {
+        foreach (Ksp2InstallEntry entry in Entries)
+        {
+            try
+            {
+                installationStateService.EnsureLaunchAllowed(fileSystem.Path.GetDirectoryName(entry.ExePath)!);
+            }
+            catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or FilesInUseException)
+            {
+                logService.Warn($"Installation recovery needs attention: {failure.Message}");
+            }
+        }
         var path = TargetEntry?.ExePath;
         if (!string.IsNullOrWhiteSpace(path))
         {
-            Ksp2 = new(fileSystem, moduleDefinitionService, path);
+            FullSourceReleaseIdentity? release = null;
+            try
+            {
+                if (TargetEntry is { } entry && fullSource?.HasCatalog(fileSystem.Path.GetDirectoryName(path)!) == true)
+                    release = fullSource.GetPublishedIdentity(entry.Id);
+            }
+            catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException)
+            {
+                logService.Warn($"Installation identity needs recovery: {failure.Message}");
+            }
+            Ksp2 = new(fileSystem, moduleDefinitionService, path, release);
         }
         else
         {
@@ -129,6 +156,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
         if (entry is null) return;
 
+        using var lease = fullSource?.AcquireProfileChangeLease(id);
         var wasActive = launcherConfigService.Config.ActiveKsp2InstallId == id;
         launcherConfigService.Config.Ksp2Installs.Remove(entry);
 
@@ -218,6 +246,15 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
         if (entry is null) return;
         if (entry.ExePath == newExePath) return;
+        // The undo record belongs to the folder it was made in. Another folder is not ours to revert.
+        bool folderChanged = !string.Equals(fileSystem.Path.GetDirectoryName(entry.ExePath), fileSystem.Path.GetDirectoryName(newExePath),
+            fileSystem.Path.DirectorySeparatorChar == '\\' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        using var lease = folderChanged ? fullSource?.AcquireProfileChangeLease(id) : null;
+        if (folderChanged)
+        {
+            entry.BootConfigOriginals = [];
+            entry.BootConfigReleaseSettings = null;
+        }
         entry.ExePath = newExePath;
         launcherConfigService.Save();
         if (id == launcherConfigService.Config.ActiveKsp2InstallId)
@@ -252,38 +289,24 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
 
     public void ApplyActiveInstallBootConfig()
     {
-        // Ksp2 holds the target install, so its own settings decide the boot config.
-        if (TargetEntry is not { } entry) return;
-        if (Ksp2 is not { IsValid: true } ksp2) return;
-        var bootConfigPath = fileSystem.Path.Combine(ksp2.InstallDir, "KSP2_x64_Data", "boot.config");
-
-        const string KEY = "gfx-enable-gfx-jobs";
-        string desiredLine = $"{KEY}={(entry.DisableGraphicsJobs ? "0" : "1")}";
-
+        if (bootConfig is null || TargetEntry is not { } entry || Ksp2 is not { IsValid: true } ksp2)
+            return;
         try
         {
-            if (!fileSystem.File.Exists(bootConfigPath)) return;
-            var lines = fileSystem.File.ReadAllLines(bootConfigPath).ToList();
-            int index = lines.FindIndex(line => line.StartsWith($"{KEY}=", StringComparison.Ordinal));
-            if (index >= 0)
-            {
-                if (lines[index] == desiredLine)
-                    return;
-                lines[index] = desiredLine;
-            }
-            else
-            {
-                lines.Add(desiredLine);
-            }
-            fileSystem.File.WriteAllLines(bootConfigPath, lines);
+            string root = ksp2.InstallDir;
+            if (fullSource?.TryApplyPublishedBootConfig(entry.Id, root) == true)
+                return;
+
+            // A refused legacy transaction can still own boot.config even when game code can be read.
+            installationStateService.EnsureLaunchAllowed(root);
+            if (ksp2.Distribution == Distribution.Redux)
+                bootConfig.Apply(entry);
+            else if (entry.BootConfigOriginals.Count != 0 || entry.BootConfigReleaseSettings is not null)
+                bootConfig.Revert(entry);
         }
-        catch (IOException ex)
+        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or FilesInUseException)
         {
-            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            logService.Warn($"Failed to write {bootConfigPath}: {ex.Message}");
+            logService.Warn($"The boot.config settings could not be applied. {failure.Message}");
         }
     }
 }

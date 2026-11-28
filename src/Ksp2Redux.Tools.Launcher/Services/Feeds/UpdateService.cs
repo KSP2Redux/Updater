@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using MsBox.Avalonia.Enums;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Feeds;
 
@@ -39,9 +40,11 @@ public class UpdateService : IUpdateService
     private ILauncherConfigService _launcherConfigService;
     private IMessageBoxService _messageBoxService;
     private ILogService _log;
+    private readonly IInstallationStateService _installationStateService;
 
     private static bool _isSingleFile;
     private bool _checkInProgress;
+    private bool _blockedMessageShown;
 
     private class GitHubReleaseAsset
     {
@@ -81,8 +84,9 @@ public class UpdateService : IUpdateService
     // The message builder is static and public, so this reads the shared service.
     private static ILocalizationService Loc => LocalizationService.Default;
 
-    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log)
+    public UpdateService(ILauncherConfigService launcherConfigService, IFileSystem fileSystem, IEnvironmentProvider environmentProvider, IAssemblyService assemblyService, IMessageBoxService messageBoxService, ILogService log, IInstallationStateService installationStateService)
     {
+        _installationStateService = installationStateService;
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(
             new ProductHeaderValue("Ksp2Redux.Tools.Launcher", assemblyService.GetName().Version?.ToString() ?? "0.0.0")));
@@ -106,7 +110,7 @@ public class UpdateService : IUpdateService
     /// <summary>
     /// Checks for an update from the provided GitHub repository, and downloads and installs it later
     /// </summary>
-    /// <returns>A boolean whether to allow updating redux versions after this</returns>
+    /// <returns>Whether game installs and updates can remain enabled.</returns>
     public async Task<bool> CheckAndPerformUpdateAsync()
     {
         // Called on a 10-minute timer as well as at startup and from a manual button. If a check
@@ -120,11 +124,58 @@ public class UpdateService : IUpdateService
         _checkInProgress = true;
         try
         {
+            if (!CanReplaceLauncher())
+                return true;
+
             return await CheckAndPerformUpdateCoreAsync();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException)
+        {
+            _log.Warn($"Launcher self-update was blocked: {ex.Message}");
+            return false;
         }
         finally
         {
             _checkInProgress = false;
+        }
+    }
+
+    private bool CanReplaceLauncher()
+    {
+        try
+        {
+            _installationStateService.EnsureSelfUpdateAllowed(_launcherConfigService.Config);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or FilesInUseException or UnauthorizedAccessException or NotSupportedException)
+        {
+            // Launcher replacement checks every profile. Install plans enforce recovery for their own target folder.
+            _log.Warn(ex.Message);
+            if (ex is InvalidDataException)
+                ShowBlockedOnce(ex.Message);
+            return false;
+        }
+    }
+
+    private void ShowBlockedOnce(string message)
+    {
+        if (_blockedMessageShown)
+            return;
+        _blockedMessageShown = true;
+        // Not awaited: startup must not wait for the user to close the box.
+        _ = ShowBlockedAsync(message);
+    }
+
+    private async Task ShowBlockedAsync(string message)
+    {
+        try
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(Loc["Main.StartupError.Title"], message,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Could not show why the launcher update check is blocked.", ex);
         }
     }
 
@@ -222,6 +273,9 @@ public class UpdateService : IUpdateService
 
             if (result != ButtonResult.Ok) return false;
 
+            if (!CanReplaceLauncher())
+                return true;
+
             _log.Info($"Selected update asset: {asset.Name}.");
             var expectedHash = asset.Digest[sha256Prefix.Length..].Trim().ToLowerInvariant();
 
@@ -243,6 +297,9 @@ public class UpdateService : IUpdateService
                 }
                 _log.Info($"Downloaded {bytes.Length} bytes for {asset.Name}, checksum verified.");
 
+                if (!CanReplaceLauncher())
+                    return true;
+
                 var updateDir = _fileSystem.Path.Combine(_launcherConfigService.GetLocalStorageDirectory(), "update");
                 _fileSystem.Directory.CreateDirectory(updateDir);
                 foreach (var stale in _fileSystem.Directory.EnumerateFiles(updateDir))
@@ -262,6 +319,9 @@ public class UpdateService : IUpdateService
                         throw new InvalidOperationException($"chmod +x on {updatePath} exited with code {chmod.ExitCode}.");
                     }
                 }
+
+                if (!CanReplaceLauncher())
+                    return true;
 
                 TriggerRestart(updatePath);
                 restartTriggered = true;

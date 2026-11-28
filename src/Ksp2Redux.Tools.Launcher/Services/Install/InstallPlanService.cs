@@ -21,8 +21,13 @@ public interface IInstallPlanService
 public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheService, IEnvironmentProvider environmentProvider,
     IAssemblyService assemblyService, IModuleDefinitionService moduleDefinitionService, IZipFileService zipFileService,
     IDiskSpaceService diskSpaceService, IPatchDownloadService patchDownloadService,
-    ILauncherConfigService launcherConfigService, IBundleConversionService? bundleConversionService = null,
-    IInstallFileLockService? installFileLockService = null, ISaveBackupService? saveBackupService = null) : IInstallPlanService
+    ILauncherConfigService launcherConfigService, IInstallationStateService installationStateService,
+    IBundleConversionService? bundleConversionService = null,
+    IInstallFileLockService? installFileLockService = null,
+    IFullSourceInstallationService? fullSource = null,
+    IFullSourcePreparationService? preparation = null,
+    ISaveBackupService? saveBackupService = null,
+    IBootConfigSettingsService? bootConfig = null) : IInstallPlanService
 {
     private const string EPIC_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.epic-prepatch.patch";
     private const string STEAM_PREPATCH_NAME = "Ksp2Redux.Tools.Launcher.Prepatches.steam-prepatch.patch";
@@ -36,8 +41,31 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     // The plan's lines reach the install log from instance and static members alike, so they read the shared service.
     private static ILocalizationService Loc => LocalizationService.Default;
 
+    internal static Stream OpenEmbeddedPrepatch(string distribution)
+    {
+        string resource = distribution switch
+        {
+            "Steam" => STEAM_PREPATCH_NAME,
+            "Epic" => EPIC_PREPATCH_NAME,
+            "Portable" => PORTABLE_PREPATCH_NAME,
+            _ => throw new InvalidDataException("Unsupported original game distribution.")
+        };
+        return typeof(InstallPlanService).Assembly.GetManifestResourceStream(resource)
+            ?? throw new InvalidDataException("The embedded prepatch package is missing.");
+    }
+
     public void Describe(InstallPlan installPlan, Action<LogMessage> log)
     {
+        if (installPlan.FullSourceReleaseId is { } selector)
+        {
+            log(LogMessage.Literal($"Prepare and install verified game generation {installPlan.FullSourceVersion} ({installPlan.FullSourceChannel}, {selector})."));
+            return;
+        }
+        if (installPlan.FullSourceTarget is { } target)
+        {
+            log(LogMessage.Literal($"Install verified game generation {target.Identity.Version} ({target.Identity.Channel})."));
+            return;
+        }
         log(Loc.Message("Install.PlanMade", installPlan.Steps.Count));
         for (var i = 0; i < installPlan.Steps.Count; i++)
         {
@@ -51,16 +79,119 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         }
     }
 
+    private bool IsLegacyBackup(string install)
+    {
+        string path = fileSystem.Path.Combine(install, "uninstall.zip");
+        if (!fileSystem.File.Exists(path))
+            return false;
+        using var input = fileSystem.File.OpenRead(path);
+        using var archive = zipFileService.NewArchive(input, System.IO.Compression.ZipArchiveMode.Read, false);
+        return !archive.Entries.Any(entry => entry.FullName == ".redux-stock/manifest.json");
+    }
+
     public async Task ApplyToFolder(InstallPlan installPlan, string install, Action<LogMessage> log,
         Action<long, long> downloadProgress, Action<int, int> stepsProgress, CancellationToken ct)
     {
-        // Ksp2Patch reports plain text, which is never translated.
         Action<string> patchLog = text => log(LogMessage.Literal(text));
-
+        if (installPlan.FullSourceReleaseId is not null)
+        {
+            if (preparation is null || fullSource is null || installPlan.Steps.Count != 0 ||
+                installPlan.FullSourceTarget is not null || installPlan.FullSourceChannel is null ||
+                installPlan.FullSourceVersion is null)
+                throw new InvalidDataException("A feed-selected full-source plan requires preparation and cannot contain legacy steps.");
+            var entry = launcherConfigService.Config.Ksp2Installs.Single(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install);
+            fullSource.EnsureReady(install);
+            stepsProgress(0, 1);
+            patchLog("Authenticating and preparing the selected release...");
+            bool hasCatalog = fullSource.HasCatalog(install);
+            if (!hasCatalog && installPlan.IsFullSourceRepair)
+                throw new InvalidDataException("Initial full-source conversion requires independently verified stock and ownership.");
+            FullSourceReleaseIdentity? installedRelease = hasCatalog && !installPlan.IsFullSourceRepair
+                ? fullSource.GetPublishedIdentity(entry.Id)
+                : null;
+            if (!hasCatalog && IsLegacyBackup(install))
+            {
+                await fullSource.UpgradeLegacyAsync(entry.Id,
+                    () =>
+                    {
+                        var uninstall = new InstallPlan();
+                        uninstall.Uninstall();
+                        return ApplyToFolder(uninstall, install, log, downloadProgress, (_, _) => { }, ct);
+                    },
+                    async () =>
+                    {
+                        try
+                        {
+                            var result = await preparation.FetchSelectedPlanAsync(installPlan, entry.Id, false, null, ct, downloadProgress);
+                            installPlan.RequireFullSourceMatch(result.Target.Identity);
+                            return (result.Target with { MayConsumeSource = true }, result.Stock);
+                        }
+                        catch (InvalidDataException failure) when (failure.Data.Contains("FullSourceStockMismatch"))
+                        {
+                            throw new InvalidDataException(Loc["Install.LegacyStockVerificationFailed"], failure);
+                        }
+                    }, patchLog, ct, install);
+                ApplyPublishedBootConfig(entry.Id, install, patchLog);
+                stepsProgress(1, 1);
+                return;
+            }
+            var (prepared, stock) = await preparation.FetchSelectedPlanAsync(installPlan, entry.Id, hasCatalog, installedRelease, ct, downloadProgress);
+            installPlan.RequireFullSourceMatch(prepared.Identity);
+            if (stock is null && !fullSource.HasCatalog(install))
+                stock = await preparation.FetchStockAsync(entry.Id, prepared, ct);
+            patchLog("Verifying and applying the prepared release...");
+            await Task.Run(() => fullSource.ApplyAsync(entry.Id, prepared with { MayConsumeSource = true },
+                stock, installPlan.IsFullSourceRepair, patchLog, ct, install), ct);
+            ApplyPublishedBootConfig(entry.Id, install, patchLog);
+            stepsProgress(1, 1);
+            return;
+        }
+        if (installPlan.FullSourceTarget is { } target)
+        {
+            if (fullSource is null || installPlan.FullSourceInstallationId is not { } id || installPlan.Steps.Count != 0)
+                throw new InvalidDataException("A full-source plan requires its configured identity and cannot contain legacy steps.");
+            var entry = launcherConfigService.Config.Ksp2Installs.Single(item => item.Id == id);
+            if (fileSystem.Path.GetDirectoryName(entry.ExePath) != install)
+                throw new InvalidDataException("The full-source plan root differs from its configured installation.");
+            if (!fullSource.HasCatalog(install) && IsLegacyBackup(install))
+            {
+                if (preparation is null)
+                    throw new InvalidDataException(Loc["Install.LegacyStockVerificationFailed"]);
+                await fullSource.UpgradeLegacyAsync(id,
+                    () =>
+                    {
+                        var uninstall = new InstallPlan();
+                        uninstall.Uninstall();
+                        return ApplyToFolder(uninstall, install, log, downloadProgress, (_, _) => { }, ct);
+                    },
+                    async () => (target, await preparation.FetchStockAsync(id, target, ct)), patchLog, ct, install);
+                ApplyPublishedBootConfig(id, install, patchLog);
+                stepsProgress(1, 1);
+                return;
+            }
+            await Task.Run(() => fullSource.ApplyAsync(id, target, installPlan.FullSourceStock,
+                installPlan.IsFullSourceRepair, patchLog, ct, install), ct);
+            ApplyPublishedBootConfig(id, install, patchLog);
+            stepsProgress(1, 1);
+            return;
+        }
+        if (fullSource?.HasCatalog(install) == true && installPlan.Steps.Count == 1 &&
+            installPlan.Steps[0] is UninstallStep or RevertToStockStep)
+        {
+            var entry = launcherConfigService.Config.Ksp2Installs.Single(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install);
+            await Task.Run(() => fullSource.UninstallToStockAsync(entry.Id, patchLog, ct, install), ct);
+            stepsProgress(1, 1);
+            return;
+        }
+        installationStateService.EnsureLegacyMutationAllowed(install);
         // Patching, rollback and bundle conversion rewrite files in place. A file another program holds open (a
         // running KSP2, or a Unity editor that loaded the game's bundles) fails partway through and leaves old and
         // new files mixed, so nothing starts while any is held.
-        await EnsureNoFilesInUseAsync(install, log, ct);
+        if (installFileLockService is not null)
+        {
+            log(Loc.Message("Install.CheckingFiles"));
+            await Task.Run(() => installFileLockService.EnsureNoFilesInUse(install), ct);
+        }
 
         EnsureEnoughDiskSpace(installPlan, install, log);
         using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -104,6 +235,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
         bool mutationStarted = false;
         foreach (var step in installPlan.Steps)
         {
+            installationStateService.EnsureLegacyMutationAllowed(install);
             try
             {
                 runStep: switch (step)
@@ -200,6 +332,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
 
                     try
                     {
+                        installationStateService.EnsureLegacyMutationAllowed(install);
                         using var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchFile);
                         await patch.AsyncApply(environmentProvider, install, patchLog, patchLog);
                     }
@@ -222,6 +355,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
                         patchPath = await apply.ResolvePath!(log, downloadProgress, ct);
                     }
 
+                    installationStateService.EnsureLegacyMutationAllowed(install);
                     mutationStarted = true;
                     using (var patch = Ksp2Patch.FromFile(fileSystem, zipFileService, patchPath))
                     {
@@ -260,6 +394,8 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             }
         }
 
+        // Full-source apply and uninstall return through the coordinator above. Only legacy
+        // overlay patches need stock StreamingAssets conversion and its reversible journal.
         bool patched = installPlan.Patches;
         if (patched && bundleConversionService is not null)
         {
@@ -273,6 +409,32 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
             {
                 await RollbackOrRethrowAsync(install, log, ex);
             }
+        }
+
+        // Boot settings follow the install outside the patching above. Removing Redux undoes them, installing applies them.
+        if (installPlan.Steps.Count != 0 &&
+            launcherConfigService.Config.Ksp2Installs.FirstOrDefault(item => fileSystem.Path.GetDirectoryName(item.ExePath) == install) is { } legacyEntry)
+        {
+            if (!patched)
+                bootConfig?.Revert(legacyEntry);
+            else
+            {
+                bootConfig?.SetReleaseSettings(legacyEntry, null);
+                bootConfig?.Apply(legacyEntry);
+            }
+        }
+    }
+
+    private void ApplyPublishedBootConfig(Guid id, string install, Action<string> log)
+    {
+        try
+        {
+            fullSource?.TryApplyPublishedBootConfig(id, install);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException)
+        {
+            // A later operation can take the coordinator lock as soon as the generation commits.
+            log($"Could not apply the published boot.config settings. They will be checked before launch. {failure.Message}");
         }
     }
 
@@ -344,6 +506,7 @@ public class InstallPlanService(IFileSystem fileSystem, ICacheService cacheServi
     /// </summary>
     private async Task RollbackOrRethrowAsync(string install, Action<LogMessage> log, Exception original)
     {
+        installationStateService.EnsureLegacyMutationAllowed(install);
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(install, "uninstall.zip")))
         {
             ExceptionDispatchInfo.Capture(original).Throw();

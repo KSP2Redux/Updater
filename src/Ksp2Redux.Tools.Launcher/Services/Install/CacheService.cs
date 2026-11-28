@@ -13,7 +13,8 @@ public interface ICacheService
     void RecursivelyRestoreCache(string directory, bool isForRepatch=false);
 }
 
-public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService) : ICacheService
+public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService,
+    IInstallationStateService installationStateService) : ICacheService
 {
     public List<string> IgnoredDirectories
         => [fileSystem.Path.Combine("KSP2_x64_Data","StreamingAssets"), "UninstallTemp", "mods"];
@@ -36,6 +37,7 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
 
     public void RecursivelyCreateCache(string directory)
     {
+        installationStateService.EnsureLegacyMutationAllowed(directory);
         if (fileSystem.File.Exists(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
             fileSystem.File.Delete(fileSystem.Path.Combine(directory, "uninstall.zip"));
@@ -85,6 +87,7 @@ public class CacheService(IFileSystem fileSystem, IZipFileService zipFileService
     // If isForRepatch is true, then the Redux/Config folder is saved, and 
     public void RecursivelyRestoreCache(string directory, bool isForRepatch=false)
     {
+        installationStateService.EnsureLegacyMutationAllowed(directory);
         if (!fileSystem.File.Exists(fileSystem.Path.Combine(directory, "uninstall.zip")))
         {
             throw new CacheRestoreException(directory, "uninstall.zip");

@@ -5,6 +5,9 @@ using System.Runtime.InteropServices;
 using CommandLine;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Install;
+using Ksp2Redux.Tools.Common.Services;
+using Testably.Abstractions;
 
 namespace Ksp2Redux.Tools.Launcher;
 
@@ -29,6 +32,8 @@ sealed class Program
     }
 
     public static bool PartialUpdate { get; private set; }
+
+    internal static string? SelfUpdateBlockReason { get; private set; }
 
     /// <summary>
     /// The rendering flags this launcher was started with, passed on to the new executable during a self-update.
@@ -72,6 +77,28 @@ sealed class Program
             _isUpdateStep = options.ParentProcessId is not null;
             _softwareRendering = options.SoftwareRendering;
             _noComposition = options.NoComposition;
+            if (options.Executable is not null || options.PreviousExecutablePath is not null)
+            {
+                try
+                {
+                    var fileSystem = new RealFileSystem();
+                    var state = new InstallationStateService(fileSystem, new ZipFileService(fileSystem));
+                    string configPath = fileSystem.Path.Combine(
+                        LocalStoragePaths.GetLocalStorageDirectory(fileSystem, SystemEnvironmentProvider.Instance),
+                        "redux-launcher-config.json");
+                    if (!CheckSelfUpdateState(state, configPath))
+                    {
+                        LogService.WriteEarly(SelfUpdateBlockReason!);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogService.WriteEarly($"Launcher self-update was blocked: {ex.Message}");
+                    SelfUpdateBlockReason = $"Launcher self-update was blocked: {ex.Message}";
+                    return;
+                }
+            }
             if (options.ParentProcessId is { } pid && options.Executable is { } exe)
             {
                 TryKillParent(pid);
@@ -139,6 +166,21 @@ sealed class Program
 #pragma warning disable RS0030
             Environment.Exit(1);
 #pragma warning restore RS0030
+        }
+    }
+
+    internal static bool CheckSelfUpdateState(IInstallationStateService state, string configurationPath)
+    {
+        SelfUpdateBlockReason = null;
+        try
+        {
+            state.EnsureSelfUpdateAllowedFromFile(configurationPath);
+            return true;
+        }
+        catch (IOException ex)
+        {
+            SelfUpdateBlockReason = ex.Message;
+            return false;
         }
     }
 

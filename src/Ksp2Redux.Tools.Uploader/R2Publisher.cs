@@ -90,9 +90,10 @@ public sealed class R2Publisher : IDisposable
         await _client.PutObjectAsync(request, ct);
 
         var uploaded = await _client.GetObjectMetadataAsync(_bucket, key, ct);
-        if (uploaded.ContentLength != size)
+        if (uploaded.ContentLength != size ||
+            !string.Equals(uploaded.Metadata["x-amz-meta-sha256"], checksumSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
-                $"R2 reports {uploaded.ContentLength} bytes for '{key}', expected {size}.");
+                $"R2 length or SHA-256 metadata differs from the uploaded object '{key}'.");
         Console.WriteLine($"Uploaded R2 object: {key} ({size} bytes)");
     }
 

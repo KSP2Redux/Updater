@@ -87,6 +87,34 @@ dotnet build          # build everything
 dotnet test           # run the test suite
 ```
 
+For Windows full-source releases, the uploader's `prepare-full-source` command accepts an
+optional `updateSources` array in its publication options. Each entry has a `root` for
+the frozen prior player and a `manifest` for the canonical target contract published
+with that player. Both paths are relative to the options file or absolute. The uploader
+publishes a separate recipe for each prior target. An updated launcher fetches that
+recipe directly when the configured installation's published contract and files match. Fresh
+installs, repair, and unsupported generations use the stock recipe.
+The Windows launcher compresses newly created stock backups and checks every
+decompressed file against the stock contract before publishing the archive.
+For a pristine install it can read the original game directly while preparing
+the release and backup, saving a separate stock cache copy.
+When preparation uses an existing backup, the launcher verifies complete stock
+coverage and caches only the original files referenced by the selected recipe.
+Windows repair and updates without a direct recipe keep installed files that
+already match the authenticated target. The launcher downloads only packs needed
+by the remaining files and rechecks the retained files under the installation lock.
+Migration with a verified existing stock backup can also retain authenticated
+owned files. When the owned installation already matches the complete published
+target, migration adopts it without downloading or staging player files.
+Windows uninstall stages changed stock files directly from the verified backup.
+Redux-only files are moved into transaction storage and serve as their own undo
+until commit. New stock files release their temporary stage as each file is published.
+Feed-selected Windows installs and updates can move an exact private preparation
+stage into transaction storage when both locations are on the same volume.
+The native transaction still checks each staged file and keeps its rollback data.
+The write stays within its staging budget, and an existing backup stays in
+place if creation fails.
+
 The launcher also runs on macOS for development (the game itself is not
 available there yet). To produce a proper `.app` bundle:
 

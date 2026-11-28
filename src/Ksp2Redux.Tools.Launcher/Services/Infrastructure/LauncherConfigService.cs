@@ -8,14 +8,6 @@ using Ksp2Redux.Tools.Launcher.Models;
 
 namespace Ksp2Redux.Tools.Launcher.Services.Infrastructure;
 
-public interface ILauncherConfigService
-{
-    LauncherConfig Config { get; }
-    event Action? ConfigSaved;
-    void Save();
-    string GetLocalStorageDirectory();
-}
-
 public class LauncherConfigService : ILauncherConfigService
 {
     public event Action? ConfigSaved;
@@ -200,7 +192,10 @@ public class LauncherConfigService : ILauncherConfigService
     // checkbox, etc.) via Ksp2InstallService, so a transient I/O failure here (AppData briefly
     // unreachable - a OneDrive redirect, a USB drive, a network share) must never throw back into a
     // data-binding callback and crash the whole app. Report and swallow instead.
-    public void Save()
+    public void Save() => TrySave();
+
+    /// <inheritdoc />
+    public bool TrySave()
     {
         try
         {
@@ -214,11 +209,13 @@ public class LauncherConfigService : ILauncherConfigService
             _fileSystem.File.Move(temporary, Config.StoragePath, overwrite: true);
             _log.Info($"Launcher config saved to {Config.StoragePath}");
             ConfigSaved?.Invoke();
+            return true;
         }
         catch (Exception ex)
         {
             _log.Error($"Failed to save launcher config to {Config.StoragePath}", ex);
             ReportSaveFailure(ex);
+            return false;
         }
     }
 

@@ -16,7 +16,7 @@ public class CacheServiceTest
         fs.Directory.CreateDirectory(InstallDir);
         fs.Directory.CreateDirectory(fs.Path.GetTempPath());
         var zipFileService = new Mock<IZipFileService>();
-        return (new CacheService(fs, zipFileService.Object), fs, zipFileService);
+        return (new CacheService(fs, zipFileService.Object, Mock.Of<IInstallationStateService>()), fs, zipFileService);
     }
 
     [Test]

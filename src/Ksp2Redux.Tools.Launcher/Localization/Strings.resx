@@ -1582,4 +1582,16 @@ They may be lost if you close the launcher. Check that {1} is writable and try a
     <value>Put back Steam's copies of {0} stock bundles.</value>
     <comment>Line in the install log. {0} = the number of bundles.</comment>
   </data>
+  <data name="Sidebar.RepairButton" xml:space="preserve">
+    <value>Repair to selected version</value>
+    <comment>Button below the version selector. Repairs an existing managed game using the selected release.</comment>
+  </data>
+  <data name="Install.LegacyStockVerificationFailed" xml:space="preserve">
+    <comment>Shown when restored legacy files fail the pinned stock hash check.</comment>
+    <value>Redux was uninstalled, but the game does not match the original stock files. Run Steam's Verify integrity of game files or Epic's Verify, then retry. No stock files were downloaded.</value>
+  </data>
+  <data name="Install.LegacyCatalogChanged" xml:space="preserve">
+    <value>The installation changed before the legacy upgrade started. Refresh the release list and retry.</value>
+    <comment>Shown when another installation job created a full-source catalog before a queued legacy upgrade acquired its reservation.</comment>
+  </data>
 </root>

@@ -117,13 +117,14 @@ public class InstallRevertEndToEndTest
         // Match the launcher DI's core services. Configuration stays in memory and downloads are disabled
         // because the plan consumes a local patch. Progress and notifications go to the test output.
         var zip = new ZipFileService(fileSystem);
-        var cache = new CacheService(fileSystem, zip);
+        var state = new InstallationStateService(fileSystem, zip);
+        var cache = new CacheService(fileSystem, zip, state);
         var modules = new ModuleDefinitionService();
         var config = new Mock<ILauncherConfigService>(MockBehavior.Strict);
         config.SetupGet(service => service.Config).Returns(new LauncherConfig("unused-e2e-config.json"));
         var service = new InstallPlanService(fileSystem, cache, environment, new ExecutingAssemblyService(),
-            modules, zip, new DiskSpaceService(fileSystem), new LocalPatchDownloads(), config.Object,
-            new BundleConversionService(fileSystem));
+            modules, zip, new DiskSpaceService(fileSystem), new LocalPatchDownloads(), config.Object, state,
+            new BundleConversionService(fileSystem, state));
 
         Task ExecuteAsync(InstallPlan plan) => service.ApplyToFolder(plan, install, message => Log(message.English),
             (_, _) => { }, (done, total) => Log($"Plan steps: {done}/{total}"), CancellationToken.None);

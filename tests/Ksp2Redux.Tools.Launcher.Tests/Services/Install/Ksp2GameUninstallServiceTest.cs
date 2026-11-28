@@ -17,7 +17,8 @@ public class Ksp2GameUninstallServiceTest
     public void SetUp()
     {
         _fileSystem = new MockFileSystem(o => o.SimulatingOperatingSystem(SimulationMode.Windows));
-        _service = new Ksp2GameUninstallService(_fileSystem, Mock.Of<ILogService>());
+        _service = new Ksp2GameUninstallService(_fileSystem, Mock.Of<ILogService>(),
+            new InstallationStateService(_fileSystem, new Ksp2Redux.Tools.Common.Services.ZipFileService(_fileSystem)));
     }
 
     private void CreateGame(string folder)
@@ -114,13 +115,16 @@ public class Ksp2GameUninstallServiceTest
         }
         foreach (var file in new[]
                  {
-                     "UnityPlayer.dll", "UnityCrashHandler64.exe", "uninstall.zip", "prepatched.nodelete", "redux.log",
+                     "UnityPlayer.dll", "UnityCrashHandler64.exe", "prepatched.nodelete", "redux.log",
                      "redux.log.old", "Ksp2.log", "winhttp.dll", "doorstop_config.ini", ".doorstop_version", "changelog.txt",
                      "ReShade.ini", "dxgi.dll", "notes.txt"
                  })
         {
             _fileSystem.File.WriteAllText(_fileSystem.Path.Combine(GAME, file), "x");
         }
+        // An unreadable backup protects the folder, so the legacy backup is a valid empty archive.
+        byte[] emptyZip = [0x50, 0x4B, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        _fileSystem.File.WriteAllBytes(_fileSystem.Path.Combine(GAME, "uninstall.zip"), emptyZip);
 
         // Act
         var removal = _service.Inspect(_fileSystem.Path.Combine(GAME, "KSP2_x64.exe"));

@@ -66,7 +66,8 @@ public class InstallPlanServiceBundleConversionTest
         configService.SetupGet(service => service.Config).Returns(new LauncherConfig("config.json"));
 
         var service = new InstallPlanService(fs, cacheService.Object, new MockEnvironmentProvider(),
-            assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object, diskSpace.Object, patchDownloadService.Object, configService.Object, conversion.Object, lockService);
+            assemblyService.Object, new Mock<IModuleDefinitionService>().Object, zipFileService.Object, diskSpace.Object, patchDownloadService.Object, configService.Object,
+            Mock.Of<IInstallationStateService>(), conversion.Object, lockService);
         return (service, cacheService, conversion, calls, fs);
     }
 

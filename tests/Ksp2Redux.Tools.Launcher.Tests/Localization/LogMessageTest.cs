@@ -167,7 +167,8 @@ public class LogMessageTest
 
         new InstallPlanService(new MockFileSystem(), Mock.Of<ICacheService>(), Mock.Of<IEnvironmentProvider>(),
                 Mock.Of<IAssemblyService>(), Mock.Of<IModuleDefinitionService>(), Mock.Of<IZipFileService>(),
-                Mock.Of<IDiskSpaceService>(), Mock.Of<IPatchDownloadService>(), Mock.Of<ILauncherConfigService>())
+                Mock.Of<IDiskSpaceService>(), Mock.Of<IPatchDownloadService>(), Mock.Of<ILauncherConfigService>(),
+                Mock.Of<IInstallationStateService>())
             .Describe(plan, captured.Add);
 
         var neutral = new ResourceStringSource();

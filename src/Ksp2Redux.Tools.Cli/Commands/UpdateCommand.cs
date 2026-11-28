@@ -66,8 +66,9 @@ public sealed class UpdateCommand : ReduxCommand<UpdateSettings>
 
         var installed = CliContext.FormatVersion(install.GameVersion);
         var latest = CliContext.FormatVersion(newest);
+        var plan = feed.GetFullSourcePlan(newest);
 
-        if (string.Equals(installed, latest, StringComparison.OrdinalIgnoreCase))
+        if (install.IsInstalledVersion(newest, plan))
         {
             context.Output.Heading($"'{entry.Name}' is already on {latest}, the newest build in {channel}.");
             context.Output.Payload(
@@ -77,7 +78,7 @@ public sealed class UpdateCommand : ReduxCommand<UpdateSettings>
             return ExitCode.SUCCESS;
         }
 
-        var plan = feed.GetPatchListToVersion(install.GameVersion, newest);
+        plan ??= feed.GetPatchListToVersion(install.GameVersion, newest);
 
         if (settings.IsDryRun)
         {
@@ -85,7 +86,7 @@ public sealed class UpdateCommand : ReduxCommand<UpdateSettings>
             return InstallWorkflow.Describe(context, plan, install.GameVersion, newest);
         }
 
-        if (plan.Steps.Count == 0)
+        if (plan.Steps.Count == 0 && !plan.IsFullSource)
         {
             return context.Output.Fail(ExitCode.INSTALL_FAILED, $"No route from {installed} to {latest}.");
         }

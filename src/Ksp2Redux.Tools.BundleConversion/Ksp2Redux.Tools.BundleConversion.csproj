@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <PackageReference Include="AssetsTools.NET" />
+        <PackageReference Include="K4os.Compression.LZ4" />
         <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -33,6 +34,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Ksp2Redux.Tools.Common" />
         <InternalsVisibleTo Include="Ksp2Redux.Tools.BundleConversion.Tests" />
         <!-- The launcher's conversion service tests build their bundles with the same synthetic bundle helpers. -->
         <InternalsVisibleTo Include="Ksp2Redux.Tools.Launcher.Tests" />

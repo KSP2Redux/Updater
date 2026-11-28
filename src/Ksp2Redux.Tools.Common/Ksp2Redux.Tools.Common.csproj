@@ -25,4 +25,8 @@
         <AdditionalFiles Include="BannedSymbols.txt"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Ksp2Redux.Tools.BundleConversion\Ksp2Redux.Tools.BundleConversion.csproj" />
+    </ItemGroup>
+
 </Project>

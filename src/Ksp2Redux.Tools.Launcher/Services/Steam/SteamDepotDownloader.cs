@@ -5,6 +5,7 @@ using System.Net;
 using System.Security.Cryptography;
 using Ksp2Redux.Tools.Launcher.Localization;
 using Ksp2Redux.Tools.Launcher.Services.Infrastructure;
+using Ksp2Redux.Tools.Launcher.Services.Install;
 using SteamKit2;
 using SteamKit2.CDN;
 
@@ -23,6 +24,18 @@ public sealed record SteamDownloadProgress(long DownloadedBytes, long TotalBytes
 public interface ISteamDepotDownloader
 {
     /// <summary>
+    /// Download publisher-pinned manifests for Windows depots belonging to the owned app.
+    /// </summary>
+    /// <param name="appId">The owned Steam app identity.</param>
+    /// <param name="depots">The independently pinned depot and manifest selectors.</param>
+    /// <param name="targetDirectory">The separate cache directory, never a managed installation.</param>
+    /// <param name="progress">The download progress sink.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The task completing after the selected depot download.</returns>
+    Task DownloadDepotsAsync(uint appId, IReadOnlyList<SteamDepot> depots, string targetDirectory,
+        IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Pinned Steam depot preparation is not supported by this downloader.");
+    /// <summary>
     /// Lists the Windows depots that make up the game, checking the signed-in account owns it.
     /// </summary>
     /// <exception cref="SteamSignInException">Not signed in, or the account does not own the game.</exception>
@@ -39,7 +52,12 @@ public interface ISteamDepotDownloader
     /// downloaded beside the original, checked against Steam's checksum, then moved over it, so an interrupted
     /// restore leaves the original in place.
     /// </summary>
+    /// <param name="appId">The owned Steam app identity.</param>
+    /// <param name="targetDirectory">The legacy installation directory.</param>
     /// <param name="relativePaths">The files, relative to the game folder, with either kind of slash.</param>
+    /// <param name="progress">The download progress sink.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The task completing after every selected file is restored.</returns>
     /// <exception cref="SteamSignInException">Not signed in, or the account does not own the game.</exception>
     /// <exception cref="InvalidDataException">Steam's file list does not have one of the files.</exception>
     /// <exception cref="IOException">A file could not be downloaded or did not match Steam's checksum.</exception>
@@ -50,7 +68,8 @@ public interface ISteamDepotDownloader
 /// <summary>
 /// Downloads a game's Windows depots straight from Steam's content servers.
 /// </summary>
-public class SteamDepotDownloader(ISteamSessionService session, IFileSystem fileSystem, ILogService log) : ISteamDepotDownloader
+public class SteamDepotDownloader(ISteamSessionService session, IFileSystem fileSystem, ILogService log,
+    IInstallationStateService installationStateService) : ISteamDepotDownloader
 {
     public const uint KSP2_APP_ID = 954850;
     public const string GAME_FOLDER_NAME = "Kerbal Space Program 2";
@@ -114,27 +133,41 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
         return depots;
     }
 
+    /// <inheritdoc />
     public Task DownloadAsync(uint appId, string targetDirectory, IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken) =>
-        DownloadFilesAsync(appId, targetDirectory, null, progress, cancellationToken);
+        DownloadCoreAsync(appId, null, targetDirectory, null, progress, cancellationToken);
 
+    /// <inheritdoc />
+    public Task DownloadDepotsAsync(uint appId, IReadOnlyList<SteamDepot> depots, string targetDirectory,
+        IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
+    {
+        if (depots.Count is < 1 or > 16 || depots.Any(depot => depot.DepotId == 0 || depot.ManifestId == 0) ||
+            depots.Select(depot => depot.DepotId).Distinct().Count() != depots.Count)
+            throw new InvalidDataException("Pinned Steam depot selectors are invalid.");
+        return DownloadCoreAsync(appId, depots, targetDirectory, null, progress, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task RestoreFilesAsync(uint appId, string targetDirectory, IReadOnlyCollection<string> relativePaths,
         IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
     {
         HashSet<string> wanted = [with(StringComparer.OrdinalIgnoreCase), .. relativePaths.Select(NormalizeDepotPath)];
         return wanted.Count == 0
             ? Task.CompletedTask
-            : DownloadFilesAsync(appId, targetDirectory, wanted, progress, cancellationToken);
+            : DownloadCoreAsync(appId, null, targetDirectory, wanted, progress, cancellationToken);
     }
 
-    // Null restores nothing selectively: every depot file is downloaded straight into place, skipping those
-    // already complete, which is how an interrupted first download resumes. A set restores only those files,
-    // each through a checked temporary file, because it replaces files in a working install.
-    private async Task DownloadFilesAsync(uint appId, string targetDirectory, HashSet<string>? only,
+    // Selective restores use checked temporary files. Pinned depots retain the owned Windows depot check.
+    private async Task DownloadCoreAsync(uint appId, IReadOnlyList<SteamDepot>? pinnedDepots, string targetDirectory, HashSet<string>? only,
         IProgress<SteamDownloadProgress> progress, CancellationToken cancellationToken)
     {
+        installationStateService.EnsureLegacyMutationAllowed(targetDirectory);
         var connection = RequireConnection();
         progress.Report(new SteamDownloadProgress(0, 0, 0, 0, STAGE_CHECKING));
-        var depots = await GetDepotsAsync(appId, cancellationToken);
+        var availableDepots = await GetDepotsAsync(appId, cancellationToken);
+        if (pinnedDepots is not null && pinnedDepots.Any(depot => !availableDepots.Any(available => available.DepotId == depot.DepotId)))
+            throw new InvalidDataException("The publisher selected a depot outside the owned app's Windows depot set.");
+        var depots = pinnedDepots ?? availableDepots;
 
         var servers = await GetContentServersAsync(connection, appId);
         using var cdn = new Client(connection.Client);
@@ -173,6 +206,7 @@ public class SteamDepotDownloader(ISteamSessionService session, IFileSystem file
         void Report(string stage) => progress.Report(new SteamDownloadProgress(
             Interlocked.Read(ref downloadedBytes), totalBytes, Volatile.Read(ref filesDone), filesTotal, stage));
 
+        installationStateService.EnsureLegacyMutationAllowed(targetDirectory);
         fileSystem.Directory.CreateDirectory(targetDirectory);
         foreach (var (_, _, file) in files.Where(f => IsDirectory(f.File)))
         {
