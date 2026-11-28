@@ -90,6 +90,7 @@ public static class TestAppBuilder
         serviceCollection.AddSingleton<INewsItemCollectionService, NewsItemCollectionService>();
         serviceCollection.AddSingleton<ILogService, LogService>();
         serviceCollection.AddSingleton<ILocalizationService>(LocalizationService.Default);
+        serviceCollection.AddSingleton(new Mock<ITranslationUpdateService>().Object);
         serviceCollection.AddSingleton<ILauncherConfigService, LauncherConfigService>();
         serviceCollection.AddSingleton<IReleasesFeedService, ReleasesFeedService>();
         serviceCollection.AddSingleton<ITabNavigatorService, TabNavigatorService>();

@@ -132,6 +132,34 @@ public class LocalizationServiceTest
     }
 
     [Test]
+    public void SetDownloadedTexts_RefreshesOnlyWhenTheShownLanguageChanges()
+    {
+        var service = new LocalizationService(
+            new FakeStringSource().Add("en", "Home.Tab", "Home").Add("de", "Home.Tab", "de:Home"),
+            CultureInfo.GetCultureInfo("en-US"));
+        service.SetLanguage("de");
+        var languageChanges = 0;
+        var changedProperties = new List<string?>();
+        service.LanguageChanged += (_, _) => languageChanges++;
+        service.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName);
+
+        service.SetDownloadedTexts(new Dictionary<string, IReadOnlyDictionary<string, string>>
+        {
+            ["ja"] = new Dictionary<string, string> { ["Home.Tab"] = "ja:Home" },
+        });
+        Assert.That(languageChanges, Is.EqualTo(0), "Another language's texts leave the shown ones alone");
+        Assert.That(changedProperties, Is.EqualTo(new[] { nameof(LocalizationService.AvailableLanguages) }));
+
+        service.SetDownloadedTexts(new Dictionary<string, IReadOnlyDictionary<string, string>>
+        {
+            ["de"] = new Dictionary<string, string> { ["Home.Tab"] = "de:Start" },
+        });
+        Assert.That(service["Home.Tab"], Is.EqualTo("de:Start"));
+        Assert.That(languageChanges, Is.EqualTo(1));
+        Assert.That(changedProperties, Does.Contain(LocalizationService.INDEXER_NAME));
+    }
+
+    [Test]
     public void AvailableLanguages_WithoutTranslations_IsEnglishOnly()
     {
         var service = new LocalizationService(new FakeStringSource().Add("en", "Key", "text"), CultureInfo.GetCultureInfo("en-US"));
