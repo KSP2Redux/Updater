@@ -436,7 +436,8 @@ public partial class FullSourceInstallationServiceTest
             completedRetirements = fixture.Fs.Directory.EnumerateFiles(storage, "payload-retirement.complete", SearchOption.AllDirectories).Count(),
             interrupted, exactStockRestored = true, unknownFilesPreserved = true
         }));
-        TestContext.AddTestAttachment(report, "Small native Windows retirement and exact uninstall evidence.");
+        if (_temporaryWindowsRoot is null)
+            TestContext.AddTestAttachment(report, "Small native Windows retirement and exact uninstall evidence.");
     }
 
     /// <summary>

@@ -8,17 +8,33 @@ namespace Ksp2Redux.Tools.Launcher.Tests.Services.Install;
 
 public partial class FullSourceInstallationServiceTest
 {
-    private static Fixture NativeFixture()
+    private string? _temporaryWindowsRoot;
+
+    [TearDown]
+    public void CleanTemporaryWindowsFixture()
+    {
+        if (_temporaryWindowsRoot is not { } root)
+            return;
+        _temporaryWindowsRoot = null;
+        var fs = new RealFileSystem();
+        if (fs.Directory.Exists(root))
+            fs.Directory.Delete(root, recursive: true);
+    }
+
+    private Fixture NativeFixture()
     {
         var fs = new RealFileSystem();
-        string workspace = fs.Path.GetDirectoryName(typeof(FullSourceInstallationServiceTest).Assembly.Location)!;
-        while (!fs.Directory.Exists(fs.Path.Combine(workspace, "Documentation", "Omnipatching")))
-        {
-            workspace = fs.Path.GetDirectoryName(workspace)
-                ?? throw new IOException("The disposable coordinator evidence workspace was not found.");
-        }
+        string? workspace = fs.Path.GetDirectoryName(typeof(FullSourceInstallationServiceTest).Assembly.Location);
+        while (workspace is not null && !fs.Directory.Exists(fs.Path.Combine(workspace, "Documentation", "Omnipatching")))
+            workspace = fs.Path.GetDirectoryName(workspace);
         // Leave room for the launcher's temporary sibling names beneath the game directory.
-        string root = fs.Path.Combine(workspace, "Library", "Omnipatching", $"coordinator-{Guid.NewGuid():N}");
+        string name = $"coordinator-{Guid.NewGuid():N}";
+        if (workspace is null)
+        {
+            _temporaryWindowsRoot = fs.Path.Combine(fs.Path.GetTempPath(), name);
+            return Create(fs, _temporaryWindowsRoot);
+        }
+        string root = fs.Path.Combine(workspace, "Library", "Omnipatching", name);
         Fixture fixture = Create(fs, root);
         string report = fs.Path.Combine(root, "inputs.json");
         fs.File.WriteAllBytes(report, JsonSerializer.SerializeToUtf8Bytes(new

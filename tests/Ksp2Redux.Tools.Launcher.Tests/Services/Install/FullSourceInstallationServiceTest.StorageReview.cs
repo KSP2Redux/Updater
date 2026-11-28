@@ -131,6 +131,7 @@ public partial class FullSourceInstallationServiceTest
             publishedHeadSha256 = Digest(fixture.Fs.File.ReadAllBytes(fixture.Head)),
             pending = Decode(fixture.Fs.File.ReadAllBytes(fixture.Head))["Pending"] is not null
         }));
-        TestContext.AddTestAttachment(report, "Reviewed native Windows coordinator-transition evidence.");
+        if (_temporaryWindowsRoot is null)
+            TestContext.AddTestAttachment(report, "Reviewed native Windows coordinator-transition evidence.");
     }
 }
