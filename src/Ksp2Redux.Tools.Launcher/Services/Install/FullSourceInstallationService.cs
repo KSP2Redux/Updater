@@ -72,13 +72,34 @@ public partial class FullSourceInstallationService : IFullSourceInstallationServ
     }
 
     /// <inheritdoc />
+    public IDisposable? AcquireProfileChangeLease(Guid installationId)
+    {
+        string directory = ProfileCatalogDirectory(installationId);
+        if (!Exists(directory))
+            return null;
+        if (_configuration.Config.Ksp2Installs.Any(profile => OverlapsProfile(directory, profile)))
+            throw new InvalidDataException("Launcher catalog storage overlaps a configured installation.");
+        var lease = OpenCoordinatorLock(directory);
+        try
+        {
+            if (Exists(_fs.Path.Combine(directory, "installation.json")))
+                throw new IOException("Uninstall Redux to restore stock before removing this profile or changing its game folder.");
+            return lease;
+        }
+        catch
+        {
+            lease.Dispose();
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public bool HasCatalog(string root)
     {
         // Keep the legacy host path independent of the Windows-only adapter when no catalog exists.
-        Ksp2InstallEntry? configured = _configuration.Config.Ksp2Installs.FirstOrDefault(entry =>
-            _fs.Path.GetDirectoryName(entry.ExePath)?.Equals(root, StringComparison.OrdinalIgnoreCase) == true);
-        if (configured is null || !Exists(_fs.Path.Combine(_configuration.GetLocalStorageDirectory(), "full-source-v1",
-                configured.Id.ToString("N"), "installation.json")))
+        if (!_configuration.Config.Ksp2Installs.Any(entry =>
+                _fs.Path.GetDirectoryName(entry.ExePath)?.Equals(root, RootComparison) == true &&
+                Exists(_fs.Path.Combine(ProfileCatalogDirectory(entry.Id), "installation.json"))))
             return false;
         EnsureSupported();
         Ksp2InstallEntry? entry = EntryAt(root);

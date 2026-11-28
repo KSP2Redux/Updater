@@ -156,6 +156,7 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         var entry = launcherConfigService.Config.Ksp2Installs.FirstOrDefault(e => e.Id == id);
         if (entry is null) return;
 
+        using var lease = fullSource?.AcquireProfileChangeLease(id);
         var wasActive = launcherConfigService.Config.ActiveKsp2InstallId == id;
         launcherConfigService.Config.Ksp2Installs.Remove(entry);
 
@@ -246,8 +247,10 @@ public class Ksp2InstallService(ILauncherConfigService launcherConfigService, IF
         if (entry is null) return;
         if (entry.ExePath == newExePath) return;
         // The undo record belongs to the folder it was made in. Another folder is not ours to revert.
-        if (!string.Equals(fileSystem.Path.GetDirectoryName(entry.ExePath), fileSystem.Path.GetDirectoryName(newExePath),
-                StringComparison.OrdinalIgnoreCase))
+        bool folderChanged = !string.Equals(fileSystem.Path.GetDirectoryName(entry.ExePath), fileSystem.Path.GetDirectoryName(newExePath),
+            fileSystem.Path.DirectorySeparatorChar == '\\' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        using var lease = folderChanged ? fullSource?.AcquireProfileChangeLease(id) : null;
+        if (folderChanged)
         {
             entry.BootConfigOriginals = [];
             entry.BootConfigReleaseSettings = null;

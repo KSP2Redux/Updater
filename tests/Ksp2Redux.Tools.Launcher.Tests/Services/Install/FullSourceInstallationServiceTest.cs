@@ -45,6 +45,50 @@ public partial class FullSourceInstallationServiceTest
         internal string Archive => Fs.Path.Combine(Install, "uninstall.zip");
     }
 
+    [Test]
+    public async Task ManagedProfileKeepsItsIdentityUntilStockHandoff()
+    {
+        var fixture = Create();
+        var coordinator = fixture.Service();
+        var installs = new Ksp2InstallService(fixture.Configuration, fixture.Fs, Mock.Of<IModuleDefinitionService>(),
+            Mock.Of<ILogService>(), Mock.Of<IInstallationStateService>(), coordinator);
+        await Apply(fixture, coordinator);
+        string originalPath = fixture.Entry.ExePath;
+        Assert.Throws<IOException>(() => installs.RemoveInstall(fixture.Entry.Id));
+        Assert.Throws<IOException>(() => installs.UpdateInstallExePath(fixture.Entry.Id, @"C:\Elsewhere\KSP2_x64.exe"));
+        Assert.That(fixture.Entry.ExePath, Is.EqualTo(originalPath));
+        Assert.That(installs.Entries, Does.Contain(fixture.Entry));
+        await coordinator.UninstallToStockAsync(fixture.Entry.Id, _ => { }, CancellationToken.None, fixture.Install);
+        installs.RemoveInstall(fixture.Entry.Id);
+        Assert.That(installs.Entries, Is.Empty);
+    }
+
+    [Test]
+    public void LaunchWithMismatchedSecondaryExecutableStillProtectsOverlappingFolders()
+    {
+        var fixture = Create();
+        var other = new Ksp2InstallEntry { ExePath = @"C:\Elsewhere\Other.exe" };
+        fixture.Configuration.Config.Ksp2Installs.Add(other);
+        var coordinator = fixture.Service();
+        using (coordinator.AcquireLaunchLease(fixture.Install)) { }
+        other.ExePath = At(fixture.Fs, fixture.Install, "child/Other.exe");
+        Assert.Throws<InvalidDataException>(() => coordinator.AcquireLaunchLease(fixture.Install));
+    }
+
+    [Test]
+    public async Task CatalogLookupUsesConfiguredHostCaseRules()
+    {
+        var fixture = Create();
+        var coordinator = fixture.Service();
+        await Apply(fixture, coordinator);
+        string alternate = fixture.Install.ToUpperInvariant();
+        Assert.That(coordinator.HasCatalog(alternate), Is.True);
+        Mock.Get(fixture.Os).Setup(os => os.IsWindows()).Returns(false);
+        Mock.Get(fixture.Os).Setup(os => os.IsLinux()).Returns(true);
+        Assert.That(coordinator.HasCatalog(alternate), Is.False);
+        Assert.That(coordinator.HasCatalog(fixture.Install), Is.True);
+    }
+
     private static Fixture Create(IFileSystem? fileSystem = null, string? root = null, bool bootBom = false)
     {
         IFileSystem fs = fileSystem ?? new MockFileSystem(options => options.SimulatingOperatingSystem(SimulationMode.Windows));

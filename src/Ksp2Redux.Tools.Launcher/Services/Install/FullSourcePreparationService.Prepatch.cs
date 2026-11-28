@@ -51,7 +51,7 @@ public partial class FullSourcePreparationService
         var result = descriptor.Baselines.ToList();
         if (ReleaseManifestValidator.GetPrepatchBaseline(descriptor) is not { } prepatch)
             return result;
-        var entries = selected is null ? _configuration.Config.Ksp2Installs.ToArray() : new[] { selected };
+        var entries = selected is null ? _configuration.Config.Ksp2Installs.Where(IsSourceProfile).ToArray() : new[] { selected };
         foreach (Ksp2InstallEntry entry in entries)
         {
             string root = InstallRoot(entry);

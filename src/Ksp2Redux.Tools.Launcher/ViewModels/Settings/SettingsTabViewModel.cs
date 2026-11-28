@@ -661,7 +661,20 @@ public partial class SettingsTabViewModel : ViewModelBase
             ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner);
         if (result != ButtonResult.Yes) return;
 
-        _ksp2InstallService.RemoveInstall(row.Id);
+        await RemoveProfileAsync(row.Id);
+    }
+
+    private async Task RemoveProfileAsync(Guid id)
+    {
+        try
+        {
+            _ksp2InstallService.RemoveInstall(id);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            await _messageBoxService.ShowMessageBoxAsOwnedAsync(_localization["Dialog.Error.Title"], ex.Message,
+                windowStartupLocation: WindowStartupLocation.CenterOwner);
+        }
     }
 
     [RelayCommand]
@@ -780,7 +793,7 @@ public partial class SettingsTabViewModel : ViewModelBase
                 if (await ConfirmAsync(_localization["Settings.UninstallKsp2.Missing.Title"],
                         _localization.Format("Settings.UninstallKsp2.Missing.Message", row.Name)))
                 {
-                    _ksp2InstallService.RemoveInstall(row.Id);
+                    await RemoveProfileAsync(row.Id);
                 }
                 return;
 
@@ -802,7 +815,7 @@ public partial class SettingsTabViewModel : ViewModelBase
                         _localization.Format("Settings.UninstallKsp2.SteamFailed", ex.Message), windowStartupLocation: WindowStartupLocation.CenterOwner);
                     return;
                 }
-                _ksp2InstallService.RemoveInstall(row.Id);
+                await RemoveProfileAsync(row.Id);
                 return;
         }
 

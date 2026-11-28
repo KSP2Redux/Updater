@@ -57,7 +57,7 @@ public partial class FullSourceInstallationService
         _engine.ValidateControlledPath(operation.WorkRoot);
         foreach (Ksp2InstallEntry other in _configuration.Config.Ksp2Installs.Where(other => other.Id != entry.Id))
         {
-            if (Overlaps(Root(other), operation.SourceRoot) || Overlaps(Root(other), operation.WorkRoot))
+            if (OverlapsProfile(operation.SourceRoot, other) || OverlapsProfile(operation.WorkRoot, other))
                 throw new InvalidDataException("A configured installation now overlaps disposable storage. Payloads retained.");
         }
         StockBaselineManifest target = Manifest(operation.Target);

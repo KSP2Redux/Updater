@@ -742,7 +742,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
             }
             if (projected)
             {
-                foreach (var entry in _configuration.Config.Ksp2Installs)
+                foreach (var entry in _configuration.Config.Ksp2Installs.Where(IsSourceProfile))
                 {
                     if (entry.FullSourceBaselineIdentity is { } identity && identity != stock.BaselineIdentity)
                         continue;
@@ -758,7 +758,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                     CreateBaselineDirectories(root, inputs);
                     return new RecipeSource(stock, root, Projected: true);
                 }
-                foreach (var entry in _configuration.Config.Ksp2Installs)
+                foreach (var entry in _configuration.Config.Ksp2Installs.Where(IsSourceProfile))
                 {
                     string installed = InstallRoot(entry);
                     string archive = At(installed, "uninstall.zip");
@@ -792,7 +792,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 string destination = At(root, file.Path);
                 if (!windows && await MatchesAsync(destination, file, ct))
                     continue;
-                foreach (var entry in _configuration.Config.Ksp2Installs)
+                foreach (var entry in _configuration.Config.Ksp2Installs.Where(IsSourceProfile))
                 {
                     string candidate = At(InstallRoot(entry), file.Path);
                     if (!await MatchesAsync(candidate, file, ct))
@@ -805,7 +805,7 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
                 return new RecipeSource(stock, root, Projected: projected);
             if (projected)
                 continue;
-            foreach (var entry in _configuration.Config.Ksp2Installs)
+            foreach (var entry in _configuration.Config.Ksp2Installs.Where(IsSourceProfile))
             {
                 string archive = At(InstallRoot(entry), "uninstall.zip");
                 _paths.ValidateControlledPath(archive);
@@ -1069,8 +1069,8 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
         _paths.ValidateControlledPath(root);
         foreach (var entry in _configuration.Config.Ksp2Installs)
         {
-            string install = InstallRoot(entry);
-            if (Overlaps(root, install))
+            if (!string.IsNullOrWhiteSpace(entry.ExePath) && _fs.Path.IsPathFullyQualified(entry.ExePath) && _fs.Path.GetDirectoryName(entry.ExePath) is { } install &&
+                Overlaps(root, install))
                 throw new InvalidDataException("Preparation storage overlaps a configured installation.");
         }
         return root;
@@ -1098,6 +1098,9 @@ public partial class FullSourcePreparationService : IFullSourcePreparationServic
     }
 
     private Ksp2InstallEntry Entry(Guid id) => _configuration.Config.Ksp2Installs.Single(entry => entry.Id == id && id != Guid.Empty);
+
+    private bool IsSourceProfile(Ksp2InstallEntry entry) =>
+        !string.IsNullOrWhiteSpace(entry.ExePath) && _fs.Path.IsPathFullyQualified(entry.ExePath) && _fs.Path.GetFileName(entry.ExePath) == Ksp2Install.KSP2_EXE_NAME;
 
     private string InstallRoot(Ksp2InstallEntry entry)
     {

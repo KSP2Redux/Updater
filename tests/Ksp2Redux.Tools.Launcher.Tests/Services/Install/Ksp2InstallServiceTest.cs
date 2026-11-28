@@ -194,6 +194,20 @@ public class Ksp2InstallServiceTest
         });
     }
 
+    [TestCase(Testably.Abstractions.Testing.SimulationMode.Linux, "/games/KSP2", "/games/ksp2", true)]
+    [TestCase(Testably.Abstractions.Testing.SimulationMode.Windows, @"C:\Games\KSP2", @"C:\Games\ksp2", false)]
+    public void CaseOnlyFolderChangeRespectsFileSystem(Testably.Abstractions.Testing.SimulationMode platform, string from, string to, bool clears)
+    {
+        var fs = new Testably.Abstractions.Testing.MockFileSystem(options => options.SimulatingOperatingSystem(platform));
+        var entry = new Ksp2InstallEntry { ExePath = fs.Path.Combine(from, Ksp2Install.KSP2_EXE_NAME),
+            BootConfigOriginals = new() { ["gfx-enable-gfx-jobs"] = null } };
+        var cfg = new Mock<ILauncherConfigService>();
+        cfg.SetupGet(c => c.Config).Returns(new LauncherConfig { StoragePath = fs.Path.Combine(from, "config.json"), Ksp2Installs = [entry] });
+        var svc = new Ksp2InstallService(cfg.Object, fs, Mock.Of<IModuleDefinitionService>(), Mock.Of<ILogService>(), Mock.Of<IInstallationStateService>());
+        svc.UpdateInstallExePath(entry.Id, fs.Path.Combine(to, Ksp2Install.KSP2_EXE_NAME));
+        Assert.That(entry.BootConfigOriginals.Count == 0, Is.EqualTo(clears));
+    }
+
     /// <summary>
     /// The boot.config undo record belongs to its folder: another folder clears it, another executable name in the same folder keeps it.
     /// </summary>

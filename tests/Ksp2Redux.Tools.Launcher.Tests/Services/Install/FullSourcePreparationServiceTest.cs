@@ -305,6 +305,15 @@ public partial class FullSourcePreparationServiceTest
             It.IsAny<string>(), It.IsAny<IProgress<SteamDownloadProgress>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Test]
+    public async Task PreparationIgnoresUnrelatedInvalidSourceProfile()
+    {
+        var fixture = Create();
+        fixture.Config.Ksp2Installs.Insert(0, new Ksp2InstallEntry { ExePath = @"C:\Elsewhere\Other.exe" });
+        var target = await fixture.Preparation.FetchTargetAsync(RELEASE_ID, CHANNEL, CancellationToken.None);
+        AssertTree(fixture.Fs, target.SourceRoot, fixture.Target);
+    }
+
     /// <summary>
     /// A cached stage never authorizes an operation when the configured online authority is unavailable.
     /// </summary>

@@ -71,17 +71,26 @@ public partial class FullSourceInstallationService
         ValidateExpectedRoot(root, expectedInstallRoot);
         foreach (Ksp2InstallEntry other in _configuration.Config.Ksp2Installs.Where(entry => entry.Id != id))
         {
-            if (Overlaps(root, Root(other)))
+            if (OverlapsProfile(root, other))
                 throw new InvalidDataException("Configured installation roots overlap or alias each other.");
         }
         return entry;
     }
 
+    private bool OverlapsProfile(string path, Ksp2InstallEntry profile)
+    {
+        // A mistyped executable name still reserves its directory. Only the selected executable needs to be valid.
+        return !string.IsNullOrWhiteSpace(profile.ExePath) && _fs.Path.IsPathFullyQualified(profile.ExePath) && _fs.Path.GetDirectoryName(profile.ExePath) is { } directory
+            && Overlaps(path, directory);
+    }
+
+    private StringComparison RootComparison => _os.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
     private Ksp2InstallEntry? EntryAt(string root)
     {
         // Unconfigured paths can receive protection checks, but never recovery authority.
         Ksp2InstallEntry[] matches = _configuration.Config.Ksp2Installs
-            .Where(entry => _fs.Path.GetDirectoryName(entry.ExePath)?.Equals(root, StringComparison.OrdinalIgnoreCase) == true)
+            .Where(entry => _fs.Path.GetDirectoryName(entry.ExePath)?.Equals(root, RootComparison) == true)
             .ToArray();
         if (matches.Length > 1)
             throw new InvalidDataException("The installation root has multiple configured identities.");
@@ -90,8 +99,7 @@ public partial class FullSourceInstallationService
 
     private void ValidateExpectedRoot(string currentRoot, string? expectedRoot)
     {
-        if (expectedRoot is not null && !string.Equals(currentRoot, expectedRoot,
-                _os.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        if (expectedRoot is not null && !string.Equals(currentRoot, expectedRoot, RootComparison))
             throw new InvalidDataException("The configured installation folder changed. Select the installation again.");
     }
 
@@ -105,11 +113,14 @@ public partial class FullSourceInstallationService
         return root;
     }
 
+    private string ProfileCatalogDirectory(Guid id) =>
+        _fs.Path.Combine(_configuration.GetLocalStorageDirectory(), "full-source-v1", id.ToString("N"));
+
     private string CatalogRoot(Ksp2InstallEntry entry)
     {
-        string path = _fs.Path.Combine(_configuration.GetLocalStorageDirectory(), "full-source-v1", entry.Id.ToString("N"));
+        string path = ProfileCatalogDirectory(entry.Id);
         _engine.ValidateControlledPath(path);
-        if (_configuration.Config.Ksp2Installs.Any(other => Overlaps(path, Root(other))) || Overlaps(path, StorageRoot(entry)))
+        if (_configuration.Config.Ksp2Installs.Any(other => OverlapsProfile(path, other)) || Overlaps(path, StorageRoot(entry)))
             throw new InvalidDataException("Launcher catalog storage overlaps writable installation storage.");
         return path;
     }
@@ -118,7 +129,7 @@ public partial class FullSourceInstallationService
     {
         string path = _fs.Path.Combine(_fs.Path.GetDirectoryName(Root(entry))!, $".redux-fullsource-{entry.Id:N}");
         _engine.ValidateControlledPath(path);
-        if (_configuration.Config.Ksp2Installs.Any(other => Overlaps(path, Root(other))))
+        if (_configuration.Config.Ksp2Installs.Any(other => OverlapsProfile(path, other)))
             throw new InvalidDataException("Owned operation storage overlaps a configured installation. All bytes retained.");
         return path;
     }
@@ -509,6 +520,15 @@ public partial class FullSourceInstallationService
         EnsureSupported();
         string root = CatalogRoot(entry);
         StockArchive.CreateDirectory(_fs, root);
+        var lease = OpenCoordinatorLock(root);
+        if (_configuration.Config.Ksp2Installs.Any(current => current.Id == entry.Id && current.ExePath == entry.ExePath))
+            return lease;
+        lease.Dispose();
+        throw new InvalidDataException("The installation profile changed before the coordinator acquired its lock.");
+    }
+
+    private FileSystemStream OpenCoordinatorLock(string root)
+    {
         _engine.ValidateControlledPath(root);
         string path = _fs.Path.Combine(root, "coordinator.lock");
         _engine.ValidateControlledPath(path);

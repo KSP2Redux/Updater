@@ -308,6 +308,9 @@ public interface IFullSourceInstallationService
     /// <returns>True if a controlled catalog exists, false otherwise.</returns>
     bool HasCatalog(string root);
 
+    /// <summary>Reserve a profile for removal or a folder change. A managed installation must return to stock first.</summary>
+    IDisposable? AcquireProfileChangeLease(Guid installationId);
+
     /// <summary>
     /// Read the durable published release identity after reconciliation for installation display.
     /// </summary>
