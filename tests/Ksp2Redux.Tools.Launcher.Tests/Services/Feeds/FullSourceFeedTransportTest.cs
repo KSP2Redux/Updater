@@ -61,6 +61,30 @@ public partial class FullSourceFeedTransportTest
         Assert.That(configured.HasSameAuthority(configured.SnapshotAuthority()), Is.True);
     }
 
+    [Test]
+    public async Task LegacyPrivateFeed_AddsInternalToTheGuiChannelList()
+    {
+        var configured = new FeedInfo { Repository = "example/testing", Filename = "Manifest.Develop.json", Token = "fixture-token" };
+        var handler = new Handler
+        {
+            Respond = request =>
+            {
+                Assert.That(request.RequestUri!.AbsolutePath, Is.EqualTo("/repos/example/testing/contents/Manifest.Develop.v3.json"));
+                Assert.That(request.Headers.Authorization?.Parameter, Is.EqualTo("fixture-token"));
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""{"schemaVersion":3,"channel":"internal","generatedAt":"2026-10-14T00:00:00Z","patches":[]}""")
+                };
+            }
+        };
+        var feed = new ManifestReleasesFeed(Service(handler), Mock.Of<ILogService>(), "downloads", configured);
+        var channels = new ReleasesFeedService();
+        Assert.That(await feed.UpdateManifest(), Is.True, feed.LastUpdateException?.Message);
+        channels.Add(feed);
+        Assert.That(channels.ReleasesFeed.Keys, Does.Contain("internal"));
+        Assert.That(configured.Repository, Is.EqualTo("example/testing"));
+    }
+
     private class Handler : HttpMessageHandler
     {
         internal Func<HttpRequestMessage, HttpResponseMessage> Respond = _ => new HttpResponseMessage(HttpStatusCode.OK)
